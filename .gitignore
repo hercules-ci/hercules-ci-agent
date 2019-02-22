@@ -1,0 +1,20 @@
+# Default nix output paths
+**/result
+**/result-*
+
+# Default cabal output paths
+**/dist/
+
+# Ignore logarithms
+**/*.log
+
+# Hidden lock files are assumed not to be version lock files
+**/.*.lock
+
+# Stack working directory
+.stack-work/
+.stack-work-for-*/
+
+# Editor backup files
+.DS_Store
+*~

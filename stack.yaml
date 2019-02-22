@@ -1,0 +1,12 @@
+resolver: ghc-8.4
+
+packages:
+  - haskell/hercules-ci-api
+  - haskell/hercules-ci-agent
+
+install-ghc: false  # we're using nixpkgs' ghc
+system-ghc: true    # nixpkgs ghc is perceived as 'system ghc'
+
+nix:
+  packages: []      # use shell instead
+  shell-file: ./nix/haskell-shell.nix

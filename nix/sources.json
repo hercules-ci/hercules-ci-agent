@@ -1,0 +1,43 @@
+{
+    "nixpkgs": {
+        "url": "https://github.com/NixOS/nixpkgs-channels/archive/9bd45dddf8171e2fd4288d684f4f70a2025ded19.tar.gz",
+        "owner": "NixOS",
+        "branch": "nixos-18.09",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "repo": "nixpkgs-channels",
+        "sha256": "1idrxrymwqfsfysav3yl8lya1jhgg8xzgq9hy7dpdd63770vn8c1",
+        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
+        "rev": "9bd45dddf8171e2fd4288d684f4f70a2025ded19"
+    },
+    "nixos-18.09": {
+        "url": "https://github.com/NixOS/nixpkgs-channels/archive/9bd45dddf8171e2fd4288d684f4f70a2025ded19.tar.gz",
+        "owner": "NixOS",
+        "branch": "nixos-18.09",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "repo": "nixpkgs-channels",
+        "sha256": "1idrxrymwqfsfysav3yl8lya1jhgg8xzgq9hy7dpdd63770vn8c1",
+        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
+        "rev": "9bd45dddf8171e2fd4288d684f4f70a2025ded19"
+    },
+    "nixos-unstable": {
+        "url": "https://github.com/NixOS/nixpkgs-channels/archive/36f316007494c388df1fec434c1e658542e3c3cc.tar.gz",
+        "owner": "NixOS",
+        "branch": "nixos-unstable",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "repo": "nixpkgs-channels",
+        "sha256": "1w1dg9ankgi59r2mh0jilccz5c4gv30a6q1k6kv2sn8vfjazwp9k",
+        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
+        "rev": "36f316007494c388df1fec434c1e658542e3c3cc"
+    },
+    "niv": {
+        "homepage": "https://github.com/nmattia/niv",
+        "url": "https://github.com/nmattia/niv/archive/cdfa7b9a27a92b0892f1286de529dc25b653f5f0.tar.gz",
+        "owner": "nmattia",
+        "branch": "master",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "repo": "niv",
+        "sha256": "1qsm2f6znkxqw2nvxhfyrx43c0h1ppnvxnbbd9738vbh8dw105cx",
+        "description": "Easy dependency management for Nix projects",
+        "rev": "cdfa7b9a27a92b0892f1286de529dc25b653f5f0"
+    }
+}
