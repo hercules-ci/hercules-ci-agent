@@ -1,0 +1,203 @@
+cabal-version: 1.12
+
+name:           hercules-ci-agent
+version:        0.1.0.0
+homepage:       https://docs.hercules-ci.com
+bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
+author:         Hercules Labs
+maintainer:     info@hercules-ci.com
+copyright:      2018-2019 Hercules Labs OÜ
+license:        Apache-2.0
+build-type:     Simple
+extra-source-files:
+    ChangeLog.md
+    cbits/aliases.h
+
+source-repository head
+  type: git
+  location: https://github.com/hercules-ci/hercules-ci-agent
+
+library
+  exposed-modules:
+      Hercules.Agent.WorkerProtocol.Command
+      Hercules.Agent.WorkerProtocol.Command.Build
+      Hercules.Agent.WorkerProtocol.Command.Eval
+      Hercules.Agent.WorkerProtocol.Event
+      Hercules.Agent.WorkerProtocol.Event.Attribute
+      Hercules.Agent.WorkerProtocol.Event.AttributeError
+  other-modules:
+      Paths_hercules_ci_agent
+  hs-source-dirs:
+      src
+  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
+  ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns
+  build-depends:
+      aeson
+    , async
+    , base >=4.7 && <5
+    , binary
+    , binary-conduit
+    , bytestring
+    , conduit
+    , containers
+    , dhall
+    , exceptions
+    , katip
+    , lifted-async
+    , lifted-base
+    , monad-control
+    , optparse-applicative
+    , protolude
+    , safe-exceptions
+    , text
+    , transformers-base
+  default-language: Haskell2010
+
+executable hercules-agent
+  main-is: Main.hs
+  other-modules:
+      Hercules.Agent
+      Hercules.Agent.Batch
+      Hercules.Agent.Build
+      Hercules.Agent.CabalInfo
+      Hercules.Agent.Client
+      Hercules.Agent.Config
+      Hercules.Agent.Env
+      Hercules.Agent.Evaluate
+      Hercules.Agent.Exception
+      Hercules.Agent.Init
+      Hercules.Agent.Log
+      Hercules.Agent.NixPath
+      Hercules.Agent.Options
+      Hercules.Agent.Scribe
+      Hercules.Agent.Token
+      WorkerProcess
+      Paths_hercules_ci_agent
+  hs-source-dirs:
+      hercules-agent
+  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
+  ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , async
+    , base >=4.7 && <5
+    , binary
+    , binary-conduit
+    , bytestring
+    , conduit
+    , conduit-extra
+    , containers
+    , dhall
+    , directory
+    , exceptions
+    , filepath
+    , hercules-ci-agent
+    , hercules-ci-api
+    , http-client
+    , http-client-tls
+    , http-conduit
+    , katip
+    , lifted-async
+    , lifted-base
+    , monad-control
+    , mtl
+    , network
+    , optparse-applicative
+    , process
+    , protolude
+    , safe-exceptions
+    , servant >=0.14.1
+    , servant-auth-client
+    , servant-client
+    , servant-client-core
+    , temporary
+    , text
+    , transformers-base
+  default-language: Haskell2010
+
+executable hercules-agent-worker
+  main-is: Main.hs
+  other-modules:
+      CNix
+      CNix.Internal.Context
+      CNix.Internal.Raw
+      CNix.Internal.Store
+      CNix.Internal.Typed
+      Hercules.Agent.Worker
+      Paths_hercules_ci_agent
+  hs-source-dirs:
+      hercules-agent-worker
+  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
+  ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N -pgmlg++
+  -- GC_INCLUDE_NEW to use <new> header and standard C++ exception on OOM
+  cc-options: -Wall -std=c++11
+  include-dirs:
+      cbits
+  extra-libraries:
+      stdc++
+  build-depends:
+      aeson
+    , async
+    , base >=4.7 && <5
+    , binary
+    , binary-conduit
+    , bytestring
+    , conduit
+    , containers
+    , dhall
+    , exceptions
+    , hercules-ci-agent
+    , inline-c
+    , inline-c-cpp
+    , katip
+    , lifted-async
+    , lifted-base
+    , monad-control
+    , optparse-applicative
+    , protolude
+    , safe-exceptions
+    , text
+    , transformers-base
+  pkgconfig-depends:
+      nix-store >= 2.0
+    , nix-expr >= 2.0
+    , nix-main >= 2.0
+    , bdw-gc
+  default-language: Haskell2010
+
+test-suite hercules-test
+  type: exitcode-stdio-1.0
+  main-is: TestMain.hs
+  other-modules:
+      Spec
+      Hercules.Agent.NixPath
+      Hercules.Agent.NixPathSpec
+  hs-source-dirs:
+      test
+      hercules-agent
+  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
+  ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , async
+    , base >=4.7 && <5
+    , binary
+    , binary-conduit
+    , bytestring
+    , conduit
+    , containers
+    , dhall
+    , exceptions
+    , hercules-ci-api
+    , hspec
+    , katip
+    , lifted-async
+    , lifted-base
+    , monad-control
+    , optparse-applicative
+    , protolude
+    , safe-exceptions
+    , text
+    , transformers-base
+  default-language: Haskell2010
+  build-tool-depends: hspec-discover:hspec-discover
