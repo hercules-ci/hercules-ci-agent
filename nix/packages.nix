@@ -14,14 +14,14 @@ let
     # TODO: upstream the overrides
     haskellPackages = haskellPackages_.extend (self: super: {
       hercules-ci-api =
-        let basePkg = super.callCabal2nix "hercules-ci-api" (cleanSource ../haskell/hercules-ci-api) {};
+        let basePkg = super.callCabal2nix "hercules-ci-api" (cleanSource ../hercules-ci-api) {};
         in
           buildFromSdist basePkg;
 
       hercules-ci-agent =
         let basePkg = super.callCabal2nix
                    "hercules-ci-agent"
-                   (cleanSource ../haskell/hercules-ci-agent)
+                   (cleanSource ../hercules-ci-agent)
                    {
                      nix-store = nix;
                      nix-expr = nix;
@@ -48,7 +48,7 @@ let
       packages = p: [p.hercules-ci-agent p.hercules-ci-api];
     };
 
-    hercules-ci-api-swagger = pkgs.callPackage ../haskell/hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };
+    hercules-ci-api-swagger = pkgs.callPackage ../hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };
   };
 in
 pkgs.recurseIntoAttrs {

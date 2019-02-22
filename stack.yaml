@@ -1,8 +1,9 @@
 resolver: ghc-8.4
 
+# paths to local packages
 packages:
-  - haskell/hercules-ci-api
-  - haskell/hercules-ci-agent
+  - hercules-ci-api
+  - hercules-ci-agent
 
 install-ghc: false  # we're using nixpkgs' ghc
 system-ghc: true    # nixpkgs ghc is perceived as 'system ghc'
