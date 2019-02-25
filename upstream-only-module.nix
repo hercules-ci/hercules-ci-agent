@@ -2,12 +2,14 @@
 
 let
 
-  cfg = config.services.hercules-ci-agent;
   inherit (lib) mkOption mkIf types escapeShellArg;
 
-  agentUser = {
-    name = cfg.user;
-    home = "/var/lib/hercules-agent";
+  cfg = config.services.hercules-ci-agent;
+
+  defaultUser = "hercules-ci-agent";
+  defaultUserDetails = {
+    name = defaultUser;
+    home = "/var/lib/hercules-ci-agent";
     description = "System user for the Hercules Agent";
     isSystemUser = true;
     createHome = true;
@@ -24,7 +26,7 @@ in
     };
     user = mkOption {
       description = "Unix system user that runs the agent service";
-      default = "hercules-agent";
+      default = defaultUser;
       type = types.string;
     };
     apiBaseUrl = mkOption {
@@ -68,11 +70,11 @@ in
       };
     };
 
-    # FIXME: Is this the right approach?
-    users.extraUsers.hercules-agent =
-      if config.ids.uids ? "hercules-agent"
-      then { uid = config.ids.uids.hercules-agent; } // agentUser
-      else agentUser;
-
+    users = mkIf (cfg.user == defaultUser) {
+      users.hercules-agent =
+        if config.ids.uids ? "hercules-ci-agent"
+        then { uid = config.ids.uids.hercules-ci-agent; } // defaultUserDetails
+        else defaultUserDetails;
+    };
   };
 }
