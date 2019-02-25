@@ -3,12 +3,8 @@
 , nixpkgs ? sources."${nixpkgsSource}"
 }:
 with
-  { overlay = self: pkgs:
+  { dev-overlay = self: pkgs:
       { inherit (import sources.niv {}) niv;
-        inherit nixpkgsSource;
-        packages = pkgs.callPackages ./packages.nix {};
-
-        hercules-ci-agent = self.packages.hercules-ci-agent;
       };
   };
-import nixpkgs { overlays = [ overlay ] ; config = {}; }
+import nixpkgs { overlays = [ (import ./overlay.nix) dev-overlay ] ; config = {}; }

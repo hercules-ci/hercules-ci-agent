@@ -6,12 +6,14 @@ let
     "nixos-18_09" = "nixos-18.09";
   };
 
+  recurseIntoAttrs = as: as // { recurseForDerivations = true; };
+  
   packagesFor = _attrName: nixpkgsSource:
     let
       pkgs = import ./nix { inherit nixpkgsSource; };
-    in
-      pkgs.packages;
+    in recurseIntoAttrs {
+      inherit (pkgs) hercules-ci-agent hercules-ci-agent-packages;
+    };
 in
 
-{ recurseForDerivations = true;
-} // builtins.mapAttrs packagesFor nixpkgsSources
+recurseIntoAttrs (builtins.mapAttrs packagesFor nixpkgsSources)
