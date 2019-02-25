@@ -8,7 +8,7 @@ with
         inherit nixpkgsSource;
         packages = pkgs.callPackages ./packages.nix {};
 
-        hercules-ci-agent = self.packages.hercules-ci-agent;
+        hercules-ci-agent = pkgs.haskell.lib.justStaticExecutables self.packages.hercules-ci-agent;
       };
   };
 import nixpkgs { overlays = [ overlay ] ; config = {}; }

@@ -2,6 +2,7 @@
 , haskell
 , pkgs
 , nix
+, ...
 }:
 
 let
@@ -37,6 +38,9 @@ let
             postInstall = o.postInstall or "" + ''
               wrapProgram $out/bin/hercules-agent --prefix PATH : ${makeBinPath [ pkgs.gnutar pkgs.gzip nix ]}
             '';
+            passthru = o.passthru // {
+              inherit nix;
+            };
           }));
 
     });
