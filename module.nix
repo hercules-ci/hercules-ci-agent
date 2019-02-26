@@ -2,5 +2,5 @@
   # Override hercules-ci-agent to the version in this repo.
   nixpkgs.overlays = [ (import ./nix/overlay.nix) ];
 
-  imports = [ ./upstream-only-module.nix ];
+  imports = [ ./for-upstream-only/nixos/modules/services/continuous-integration/hercules-ci-agent.nix ];
 }
