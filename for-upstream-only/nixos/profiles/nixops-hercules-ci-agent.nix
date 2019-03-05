@@ -1,3 +1,7 @@
+/*
+  A NixOS profile that provides defaults for machines that serve as a
+  Hercules CI agent, deployed with NixOps.
+ */
 { config, ... }:
 {
   imports = [ ./hercules-ci-agent.nix ];
