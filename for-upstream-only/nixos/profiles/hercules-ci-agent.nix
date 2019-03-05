@@ -1,3 +1,7 @@
+/*
+  A NixOS profile that provides defaults for machines that serve as a
+  Hercules CI agent.
+ */
 { pkgs, lib, config, ...}:
 {
   options = {
