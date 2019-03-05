@@ -1,1 +1,1 @@
-(import ./. {}).packages.internal.hercules-haskell-shell
+(import ./. {}).hercules-ci-agent-packages.internal.hercules-haskell-shell
