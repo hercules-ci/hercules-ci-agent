@@ -41,7 +41,7 @@ in
     concurrentTasks = mkOption {
       description = "Number of tasks to perform simultaneously, such as evaluations, derivations";
       type = types.int;
-      default = 1;
+      default = 4;
     };
     package = mkOption {
       description = "Package containing the bin/hercules-agent program";
