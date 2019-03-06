@@ -44,7 +44,7 @@ in
       default = 4;
     };
     package = mkOption {
-      description = "Package containing the bin/hercules-agent program";
+      description = "Package containing the bin/hercules-ci-agent program";
       type = types.package;
       default = pkgs.hercules-ci-agent;
       defaultText = "pkgs.hercules-ci-agent";
@@ -63,7 +63,7 @@ in
       after = [ "network.target" ];
       serviceConfig = {
         User = cfg.user;
-        ExecStart = "${cfg.package}/bin/hercules-agent ${if (cfg.apiBaseUrl == null) then "" else "--api-base-url ${escapeShellArg cfg.apiBaseUrl}"} --agent-token-path ${escapeShellArg cfg.agentTokenPath} --concurrent-tasks ${toString cfg.concurrentTasks}";
+        ExecStart = "${cfg.package}/bin/hercules-ci-agent ${if (cfg.apiBaseUrl == null) then "" else "--api-base-url ${escapeShellArg cfg.apiBaseUrl}"} --agent-token-path ${escapeShellArg cfg.agentTokenPath} --concurrent-tasks ${toString cfg.concurrentTasks}";
         Restart = "on-failure";
         RestartSec = 120;
         StartLimitBurst = 30 * 1000000; # practically infitine
@@ -71,7 +71,7 @@ in
     };
 
     users = mkIf (cfg.user == defaultUser) {
-      users.hercules-agent =
+      users.hercules-ci-agent =
         if config.ids.uids ? "hercules-ci-agent"
         then { uid = config.ids.uids.hercules-ci-agent; } // defaultUserDetails
         else defaultUserDetails;

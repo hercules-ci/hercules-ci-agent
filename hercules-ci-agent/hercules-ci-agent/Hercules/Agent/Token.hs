@@ -19,7 +19,7 @@ import           Hercules.Agent.Log
 getDataDirectory :: MonadIO m => m FilePath
 getDataDirectory = do
   liftIO $ System.Directory.getXdgDirectory System.Directory.XdgData
-                                            "hercules-agent"
+                                            "hercules-ci-agent"
 
 writeAgentIdentity :: Text -> App ()
 writeAgentIdentity tok = do

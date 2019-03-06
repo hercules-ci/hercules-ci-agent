@@ -36,7 +36,7 @@ let
               [ pkgs.makeWrapper pkgs.boost pkgs.boehmgc ]
           ) (o: {
             postInstall = o.postInstall or "" + ''
-              wrapProgram $out/bin/hercules-agent --prefix PATH : ${makeBinPath [ pkgs.gnutar pkgs.gzip nix ]}
+              wrapProgram $out/bin/hercules-ci-agent --prefix PATH : ${makeBinPath [ pkgs.gnutar pkgs.gzip nix ]}
             '';
             passthru = o.passthru // {
               inherit nix;

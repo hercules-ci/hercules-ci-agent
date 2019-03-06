@@ -81,7 +81,7 @@ workerProcessSpec workingDirectory nixPath = do
 
   -- NiceToHave: replace renderNixPath by something structured like -I
   -- to support = and : in paths
-  pure (System.Process.proc (workerBinDir </> "hercules-agent-worker") [])
+  pure (System.Process.proc (workerBinDir </> "hercules-ci-agent-worker") [])
     { env = Just [("NIX_PATH", toS $ renderNixPath nixPath)]
     , close_fds = True -- Disable on Windows?
     , cwd = Just workingDirectory
@@ -113,7 +113,7 @@ performEvaluation task' = do
   liftIO
     $ boundedDelayBatcher (1000 * 1000) 1000 eventChan submitBatch
     $ const
-    $ withSystemTempDirectory "hercules-agent"
+    $ withSystemTempDirectory "hercules-ci-agent"
     $ \tmpdir -> unlift $ do
         withNamedContext "tmpdir" tmpdir $ logLocM DebugS "Determined tmpdir"
 
