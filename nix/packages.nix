@@ -41,6 +41,20 @@ let
             passthru = o.passthru // {
               inherit nix;
             };
+
+            # TODO: We had an issue where any overrideCabal would have
+            #       no effect on the package, so we inline the
+            #       definition of justStaticExecutables here.
+            #       Ideally, we'd go back to a call to
+            #       justStaticExecutables.
+            #
+            # begin justStaticExecutables
+            enableSharedExecutables = false;
+            enableLibraryProfiling = false;
+            isLibrary = false;
+            doHaddock = false;
+            postFixup = "rm -rf $out/lib $out/nix-support $out/share/doc";
+            # end justStaticExecutables
           }));
 
     });
