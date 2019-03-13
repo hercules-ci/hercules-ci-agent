@@ -1,3 +1,4 @@
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveAnyClass #-}
 module Hercules.API.Projects.Job where
 
@@ -36,3 +37,10 @@ data JobStatus
   | Failure
   | Success
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+
+data Contextual context a = Contextual
+  { context :: context
+  , value :: a
+  }
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+deriving instance (ToSchema context, ToSchema a) => ToSchema (Contextual context a)
