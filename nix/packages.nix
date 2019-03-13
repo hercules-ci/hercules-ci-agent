@@ -9,20 +9,27 @@ let
   haskellPackages_ = haskellPackages;
   inherit (pkgs.lib) cleanSource makeBinPath;
   inherit (haskell.lib) addBuildDepends overrideCabal buildFromSdist;
+
+  inherit (pkgs.haskell.lib) overrideSrc;
+
+  inherit (pkgs.callPackage pkgs.sources.nix-gitignore {}) gitignoreFilterRecursiveSource;
+  gitignoreRecursiveSource = gitignoreFilterRecursiveSource (_: _: true);
+  src = gitignoreRecursiveSource "" ../.;
+
   internal = rec {
     inherit pkgs;
 
     # TODO: upstream the overrides
     haskellPackages = haskellPackages_.extend (self: super: {
       hercules-ci-api =
-        let basePkg = super.callCabal2nix "hercules-ci-api" (cleanSource ../hercules-ci-api) {};
+        let basePkg = super.callCabal2nix "hercules-ci-api" (src + "/hercules-ci-api") {};
         in
           buildFromSdist basePkg;
 
       hercules-ci-agent =
         let basePkg = super.callCabal2nix
                    "hercules-ci-agent"
-                   (cleanSource ../hercules-ci-agent)
+                   (src + "/hercules-ci-agent")
                    {
                      nix-store = nix;
                      nix-expr = nix;
