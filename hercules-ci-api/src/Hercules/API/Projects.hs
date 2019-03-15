@@ -6,7 +6,7 @@ import           Servant.API.Generic
 import           Hercules.API.Attribute
 import           Hercules.API.Result
 import           Hercules.API.Prelude
-import           Hercules.API.Projects.Job      ( Job )
+import           Hercules.API.Projects.Job      ( Job, JobAndProject )
 import           Hercules.API.Projects.Project  ( Project )
 import           Hercules.API.Accounts.Account  ( Account )
 import           Hercules.API.Projects.CreateProject
@@ -27,8 +27,8 @@ data ProjectsAPI auth f = ProjectsAPI
   , findProjects :: f :-
       Summary "Find projects" :>
       "projects" :>
-      QueryParam' '[Required] "site" (Name SourceHostingSite) :>
-      QueryParam' '[Required] "account" (Name Account) :>
+      QueryParam' '[Optional] "site" (Name SourceHostingSite) :>
+      QueryParam' '[Optional] "account" (Name Account) :>
       QueryParam' '[Optional] "project" (Name Project) :>
       auth :>
       Get '[JSON] [Project]
@@ -52,12 +52,13 @@ data ProjectsAPI auth f = ProjectsAPI
   , findJobs :: f :-
       Summary "Find jobs" :>
       "jobs" :>
-      QueryParam' '[Required] "site" (Name SourceHostingSite) :>
-      QueryParam' '[Required] "account" (Name Account) :>
-      QueryParam' '[Required] "project" (Name Project) :>
-      QueryParam' '[Optional] "index" Int :>
+      QueryParam' '[Optional, Description "Currently only \"github\" or omit entirely"] "site" (Name SourceHostingSite) :>
+      QueryParam' '[Optional, Description "Account name filter"] "account" (Name Account) :>
+      QueryParam' '[Optional, Description "Project name filter. Required if you want to retrieve all jobs"] "project" (Name Project) :>
+      QueryParam' '[Optional, Description "To get a specific job by index"] "index" Int :>
+      QueryParam' '[Optional, Description "Number of latest jobs to get, when project name is omitted. Range [1..50], default 10."] "latest" Int :>
       auth :>
-      Get '[JSON] [Job]
+      Get '[JSON] [JobAndProject]
 
   , projectJobAttributes :: f :-
       Summary "List all attributes in a job" :>

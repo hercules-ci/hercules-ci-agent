@@ -1,4 +1,5 @@
-self: pkgs: {
+self: pkgs:
+{
   # packages defined in this repo
   hercules-ci-agent-packages = pkgs.callPackages ./packages.nix {};
 

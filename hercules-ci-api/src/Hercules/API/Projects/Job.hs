@@ -1,3 +1,4 @@
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveAnyClass #-}
 module Hercules.API.Projects.Job where
 
@@ -35,4 +36,10 @@ data JobStatus
   = Pending
   | Failure
   | Success
+  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+
+data JobAndProject = JobAndProject
+  { project :: Project
+  , job :: Job
+  }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
