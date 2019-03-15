@@ -1,0 +1,63 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 41620ba6c17faebe5d7de678ee063baf8e9ca740883b4716fb1c9e4f219c324d
+
+name:           hercules-ci-agent-test
+version:        0.1.0.0
+homepage:       https://github.com/hercules-ci/hercules-ci#readme
+bug-reports:    https://github.com/hercules-ci/hercules-ci/issues
+author:         Hercules Labs
+maintainer:     info@hercules-ci.com
+copyright:      2018-2019 Hercules Labs OÜ
+license:        Apache-2.0
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/hercules-ci/hercules-ci
+
+executable hercules-agent-test
+  main-is: Main.hs
+  other-modules:
+      DummyApi
+      EvaluationSpec
+      MockTasksApi
+      Spec
+      Orphans
+  hs-source-dirs:
+      src
+  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
+  ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aeson
+    , async
+    , base >=4.7 && <5
+    , bytestring
+    , conduit
+    , conduit-extra
+    , containers
+    , cookie
+    , directory
+    , filepath
+    , hercules-ci-api
+    , hspec
+    , http-api-data
+    , mmorph
+    , protolude
+    , random
+    , servant >=0.14.1
+    , servant-auth-server
+    , servant-server
+    , servant-streaming
+    , servant-streaming-server
+    , stm
+    , streaming
+    , tar-conduit
+    , text
+    , uuid
+    , warp
+  default-language: Haskell2010

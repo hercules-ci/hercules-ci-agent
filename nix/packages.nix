@@ -7,8 +7,9 @@
 
 let
   haskellPackages_ = haskellPackages;
+  inherit (pkgs) recurseIntoAttrs;
   inherit (pkgs.lib) cleanSource makeBinPath;
-  inherit (haskell.lib) addBuildDepends overrideCabal buildFromSdist;
+  inherit (haskell.lib) addBuildDepends overrideCabal buildFromSdist doJailbreak;
 
   inherit (pkgs.haskell.lib) overrideSrc;
 
@@ -21,6 +22,7 @@ let
 
     # TODO: upstream the overrides
     haskellPackages = haskellPackages_.extend (self: super: {
+      servant-streaming-server = doJailbreak super.servant-streaming-server;
       hercules-ci-api =
         let basePkg = super.callCabal2nix "hercules-ci-api" (src + "/hercules-ci-api") {};
         in
@@ -53,7 +55,8 @@ let
             #       no effect on the package, so we inline the
             #       definition of justStaticExecutables here.
             #       Ideally, we'd go back to a call to
-            #       justStaticExecutables.
+            #       justStaticExecutables, or even better,
+            #       a separate bin output.
             #
             # begin justStaticExecutables
             enableSharedExecutables = false;
@@ -63,6 +66,11 @@ let
             postFixup = "rm -rf $out/lib $out/nix-support $out/share/doc";
             # end justStaticExecutables
           }));
+
+      hercules-ci-agent-test =
+        let basePkg = super.callCabal2nix "hercules-ci-agent-test" (cleanSource ../tests/agent-test) {};
+        in
+          buildFromSdist basePkg;
 
     });
 
@@ -74,11 +82,18 @@ let
     };
 
     hercules-ci-api-swagger = pkgs.callPackage ../hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };
+
+    vmTest = pkgs.nixosTest or (import ./compat-nixosTest.nix pkgs);
+    agent-test-body = import ../tests/agent-test.nix;
+    tests = recurseIntoAttrs {
+      agent-functional-test = vmTest (agent-test-body);
+    };
   };
 in
-pkgs.recurseIntoAttrs {
+recurseIntoAttrs {
   inherit (internal.haskellPackages) hercules-ci-agent;
   inherit (internal) hercules-ci-api-swagger;
+  inherit (internal) tests;
 
   # Not traversed for derivations:
   inherit internal;
