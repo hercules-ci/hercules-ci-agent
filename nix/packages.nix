@@ -53,7 +53,8 @@ let
             #       no effect on the package, so we inline the
             #       definition of justStaticExecutables here.
             #       Ideally, we'd go back to a call to
-            #       justStaticExecutables.
+            #       justStaticExecutables, or even better,
+            #       a separate bin output.
             #
             # begin justStaticExecutables
             enableSharedExecutables = false;
