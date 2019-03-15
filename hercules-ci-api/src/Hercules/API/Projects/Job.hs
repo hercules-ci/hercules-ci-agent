@@ -38,9 +38,8 @@ data JobStatus
   | Success
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
 
-data Contextual context a = Contextual
-  { context :: context
-  , value :: a
+data JobAndProject = JobAndProject
+  { project :: Project
+  , job :: Job
   }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
-deriving instance (ToSchema context, ToSchema a) => ToSchema (Contextual context a)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
