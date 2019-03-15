@@ -4,6 +4,24 @@ resolver: ghc-8.4
 packages:
   - hercules-ci-api
   - hercules-ci-agent
+  - tests/agent-test
+extra-deps:
+  - servant-auth-server-0.4.3.0@sha256:49ee831f8b969e1f830759ee599ef3f75bbc50530d3dfcdcd667545a307e6a7f
+  - streaming-0.2.2.0@sha256:cecdf8180829bbee0a7256dd170819ad1f32d613c1a94e9e60e96939a7d4649f
+  - tar-conduit-0.3.2@sha256:17cb1c05343ed32db111c3f929f57ccce2b92a01d3ebd95a339db5e9b8bf147b
+  - conduit-combinators-1.3.0@sha256:0ada7712bd8291c958cbd0db1ccc8374936f260cfa41422d7a5d979d1c7ea757
+  - entropy-0.4.1.4@sha256:8745461dfefc3929b5aa9266af41ed111c82a9fc6f7b0d783b6d5693c75854eb
+  - http-types-0.12.3@sha256:f35229edb1bc7b3ae27f961b2407dadb5bfa69d43a8f5337ab46cdc79ca4afe9
+  - jose-0.8.0.0@sha256:7f023b680a5326fa4fdd8968720667fb42ac3516910fc60fb69c8132bc7b9343
+  - monad-time-0.3.1.0@sha256:77fd2e1fa0d5103e0fc68cd9dde5e014c72eb034b9cf94adf85f7e457f23128d
+  - cabal-doctest-1.0.6@sha256:c0b4a5b1ff38d2867e7003b4be59f3bd7e8e204ab8c988d96d3a77472ae671cd
+  - concise-0.1.0.1@sha256:dc06988ec217a6c925b0f708f6ebe6461cd77ac91ff5c4a5b522c99ce5b3400e
+  - quickcheck-instances-0.3.19@sha256:4dd72c43d87c3f8fcc28883295a39870e4e9d49919d43c7b17e41ece8ccae11e
+
+    # agent test api mock
+  - servant-streaming-0.3.0.0@sha256:1806869dd320fd7e7a1fc1c87125f5e82fb12e7e6428862a48194c7dd21cac12
+  - servant-streaming-server-0.3.0.0@sha256:7553c759644db0f0e575dbfbf3b9c11196965bfaa3beb3ff1298f7819410ddf5
+  - streaming-wai-0.1.1@sha256:eb7658d3cf38620cd15bfa2a49eb9d6d62e6854865033a387a4bb5a57342c3f1
 
 install-ghc: false  # we're using nixpkgs' ghc
 system-ghc: true    # nixpkgs ghc is perceived as 'system ghc'
