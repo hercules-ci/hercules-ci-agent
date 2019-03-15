@@ -52,6 +52,6 @@ in
       $agent->waitForUnit("hercules-ci-agent.service");
 
       # Run the test code + api
-      $api->succeed("(cd ${testdata} && hercules-agent-test >/dev/console 2>/dev/console)");
+      $api->succeed("(cd ${testdata} && hercules-ci-agent-test >/dev/console 2>/dev/console)");
     '';
 }

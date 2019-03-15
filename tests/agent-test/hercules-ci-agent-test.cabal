@@ -20,7 +20,7 @@ source-repository head
   type: git
   location: https://github.com/hercules-ci/hercules-ci
 
-executable hercules-agent-test
+executable hercules-ci-agent-test
   main-is: Main.hs
   other-modules:
       DummyApi
