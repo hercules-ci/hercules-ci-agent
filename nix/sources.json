@@ -9,6 +9,16 @@
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "rev": "9bd45dddf8171e2fd4288d684f4f70a2025ded19"
     },
+    "nixos-19.03": {
+        "url": "https://github.com/NixOS/nixpkgs-channels/archive/5f3be9bc4b45f9da2d7c6768c0d187ef3f2643f7.tar.gz",
+        "owner": "NixOS",
+        "branch": "nixos-19.03",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "repo": "nixpkgs-channels",
+        "sha256": "107j2j56n5h1xb9wf6j2qxsn5xmjmyj75rr8dzns0chrxqs7xddy",
+        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
+        "rev": "5f3be9bc4b45f9da2d7c6768c0d187ef3f2643f7"
+    },
     "nixos-18.09": {
         "url": "https://github.com/NixOS/nixpkgs-channels/archive/9bd45dddf8171e2fd4288d684f4f70a2025ded19.tar.gz",
         "owner": "NixOS",

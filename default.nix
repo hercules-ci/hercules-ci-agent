@@ -8,6 +8,9 @@ let
     "nixos-18_09" = {
       nixpkgsSource = "nixos-18.09";
     };
+    "nixos-19_03" = {
+      nixpkgsSource = "nixos-19.03";
+    };
   };
 
   recurseIntoAttrs = as: as // { recurseForDerivations = true; };
