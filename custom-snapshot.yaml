@@ -1,0 +1,9 @@
+resolver: lts-12.18
+
+name: hercules-ci-agent
+
+packages:
+  - systemd-1.1.2
+  - katip-0.7.0.0
+  - inline-c-0.6.1.0
+  - inline-c-cpp-0.2.2.1
