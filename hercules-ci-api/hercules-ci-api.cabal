@@ -86,7 +86,6 @@ library
     , servant-swagger-ui-core
     , string-conv
     , swagger2
-    , systemd
     , text
     , time
     , uuid
@@ -120,7 +119,6 @@ executable hercules-gen-swagger
     , servant-swagger-ui-core
     , string-conv
     , swagger2
-    , systemd
     , text
     , time
     , uuid
