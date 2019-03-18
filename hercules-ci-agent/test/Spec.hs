@@ -1,1 +1,11 @@
-{-# OPTIONS_GHC -F -pgmF hspec-discover -optF --module-name=Spec #-}
+module Spec
+    ( spec
+    )
+where
+
+import           Test.Hspec
+import qualified Hercules.Agent.NixPathSpec
+
+spec :: Spec
+spec = do
+    describe "Hercules.Agent.NixPathSpec" Hercules.Agent.NixPathSpec.spec

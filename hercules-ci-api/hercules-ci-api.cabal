@@ -158,9 +158,7 @@ test-suite hercules-api-test
     , servant-swagger-ui-core
     , string-conv
     , swagger2
-    , systemd
     , text
     , time
     , uuid
   default-language: Haskell2010
-  build-tool-depends: hspec-discover:hspec-discover
