@@ -74,13 +74,6 @@ let
 
     });
 
-    # Provides system-like dependencies for stack.yaml
-    hercules-haskell-shell = haskellPackages.shellFor {
-      nativeBuildInputs = [ pkgs.pkgconfig ]; # May want to add some tools here.
-      withHoogle = true;
-      packages = p: [p.hercules-ci-agent p.hercules-ci-api];
-    };
-
     hercules-ci-api-swagger = pkgs.callPackage ../hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };
 
     vmTest = pkgs.nixosTest or (import ./compat-nixosTest.nix pkgs);
