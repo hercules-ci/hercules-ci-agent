@@ -38,6 +38,21 @@ data JobStatus
   | Success
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
 
+-- | Whichever is "worse": 'Failure' wins out, otherwise 'Pending' wins out, otherwise all are 'Success'.
+instance Semigroup JobStatus where
+  Failure <> _ = Failure
+  _ <> Failure = Failure
+  Pending <> _ = Pending
+  _ <> Pending = Pending
+  Success <> Success = Success
+
+-- | @mappend@: Whichever is "worse": 'Failure' wins out, otherwise 'Pending' wins out, otherwise all are 'Success'.
+--
+-- @mempty@: 'Success'
+instance Monoid JobStatus where
+  mappend = (<>)
+  mempty = Success
+
 data JobAndProject = JobAndProject
   { project :: Project
   , job :: Job
