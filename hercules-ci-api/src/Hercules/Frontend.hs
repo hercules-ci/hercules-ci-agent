@@ -34,7 +34,7 @@ data FrontendRoutes view f = FrontendRoutes
       Capture' [Required, Strict] "site" (Name SourceHostingSite) :>
       Capture' [Required, Strict] "account" (Name Account) :>
       Capture' [Required, Strict] "project" (Name Project) :>
-      "job" :>
+      "jobs" :>
       Capture' [Required, Strict] "jobIndex" Int :>
       view
   } deriving (Generic)
