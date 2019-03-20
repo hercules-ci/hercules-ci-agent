@@ -1,1 +1,7 @@
-{-# OPTIONS_GHC -F -pgmF hspec-discover -optF --module-name=Spec #-}
+module Spec where
+
+import           Prelude
+import           Test.Hspec
+
+spec :: Spec
+spec = describe "hercules-ci-api" $ pure ()

@@ -201,4 +201,3 @@ test-suite hercules-test
     , text
     , transformers-base
   default-language: Haskell2010
-  build-tool-depends: hspec-discover:hspec-discover
