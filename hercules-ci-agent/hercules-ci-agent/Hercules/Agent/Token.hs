@@ -5,8 +5,8 @@ import qualified Data.Text                     as T
 import           Servant.Auth.Client            ( Token(Token) )
 
 import qualified Hercules.API.Agents
-import qualified Hercules.API.Agents.CreateAgent
-                                               as CreateAgent
+import qualified Hercules.API.Agents.CreateAgentSession
+                                               as CreateAgentSession
 import           Hercules.Agent.Env            as Env
 import           Hercules.Agent.Client          ( agentsClient )
 import qualified System.Directory
@@ -58,7 +58,7 @@ ensureAgentToken = do
     Nothing -> do
       writeAgentIdentity "x" -- Sanity check
       logLocM DebugS "Creating agent identity token"
-      agentSpecificToken <- createAgent
+      agentSpecificToken <- createAgentSession
       logLocM DebugS "Agent identity token acquired"
       writeAgentIdentity agentSpecificToken
       logLocM DebugS "Agent identity token persisted"
@@ -70,10 +70,10 @@ ensureAgentToken = do
           panic
             "The file identity.token seems to have disappeared. Refusing to continue."
 
-createAgent :: App Text
-createAgent = do
+createAgentSession :: App Text
+createAgentSession = do
   hostname <- liftIO getHostName
-  let createAgentBody = CreateAgent.CreateAgent
+  let createAgentBody = CreateAgentSession.CreateAgentSession
         { hostname = toS hostname
         , agentVersion = CabalInfo.herculesAgentVersion -- TODO: Add git revision
         , nixVersion = "" -- FIXME
@@ -83,7 +83,7 @@ createAgent = do
   logLocM DebugS $ "CreateAgent data: " <> show createAgentBody
   token <- asks Env.agentToken
   agentIdentityToken <- runHerculesClient'
-    $ Hercules.API.Agents.agentCreate agentsClient createAgentBody token
+    $ Hercules.API.Agents.agentSessionCreate agentsClient createAgentBody token
   pure agentIdentityToken
 
 withAgentToken :: App a -> App a

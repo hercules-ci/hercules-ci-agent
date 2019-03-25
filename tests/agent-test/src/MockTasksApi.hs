@@ -41,9 +41,9 @@ import           Hercules.API
 import           Hercules.API.Id
 import           Hercules.API.Agents            ( AgentsAPI )
 import qualified Hercules.API.Agents           as API.Agents
-import qualified Hercules.API.Agents.CreateAgent
-                                               as CreateAgent
-import           Hercules.API.Agents.Agent      ( Agent )
+import qualified Hercules.API.Agents.CreateAgentSession
+                                               as CreateAgentSession
+import           Hercules.API.Agents.AgentSession      ( AgentSession )
 import qualified Hercules.API.AgentTask        as AgentTask
 import           Hercules.API.Task              ( Task )
 import qualified Hercules.API.Task             as Task
@@ -302,7 +302,7 @@ evalEndpoints server = DummyApi.dummyEvalEndpoints
 atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_ r = atomicModifyIORef r . ((, ()) .)
 
-data Session = Session (Id Agent)
+data Session = Session (Id AgentSession)
   deriving (Generic, ToJSON, FromJSON)
 instance FromJWT Session
 instance ToJWT Session
@@ -311,9 +311,9 @@ type Auth' = Auth '[JWT] Session
 
 agentsEndpoints :: ServerState -> AgentsAPI Auth' AsServer
 agentsEndpoints server =
-  DummyApi.dummyAgentsEndpoints { API.Agents.agentCreate = handleAgentCreate }
+  DummyApi.dummyAgentsEndpoints { API.Agents.agentSessionCreate = handleAgentCreate }
 
-handleAgentCreate :: CreateAgent.CreateAgent
+handleAgentCreate :: CreateAgentSession.CreateAgentSession
                   -> AuthResult Session
                   -> Handler Text
 handleAgentCreate ca r = do

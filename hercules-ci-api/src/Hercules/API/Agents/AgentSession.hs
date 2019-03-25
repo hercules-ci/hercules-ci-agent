@@ -1,15 +1,15 @@
 {-# LANGUAGE DeriveAnyClass #-}
-module Hercules.API.Agents.Agent where
+module Hercules.API.Agents.AgentSession where
 
 import           Hercules.API.Prelude
 
-import           Hercules.API.Agents.AgentToken ( AgentToken )
+import           Hercules.API.Agents.ClusterJoinToken ( ClusterJoinToken )
 
-data Agent = Agent
-  { id :: Id Agent
-  , tokenId :: Id AgentToken
+data AgentSession = AgentSession
+  { hostname :: Text
+  , clusterJoinTokenId :: Id ClusterJoinToken
+  , id :: Id AgentSession
   , description :: Text
-  , hostname :: Text
   , agentVersion :: Text
   , nixVersion :: Text
   , architectures :: [Text]

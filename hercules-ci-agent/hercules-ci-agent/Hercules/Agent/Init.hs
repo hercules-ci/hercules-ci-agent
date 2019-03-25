@@ -19,7 +19,7 @@ newEnv config logEnv = do
   baseUrl <- Servant.Client.parseBaseUrl (toS endpoint)
   let clientEnv :: Servant.Client.ClientEnv
       clientEnv = Servant.Client.mkClientEnv manager baseUrl
-  token <- Token.readTokenFile $ toS $ Config.agentTokenPath config
+  token <- Token.readTokenFile $ toS $ Config.clusterJoinTokenPath config
   pure Env
     { manager = manager
     , herculesBaseUrl = baseUrl
