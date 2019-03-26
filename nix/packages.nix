@@ -13,7 +13,8 @@ let
 
   inherit (pkgs.haskell.lib) overrideSrc;
 
-  inherit (pkgs.callPackage pkgs.sources.nix-gitignore {}) gitignoreFilterRecursiveSource;
+  gitignoreSource = (import ./sources.nix).nix-gitignore;
+  inherit (pkgs.callPackage gitignoreSource {}) gitignoreFilterRecursiveSource;
   gitignoreRecursiveSource = gitignoreFilterRecursiveSource (_: _: true);
   src = gitignoreRecursiveSource "" ../.;
 

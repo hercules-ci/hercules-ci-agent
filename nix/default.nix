@@ -6,6 +6,5 @@ with
   { dev-overlay = self: pkgs:
       { inherit (import sources.niv {}) niv;
       };
-    sources-overlay = self: pkgs: { inherit sources; };
   };
-import nixpkgs { overlays = [ sources-overlay (import ./overlay.nix) dev-overlay ] ; config = {}; }
+import nixpkgs { overlays = [ (import ./overlay.nix) dev-overlay ] ; config = {}; }
