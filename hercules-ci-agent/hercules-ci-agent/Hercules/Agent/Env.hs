@@ -18,7 +18,11 @@ data Env = Env
   { manager :: Network.HTTP.Client.Manager
   , herculesBaseUrl :: Servant.Client.BaseUrl
   , herculesClientEnv :: Servant.Client.ClientEnv
-  , agentToken :: Servant.Auth.Client.Token
+  -- TODO: The implicit limitation here is that we can
+  --       only have one token at a time. I wouldn't be surprised if this becomes
+  --       problematic at some point. Perhaps we should switch to a polymorphic
+  --       reader monad like RIO when we hit that limitation.
+  , currentToken :: Servant.Auth.Client.Token
 
     -- katip
   , kNamespace :: K.Namespace
@@ -36,7 +40,7 @@ runHerculesClient :: (Servant.Auth.Client.Token -> Servant.Client.ClientM a)
                   -> App a
 runHerculesClient f = do
   clientEnv <- asks herculesClientEnv
-  tok <- asks agentToken
+  tok <- asks currentToken
   escalate =<< liftIO (Servant.Client.runClientM (f tok) clientEnv)
 
 runHerculesClient' :: Servant.Client.ClientM a -> App a

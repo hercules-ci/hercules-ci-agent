@@ -1,12 +1,12 @@
 {-# LANGUAGE DeriveAnyClass #-}
-module Hercules.API.Agents.AgentToken where
+module Hercules.API.Agents.ClusterJoinToken where
 
 import           Hercules.API.Prelude
 
 import           Hercules.API.Accounts.Account  ( Account )
 
-data AgentToken = AgentToken
-  { id :: Id AgentToken
+data ClusterJoinToken = ClusterJoinToken
+  { id :: Id ClusterJoinToken
   , ownerId :: Id Account
   , creationTime :: UTCTime
   -- TODO lastAccessTime :: Maybe UTCTime

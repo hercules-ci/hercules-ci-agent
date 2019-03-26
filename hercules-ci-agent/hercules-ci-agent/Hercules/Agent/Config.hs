@@ -7,7 +7,7 @@ import qualified Dhall
 
 data Config = Config
   { herculesApiBaseURL :: Text
-  , agentTokenPath :: Text
+  , clusterJoinTokenPath :: Text
   , concurrentTasks :: Integer
   } deriving (Generic, Dhall.Inject, Dhall.Interpret)
 
@@ -16,7 +16,7 @@ newDefaultConfig = do
   baseUrl <- determineDefaultApiBaseUrl
   pure Config
     { herculesApiBaseURL = baseUrl
-    , agentTokenPath = panic "Config.agentTokenPath wasn't set."
+    , clusterJoinTokenPath = panic "Config.clusterJoinTokenPath wasn't set."
     , concurrentTasks = 4
     }
 

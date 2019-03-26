@@ -34,8 +34,14 @@ in
       default = null;
       type = types.nullOr types.string;
     };
-    agentTokenPath = mkOption {
-      description = "Token for the agent to authenticate with the Hercules API";
+    clusterJoinTokenPath = mkOption {
+      description = ''
+        Location of a the cluster join token. It authorizes the agent to add
+        itself to the cluster that the token represents.
+
+        This file is only required to be present for the agent's first run. It
+        will be ignored after the agent has used the token successfully.
+      '';
       type = types.path;
     };
     concurrentTasks = mkOption {
@@ -63,7 +69,7 @@ in
       after = [ "network.target" ];
       serviceConfig = {
         User = cfg.user;
-        ExecStart = "${cfg.package}/bin/hercules-ci-agent ${if (cfg.apiBaseUrl == null) then "" else "--api-base-url ${escapeShellArg cfg.apiBaseUrl}"} --agent-token-path ${escapeShellArg cfg.agentTokenPath} --concurrent-tasks ${toString cfg.concurrentTasks}";
+        ExecStart = "${cfg.package}/bin/hercules-ci-agent ${if (cfg.apiBaseUrl == null) then "" else "--api-base-url ${escapeShellArg cfg.apiBaseUrl}"} --cluster-join-token-path ${escapeShellArg cfg.clusterJoinTokenPath} --concurrent-tasks ${toString cfg.concurrentTasks}";
         Restart = "on-failure";
         RestartSec = 120;
         StartLimitBurst = 30 * 1000000; # practically infitine

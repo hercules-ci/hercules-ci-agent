@@ -5,8 +5,8 @@ import qualified Data.Text                     as T
 import           Servant.Auth.Client            ( Token(Token) )
 
 import qualified Hercules.API.Agents
-import qualified Hercules.API.Agents.CreateAgent
-                                               as CreateAgent
+import qualified Hercules.API.Agents.CreateAgentSession
+                                               as CreateAgentSession
 import           Hercules.Agent.Env            as Env
 import           Hercules.Agent.Client          ( agentsClient )
 import qualified System.Directory
@@ -21,11 +21,11 @@ getDataDirectory = do
   liftIO $ System.Directory.getXdgDirectory System.Directory.XdgData
                                             "hercules-ci-agent"
 
-writeAgentIdentity :: Text -> App ()
-writeAgentIdentity tok = do
+writeAgentSessionKey :: Text -> App ()
+writeAgentSessionKey tok = do
   dataDir <- getDataDirectory
   liftIO $ System.Directory.createDirectoryIfMissing True dataDir
-  liftIO $ writeFile (dataDir </> "identity.token") (toS tok)
+  liftIO $ writeFile (dataDir </> "session.key") (toS tok)
 
 -- | Reads a token file, strips whitespace
 readTokenFile :: MonadIO m => FilePath -> m Text
@@ -36,11 +36,11 @@ readTokenFile fp = do
   subst '\n' = ' '
   subst x = x
 
-readAgentIdentity :: App (Maybe Text)
-readAgentIdentity = do
+readAgentSessionKey :: App (Maybe Text)
+readAgentSessionKey = do
   dataDir <- liftIO $ getDataDirectory
   logLocM DebugS $ "Data directory: " <> show dataDir
-  let file = dataDir </> "identity.token"
+  let file = dataDir </> "session.key"
   liftIO (System.Directory.doesFileExist file) >>= \case
     True -> notEmpty <$> readTokenFile file
      where
@@ -49,31 +49,31 @@ readAgentIdentity = do
       notEmpty token = Just token
     False -> pure Nothing
 
-ensureAgentToken :: App Text
-ensureAgentToken = do
-  readAgentIdentity >>= \case
+ensureAgentSession :: App Text
+ensureAgentSession = do
+  readAgentSessionKey >>= \case
     Just x -> do
-      logLocM DebugS "Found agent identity token"
+      logLocM DebugS "Found agent session key"
       pure x
     Nothing -> do
-      writeAgentIdentity "x" -- Sanity check
-      logLocM DebugS "Creating agent identity token"
-      agentSpecificToken <- createAgent
-      logLocM DebugS "Agent identity token acquired"
-      writeAgentIdentity agentSpecificToken
-      logLocM DebugS "Agent identity token persisted"
-      readAgentIdentity >>= \case
+      writeAgentSessionKey "x" -- Sanity check
+      logLocM DebugS "Creating agent session"
+      agentSessionKey <- createAgentSession
+      logLocM DebugS "Agent session key acquired"
+      writeAgentSessionKey agentSessionKey
+      logLocM DebugS "Agent session key persisted"
+      readAgentSessionKey >>= \case
         Just x -> do
-          logLocM DebugS "Found the new agent identity token"
+          logLocM DebugS "Found the new agent session"
           pure x
         Nothing ->
           panic
-            "The file identity.token seems to have disappeared. Refusing to continue."
+            "The file session.key seems to have disappeared. Refusing to continue."
 
-createAgent :: App Text
-createAgent = do
+createAgentSession :: App Text
+createAgentSession = do
   hostname <- liftIO getHostName
-  let createAgentBody = CreateAgent.CreateAgent
+  let createAgentBody = CreateAgentSession.CreateAgentSession
         { hostname = toS hostname
         , agentVersion = CabalInfo.herculesAgentVersion -- TODO: Add git revision
         , nixVersion = "" -- FIXME
@@ -81,12 +81,16 @@ createAgent = do
         }
 
   logLocM DebugS $ "CreateAgent data: " <> show createAgentBody
-  token <- asks Env.agentToken
-  agentIdentityToken <- runHerculesClient'
-    $ Hercules.API.Agents.agentCreate agentsClient createAgentBody token
-  pure agentIdentityToken
+  token <- asks Env.currentToken
+  agentSessionToken <- runHerculesClient'
+    $ Hercules.API.Agents.agentSessionCreate agentsClient createAgentBody token
+  pure agentSessionToken
 
+-- TODO: Although this looks nice, the implicit limitation here is that we can
+--       only have one token at a time. I wouldn't be surprised if this becomes
+--       problematic at some point. Perhaps we should switch to a polymorphic
+--       reader monad like RIO when we hit that limitation.
 withAgentToken :: App a -> App a
 withAgentToken m = do
-  agentIdentityToken <- ensureAgentToken
-  local (\env -> env { Env.agentToken = Token $ toS agentIdentityToken }) m
+  agentSessionToken <- ensureAgentSession
+  local (\env -> env { Env.currentToken = Token $ toS agentSessionToken }) m

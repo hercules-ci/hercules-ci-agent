@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveAnyClass #-}
-module Hercules.API.Agents.CreateAgent where
+module Hercules.API.Agents.CreateAgentSession where
 
 import           Hercules.API.Prelude
 
-data CreateAgent = CreateAgent
+data CreateAgentSession = CreateAgentSession
   { hostname :: Text
   , agentVersion :: Text
   , nixVersion :: Text

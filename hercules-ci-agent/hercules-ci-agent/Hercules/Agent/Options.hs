@@ -26,10 +26,10 @@ parseOverrides = mconcat <$> many
         (long "api-base-url" <> metavar "URL" <> help
           "Root of the Hercules CI API"
         )
-  <|> update (\x c -> c { Config.agentTokenPath = x })
+  <|> update (\x c -> c { Config.clusterJoinTokenPath = x })
   <$> strOption
-        (long "agent-token-path" <> metavar "FILE" <> help
-          "Location of the agent token for authentication"
+        (long "cluster-join-token-path" <> metavar "FILE" <> help
+          "Token file that authorizes the agent to join a cluster"
         )
   <|> update (\x c -> c { Config.concurrentTasks = x })
   <$> option

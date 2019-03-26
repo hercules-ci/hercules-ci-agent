@@ -5,56 +5,57 @@ import           Servant.API
 import           Servant.API.Generic
 import           Hercules.API.Prelude
 import           Hercules.API.Accounts.Account  ( Account )
-import           Hercules.API.Agents.Agent      ( Agent )
-import           Hercules.API.Agents.AgentToken ( AgentToken )
-import           Hercules.API.Agents.CreateAgentToken
-                                                ( CreateAgentToken )
-import           Hercules.API.Agents.CreateAgent
-                                                ( CreateAgent )
-import           Hercules.API.Agents.FullAgentToken
-                                                ( FullAgentToken )
+import           Hercules.API.Agents.AgentSession
+                                                ( AgentSession )
+import           Hercules.API.Agents.ClusterJoinToken
+                                                ( ClusterJoinToken )
+import           Hercules.API.Agents.CreateClusterJoinToken
+                                                ( CreateClusterJoinToken )
+import           Hercules.API.Agents.CreateAgentSession
+                                                ( CreateAgentSession )
+import           Hercules.API.Agents.FullClusterJoinToken
+                                                ( FullClusterJoinToken )
 
 data AgentsAPI auth f = AgentsAPI
-  { agentTokensByAccount :: f :-
-      Summary "List all agent tokens owned by an account." :>
+  { clusterJoinTokensByAccount :: f :-  -- TODO rename
+      Summary "List all cluster join tokens in an account." :>
       "accounts" :>
       Capture' '[Required, Strict] "accountId" (Id Account) :>
-      "agentTokens" :>
+      "clusterJoinTokens" :>
       auth :>
-      Get '[JSON] [AgentToken]
+      Get '[JSON] [ClusterJoinToken]
 
-  , agentTokenCreate :: f :-
-      Summary "Generate a new agent token owned by the account." :>
+  , clusterJoinTokenCreate :: f :-
+      Summary "Generate a new cluster join token for agents to be added to this account." :>
       "accounts" :>
       Capture' '[Required, Strict] "accountId" (Id Account) :>
-      "agentTokens" :>
-      ReqBody '[JSON] CreateAgentToken :>
+      "clusterJoinTokens" :>
+      ReqBody '[JSON] CreateClusterJoinToken :>
       auth :>
-      Post '[JSON] FullAgentToken
+      Post '[JSON] FullClusterJoinToken
 
-  , agentTokenDelete :: f :-
-      Summary "Delete an agent token owned by the account." :>
+  , clusterJoinTokenDelete :: f :-
+      Summary "Delete an cluster join token in the account. No new agents will be able to join this account with the specified token." :>
       "accounts" :>
       Capture' '[Required, Strict] "accountId" (Id Account) :>
-      "agentTokens" :>
-      Capture' '[Required, Strict] "agentTokenId" (Id AgentToken) :>
+      "clusterJoinTokens" :>
+      Capture' '[Required, Strict] "clusterJoinTokenId" (Id ClusterJoinToken) :>
       auth :>
       Delete '[JSON] NoContent
 
-  , agentsByAccount :: f :-
-      Summary "Show the agents owned by the account." :>
+  , agentSessionsByAccount :: f :-
+      Summary "Show the agents sessions owned by the account." :>
       "accounts" :>
       Capture' '[Required, Strict] "accountId" (Id Account) :>
-      "agents" :>
+      "agentSessions" :>
       auth :>
-      Get '[JSON] [Agent]
+      Get '[JSON] [AgentSession]
 
-  , agentCreate :: f :-
-      Summary "Create a new agent." :>
-      Description "Authenticated using the agent token acquired through POST /accounts/:accountId/agentTokens" :>
-      "agent" :>
-      "create" :>
-      ReqBody '[JSON] CreateAgent :>
+  , agentSessionCreate :: f :-
+      Summary "Create a new agent session." :>
+      Description "Authenticated using the agent token acquired through POST /accounts/:accountId/clusterJoinTokens" :>
+      "agentSessions" :>
+      ReqBody '[JSON] CreateAgentSession :>
       auth :>
       Post '[JSON] Text
 

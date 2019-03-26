@@ -6,7 +6,7 @@
 {
   imports = [ ./hercules-ci-agent.nix ];
 
-  services.hercules-ci-agent.agentTokenPath = "/var/lib/keys/hercules-ci-agent/agent-token.key";
+  services.hercules-ci-agent.clusterJoinTokenPath = "/var/lib/keys/hercules-ci-agent/agent-token.key";
 
   users.extraUsers.hercules-ci-agent.extraGroups = [ "keys" ];
 
