@@ -24,17 +24,22 @@ performBuild task = do
   buildTask <- defaultRetry $ runHerculesClient
     (API.Build.getBuild Hercules.Agent.Client.buildClient (Task.id task))
 
-  let
-    stdinc = pass
-    stdoutc = pass -- FIXME: use
-    stderrc = Conduit.fold
-    procSpec =
-      (System.Process.proc
-        "nix-store"
-        ["--realise", "--", toS $ BuildTask.derivationPath buildTask]
-      ) { close_fds = True -- Disable on Windows?
-        , cwd = Just "/"
-        }
+  let stdinc = pass
+      stdoutc = pass -- FIXME: use
+      stderrc = Conduit.fold
+      procSpec = (System.Process.proc
+                   "nix-store"
+                   [ "--realise"
+                   , "--timeout"
+                   , "36000" -- 10h TODO: make configurable via meta.timeout and decrease default to 3600s or so
+                   , "--max-silent-time"
+                   , "1800" -- 0.5h TODO: make configurable via (?) and decrease default to 600s
+                   , "--"
+                   , toS $ BuildTask.derivationPath buildTask
+                   ]
+                 ) { close_fds = True -- Disable on Windows?
+                   , cwd = Just "/"
+                   }
 
   logLocM DebugS $ "Invoking nix-store: " <> show procSpec
 
