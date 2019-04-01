@@ -47,7 +47,7 @@ runWorker baseProcess stderrSink interaction = do
             .| concatMapC (\x -> [Chunk x, Flush])
             .| sinkHandleFlush inHandle
 
-    let interactor = runConduit $ do
+    let interactor = runConduit $
           interaction eventSource `fuseUpstream` commandSink
 
     r <- runConcurrently (Concurrently stderrPiper *> Concurrently interactor)

@@ -2,7 +2,6 @@ module Hercules.Agent.Init where
 
 import           Protolude
 
-import qualified Data.ByteString               as BS
 import qualified Hercules.Agent.Config         as Config
 import qualified Hercules.Agent.Env            as Env
 import           Hercules.Agent.Env             ( Env(Env) )

@@ -1,5 +1,3 @@
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DataKinds #-}
 
 module Hercules.Agent.Worker
@@ -74,8 +72,7 @@ runCommands = do
             hPutStrLn stderr $ "Caught exception: " <> renderException e
             yield $ Event.Error (renderException e)
           )
-        $ do
-            runEval eval
+        $ runEval eval
     Command.Build impossible -> absurd impossible
 
 -- TODO: test
@@ -104,7 +101,7 @@ runEval eval = do
         $ evalArgs evalState (autoArgArgs (Eval.autoArguments eval))
 
       Data.Conduit.handleC
-          (\e -> do
+          (\e ->
             yield $ Event.AttributeError $ AttributeError.AttributeError
               { AttributeError.path = []
               , AttributeError.message = renderException e
@@ -125,7 +122,7 @@ walk :: Ptr EvalState
 walk evalState = walk' True [] 10
  where
   handleErrors path = Data.Conduit.handleC
-    (\e -> do
+    (\e ->
       yield $ Event.AttributeError $ AttributeError.AttributeError
         { AttributeError.path = path
         , AttributeError.message = renderException e
@@ -138,9 +135,9 @@ walk evalState = walk' True [] 10
         -> Bindings            -- ^ Auto arguments to pass to (attrset-)functions
         -> RawValue               -- ^ Current node of the walk
         -> ConduitT i1 Event (ResourceT IO) () -- ^ Program that performs the walk and emits 'Event's
-  walk' forceWalkAttrset path depthRemaining autoArgs v = do
+  walk' forceWalkAttrset path depthRemaining autoArgs v =
     -- liftIO $ hPutStrLn stderr $ "Walking " <> (show path :: Text)
-    handleErrors path $ do
+    handleErrors path $
       liftIO (match evalState v) >>= \case
         Left e -> yield $ Event.AttributeError $ AttributeError.AttributeError
           { AttributeError.path = path
@@ -176,8 +173,8 @@ walk evalState = walk' True [] 10
 
                     void
                       $ flip M.traverseWithKey attrs
-                      $ \name value -> do
-                          when (depthRemaining > 0 && walkAttrset) $ do -- TODO: else warn
+                      $ \name value ->
+                          when (depthRemaining > 0 && walkAttrset) $ -- TODO: else warn
                             walk' False
                                   (path ++ [name])
                                   (depthRemaining - 1)
@@ -186,16 +183,13 @@ walk evalState = walk' True [] 10
 
           _any -> liftIO $ do
             vt <- rawValueType v
-            when
-                (not
+            unless
                   (last path
                   == "recurseForDerivations"
                   && vt
                   == CNix.Internal.Raw.Bool
                   )
-                )
-              $ do
-                  hPutStrLn stderr
+              $ hPutStrLn stderr
                     $ "Ignoring "
                     <> show path
                     <> " : "

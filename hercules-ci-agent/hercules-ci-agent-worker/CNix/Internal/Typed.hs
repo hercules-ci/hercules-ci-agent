@@ -44,7 +44,7 @@ data Match
 
 -- FIXME: errors don't provide any clue here
 match :: Ptr EvalState -> RawValue -> IO (Either SomeException Match)
-match es v = do
+match es v =
   forceValue es v >>= \case
     Left e -> pure (Left e)
     Right _ -> rawValueType v <&> \case
