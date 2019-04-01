@@ -27,10 +27,11 @@ newtype RawValue = RawValue (ForeignPtr Value')
 
 -- | Takes ownership of the value.
 mkRawValue :: Ptr Value' -> IO RawValue
-mkRawValue p = RawValue <$> do
+mkRawValue p = RawValue <$>
   newForeignPtr finalizeValue p
 
 finalizeValue :: FinalizerPtr Value'
+{-# NOINLINE finalizeValue #-}
 finalizeValue = unsafePerformIO [C.exp|
   void (*)(Value *) {
     [](Value *v){ GC_FREE(v); }

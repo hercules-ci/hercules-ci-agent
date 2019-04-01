@@ -168,7 +168,7 @@ jwtSettings =
         "{\"crv\":\"P-256\",\"d\":\"BWOmuvMiIPUWR-sPHIxaEKKr59OlVj-C7j24sgtCqA0\",\"x\":\"TTmrmU8p4PO3JGuW-8Fc2EvCBoR5NVoT2N5J3wJzBHg\",\"kty\":\"EC\",\"y\":\"6ATtNfAzjk_I4qf2hDrf2kAOw9IFZK8Y2ECJcs_fjqM\"}"
  where
   fromRight (Right r) = r
-  fromRight (Left l) = panic "test suite static jwk decode error"
+  fromRight (Left l) = panic $ "test suite static jwk decode error" <> show l
 
 cookieSettings :: CookieSettings
 cookieSettings = defaultCookieSettings

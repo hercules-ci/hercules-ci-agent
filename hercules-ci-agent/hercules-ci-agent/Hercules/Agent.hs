@@ -87,7 +87,7 @@ performTask task =
     $ safeLiftedHandle
         (\e -> do
           logLocM ErrorS $ "Exception in task: " <> show (e :: SomeException)
-          retry (cap 60 exponential) $ noContent $ runHerculesClient $ do
+          retry (cap 60 exponential) $ noContent $ runHerculesClient $
             Hercules.API.tasksSetStatus tasksClient
                                         (Task.id task)
                                         (TaskStatus.Exceptional $ show e)
@@ -108,7 +108,7 @@ performTask task =
 
         logLocM InfoS "Completed task successfully"
 
-        noContent $ runHerculesClient $ do
+        noContent $ runHerculesClient $
           Hercules.API.tasksSetStatus tasksClient
                                       (Task.id task)
                                       (TaskStatus.Successful ())

@@ -3,11 +3,10 @@ module Hercules.Agent.Exception where
 import           Protolude               hiding ( retry )
 
 import qualified Control.Exception.Safe
-import           Control.Monad.Base             ( liftBase )
 import           Control.Monad.Trans.Control    ( MonadBaseControl )
 import qualified Control.Exception.Lifted
 import           Katip
-import           Katip.Monadic
+import           Katip.Monadic (logLocM)
 
 safeLiftedCatch :: MonadBaseControl IO m => m a -> (SomeException -> m a) -> m a
 safeLiftedCatch m h =
@@ -34,9 +33,8 @@ retry :: (KatipContext m, MonadBaseControl IO m)
       -> m a
 retry delaysSeconds io = loop delaysSeconds
  where
-  loop [] = do
-    io
-  loop (delay : delays) = do
+  loop [] = io
+  loop (delay : delays) =
     safeLiftedCatch io $ \e -> do
       logLocM WarningS $ "Retrying on exception: " <> logStr (show e :: Text)
       when (delay >= 0.000001) $ liftIO $ threadDelay

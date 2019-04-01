@@ -17,7 +17,7 @@ import           Hercules.Agent.CabalInfo      as CabalInfo
 import           Hercules.Agent.Log
 
 getDataDirectory :: MonadIO m => m FilePath
-getDataDirectory = do
+getDataDirectory =
   liftIO $ System.Directory.getXdgDirectory System.Directory.XdgData
                                             "hercules-ci-agent"
 
@@ -29,7 +29,7 @@ writeAgentSessionKey tok = do
 
 -- | Reads a token file, strips whitespace
 readTokenFile :: MonadIO m => FilePath -> m Text
-readTokenFile fp = do
+readTokenFile fp =
   liftIO $ sanitize <$> readFile fp
  where
   sanitize = T.map subst . T.strip
@@ -50,7 +50,7 @@ readAgentSessionKey = do
     False -> pure Nothing
 
 ensureAgentSession :: App Text
-ensureAgentSession = do
+ensureAgentSession =
   readAgentSessionKey >>= \case
     Just x -> do
       logLocM DebugS "Found agent session key"
@@ -82,9 +82,8 @@ createAgentSession = do
 
   logLocM DebugS $ "CreateAgent data: " <> show createAgentBody
   token <- asks Env.currentToken
-  agentSessionToken <- runHerculesClient'
+  runHerculesClient'
     $ Hercules.API.Agents.agentSessionCreate agentsClient createAgentBody token
-  pure agentSessionToken
 
 -- TODO: Although this looks nice, the implicit limitation here is that we can
 --       only have one token at a time. I wouldn't be surprised if this becomes

@@ -7,7 +7,6 @@ where
 
 import           Conduit
 import qualified Data.Map                      as M
-import qualified Data.Text                     as T
 import           Paths_hercules_ci_agent           ( getBinDir )
 import           Protolude
 import           System.FilePath
@@ -101,7 +100,7 @@ performEvaluation task' = do
       unlift = runApp appEnv
 
   eventChan <- liftIO $ newChan
-  let submitBatch events = do
+  let submitBatch events =
         unlift $ noContent $ defaultRetry $ runHerculesClient
           (Hercules.API.tasksUpdateEvaluation
             Hercules.Agent.Client.evalClient
@@ -123,7 +122,7 @@ performEvaluation task' = do
           $ logLocM DebugS "Determined projectDir"
 
         inputLocations <-
-          flip M.traverseWithKey (EvaluateTask.otherInputs task) $ \k src -> do
+          flip M.traverseWithKey (EvaluateTask.otherInputs task) $ \k src ->
             fetchSource (tmpdir </> ("arg-" <> toS k)) src
 
         nixPath <-
@@ -215,7 +214,7 @@ performEvaluation task' = do
                           , AttributeEvent.derivationPath = toSL
                             $ WorkerAttribute.drv a
                           }
-                  Event.AttributeError e -> do
+                  Event.AttributeError e ->
                     liftIO
                       $ emit
                       $ EvaluateEvent.AttributeError
@@ -241,7 +240,7 @@ performEvaluation task' = do
           $ runEvaluator (Eval.cwd eval) nixPath stderrSink interaction
 
         case exitStatus of
-          ExitSuccess -> do
+          ExitSuccess ->
             logLocM DebugS "Clean worker exit"
           ExitFailure e -> do
             withNamedContext "exitStatus" e $ logLocM ErrorS "Worker failed"
@@ -274,7 +273,7 @@ fetchSource targetDir url = do
                                  Conduit.stderrC
   case x of
     ExitSuccess -> pass
-    ExitFailure{} -> do
+    ExitFailure{} ->
       throwIO $ SubprocessFailure "Extracting tarball"
 
   liftIO $ findTarballDir targetDir
@@ -287,7 +286,7 @@ findTarballDir :: FilePath -> IO FilePath
 findTarballDir fp = do
   nodes <- Dir.listDirectory fp
   case nodes of
-    [x] -> do
+    [x] ->
       Dir.doesDirectoryExist (fp </> x) >>= \case
         True -> pure $ fp </> x
         False -> pure fp

@@ -1,4 +1,3 @@
-{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Hercules.Agent.Log
@@ -12,9 +11,9 @@ where
 import           Protolude
 
 import           Data.Aeson
-import           Katip
+import           Katip hiding (logLocM)
 import           Katip.Core
-import           Katip.Monadic
+import           Katip.Monadic (logLocM)
 
 instance StringConv [Char] LogStr where
   strConv l = logStr . (strConv l :: [Char] -> Text)
