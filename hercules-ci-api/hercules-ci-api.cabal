@@ -35,6 +35,7 @@ library
       Hercules.API.Attribute
       Hercules.API.Auth
       Hercules.API.Build
+      Hercules.API.Build.EvaluationDetail
       Hercules.API.Derivation
       Hercules.API.EvaluateEvent
       Hercules.API.EvaluateEvent.AttributeErrorEvent
