@@ -68,24 +68,64 @@ spec = describe "Evaluation" $ do
         "SubprocessFailure {message = \"Extracting tarball\"}"
       r `shouldBe` []
 
-  context "when the source download doesn't have a nix expression" $ do
-    it "yields an error message" $ \srv -> do
-      id <- randomId
-      (s, r) <- runEval
-        srv
-        defaultTask { EvaluateTask.id = id
-                    , EvaluateTask.primaryInput = "/tarball/no-nix-file"
-                    }
-      s `shouldBe` TaskStatus.Successful ()
-      case r of
-        [EvaluateEvent.AttributeError ae] -> do
-          AttributeErrorEvent.expressionPath ae `shouldBe` []
-          toS (AttributeErrorEvent.errorMessage ae)
-            `shouldContain` "No such file or directory"
-          toS (AttributeErrorEvent.errorMessage ae)
-            `shouldContain` "default.nix"
+  context "when the source download doesn't have a nix expression"
+    $ it "yields an error message"
+    $ \srv -> do
+        id <- randomId
+        (s, r) <- runEval
+          srv
+          defaultTask { EvaluateTask.id = id
+                      , EvaluateTask.primaryInput = "/tarball/no-nix-file"
+                      }
+        s `shouldBe` TaskStatus.Successful ()
+        case r of
+          [EvaluateEvent.Message msg] -> msg `shouldBe` Message.Message
+            { index = 0
+            , typ = Message.Error
+            , message =
+              "Please provide a Nix expression to build. Could not find any of \"nix/ci.nix\", \"ci.nix\" or \"default.nix\" in your source"
+            }
 
-        _ -> failWith $ "Events should be a single error, not: " <> show r
+          _ -> failWith $ "Events should be a single message, not: " <> show r
+
+  context "when a ci.nix is provided"
+    $ it "it is preferred over default.nix"
+    $ \srv -> do
+        id <- randomId
+        (s, r) <- runEval
+          srv
+          defaultTask { EvaluateTask.id = id
+                      , EvaluateTask.primaryInput = "/tarball/ci-dot-nix"
+                      }
+
+        s `shouldBe` TaskStatus.Successful ()
+
+        case r of
+          [EvaluateEvent.Attribute ae] -> do
+            AttributeEvent.expressionPath ae `shouldBe` ["in-ci-dot-nix"]
+            toS (AttributeEvent.derivationPath ae)
+              `shouldContain` "-this-works.drv"
+          _ ->
+            failWith $ "Events should be a single attribute, not: " <> show r
+
+  context "when both ci.nix and nix/ci.nix are provided"
+    $ it "an error is raised"
+    $ \srv -> do
+        id <- randomId
+        (s, r) <- runEval
+          srv
+          defaultTask
+            { EvaluateTask.id = id
+            , EvaluateTask.primaryInput = "/tarball/ambiguous-nix-file"
+            }
+        s `shouldBe` TaskStatus.Successful ()
+        case r of
+          [EvaluateEvent.Message msg] -> msg `shouldBe` Message.Message
+            { index = 0
+            , typ = Message.Error
+            , message = "Don't know what to do, expecting only one of \"nix/ci.nix\" or \"ci.nix\""
+            }
+          _ -> failWith $ "Events should be a single message, not: " <> show r
 
   context "when the nix expression is one derivation in an attrset" $ do
     it "returns that attribute" $ \srv -> do
