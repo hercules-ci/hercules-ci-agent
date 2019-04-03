@@ -189,65 +189,79 @@ performEvaluation task' = do
                 panic "Evaluation limit reached."
               else writePayload eventChan =<< fixIndex update
 
-        let eval = Eval.Eval
-              { Eval.cwd = projectDir
-              , Eval.file = toS (projectDir </> "default.nix")
-              , Eval.autoArguments = autoArguments
-              }
-
-         -- FIXME: write stderr to service
-        let
-          stderrSink = mapC (\ln -> "worker: " <> ln <> "\n") .| stderrC
-
-          interaction eventStream = do
-            yield $ Command.Eval eval
-            eventStream .| concatMapMC
-              (\msg -> do
-                case msg of
-                  Event.Attribute a ->
-                    liftIO
-                      $ emit
-                      $ EvaluateEvent.Attribute
-                      $ AttributeEvent.AttributeEvent
-                          { AttributeEvent.expressionPath = toSL
-                            <$> WorkerAttribute.path a
-                          , AttributeEvent.derivationPath = toSL
-                            $ WorkerAttribute.drv a
-                          }
-                  Event.AttributeError e ->
-                    liftIO
-                      $ emit
-                      $ EvaluateEvent.AttributeError
-                      $ AttributeErrorEvent.AttributeErrorEvent
-                          { AttributeErrorEvent.expressionPath = toSL
-                            <$> WorkerAttributeError.path e
-                          , AttributeErrorEvent.errorMessage = toSL
-                            $ WorkerAttributeError.message e
-                          }
-                  Event.EvaluationDone -> pass -- FIXME
-                  Event.Error e ->
-                    liftIO
-                      $ emit
-                      $ EvaluateEvent.Message Message.Message
-                          { Message.index = -1 -- will be set by emit
-                          , Message.typ = Message.Error
-                          , Message.message = e
-                          }
-                pure []
-              )
-
-        (exitStatus, _) <- liftIO
-          $ runEvaluator (Eval.cwd eval) nixPath stderrSink interaction
-
-        case exitStatus of
-          ExitSuccess ->
-            logLocM DebugS "Clean worker exit"
-          ExitFailure e -> do
-            withNamedContext "exitStatus" e $ logLocM ErrorS "Worker failed"
-            panic "worker failure"
-            -- FIXME: handle failure
+        liftIO (findNixFile projectDir) >>= \case
+          Left e -> liftIO $ emit $ EvaluateEvent.Message Message.Message
+            { Message.index = -1 -- will be set by emit
+            , Message.typ = Message.Error
+            , Message.message = e
+            }
+          Right file ->
+            runEvalProcess projectDir file autoArguments nixPath emit
 
         flushSyncTimeout eventChan
+
+runEvalProcess :: KatipContext m
+               => FilePath
+               -> FilePath
+               -> Map Text Eval.Arg
+               -> [ EvaluateTask.NixPathElement
+                      (EvaluateTask.SubPathOf FilePath)
+                  ]
+               -> (EvaluateEvent.EvaluateEvent -> IO ())
+               -> m ()
+runEvalProcess projectDir file autoArguments nixPath emit = do
+  let eval = Eval.Eval { Eval.cwd = projectDir
+                       , Eval.file = toS file
+                       , Eval.autoArguments = autoArguments
+                       }
+
+   -- FIXME: write stderr to service
+  let
+    stderrSink = mapC (\ln -> "worker: " <> ln <> "\n") .| stderrC
+
+    interaction eventStream = do
+      yield $ Command.Eval eval
+      eventStream .| concatMapMC
+        (\msg -> do
+          case msg of
+            Event.Attribute a ->
+              liftIO
+                $ emit
+                $ EvaluateEvent.Attribute
+                $ AttributeEvent.AttributeEvent
+                    { AttributeEvent.expressionPath =
+                      toSL <$> WorkerAttribute.path a
+                    , AttributeEvent.derivationPath = toSL
+                                                        $ WorkerAttribute.drv a
+                    }
+            Event.AttributeError e ->
+              liftIO
+                $ emit
+                $ EvaluateEvent.AttributeError
+                $ AttributeErrorEvent.AttributeErrorEvent
+                    { AttributeErrorEvent.expressionPath =
+                      toSL <$> WorkerAttributeError.path e
+                    , AttributeErrorEvent.errorMessage =
+                      toSL $ WorkerAttributeError.message e
+                    }
+            Event.EvaluationDone -> pass -- FIXME
+            Event.Error e -> liftIO $ emit $ EvaluateEvent.Message
+              Message.Message { Message.index = -1 -- will be set by emit
+                              , Message.typ = Message.Error
+                              , Message.message = e
+                              }
+          pure []
+        )
+
+  (exitStatus, _) <- liftIO
+    $ runEvaluator (Eval.cwd eval) nixPath stderrSink interaction
+
+  case exitStatus of
+    ExitSuccess -> logLocM DebugS "Clean worker exit"
+    ExitFailure e -> do
+      withNamedContext "exitStatus" e $ logLocM ErrorS "Worker failed"
+      panic "worker failure"
+            -- FIXME: handle failure
 
 fetchSource :: FilePath -> Text -> App FilePath
 fetchSource targetDir url = do
@@ -286,8 +300,41 @@ findTarballDir :: FilePath -> IO FilePath
 findTarballDir fp = do
   nodes <- Dir.listDirectory fp
   case nodes of
-    [x] ->
-      Dir.doesDirectoryExist (fp </> x) >>= \case
-        True -> pure $ fp </> x
-        False -> pure fp
+    [x] -> Dir.doesDirectoryExist (fp </> x) >>= \case
+      True -> pure $ fp </> x
+      False -> pure fp
     _ -> pure fp
+
+type Ambiguity = [FilePath]
+searchPath :: [Ambiguity]
+searchPath = [["nix/ci.nix", "ci.nix"], ["default.nix"]]
+
+findNixFile :: FilePath -> IO (Either Text FilePath)
+findNixFile projectDir = do
+  searchResult <- for searchPath $ traverse $ \relPath ->
+    let path = projectDir </> relPath
+    in  Dir.doesFileExist path >>= \case
+          True -> pure $ Just (relPath, path)
+          False -> pure Nothing
+
+  case filter (not . null) $ map catMaybes searchResult of
+    [(_relPath, unambiguous)] : _ -> pure (pure unambiguous)
+    ambiguous : _ ->
+      pure
+        $ Left
+        $ "Don't know what to do, expecting only one of "
+        <> englishConjunction "or" (map fst ambiguous)
+    [] ->
+      pure
+        $ Left
+        $ "Please provide a Nix expression to build. Could not find any of "
+        <> englishConjunction "or" (concat searchPath)
+        <> " in your source"
+
+englishConjunction :: Show a => Text -> [a] -> Text
+englishConjunction _ [] = "none"
+englishConjunction _ [a] = show a
+englishConjunction connective [a1, a2] =
+  show a1 <> " " <> connective <> " " <> show a2
+englishConjunction connective (a : as) =
+  show a <> ", " <> englishConjunction connective as
