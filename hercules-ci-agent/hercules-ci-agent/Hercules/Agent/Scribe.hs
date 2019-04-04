@@ -17,6 +17,7 @@ import           Hercules.Agent.Env             ( App
 import           Hercules.Agent.Client          ( tasksClient )
 import           Hercules.Agent.Batch
 import           Hercules.API
+import           Hercules.API.Agent.Tasks
 import           Katip
 
 withHerculesScribe :: App a -> App a

@@ -14,8 +14,6 @@ import           Servant.API.Generic            ( fromServant )
 import           Servant.Auth.Client            ( )
 import           Servant.Client.Generic         ( AsClientT )
 import           Hercules.API                   ( HerculesAPI
-                                                , TasksAPI
-                                                , EvalAPI
                                                 , ClientAuth
                                                 , servantApi
                                                 , eval
@@ -25,6 +23,8 @@ import           Hercules.API                   ( HerculesAPI
                                                 , useApi
                                                 )
 import           Hercules.API.Agent.Build       ( BuildAPI )
+import           Hercules.API.Agent.Evaluate ( EvalAPI )
+import           Hercules.API.Agent.Tasks ( TasksAPI )
 import qualified Hercules.API.Agents
 
 client :: HerculesAPI ClientAuth (AsClientT ClientM)

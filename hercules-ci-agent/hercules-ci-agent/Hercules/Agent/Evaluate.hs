@@ -31,17 +31,19 @@ import qualified Hercules.Agent.WorkerProtocol.Command
                                                as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval
                                                as Eval
-import           Hercules.API                   ( tasksUpdateEvaluation
+import           Hercules.API                   ( noContent
+                                                )
+import           Hercules.API.Agent.Evaluate                   ( tasksUpdateEvaluation
                                                 , tasksGetEvaluation
-                                                , noContent
+
                                                 )
 import           Hercules.API.Task              ( Task )
 import qualified Hercules.API.Task             as Task
-import qualified Hercules.API.EvaluateTask     as EvaluateTask
-import qualified Hercules.API.EvaluateEvent    as EvaluateEvent
-import qualified Hercules.API.EvaluateEvent.AttributeEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask     as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent    as EvaluateEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
                                                as AttributeEvent
-import qualified Hercules.API.EvaluateEvent.AttributeErrorEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
                                                as AttributeErrorEvent
 import qualified Hercules.API.Message          as Message
 import qualified Network.HTTP.Client.Conduit   as HTTP.Conduit
@@ -102,7 +104,7 @@ performEvaluation task' = do
   eventChan <- liftIO $ newChan
   let submitBatch events =
         unlift $ noContent $ defaultRetry $ runHerculesClient
-          (Hercules.API.tasksUpdateEvaluation
+          (tasksUpdateEvaluation
             Hercules.Agent.Client.evalClient
             (EvaluateTask.id task)
             events

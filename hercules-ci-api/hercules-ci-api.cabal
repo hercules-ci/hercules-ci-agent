@@ -24,6 +24,12 @@ library
       Hercules.API.Agent.Build
       Hercules.API.Agent.Build.BuildEvent
       Hercules.API.Agent.Build.BuildTask
+      Hercules.API.Agent.Evaluate
+      Hercules.API.Agent.Evaluate.EvaluateEvent
+      Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
+      Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
+      Hercules.API.Agent.Evaluate.EvaluateTask
+      Hercules.API.Agent.Tasks
       Hercules.API.Agents
       Hercules.API.Agents.AgentSession
       Hercules.API.Agents.AgentSessionCreated
@@ -31,16 +37,11 @@ library
       Hercules.API.Agents.CreateAgentSession
       Hercules.API.Agents.CreateClusterJoinToken
       Hercules.API.Agents.FullClusterJoinToken
-      Hercules.API.AgentTask
       Hercules.API.Attribute
       Hercules.API.Auth
       Hercules.API.Build
       Hercules.API.Build.EvaluationDetail
       Hercules.API.Derivation
-      Hercules.API.EvaluateEvent
-      Hercules.API.EvaluateEvent.AttributeErrorEvent
-      Hercules.API.EvaluateEvent.AttributeEvent
-      Hercules.API.EvaluateTask
       Hercules.API.Evaluation.Evaluation
       Hercules.API.Id
       Hercules.API.Message

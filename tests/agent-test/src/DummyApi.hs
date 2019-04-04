@@ -8,7 +8,8 @@ module DummyApi
 where
 
 import           Servant.Server.Generic
-import           Hercules.API
+import           Hercules.API.Agent.Evaluate
+import           Hercules.API.Agent.Tasks
 import           Hercules.API.Agents
 
 -- Provide uninitialised API records without warnings

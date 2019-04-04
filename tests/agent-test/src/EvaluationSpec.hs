@@ -8,12 +8,12 @@ import           Prelude                        ( userError
 import qualified Data.Map                      as M
 import qualified Data.UUID.V4                  as UUID
 import           Hercules.API.Id                ( Id(Id) )
-import qualified Hercules.API.EvaluateTask     as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask     as EvaluateTask
 import qualified Hercules.API.TaskStatus       as TaskStatus
-import qualified Hercules.API.EvaluateEvent    as EvaluateEvent
-import qualified Hercules.API.EvaluateEvent.AttributeEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent    as EvaluateEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
                                                as AttributeEvent
-import qualified Hercules.API.EvaluateEvent.AttributeErrorEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
                                                as AttributeErrorEvent
 import qualified Hercules.API.Message          as Message
 import           MockTasksApi

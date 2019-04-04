@@ -44,12 +44,14 @@ import qualified Hercules.API.Agents           as API.Agents
 import qualified Hercules.API.Agents.CreateAgentSession
                                                as CreateAgentSession
 import           Hercules.API.Agents.AgentSession      ( AgentSession )
-import qualified Hercules.API.AgentTask        as AgentTask
+import qualified AgentTask
 import           Hercules.API.Task              ( Task )
 import qualified Hercules.API.Task             as Task
 import qualified Hercules.API.TaskStatus       as TaskStatus
-import qualified Hercules.API.EvaluateTask     as EvaluateTask
-import qualified Hercules.API.EvaluateEvent    as EvaluateEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask     as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent    as EvaluateEvent
+import  Hercules.API.Agent.Tasks    (TasksAPI(..))
+import  Hercules.API.Agent.Evaluate    (EvalAPI(..))
 import           Control.Concurrent             ( newEmptyMVar )
 import           Control.Concurrent.STM
 import qualified Streaming                     as Streaming

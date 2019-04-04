@@ -1,6 +1,6 @@
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveAnyClass #-}
-module Hercules.API.EvaluateTask where
+module Hercules.API.Agent.Evaluate.EvaluateTask where
 
 import           Prelude
 import           Data.Text                      ( Text )
