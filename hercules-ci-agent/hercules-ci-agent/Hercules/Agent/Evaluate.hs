@@ -5,10 +5,13 @@ module Hercules.Agent.Evaluate
   )
 where
 
+import           Protolude
+
 import           Conduit
+import qualified Control.Concurrent.Async.Lifted
+                                               as Async.Lifted
 import qualified Data.Map                      as M
 import           Paths_hercules_ci_agent        ( getBinDir )
-import           Protolude
 import           System.FilePath
 import           System.Process
 import qualified System.Directory              as Dir
@@ -21,6 +24,8 @@ import           Hercules.Agent.Exception       ( defaultRetry )
 import           Hercules.Agent.NixPath         ( renderNixPath
                                                 , renderSubPath
                                                 )
+import qualified Hercules.Agent.Evaluate.TraversalQueue
+                                               as TraversalQueue
 import qualified Hercules.Agent.WorkerProtocol.Event
                                                as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute
@@ -45,6 +50,10 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
                                                as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
                                                as AttributeErrorEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
+                                               as DerivationInfo
+import           Hercules.Agent.Evaluate.RetrieveDerivationInfo
+                                                ( retrieveDerivationInfo )
 import qualified Hercules.API.Message          as Message
 import qualified Network.HTTP.Client.Conduit   as HTTP.Conduit
 import qualified Network.HTTP.Simple           as HTTP.Simple
@@ -198,9 +207,35 @@ performEvaluation task' = do
                   , Message.typ = Message.Error
                   , Message.message = e
                   }
-          Right file ->
-            runEvalProcess projectDir file autoArguments nixPath emit
+          Right file -> TraversalQueue.with $ \derivationQueue ->
+            let
+              doIt = Async.Lifted.concurrently_ evaluation emitDrvs
 
+              evaluation = do
+                runEvalProcess projectDir
+                               file
+                               autoArguments
+                               nixPath
+                               captureAttrDrvAndEmit
+                TraversalQueue.waitUntilDone derivationQueue
+                TraversalQueue.close derivationQueue
+
+              captureAttrDrvAndEmit msg = do
+                case msg of
+                  EvaluateEvent.Attribute ae -> TraversalQueue.enqueue
+                    derivationQueue
+                    (AttributeEvent.derivationPath ae)
+                  _ -> pass
+                emit msg
+
+              emitDrvs =
+                TraversalQueue.work derivationQueue $ \recurse drvPath -> do
+                  drvInfo <- retrieveDerivationInfo drvPath
+                  forM_ (M.keys $ DerivationInfo.inputDerivations drvInfo)
+                        recurse -- asynchronously
+                  liftIO $ emit $ EvaluateEvent.DerivationInfo drvInfo
+            in
+              doIt
         flushSyncTimeout eventChan
 
 runEvalProcess :: KatipContext m

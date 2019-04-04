@@ -13,10 +13,14 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateTask
 import qualified Hercules.API.TaskStatus       as TaskStatus
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent
                                                as EvaluateEvent
+import           Hercules.API.Agent.Evaluate.EvaluateEvent
+                                                ( EvaluateEvent )
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
                                                as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
                                                as AttributeErrorEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
+                                               as DerivationInfo
 import qualified Hercules.API.Message          as Message
 import           MockTasksApi
 import           Test.Hspec
@@ -27,6 +31,15 @@ randomId = Id <$> UUID.nextRandom
 
 failWith :: [Char] -> IO a
 failWith = throwIO . userError
+
+attrLike :: [EvaluateEvent] -> [EvaluateEvent]
+attrLike = filter isAttrLike
+
+isAttrLike :: EvaluateEvent -> Bool
+isAttrLike EvaluateEvent.Attribute{} = True
+isAttrLike EvaluateEvent.AttributeError{} = True
+isAttrLike EvaluateEvent.Message{} = True -- this is a bit of a stretch but hey
+isAttrLike _ = False
 
 defaultTask :: EvaluateTask.EvaluateTask
 defaultTask = EvaluateTask.EvaluateTask
@@ -101,7 +114,7 @@ spec = describe "Evaluation" $ do
 
         s `shouldBe` TaskStatus.Successful ()
 
-        case r of
+        case attrLike r of
           [EvaluateEvent.Attribute ae] -> do
             AttributeEvent.expressionPath ae `shouldBe` ["in-ci-dot-nix"]
             toS (AttributeEvent.derivationPath ae)
@@ -139,7 +152,7 @@ spec = describe "Evaluation" $ do
 
       s `shouldBe` TaskStatus.Successful ()
 
-      case r of
+      case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` ["hello"]
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
@@ -158,7 +171,7 @@ spec = describe "Evaluation" $ do
 
       s `shouldBe` TaskStatus.Successful ()
 
-      case r of
+      case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` []
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
@@ -196,7 +209,7 @@ spec = describe "Evaluation" $ do
 
           s `shouldBe` TaskStatus.Successful ()
 
-          case r of
+          case attrLike r of
             [EvaluateEvent.Attribute ae] -> do
               AttributeEvent.expressionPath ae `shouldBe` []
               toS (AttributeEvent.derivationPath ae)
@@ -220,7 +233,7 @@ spec = describe "Evaluation" $ do
 
           s `shouldBe` TaskStatus.Successful ()
 
-          case r of
+          case attrLike r of
             [EvaluateEvent.Attribute ae] -> do
               AttributeEvent.expressionPath ae `shouldBe` ["bar"]
               toS (AttributeEvent.derivationPath ae)
@@ -261,7 +274,7 @@ spec = describe "Evaluation" $ do
 
           s `shouldBe` TaskStatus.Successful ()
 
-          case r of
+          case attrLike r of
             [EvaluateEvent.AttributeError ae, EvaluateEvent.Attribute a] -> do
 
               AttributeEvent.expressionPath a `shouldBe` ["hello"]
@@ -334,7 +347,7 @@ spec = describe "Evaluation" $ do
 
       s `shouldBe` TaskStatus.Successful ()
 
-      case r of
+      case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` ["hello"]
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
@@ -356,7 +369,7 @@ spec = describe "Evaluation" $ do
 
       s `shouldBe` TaskStatus.Successful ()
 
-      case r of
+      case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` ["hello"]
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
@@ -379,7 +392,7 @@ spec = describe "Evaluation" $ do
 
       s `shouldBe` TaskStatus.Successful ()
 
-      case r of
+      case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` ["hello"]
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
@@ -402,9 +415,54 @@ spec = describe "Evaluation" $ do
 
       s `shouldBe` TaskStatus.Successful ()
 
-      case r of
+      case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` ["foo", "a"]
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
           toS (AttributeEvent.derivationPath ae) `shouldContain` "-zlib"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
+
+  describe "when derivations are returned"
+    $ it "upload information about the closure under the inputDrv relation"
+    $ \srv -> do
+
+        id <- randomId
+        (s, r) <- runEval
+          srv
+          defaultTask
+            { EvaluateTask.id = id
+            , EvaluateTask.primaryInput = "/tarball/nixpkgs-reference"
+            , EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs"
+            , EvaluateTask.autoArguments =
+              M.singleton "nixpkgs" (EvaluateTask.SubPathOf "n" Nothing)
+            }
+
+        s `shouldBe` TaskStatus.Successful ()
+
+        let drvMap :: Map
+                        DerivationInfo.DerivationPathText
+                        DerivationInfo.DerivationInfo
+            drvMap = flip foldMap r $ \case
+              EvaluateEvent.DerivationInfo drvInfo ->
+                M.singleton (DerivationInfo.derivationPath drvInfo) drvInfo
+              _ -> M.empty
+
+        forM_ (toList drvMap) $ \drvInfo -> do
+          forM_ (M.keys $ DerivationInfo.inputDerivations drvInfo) $ \d ->
+            unless (isJust (M.lookup d drvMap)) $ do
+              panic
+                $ "In drv info for "
+                <> DerivationInfo.derivationPath drvInfo
+                <> ": unknown inputDrv "
+                <> d
+
+        case attrLike r of
+          [EvaluateEvent.Attribute ae] -> do
+            AttributeEvent.expressionPath ae `shouldBe` ["hello"]
+            let p = AttributeEvent.derivationPath ae
+            toS p `shouldContain` "/nix/store"
+            toS p `shouldContain` "-hello"
+            isJust (M.lookup p drvMap) `shouldBe` True
+          _ ->
+            failWith $ "Events should be a single attribute, not: " <> show r
+

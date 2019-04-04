@@ -2,13 +2,7 @@
 {-# LANGUAGE ConstraintKinds #-}
 module Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent where
 
-import           Prelude
-import           Data.Text                      ( Text )
-import           GHC.Generics                   ( Generic )
-import           Data.Aeson                     ( ToJSON
-                                                , FromJSON
-                                                )
-import           Data.Swagger                   ( ToSchema )
+import           Hercules.API.Prelude
 
 data AttributeErrorEvent = AttributeErrorEvent
   { expressionPath :: [Text]

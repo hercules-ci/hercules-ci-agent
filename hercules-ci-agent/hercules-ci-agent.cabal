@@ -64,6 +64,8 @@ executable hercules-ci-agent
       Hercules.Agent.Config
       Hercules.Agent.Env
       Hercules.Agent.Evaluate
+      Hercules.Agent.Evaluate.TraversalQueue
+      Hercules.Agent.Evaluate.RetrieveDerivationInfo
       Hercules.Agent.Exception
       Hercules.Agent.Init
       Hercules.Agent.Log
@@ -80,6 +82,7 @@ executable hercules-ci-agent
   build-depends:
       aeson
     , async
+    , attoparsec
     , base >=4.7 && <5
     , binary
     , binary-conduit
@@ -101,6 +104,7 @@ executable hercules-ci-agent
     , lifted-base
     , monad-control
     , mtl
+    , nix-derivation
     , network
     , optparse-applicative
     , process
@@ -110,6 +114,8 @@ executable hercules-ci-agent
     , servant-auth-client
     , servant-client
     , servant-client-core
+    , stm
+    , system-filepath
     , temporary
     , text
     , transformers-base

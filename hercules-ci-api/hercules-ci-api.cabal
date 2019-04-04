@@ -28,6 +28,7 @@ library
       Hercules.API.Agent.Evaluate.EvaluateEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
+      Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
       Hercules.API.Agent.Evaluate.EvaluateTask
       Hercules.API.Agent.Tasks
       Hercules.API.Agents
