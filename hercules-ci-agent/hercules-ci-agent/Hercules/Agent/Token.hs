@@ -17,9 +17,9 @@ import           Hercules.Agent.CabalInfo      as CabalInfo
 import           Hercules.Agent.Log
 
 getDataDirectory :: MonadIO m => m FilePath
-getDataDirectory =
-  liftIO $ System.Directory.getXdgDirectory System.Directory.XdgData
-                                            "hercules-ci-agent"
+getDataDirectory = liftIO $ System.Directory.getXdgDirectory
+  System.Directory.XdgData
+  "hercules-ci-agent"
 
 writeAgentSessionKey :: Text -> App ()
 writeAgentSessionKey tok = do
@@ -29,8 +29,7 @@ writeAgentSessionKey tok = do
 
 -- | Reads a token file, strips whitespace
 readTokenFile :: MonadIO m => FilePath -> m Text
-readTokenFile fp =
-  liftIO $ sanitize <$> readFile fp
+readTokenFile fp = liftIO $ sanitize <$> readFile fp
  where
   sanitize = T.map subst . T.strip
   subst '\n' = ' '
@@ -50,25 +49,24 @@ readAgentSessionKey = do
     False -> pure Nothing
 
 ensureAgentSession :: App Text
-ensureAgentSession =
-  readAgentSessionKey >>= \case
-    Just x -> do
-      logLocM DebugS "Found agent session key"
-      pure x
-    Nothing -> do
-      writeAgentSessionKey "x" -- Sanity check
-      logLocM DebugS "Creating agent session"
-      agentSessionKey <- createAgentSession
-      logLocM DebugS "Agent session key acquired"
-      writeAgentSessionKey agentSessionKey
-      logLocM DebugS "Agent session key persisted"
-      readAgentSessionKey >>= \case
-        Just x -> do
-          logLocM DebugS "Found the new agent session"
-          pure x
-        Nothing ->
-          panic
-            "The file session.key seems to have disappeared. Refusing to continue."
+ensureAgentSession = readAgentSessionKey >>= \case
+  Just x -> do
+    logLocM DebugS "Found agent session key"
+    pure x
+  Nothing -> do
+    writeAgentSessionKey "x" -- Sanity check
+    logLocM DebugS "Creating agent session"
+    agentSessionKey <- createAgentSession
+    logLocM DebugS "Agent session key acquired"
+    writeAgentSessionKey agentSessionKey
+    logLocM DebugS "Agent session key persisted"
+    readAgentSessionKey >>= \case
+      Just x -> do
+        logLocM DebugS "Found the new agent session"
+        pure x
+      Nothing ->
+        panic
+          "The file session.key seems to have disappeared. Refusing to continue."
 
 createAgentSession :: App Text
 createAgentSession = do
@@ -82,8 +80,9 @@ createAgentSession = do
 
   logLocM DebugS $ "CreateAgent data: " <> show createAgentBody
   token <- asks Env.currentToken
-  runHerculesClient'
-    $ Hercules.API.Agents.agentSessionCreate agentsClient createAgentBody token
+  runHerculesClient' $ Hercules.API.Agents.agentSessionCreate agentsClient
+                                                              createAgentBody
+                                                              token
 
 -- TODO: Although this looks nice, the implicit limitation here is that we can
 --       only have one token at a time. I wouldn't be surprised if this becomes

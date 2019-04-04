@@ -29,7 +29,6 @@ defaultApiBaseUrl :: Text
 defaultApiBaseUrl = "https://hercules-ci.com"
 
 readConfig :: Maybe Text -> IO Config
-readConfig loc =
-  case loc of
-    Just x -> Dhall.input Dhall.auto $ toS x
-    Nothing -> newDefaultConfig
+readConfig loc = case loc of
+  Just x -> Dhall.input Dhall.auto $ toS x
+  Nothing -> newDefaultConfig

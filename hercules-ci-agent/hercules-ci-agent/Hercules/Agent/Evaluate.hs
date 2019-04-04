@@ -7,7 +7,7 @@ where
 
 import           Conduit
 import qualified Data.Map                      as M
-import           Paths_hercules_ci_agent           ( getBinDir )
+import           Paths_hercules_ci_agent        ( getBinDir )
 import           Protolude
 import           System.FilePath
 import           System.Process
@@ -31,16 +31,16 @@ import qualified Hercules.Agent.WorkerProtocol.Command
                                                as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval
                                                as Eval
-import           Hercules.API                   ( noContent
-                                                )
-import           Hercules.API.Agent.Evaluate                   ( tasksUpdateEvaluation
+import           Hercules.API                   ( noContent )
+import           Hercules.API.Agent.Evaluate    ( tasksUpdateEvaluation
                                                 , tasksGetEvaluation
-
                                                 )
 import           Hercules.API.Task              ( Task )
 import qualified Hercules.API.Task             as Task
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask     as EvaluateTask
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent    as EvaluateEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask
+                                               as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent
+                                               as EvaluateEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
                                                as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
@@ -104,10 +104,9 @@ performEvaluation task' = do
   eventChan <- liftIO $ newChan
   let submitBatch events =
         unlift $ noContent $ defaultRetry $ runHerculesClient
-          (tasksUpdateEvaluation
-            Hercules.Agent.Client.evalClient
-            (EvaluateTask.id task)
-            events
+          (tasksUpdateEvaluation Hercules.Agent.Client.evalClient
+                                 (EvaluateTask.id task)
+                                 events
           )
 
   -- TODO: configurable temp directory
@@ -123,9 +122,8 @@ performEvaluation task' = do
         withNamedContext "projectDir" projectDir
           $ logLocM DebugS "Determined projectDir"
 
-        inputLocations <-
-          flip M.traverseWithKey (EvaluateTask.otherInputs task) $ \k src ->
-            fetchSource (tmpdir </> ("arg-" <> toS k)) src
+        inputLocations <- flip M.traverseWithKey (EvaluateTask.otherInputs task)
+          $ \k src -> fetchSource (tmpdir </> ("arg-" <> toS k)) src
 
         nixPath <-
           EvaluateTask.nixPath task
@@ -192,11 +190,14 @@ performEvaluation task' = do
               else writePayload eventChan =<< fixIndex update
 
         liftIO (findNixFile projectDir) >>= \case
-          Left e -> liftIO $ emit $ EvaluateEvent.Message Message.Message
-            { Message.index = -1 -- will be set by emit
-            , Message.typ = Message.Error
-            , Message.message = e
-            }
+          Left e ->
+            liftIO
+              $ emit
+              $ EvaluateEvent.Message Message.Message
+                  { Message.index = -1 -- will be set by emit
+                  , Message.typ = Message.Error
+                  , Message.message = e
+                  }
           Right file ->
             runEvalProcess projectDir file autoArguments nixPath emit
 
@@ -212,10 +213,11 @@ runEvalProcess :: KatipContext m
                -> (EvaluateEvent.EvaluateEvent -> IO ())
                -> m ()
 runEvalProcess projectDir file autoArguments nixPath emit = do
-  let eval = Eval.Eval { Eval.cwd = projectDir
-                       , Eval.file = toS file
-                       , Eval.autoArguments = autoArguments
-                       }
+  let eval = Eval.Eval
+        { Eval.cwd = projectDir
+        , Eval.file = toS file
+        , Eval.autoArguments = autoArguments
+        }
 
    -- FIXME: write stderr to service
   let
@@ -231,27 +233,30 @@ runEvalProcess projectDir file autoArguments nixPath emit = do
                 $ emit
                 $ EvaluateEvent.Attribute
                 $ AttributeEvent.AttributeEvent
-                    { AttributeEvent.expressionPath =
-                      toSL <$> WorkerAttribute.path a
+                    { AttributeEvent.expressionPath = toSL
+                      <$> WorkerAttribute.path a
                     , AttributeEvent.derivationPath = toSL
-                                                        $ WorkerAttribute.drv a
+                      $ WorkerAttribute.drv a
                     }
             Event.AttributeError e ->
               liftIO
                 $ emit
                 $ EvaluateEvent.AttributeError
                 $ AttributeErrorEvent.AttributeErrorEvent
-                    { AttributeErrorEvent.expressionPath =
-                      toSL <$> WorkerAttributeError.path e
-                    , AttributeErrorEvent.errorMessage =
-                      toSL $ WorkerAttributeError.message e
+                    { AttributeErrorEvent.expressionPath = toSL
+                      <$> WorkerAttributeError.path e
+                    , AttributeErrorEvent.errorMessage = toSL
+                      $ WorkerAttributeError.message e
                     }
             Event.EvaluationDone -> pass -- FIXME
-            Event.Error e -> liftIO $ emit $ EvaluateEvent.Message
-              Message.Message { Message.index = -1 -- will be set by emit
-                              , Message.typ = Message.Error
-                              , Message.message = e
-                              }
+            Event.Error e ->
+              liftIO
+                $ emit
+                $ EvaluateEvent.Message Message.Message
+                    { Message.index = -1 -- will be set by emit
+                    , Message.typ = Message.Error
+                    , Message.message = e
+                    }
           pure []
         )
 
@@ -289,8 +294,7 @@ fetchSource targetDir url = do
                                  Conduit.stderrC
   case x of
     ExitSuccess -> pass
-    ExitFailure{} ->
-      throwIO $ SubprocessFailure "Extracting tarball"
+    ExitFailure{} -> throwIO $ SubprocessFailure "Extracting tarball"
 
   liftIO $ findTarballDir targetDir
 

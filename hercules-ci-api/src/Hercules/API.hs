@@ -46,11 +46,11 @@ import           Hercules.API.Agent.Build      as Agent
                                                 ( BuildAPI )
 import           Hercules.API.Agent.Evaluate   as Agent
                                                 ( EvalAPI )
-import           Hercules.API.Agent.Tasks   as Agent
+import           Hercules.API.Agent.Tasks      as Agent
                                                 ( TasksAPI )
 import           Hercules.API.Build            as Client
                                                 ( BuildAPI )
-import           Hercules.API.Result            (Result(..))
+import           Hercules.API.Result            ( Result(..) )
 
 data HerculesAPI auth f = HerculesAPI
    { accounts :: f :- ToServantApi (AccountsAPI auth)

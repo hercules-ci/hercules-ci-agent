@@ -43,15 +43,18 @@ import           Hercules.API.Agents            ( AgentsAPI )
 import qualified Hercules.API.Agents           as API.Agents
 import qualified Hercules.API.Agents.CreateAgentSession
                                                as CreateAgentSession
-import           Hercules.API.Agents.AgentSession      ( AgentSession )
+import           Hercules.API.Agents.AgentSession
+                                                ( AgentSession )
 import qualified AgentTask
 import           Hercules.API.Task              ( Task )
 import qualified Hercules.API.Task             as Task
 import qualified Hercules.API.TaskStatus       as TaskStatus
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask     as EvaluateTask
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent    as EvaluateEvent
-import  Hercules.API.Agent.Tasks    (TasksAPI(..))
-import  Hercules.API.Agent.Evaluate    (EvalAPI(..))
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask
+                                               as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent
+                                               as EvaluateEvent
+import           Hercules.API.Agent.Tasks       ( TasksAPI(..) )
+import           Hercules.API.Agent.Evaluate    ( EvalAPI(..) )
 import           Control.Concurrent             ( newEmptyMVar )
 import           Control.Concurrent.STM
 import qualified Streaming                     as Streaming
@@ -66,7 +69,7 @@ import qualified Data.Text                     as T
 import qualified Data.Conduit.Tar              as Tar
 import           Data.Conduit.Zlib              ( gzip )
 import qualified DummyApi
-import           Orphans                        ()
+import           Orphans                        ( )
 
 data ServerState = ServerState
   { queue :: MVar (Task Task.Any)
@@ -312,8 +315,9 @@ instance ToJWT Session
 type Auth' = Auth '[JWT] Session
 
 agentsEndpoints :: ServerState -> AgentsAPI Auth' AsServer
-agentsEndpoints server =
-  DummyApi.dummyAgentsEndpoints { API.Agents.agentSessionCreate = handleAgentCreate }
+agentsEndpoints server = DummyApi.dummyAgentsEndpoints
+  { API.Agents.agentSessionCreate = handleAgentCreate
+  }
 
 handleAgentCreate :: CreateAgentSession.CreateAgentSession
                   -> AuthResult Session

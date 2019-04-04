@@ -1,17 +1,19 @@
 {-# LANGUAGE DataKinds #-}
 module Hercules.API.Agent.Evaluate where
 
-import Hercules.API.Prelude
+import           Hercules.API.Prelude
 
-import Hercules.API.Agent.Evaluate.EvaluateEvent (EvaluateEvent)
-import Hercules.API.Agent.Evaluate.EvaluateTask (EvaluateTask)
-import Hercules.API.Attribute (Attribute)
-import Hercules.API.Derivation (DerivationPath)
-import Hercules.API.Message (Message)
-import Hercules.API.Result (Result)
-import Hercules.API.Task (Task)
-import Servant.API
-import Servant.API.Generic
+import           Hercules.API.Agent.Evaluate.EvaluateEvent
+                                                ( EvaluateEvent )
+import           Hercules.API.Agent.Evaluate.EvaluateTask
+                                                ( EvaluateTask )
+import           Hercules.API.Attribute         ( Attribute )
+import           Hercules.API.Derivation        ( DerivationPath )
+import           Hercules.API.Message           ( Message )
+import           Hercules.API.Result            ( Result )
+import           Hercules.API.Task              ( Task )
+import           Servant.API
+import           Servant.API.Generic
 
 data EvalAPI auth f = EvalAPI
  { tasksGetEvaluation :: f :-

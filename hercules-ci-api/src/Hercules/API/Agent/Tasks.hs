@@ -1,12 +1,12 @@
 {-# LANGUAGE DataKinds #-}
 module Hercules.API.Agent.Tasks where
 
-import Hercules.API.Prelude
-import Data.Aeson(Object)
-import Hercules.API.TaskStatus
-import qualified Hercules.API.Task as Task
-import Servant.API
-import Servant.API.Generic
+import           Hercules.API.Prelude
+import           Data.Aeson                     ( Object )
+import           Hercules.API.TaskStatus
+import qualified Hercules.API.Task             as Task
+import           Servant.API
+import           Servant.API.Generic
 
 data TasksAPI auth f = TasksAPI
    { tasksReady :: f :-

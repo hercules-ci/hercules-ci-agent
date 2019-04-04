@@ -23,8 +23,8 @@ import           Hercules.API                   ( HerculesAPI
                                                 , useApi
                                                 )
 import           Hercules.API.Agent.Build       ( BuildAPI )
-import           Hercules.API.Agent.Evaluate ( EvalAPI )
-import           Hercules.API.Agent.Tasks ( TasksAPI )
+import           Hercules.API.Agent.Evaluate    ( EvalAPI )
+import           Hercules.API.Agent.Tasks       ( TasksAPI )
 import qualified Hercules.API.Agents
 
 client :: HerculesAPI ClientAuth (AsClientT ClientM)

@@ -12,15 +12,15 @@ import           Control.Concurrent.Async.Lifted
                                                 ( replicateConcurrently_ )
 import           Control.Concurrent.MVar.Lifted ( withMVar )
 
-import           Hercules.API                   ( noContent
-                                                )
-import           Hercules.API.Agent.Tasks                   ( tasksReady
+import           Hercules.API                   ( noContent )
+import           Hercules.API.Agent.Tasks       ( tasksReady
                                                 , tasksSetStatus
                                                 )
 import           Hercules.API.Task              ( Task )
 import qualified Hercules.API.Task             as Task
 import qualified Hercules.API.TaskStatus       as TaskStatus
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask     as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask
+                                               as EvaluateTask
 import qualified Hercules.API.Agent.Build.BuildTask
                                                as BuildTask
 import           Hercules.Agent.Client          ( tasksClient )
@@ -88,10 +88,12 @@ performTask task =
     $ safeLiftedHandle
         (\e -> do
           logLocM ErrorS $ "Exception in task: " <> show (e :: SomeException)
-          retry (cap 60 exponential) $ noContent $ runHerculesClient $
-            tasksSetStatus tasksClient
-                                        (Task.id task)
-                                        (TaskStatus.Exceptional $ show e)
+          retry (cap 60 exponential)
+            $ noContent
+            $ runHerculesClient
+            $ tasksSetStatus tasksClient
+                             (Task.id task)
+                             (TaskStatus.Exceptional $ show e)
         )
     $ do
         logLocM InfoS "Starting task"
@@ -109,7 +111,7 @@ performTask task =
 
         logLocM InfoS "Completed task successfully"
 
-        noContent $ runHerculesClient $
-          tasksSetStatus tasksClient
-                                      (Task.id task)
-                                      (TaskStatus.Successful ())
+        noContent $ runHerculesClient $ tasksSetStatus
+          tasksClient
+          (Task.id task)
+          (TaskStatus.Successful ())

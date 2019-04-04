@@ -8,9 +8,11 @@ import           Prelude                        ( userError
 import qualified Data.Map                      as M
 import qualified Data.UUID.V4                  as UUID
 import           Hercules.API.Id                ( Id(Id) )
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask     as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask
+                                               as EvaluateTask
 import qualified Hercules.API.TaskStatus       as TaskStatus
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent    as EvaluateEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent
+                                               as EvaluateEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
                                                as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
@@ -82,8 +84,7 @@ spec = describe "Evaluation" $ do
           [EvaluateEvent.Message msg] -> msg `shouldBe` Message.Message
             { index = 0
             , typ = Message.Error
-            , message =
-              "Please provide a Nix expression to build. Could not find any of \"nix/ci.nix\", \"ci.nix\" or \"default.nix\" in your source"
+            , message = "Please provide a Nix expression to build. Could not find any of \"nix/ci.nix\", \"ci.nix\" or \"default.nix\" in your source"
             }
 
           _ -> failWith $ "Events should be a single message, not: " <> show r
