@@ -11,9 +11,9 @@ where
 import           Protolude
 
 import           Data.Aeson
-import           Katip hiding (logLocM)
+import           Katip                   hiding ( logLocM )
 import           Katip.Core
-import           Katip.Monadic (logLocM)
+import           Katip.Monadic                  ( logLocM )
 
 instance StringConv [Char] LogStr where
   strConv l = logStr . (strConv l :: [Char] -> Text)

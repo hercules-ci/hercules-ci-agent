@@ -2,8 +2,10 @@
 module Hercules.API.Agents.AgentSessionCreated where
 
 import           Hercules.API.Prelude
-import           Hercules.API.Agents.AgentSession      ( AgentSession )
-import           Hercules.API.Agents.ClusterJoinToken ( ClusterJoinToken )
+import           Hercules.API.Agents.AgentSession
+                                                ( AgentSession )
+import           Hercules.API.Agents.ClusterJoinToken
+                                                ( ClusterJoinToken )
 
 data AgentSessionCreated = AgentSessionCreated
   { hostname :: Text

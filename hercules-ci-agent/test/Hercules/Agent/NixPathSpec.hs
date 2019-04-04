@@ -4,7 +4,7 @@ module Hercules.Agent.NixPathSpec where
 import           Protolude
 import           Test.Hspec
 import           Hercules.Agent.NixPath
-import           Hercules.API.EvaluateTask
+import           Hercules.API.Agent.Evaluate.EvaluateTask
 
 spec :: Spec
 spec = do

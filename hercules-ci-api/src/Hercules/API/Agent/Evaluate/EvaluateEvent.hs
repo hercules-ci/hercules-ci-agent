@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
-module Hercules.API.EvaluateEvent where
+module Hercules.API.Agent.Evaluate.EvaluateEvent where
 
 import           Prelude
 import           GHC.Generics                   ( Generic )
@@ -7,9 +7,9 @@ import           Data.Aeson                     ( ToJSON
                                                 , FromJSON
                                                 )
 import           Data.Swagger                   ( ToSchema )
-import qualified Hercules.API.EvaluateEvent.AttributeEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
                                                as AttributeEvent
-import qualified Hercules.API.EvaluateEvent.AttributeErrorEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
                                                as AttributeErrorEvent
 import qualified Hercules.API.Message          as Message
 

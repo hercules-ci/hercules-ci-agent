@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE ConstraintKinds #-}
-module Hercules.API.EvaluateEvent.AttributeEvent where
+module Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent where
 
 import           Prelude
 import           Data.Text                      ( Text )

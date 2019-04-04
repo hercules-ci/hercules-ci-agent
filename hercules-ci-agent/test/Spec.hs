@@ -1,6 +1,6 @@
 module Spec
-    ( spec
-    )
+  ( spec
+  )
 where
 
 import           Test.Hspec
@@ -8,4 +8,4 @@ import qualified Hercules.Agent.NixPathSpec
 
 spec :: Spec
 spec = do
-    describe "Hercules.Agent.NixPathSpec" Hercules.Agent.NixPathSpec.spec
+  describe "Hercules.Agent.NixPathSpec" Hercules.Agent.NixPathSpec.spec

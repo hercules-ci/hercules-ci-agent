@@ -43,8 +43,8 @@ performBuild task = do
 
   logLocM DebugS $ "Invoking nix-store: " <> show procSpec
 
-  (status, _out, errBytes) <- liftIO $
-    sourceProcessWithStreams procSpec stdinc stdoutc stderrc
+  (status, _out, errBytes) <- liftIO
+    $ sourceProcessWithStreams procSpec stdinc stdoutc stderrc
 
   withNamedContext "exitStatus" (show status :: Text)
     $ logLocM DebugS
