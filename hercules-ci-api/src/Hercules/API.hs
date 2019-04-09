@@ -51,6 +51,7 @@ import           Hercules.API.Agent.Tasks      as Agent
 import           Hercules.API.Build            as Client
                                                 ( BuildAPI )
 import           Hercules.API.Result            ( Result(..) )
+import           Hercules.API.Health            ( HealthAPI )
 
 data HerculesAPI auth f = HerculesAPI
    { accounts :: f :- ToServantApi (AccountsAPI auth)
@@ -61,6 +62,7 @@ data HerculesAPI auth f = HerculesAPI
    , eval :: f :- ToServantApi (EvalAPI auth)
    , agentBuild :: f :- ToServantApi (Agent.BuildAPI auth)
    , build :: f :- ToServantApi (Client.BuildAPI auth)
+   , health :: f :- ToServantApi (HealthAPI auth)
    } deriving Generic
 
 data ClientAPI auth f = ClientAPI

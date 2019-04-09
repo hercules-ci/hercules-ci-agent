@@ -44,6 +44,7 @@ library
       Hercules.API.Build.EvaluationDetail
       Hercules.API.Derivation
       Hercules.API.Evaluation.Evaluation
+      Hercules.API.Health
       Hercules.API.Id
       Hercules.API.Message
       Hercules.API.Name
