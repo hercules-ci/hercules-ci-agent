@@ -2,17 +2,11 @@
 {-# LANGUAGE ConstraintKinds #-}
 module Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent where
 
-import           Prelude
-import           Data.Text                      ( Text )
-import           GHC.Generics                   ( Generic )
-import           Data.Aeson                     ( ToJSON
-                                                , FromJSON
-                                                )
-import           Data.Swagger                   ( ToSchema )
+import           Hercules.API.Prelude
 
 data AttributeEvent = AttributeEvent
   { expressionPath :: [Text]
   , derivationPath :: Text
-  -- TODO: metadata
+  -- TODO: meta attributes
   }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

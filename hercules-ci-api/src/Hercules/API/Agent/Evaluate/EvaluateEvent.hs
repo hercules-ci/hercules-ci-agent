@@ -1,20 +1,18 @@
 {-# LANGUAGE DeriveAnyClass #-}
 module Hercules.API.Agent.Evaluate.EvaluateEvent where
 
-import           Prelude
-import           GHC.Generics                   ( Generic )
-import           Data.Aeson                     ( ToJSON
-                                                , FromJSON
-                                                )
-import           Data.Swagger                   ( ToSchema )
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
-                                               as AttributeEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
-                                               as AttributeErrorEvent
-import qualified Hercules.API.Message          as Message
+import           Hercules.API.Prelude
+import           Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
+                                                ( AttributeEvent )
+import           Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
+                                                ( AttributeErrorEvent )
+import           Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
+                                                ( DerivationInfo )
+import           Hercules.API.Message           ( Message )
 
 data EvaluateEvent
-  = Attribute AttributeEvent.AttributeEvent
-  | AttributeError AttributeErrorEvent.AttributeErrorEvent
-  | Message Message.Message
+  = Attribute AttributeEvent
+  | AttributeError AttributeErrorEvent
+  | Message Message
+  | DerivationInfo DerivationInfo
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
