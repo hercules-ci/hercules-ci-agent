@@ -38,9 +38,8 @@ runApp env (App m) = runReaderT m env
 runHerculesClient :: (Servant.Auth.Client.Token -> Servant.Client.ClientM a)
                   -> App a
 runHerculesClient f = do
-  clientEnv <- asks herculesClientEnv
   tok <- asks currentToken
-  escalate =<< liftIO (Servant.Client.runClientM (f tok) clientEnv)
+  runHerculesClient' (f tok)
 
 runHerculesClient' :: Servant.Client.ClientM a -> App a
 runHerculesClient' m = do
