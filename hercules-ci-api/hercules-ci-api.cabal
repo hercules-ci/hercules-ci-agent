@@ -46,6 +46,7 @@ library
       Hercules.API.Evaluation.Evaluation
       Hercules.API.Health
       Hercules.API.Id
+      Hercules.API.Logs
       Hercules.API.Message
       Hercules.API.Name
       Hercules.API.Orphans
