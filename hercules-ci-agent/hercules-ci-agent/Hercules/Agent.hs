@@ -23,6 +23,7 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateTask
                                                as EvaluateTask
 import qualified Hercules.API.Agent.Build.BuildTask
                                                as BuildTask
+import           Hercules.Agent.CabalInfo       ( herculesAgentVersion )
 import           Hercules.Agent.Client          ( tasksClient )
 import           Hercules.Agent.Token           ( withAgentToken )
 import qualified Hercules.Agent.Evaluate       as Evaluate
@@ -53,7 +54,7 @@ main = Init.setupLogging $ \logEnv -> do
   fetchTaskMutex <- newMVar ()
 
   Env.runApp env
-    $ katipAddContext (sl "agent-version" (A.String "0")) -- FIXME (depends on version implemented in #245)
+    $ katipAddContext (sl "agent-version" (A.String herculesAgentVersion))
     $ withAgentToken
     $ withHerculesScribe
     $ (logLocM InfoS "Agent online." >>)
