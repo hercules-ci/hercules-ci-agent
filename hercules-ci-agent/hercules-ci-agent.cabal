@@ -1,7 +1,7 @@
 cabal-version: 1.12
 
 name:           hercules-ci-agent
-version:        0.1.0.0
+version:        0.1.1
 homepage:       https://docs.hercules-ci.com
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
 author:         Hercules Labs
@@ -10,7 +10,7 @@ copyright:      2018-2019 Hercules Labs OÜ
 license:        Apache-2.0
 build-type:     Simple
 extra-source-files:
-    ChangeLog.md
+    CHANGELOG.md
     cbits/aliases.h
 
 source-repository head
