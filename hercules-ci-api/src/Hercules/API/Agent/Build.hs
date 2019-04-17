@@ -32,8 +32,7 @@ data BuildAPI auth f = BuildAPI
        auth :>
        Post '[JSON] NoContent
    , writeBuildLog :: f :-
-       Summary "Write the build log" :>
-       Description "This interface will change." :>
+       Summary "DEPRECATED" :>
        "tasks" :>
        Capture "taskId" (Id (Task.Task BuildTask.BuildTask)) :>
        "build" :>
@@ -42,3 +41,5 @@ data BuildAPI auth f = BuildAPI
        auth :>
        Post '[JSON] NoContent
    } deriving Generic
+
+{-# DEPRECATED writeBuildLog "Use 'Hercules.API.Logs.writeLog' instead" #-}
