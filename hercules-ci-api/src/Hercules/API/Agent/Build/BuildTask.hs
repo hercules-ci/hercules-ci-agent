@@ -14,5 +14,6 @@ import           Hercules.API.Task              ( Task )
 data BuildTask = BuildTask
   { id :: Id (Task BuildTask)
   , derivationPath :: Text
+  , logToken :: Text
   }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
