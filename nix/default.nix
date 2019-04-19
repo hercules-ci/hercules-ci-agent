@@ -1,5 +1,5 @@
 { sources ? import ./sources.nix
-, nixpkgsSource ? "nixos-18.09"
+, nixpkgsSource ? "nixos-19.03"
 , nixpkgs ? sources."${nixpkgsSource}"
 
   # Sharing the test suite
