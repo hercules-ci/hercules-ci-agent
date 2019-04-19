@@ -1,9 +1,17 @@
 { sources ? import ./sources.nix
 , nixpkgsSource ? "nixos-18.09"
 , nixpkgs ? sources."${nixpkgsSource}"
+
+  # Sharing the test suite
+, allTargets ? import ../default.nix
+, testSuiteTarget ? "nixos-19_03"
+, testSuitePkgs ? allTargets."${testSuiteTarget}"
 }:
 let
-  dev-overlay = self: pkgs: {
+  dev-and-test-overlay = self: pkgs: {
+
+    inherit testSuitePkgs;
+
     devTools = {
       inherit (pkgs)
         shellcheck
@@ -17,4 +25,4 @@ let
     };
   };
 in
-import nixpkgs { overlays = [ (import ./overlay.nix) dev-overlay ] ; config = {}; }
+import nixpkgs { overlays = [ (import ./overlay.nix) dev-and-test-overlay ] ; config = {}; }

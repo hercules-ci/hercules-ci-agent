@@ -23,7 +23,6 @@ let
 
     # TODO: upstream the overrides
     haskellPackages = haskellPackages_.extend (self: super: {
-      servant-streaming-server = doJailbreak super.servant-streaming-server;
       hercules-ci-api =
         let basePkg = super.callCabal2nix "hercules-ci-api" (src + "/hercules-ci-api") {};
         in

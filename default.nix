@@ -17,7 +17,7 @@ let
   
   packagesFor = _targetName: targetConfig:
     let
-      pkgs = import ./nix { inherit (targetConfig) nixpkgsSource; };
+      pkgs = import ./nix { inherit (targetConfig) nixpkgsSource; allTargets = targets; };
     in recurseIntoAttrs {
       inherit (pkgs) hercules-ci-agent hercules-ci-agent-packages;
     };

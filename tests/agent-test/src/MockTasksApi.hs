@@ -14,14 +14,13 @@ import           Network.Wai.Handler.Warp       ( run )
 import           Servant.API
 import           Servant.API.Generic
 import           Servant.Auth.Server
+import           Servant.Conduit                ()
 import           Servant.Server.Generic
-import           Servant.Streaming.Server
 import           Conduit                        ( ResourceT
                                                 , MonadThrow
                                                 , MonadResource
                                                 , mapC
                                                 )
-import           Control.Monad.Morph            ( hoist )
 import           Data.Aeson                     ( eitherDecode
                                                 , ToJSON
                                                 , FromJSON
@@ -57,8 +56,6 @@ import           Hercules.API.Agent.Tasks       ( TasksAPI(..) )
 import           Hercules.API.Agent.Evaluate    ( EvalAPI(..) )
 import           Control.Concurrent             ( newEmptyMVar )
 import           Control.Concurrent.STM
-import qualified Streaming                     as Streaming
-import qualified Streaming.Prelude             as Streaming
 import           System.Environment             ( getEnvironment )
 import           System.Directory               ( canonicalizePath
                                                 , doesFileExist
@@ -157,7 +154,7 @@ type MockAPI = AddAPIVersion ( ToServantApi (TasksAPI Auth')
                              :<|> ToServantApi (EvalAPI Auth')
                              :<|> ToServantApi (AgentsAPI Auth')
                              )
-          :<|> "tarball" :> Capture "tarball" Text :> StreamResponseGet '[OctetStream]
+          :<|> "tarball" :> Capture "tarball" Text :> StreamGet NoFraming OctetStream (SourceIO ByteString)
 
 mockApi :: Proxy MockAPI
 mockApi = Proxy
@@ -187,10 +184,7 @@ endpoints server =
     :<|> toServant (evalEndpoints server)
     :<|> toServant (agentsEndpoints server)
     )
-    :<|> sourceball
-
-instance Streaming.MFunctor (Conduit.ConduitT a b) where
-  hoist = Conduit.transPipe
+    :<|> (toSourceIO & liftA & liftA & ($ sourceball))
 
 relativePathConduit :: (MonadThrow m, MonadResource m)
                     => Conduit.ConduitM
@@ -232,30 +226,19 @@ makeRelative fp = mapC
 
 sourceball :: Text
            -> Handler
-                ( Streaming.Stream
-                    (Streaming.Of ByteString)
-                    (ResourceT IO)
-                    ()
+                (Conduit.ConduitT i ByteString (ResourceT IO) ()
                 )
-sourceball "broken-tarball" = do
-  pure $ streamConduit (Conduit.sourceLazy "i'm not a tarball")
+sourceball "broken-tarball" = pure (Conduit.sourceLazy "i'm not a tarball")
 sourceball fname = do
   cfname <- liftIO $ canonicalizePath $ toS ("testdata" </> toS fname)
   isFile <- liftIO $ doesFileExist cfname
   if isFile
-    then pure $ streamConduit $ Conduit.sourceFile cfname
-    else pure $ streamConduit
-      (Conduit.yield ("testdata" </> toS cfname)
+    then pure $ Conduit.sourceFile cfname
+    else pure (Conduit.yield ("testdata" </> toS cfname)
       .| relativePathConduit
       .| void Tar.tar
       .| gzip
       )
-
-streamConduit :: Conduit.ConduitT () o (ResourceT IO) ()
-              -> (Streaming.Stream (Streaming.Of o) (ResourceT IO) ())
-streamConduit conduit =
-  Conduit.runConduit $ hoist lift (conduit) .| Conduit.mapM_ (Streaming.yield)
-
 
 handleTasksReady :: ServerState
                  -> AuthResult Session
