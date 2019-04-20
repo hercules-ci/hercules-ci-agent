@@ -1,4 +1,4 @@
-resolver: lts-12.18
+resolver: lts-13.17
 
 # paths to local packages
 packages:
