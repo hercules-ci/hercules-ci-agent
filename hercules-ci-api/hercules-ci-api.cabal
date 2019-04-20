@@ -32,10 +32,12 @@ library
       Hercules.API.Agent.Evaluate.EvaluateTask
       Hercules.API.Agent.Tasks
       Hercules.API.Agents
+      Hercules.API.Agents.AgentInfo
       Hercules.API.Agents.AgentSession
       Hercules.API.Agents.AgentSessionCreated
       Hercules.API.Agents.ClusterJoinToken
       Hercules.API.Agents.CreateAgentSession
+      Hercules.API.Agents.CreateAgentSession_2
       Hercules.API.Agents.CreateClusterJoinToken
       Hercules.API.Agents.FullClusterJoinToken
       Hercules.API.Attribute

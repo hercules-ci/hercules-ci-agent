@@ -1,13 +1,15 @@
 {-# LANGUAGE DeriveAnyClass #-}
-module Hercules.API.Agents.CreateAgentSession where
+module Hercules.API.Agents.AgentInfo where
 
 import           Hercules.API.Prelude
 
-{-# DEPRECATED CreateAgentSession "Use CreateAgentSession_2" #-}
-data CreateAgentSession = CreateAgentSession
+data AgentInfo = AgentInfo
   { hostname :: Text
   , agentVersion :: Text
   , nixVersion :: Text
-  , architectures :: [Text]
+  , platforms :: [Text]
+  , systemFeatures :: [Text]
+  , cachixPushCaches :: [Text]
+  , substituters :: [Text]
   }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

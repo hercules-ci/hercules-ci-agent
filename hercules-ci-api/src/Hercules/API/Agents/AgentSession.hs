@@ -7,13 +7,19 @@ import           Hercules.API.Agents.ClusterJoinToken
                                                 ( ClusterJoinToken )
 
 data AgentSession = AgentSession
-  { hostname :: Text
+  { id :: Id AgentSession
+
   , clusterJoinTokenId :: Id ClusterJoinToken
-  , id :: Id AgentSession
   , description :: Text
+
+  , hostname :: Text
   , agentVersion :: Text
   , nixVersion :: Text
-  , architectures :: [Text]
+  , platforms :: [Text]
+  , systemFeatures :: [Text]
+  , cachixPushCaches :: [Text]
+  , substituters :: [Text]
+
   , creation :: UTCTime
   , lastSeen :: Maybe UTCTime
   , available :: Bool

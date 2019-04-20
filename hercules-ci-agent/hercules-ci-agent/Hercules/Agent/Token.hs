@@ -5,15 +5,13 @@ import qualified Data.Text                     as T
 import           Servant.Auth.Client            ( Token(Token) )
 
 import qualified Hercules.API.Agents
-import qualified Hercules.API.Agents.CreateAgentSession
-                                               as CreateAgentSession
-import           Hercules.Agent.Env            as Env
+import qualified Hercules.API.Agents.CreateAgentSession_2 as CreateAgentSession
 import           Hercules.Agent.Client          ( agentsClient )
+import           Hercules.Agent.Env            as Env
+import qualified Hercules.Agent.EnvironmentInfo  as EnvironmentInfo
 import qualified System.Directory
 import           System.FilePath                ( (</>) )
 
-import           Network.BSD                    ( getHostName )
-import           Hercules.Agent.CabalInfo      as CabalInfo
 import           Hercules.Agent.Log
 
 getDataDirectory :: MonadIO m => m FilePath
@@ -70,17 +68,15 @@ ensureAgentSession = readAgentSessionKey >>= \case
 
 createAgentSession :: App Text
 createAgentSession = do
-  hostname <- liftIO getHostName
-  let createAgentBody = CreateAgentSession.CreateAgentSession
-        { hostname = toS hostname
-        , agentVersion = CabalInfo.herculesAgentVersion -- TODO: Add git revision
-        , nixVersion = "" -- FIXME
-        , architectures = ["x86_64-linux"] -- FIXME
-        }
+  agentInfo <- EnvironmentInfo.extractAgentInfo
 
-  logLocM DebugS $ "CreateAgent data: " <> show createAgentBody
+  logLocM DebugS $ "Agent info: " <> show agentInfo
+
+  let createAgentBody = CreateAgentSession.CreateAgentSession {
+                agentInfo = agentInfo
+              }
   token <- asks Env.currentToken
-  runHerculesClient' $ Hercules.API.Agents.agentSessionCreate agentsClient
+  runHerculesClient' $ Hercules.API.Agents.agentSessionCreate2 agentsClient
                                                               createAgentBody
                                                               token
 
