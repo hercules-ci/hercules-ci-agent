@@ -30,7 +30,7 @@ data GitCommitSource = GitCommitSource
   { revision :: Text
   , ref :: Text
   , message :: Text
-  , gitCommiterName :: Text
+  , gitCommitterName :: Text
   , committerSlug :: Maybe (Name Account)
   }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
