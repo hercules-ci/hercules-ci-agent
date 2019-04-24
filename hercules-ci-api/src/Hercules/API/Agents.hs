@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# OPTIONS_GHC -fno-warn-deprecations #-}
 module Hercules.API.Agents where
 
 import           Servant.API
