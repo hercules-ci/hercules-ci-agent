@@ -40,7 +40,7 @@ import           Hercules.API
 import           Hercules.API.Id
 import           Hercules.API.Agents            ( AgentsAPI )
 import qualified Hercules.API.Agents           as API.Agents
-import qualified Hercules.API.Agents.CreateAgentSession_2
+import qualified Hercules.API.Agents.CreateAgentSession_V2
                                                as CreateAgentSession
 import           Hercules.API.Agents.AgentSession
                                                 ( AgentSession )
@@ -299,7 +299,7 @@ type Auth' = Auth '[JWT] Session
 
 agentsEndpoints :: ServerState -> AgentsAPI Auth' AsServer
 agentsEndpoints server = DummyApi.dummyAgentsEndpoints
-  { API.Agents.agentSessionCreate2 = handleAgentCreate
+  { API.Agents.agentSessionCreateV2 = handleAgentCreate
   }
 
 handleAgentCreate :: CreateAgentSession.CreateAgentSession

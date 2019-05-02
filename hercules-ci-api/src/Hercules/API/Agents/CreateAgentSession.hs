@@ -3,7 +3,7 @@ module Hercules.API.Agents.CreateAgentSession where
 
 import           Hercules.API.Prelude
 
-{-# DEPRECATED CreateAgentSession "Use CreateAgentSession_2" #-}
+{-# DEPRECATED CreateAgentSession "Use Hercules.API.Agents.CreateAgentSession_V2.CreateAgentSession" #-}
 data CreateAgentSession = CreateAgentSession
   { hostname :: Text
   , agentVersion :: Text

@@ -37,7 +37,7 @@ library
       Hercules.API.Agents.AgentSessionCreated
       Hercules.API.Agents.ClusterJoinToken
       Hercules.API.Agents.CreateAgentSession
-      Hercules.API.Agents.CreateAgentSession_2
+      Hercules.API.Agents.CreateAgentSession_V2
       Hercules.API.Agents.CreateClusterJoinToken
       Hercules.API.Agents.FullClusterJoinToken
       Hercules.API.Attribute

@@ -14,7 +14,7 @@ import           Hercules.API.Agents.CreateClusterJoinToken
                                                 ( CreateClusterJoinToken )
 import           Hercules.API.Agents.CreateAgentSession as CreateAgentSession
                                                 ( CreateAgentSession )
-import           Hercules.API.Agents.CreateAgentSession_2 as CreateAgentSession_2
+import           Hercules.API.Agents.CreateAgentSession_V2 as CreateAgentSession_V2
                                                 ( CreateAgentSession )
 import           Hercules.API.Agents.FullClusterJoinToken
                                                 ( FullClusterJoinToken )
@@ -62,14 +62,14 @@ data AgentsAPI auth f = AgentsAPI
       auth :>
       Post '[JSON] Text
 
-  , agentSessionCreate2 :: f :-
+  , agentSessionCreateV2 :: f :-
       Summary "Create a new agent session." :>
       Description "Authenticated using the agent token acquired through POST /accounts/:accountId/clusterJoinTokens" :>
       "agentSessions2" :>
-      ReqBody '[JSON] CreateAgentSession_2.CreateAgentSession :>
+      ReqBody '[JSON] CreateAgentSession_V2.CreateAgentSession :>
       auth :>
       Post '[JSON] Text
 
   } deriving Generic
 
-{-# DEPRECATED agentSessionCreate "Use agentSessionCreate2" #-}
+{-# DEPRECATED agentSessionCreate "Use agentSessionCreateV2" #-}
