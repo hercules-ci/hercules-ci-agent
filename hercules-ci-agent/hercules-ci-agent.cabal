@@ -63,6 +63,7 @@ executable hercules-ci-agent
       Hercules.Agent.Client
       Hercules.Agent.Config
       Hercules.Agent.Env
+      Hercules.Agent.EnvironmentInfo
       Hercules.Agent.Evaluate
       Hercules.Agent.Evaluate.TraversalQueue
       Hercules.Agent.Evaluate.RetrieveDerivationInfo
@@ -87,6 +88,7 @@ executable hercules-ci-agent
     , binary
     , binary-conduit
     , bytestring
+    , cachix
     , conduit
     , conduit-extra
     , containers
@@ -96,10 +98,13 @@ executable hercules-ci-agent
     , filepath
     , hercules-ci-agent
     , hercules-ci-api
+    , hostname
     , http-client
     , http-client-tls
     , http-conduit
     , katip
+    , lens
+    , lens-aeson
     , lifted-async
     , lifted-base
     , monad-control

@@ -11,7 +11,6 @@ where
 import           Protolude
 import qualified Servant.Client
 import           Servant.Client                 ( ClientM )
-import           Servant.API.Generic            ( fromServant )
 import           Servant.Auth.Client            ( )
 import           Servant.Client.Generic         ( AsClientT )
 import           Hercules.API                   ( HerculesAPI
