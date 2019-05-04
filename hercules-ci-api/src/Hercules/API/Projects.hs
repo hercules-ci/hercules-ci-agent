@@ -75,7 +75,7 @@ data ProjectsAPI auth f = ProjectsAPI
   , jobDerivationFailureGraph :: f :-
        Summary "Find all failures in an evaluation's derivations" :>
        Description "Returns all derivations that have failures in their \
-       \dependency closures and are not going to be rebuilt." :>
+       \dependency closures." :>
        "jobs" :>
        Capture' '[Required, Strict] "jobId" (Id Job) :>
        "failureGraph" :>
