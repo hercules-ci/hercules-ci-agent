@@ -78,7 +78,8 @@ data ProjectsAPI auth f = ProjectsAPI
        \dependency closures." :>
        "jobs" :>
        Capture' '[Required, Strict] "jobId" (Id Job) :>
-       "failureGraph" :>
+       "derivations" :>
+       "failed" :>
        auth :>
        Get '[JSON] FailureGraph.Graph
 
