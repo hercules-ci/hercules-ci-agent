@@ -1,4 +1,4 @@
-module Hercules.Agent.Evaluate.RetrieveDerivationInfo where
+module Hercules.Agent.Nix.RetrieveDerivationInfo where
 
 import           Protolude
 import           Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo

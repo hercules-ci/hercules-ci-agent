@@ -4,6 +4,7 @@
 module MockTasksApi
   ( withServer
   , runEval
+  , runBuild
   , ServerHandle()
   )
 where
@@ -48,12 +49,18 @@ import qualified AgentTask
 import           Hercules.API.Task              ( Task )
 import qualified Hercules.API.Task             as Task
 import qualified Hercules.API.TaskStatus       as TaskStatus
+import qualified Hercules.API.Agent.Build.BuildTask
+                                               as BuildTask
+import qualified Hercules.API.Agent.Build.BuildEvent
+                                               as BuildEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask
                                                as EvaluateTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent
                                                as EvaluateEvent
 import           Hercules.API.Agent.Tasks       ( TasksAPI(..) )
 import           Hercules.API.Agent.Evaluate    ( EvalAPI(..) )
+import           Hercules.API.Agent.Build       ( BuildAPI(..) )
+import           Hercules.API.Logs              ( LogsAPI(..) )
 import           Control.Concurrent             ( newEmptyMVar )
 import           Control.Concurrent.STM
 import           System.Environment             ( getEnvironment )
@@ -70,11 +77,17 @@ import           Orphans                        ( )
 
 data ServerState = ServerState
   { queue :: MVar (Task Task.Any)
+  , done :: TVar (Map Text TaskStatus.TaskStatus)
+
   , evalTasks :: IORef (Map (Id (Task EvaluateTask.EvaluateTask))
                             EvaluateTask.EvaluateTask)
   , evalEvents :: IORef (Map (Id (Task EvaluateTask.EvaluateTask))
                              [EvaluateEvent.EvaluateEvent])
-  , done :: TVar (Map Text TaskStatus.TaskStatus)
+
+  , buildTasks :: IORef (Map (Id (Task BuildTask.BuildTask))
+                            BuildTask.BuildTask)
+  , buildEvents :: IORef (Map (Id (Task BuildTask.BuildTask))
+                             [BuildEvent.BuildEvent])
   }
 
 newtype ServerHandle = ServerHandle ServerState
@@ -84,16 +97,19 @@ enqueue (ServerHandle st) t = do
   t' <- fixup t
 
   case t' of
-    AgentTask.Evaluate evalTask -> do
+    AgentTask.Evaluate evalTask ->
       atomicModifyIORef_ (evalTasks st)
         $ M.insert (EvaluateTask.id evalTask) evalTask
-    _ -> panic "non-evaluate task not supported"
+    AgentTask.Build buildTask ->
+      atomicModifyIORef_ (buildTasks st)
+        $ M.insert (BuildTask.id buildTask) buildTask
   putMVar (queue st) (toTask t')
 
 toTask :: AgentTask.AgentTask -> Task.Task Task.Any
 toTask (AgentTask.Evaluate t) =
   Task.upcast $ Task.Task {Task.id = EvaluateTask.id t, Task.typ = "eval"}
-toTask _ = panic "unsupported task type in MockTasksApi.toTask"
+toTask (AgentTask.Build t) =
+  Task.upcast $ Task.Task {Task.id = BuildTask.id t, Task.typ = "build"}
 
 fixup :: AgentTask.AgentTask -> IO AgentTask.AgentTask
 fixup (AgentTask.Evaluate t) | "/" `T.isPrefixOf` EvaluateTask.primaryInput t =
@@ -123,6 +139,15 @@ runEval sh@(ServerHandle st) task = do
   evs <- readIORef (evalEvents st)
   pure $ (,) s $ fromMaybe [] $ M.lookup (EvaluateTask.id task) evs
 
+runBuild :: ServerHandle
+         -> BuildTask.BuildTask
+         -> IO (TaskStatus.TaskStatus, [BuildEvent.BuildEvent])
+runBuild sh@(ServerHandle st) task = do
+  enqueue sh (AgentTask.Build task)
+  s <- await sh (idText $ BuildTask.id task)
+  evs <- readIORef (buildEvents st)
+  pure $ (,) s $ fromMaybe [] $ M.lookup (BuildTask.id task) evs
+
 withServer :: (ServerHandle -> IO ()) -> IO ()
 withServer doIt = do
 
@@ -132,8 +157,10 @@ withServer doIt = do
   q <- newEmptyMVar
   ee <- newIORef mempty
   et <- newIORef mempty
+  be <- newIORef mempty
+  bt <- newIORef mempty
   d <- newTVarIO mempty
-  let st = ServerState {queue = q, evalEvents = ee, evalTasks = et, done = d}
+  let st = ServerState {queue = q, evalEvents = ee, evalTasks = et, buildEvents = be, buildTasks = bt, done = d}
       runServer =
         handle
             (\e -> do -- TODO: ignore asynccanceled
@@ -152,6 +179,8 @@ withServer doIt = do
 
 type MockAPI = AddAPIVersion ( ToServantApi (TasksAPI Auth')
                              :<|> ToServantApi (EvalAPI Auth')
+                             :<|> ToServantApi (BuildAPI Auth')
+                             :<|> ToServantApi (LogsAPI Session)
                              :<|> ToServantApi (AgentsAPI Auth')
                              )
           :<|> "tarball" :> Capture "tarball" Text :> StreamGet NoFraming OctetStream (SourceIO ByteString)
@@ -165,12 +194,12 @@ context = jwtSettings :. cookieSettings :. EmptyContext
 jwtSettings :: JWTSettings
 jwtSettings =
   defaultJWTSettings
-    $ fromRight
+    $ fromRight'
     $ eitherDecode
         "{\"crv\":\"P-256\",\"d\":\"BWOmuvMiIPUWR-sPHIxaEKKr59OlVj-C7j24sgtCqA0\",\"x\":\"TTmrmU8p4PO3JGuW-8Fc2EvCBoR5NVoT2N5J3wJzBHg\",\"kty\":\"EC\",\"y\":\"6ATtNfAzjk_I4qf2hDrf2kAOw9IFZK8Y2ECJcs_fjqM\"}"
  where
-  fromRight (Right r) = r
-  fromRight (Left l) = panic $ "test suite static jwk decode error" <> show l
+  fromRight' (Right r) = r
+  fromRight' (Left l) = panic $ "test suite static jwk decode error" <> show l
 
 cookieSettings :: CookieSettings
 cookieSettings = defaultCookieSettings
@@ -182,6 +211,8 @@ endpoints :: ServerState -> Server MockAPI
 endpoints server =
   (toServant (taskEndpoints server)
     :<|> toServant (evalEndpoints server)
+    :<|> toServant (buildEndpoints server)
+    :<|> toServant (logsEndpoints server)
     :<|> toServant (agentsEndpoints server)
     )
     :<|> (toSourceIO & liftA & liftA & ($ sourceball))
@@ -307,3 +338,36 @@ handleAgentCreate :: CreateAgentSession.CreateAgentSession
                   -> Handler Text
 handleAgentCreate ca r = do
   pure "pretend-jwt"
+
+buildEndpoints :: ServerState -> BuildAPI Auth' AsServer
+buildEndpoints server = DummyApi.dummyBuildEndpoints
+  { getBuild = handleGetBuild server
+  , updateBuild = handleUpdateBuild server
+  }
+
+handleUpdateBuild :: ServerState
+                  -> Id (Task BuildTask.BuildTask)
+                  -> [BuildEvent.BuildEvent]
+                  -> AuthResult Session
+                  -> Handler NoContent
+handleUpdateBuild st id body authResult = do
+  liftIO $ atomicModifyIORef_ (buildEvents st) $ \m ->
+    M.alter (\prev -> Just $ fromMaybe mempty prev <> body) id m
+
+  pure NoContent
+
+handleGetBuild :: ServerState
+                         -> Id (Task BuildTask.BuildTask)
+                         -> AuthResult Session
+                         -> Handler BuildTask.BuildTask
+handleGetBuild st id authResult = do
+  ts <- liftIO $ readIORef (buildTasks st)
+  case M.lookup id ts of
+    Nothing -> throwError err404
+    Just x -> pure x
+
+logsEndpoints :: ServerState -> LogsAPI Session AsServer
+logsEndpoints server = LogsAPI
+  { writeLog = \_authResult logBytes -> NoContent <$ do
+      hPutStrLn stderr $ "Got log: " <> logBytes
+  }

@@ -23,6 +23,8 @@ library
       Hercules.API.Accounts.Account
       Hercules.API.Agent.Build
       Hercules.API.Agent.Build.BuildEvent
+      Hercules.API.Agent.Build.BuildEvent.Pushing
+      Hercules.API.Agent.Build.BuildEvent.OutputInfo
       Hercules.API.Agent.Build.BuildTask
       Hercules.API.Agent.Evaluate
       Hercules.API.Agent.Evaluate.EvaluateEvent
