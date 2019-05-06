@@ -1,30 +1,58 @@
 module Hercules.Agent.Build where
 
-import           Conduit
 import           Protolude
-import           System.Process
+
+import           Data.Char                      ( isSpace )
+import           Data.Conduit.Process           ( sourceProcessWithStreams )
+import qualified Data.Conduit.Combinators      as Conduit
+import qualified Data.Map                      as M
+import qualified Data.Text                     as T
+import qualified Hercules.Agent.Cachix.Push    as Cachix.Push
 import qualified Hercules.Agent.Client
 import           Hercules.Agent.Env
 import           Hercules.Agent.Exception       ( defaultRetry )
+import           Hercules.Agent.Log
+import           Hercules.Agent.Nix.RetrieveDerivationInfo
+                                                ( retrieveDerivationInfo )
 import           Hercules.API                   ( noContent )
 import           Hercules.API.Task              ( Task )
 import qualified Hercules.API.Task             as Task
 import qualified Hercules.API.Agent.Build.BuildEvent
                                                as BuildEvent
+import qualified Hercules.API.Agent.Build.BuildEvent.OutputInfo
+                                               as OutputInfo
+import           Hercules.API.Agent.Build.BuildEvent.OutputInfo
+                                                ( OutputInfo )
 import qualified Hercules.API.Agent.Build.BuildTask
                                                as BuildTask
+import           Hercules.API.Agent.Build.BuildTask
+                                                ( BuildTask )
 import qualified Hercules.API.Agent.Build      as API.Build
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
+                                               as DerivationInfo
 import qualified Hercules.API.Logs             as API.Logs
-import           Data.Conduit.Process           ( sourceProcessWithStreams )
-import           Hercules.Agent.Log
-import qualified Data.Conduit.Combinators      as Conduit
-import Servant.Auth.Client
+import           Servant.Auth.Client
+import           System.Process
 
 performBuild :: Task BuildTask.BuildTask -> App ()
 performBuild task = do
+
   buildTask <- defaultRetry $ runHerculesClient
     (API.Build.getBuild Hercules.Agent.Client.buildClient (Task.id task))
 
+  realise buildTask
+
+  outs <- getOutputPathInfos buildTask
+
+  reportOutputInfos buildTask outs
+
+  push outs
+
+  reportSuccess buildTask
+
+
+realise :: BuildTask.BuildTask -> App ()
+realise buildTask = do
   let stdinc = pass
       stdoutc = pass -- FIXME: use
       stderrc = Conduit.fold
@@ -71,13 +99,57 @@ performBuild task = do
       panic "Build failure" -- FIXME: this error is expected and should be handled normally
                             -- nonetheless it passes on to the tasks system
 
-    ExitSuccess -> do
-      logLocM DebugS $ "Clean nix-store exit"
+    ExitSuccess -> logLocM DebugS $ "Clean nix-store exit"
 
-      let events :: [BuildEvent.BuildEvent]
-          events = [BuildEvent.Done True]
 
-      noContent $ defaultRetry $ runHerculesClient $ API.Build.updateBuild
-        Hercules.Agent.Client.buildClient
-        (BuildTask.id buildTask)
-        events
+getOutputPathInfos :: BuildTask -> App (Map Text OutputInfo)
+getOutputPathInfos buildTask = do
+  let drvPath = BuildTask.derivationPath buildTask
+  drvInfo <- retrieveDerivationInfo drvPath
+  flip M.traverseWithKey (DerivationInfo.outputs drvInfo) $ \outputName o -> do
+    let outputPath = DerivationInfo.path o
+
+    sizeStr <- liftIO
+      $ readProcess "nix-store" ["--query", "--size", toS outputPath] ""
+    size <- case reads (toS $ T.dropAround isSpace $ toS sizeStr) of
+      [(x, "")] -> pure x
+      _ -> throwIO $ FatalError $ "nix-store returned invalid size " <> show sizeStr
+
+    hashStr <- liftIO
+      $ readProcess "nix-store" ["--query", "--hash", toS outputPath] ""
+    let h = T.dropAround isSpace (toS hashStr)
+
+    pure OutputInfo.OutputInfo { OutputInfo.deriver = drvPath
+                               , name = outputName
+                               , path = outputPath
+                               , size = size
+                               , hash = h
+                               }
+
+
+push :: Map Text OutputInfo -> App ()
+push outs = do
+  let paths = outs & toList <&> OutputInfo.path
+  Cachix.Push.push paths
+  -- TODO: emit pushed events
+
+reportSuccess :: BuildTask -> App ()
+reportSuccess buildTask = do
+  let events :: [BuildEvent.BuildEvent]
+      events = [BuildEvent.Done True]
+
+  noContent $ defaultRetry $ runHerculesClient $ API.Build.updateBuild
+    Hercules.Agent.Client.buildClient
+    (BuildTask.id buildTask)
+    events
+
+
+reportOutputInfos :: BuildTask -> Map Text OutputInfo -> App ()
+reportOutputInfos buildTask outs = do
+  let events :: [BuildEvent.BuildEvent]
+      events = map BuildEvent.OutputInfo (toList outs)
+
+  noContent $ defaultRetry $ runHerculesClient $ API.Build.updateBuild
+    Hercules.Agent.Client.buildClient
+    (BuildTask.id buildTask)
+    events

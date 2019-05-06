@@ -2,9 +2,6 @@ module Hercules.Agent.EnvironmentInfo where
 
 import           Protolude               hiding ( to )
 
-import qualified Cachix.Client.Config          as Cachix.Config
-import qualified Cachix.Client.Env             as Cachix.Env
-import qualified Cachix.Client.OptionsParser   as Cachix.OptionsParser
 import           Control.Lens                   ( (^..)
                                                 , to
                                                 )
@@ -18,12 +15,11 @@ import qualified Data.Text                     as T
 import qualified Hercules.API.Agents.AgentInfo
                                                as AgentInfo
 import           Hercules.Agent.Env            as Env
+import           Hercules.Agent.Cachix.Info    as Cachix.Info
 import           Hercules.Agent.CabalInfo      as CabalInfo
 import           Hercules.Agent.Log
 import           Network.HostName               ( getHostName )
 import qualified System.Process                as Process
-
-import qualified System.Environment
 
 extractAgentInfo :: App AgentInfo.AgentInfo
 extractAgentInfo = do
@@ -32,7 +28,7 @@ extractAgentInfo = do
 
   nix <- liftIO getNixInfo
 
-  pushCaches <- liftIO getCachixInfo
+  pushCaches <- Cachix.Info.activePushCaches
 
   let s = AgentInfo.AgentInfo
         { hostname = toS hostname
@@ -45,29 +41,6 @@ extractAgentInfo = do
         }
   logLocM DebugS $ "Determined environment info: " <> show s
   pure s
-
-  -- TODO move into Env
-initCachix :: IO Cachix.Env.Env
-initCachix = do
-  let bogusCommand = ["use", "&"]
-  (opts, _cmd) <- System.Environment.withArgs bogusCommand
-                                              Cachix.OptionsParser.getOpts
-  Cachix.Env.mkEnv opts
-
-
-getCachixInfo :: IO [Text]
-getCachixInfo = do
-  env <- initCachix
-  let
-    pushableName Cachix.Config.BinaryCacheConfig { secretKey = _required, name = name }
-      = [name]
-
-    pushCaches = do
-      config <- toList $ Cachix.Env.config env
-      cache <- toList $ Cachix.Config.binaryCaches config
-      pushableName cache
-
-  pure pushCaches
 
 data NixInfo = NixInfo
  { nixExeVersion :: Text

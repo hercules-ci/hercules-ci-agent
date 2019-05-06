@@ -12,6 +12,8 @@ import qualified Network.HTTP.Client
 import qualified Servant.Client
 import qualified Servant.Auth.Client
 import qualified Katip                         as K
+import qualified Hercules.Agent.Cachix.Env     as Cachix
+                                                ( Env, HasEnv(..) )
 
 data Env = Env
   { manager :: Network.HTTP.Client.Manager
@@ -22,12 +24,16 @@ data Env = Env
   --       problematic at some point. Perhaps we should switch to a polymorphic
   --       reader monad like RIO when we hit that limitation.
   , currentToken :: Servant.Auth.Client.Token
+  , cachixEnv :: Cachix.Env
 
     -- katip
   , kNamespace :: K.Namespace
   , kContext :: K.LogContexts
   , kLogEnv :: K.LogEnv
   }
+
+instance Cachix.HasEnv Env where
+  getEnv = cachixEnv
 
 newtype App a = App { fromApp :: ReaderT Env IO a }
   deriving (Functor, Applicative, Monad, MonadReader Env, MonadIO, MonadThrow, MonadBase IO, MonadBaseControl IO)
