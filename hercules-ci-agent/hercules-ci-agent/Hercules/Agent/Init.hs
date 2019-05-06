@@ -10,6 +10,7 @@ import qualified Servant.Client
 import qualified Servant.Auth.Client
 import qualified Katip                         as K
 import qualified Hercules.Agent.Token          as Token
+import qualified Hercules.Agent.Cachix.Init
 
 newEnv :: Config.Config -> K.LogEnv -> IO Env
 newEnv config logEnv = do
@@ -19,11 +20,13 @@ newEnv config logEnv = do
   let clientEnv :: Servant.Client.ClientEnv
       clientEnv = Servant.Client.mkClientEnv manager baseUrl
   token <- Token.readTokenFile $ toS $ Config.clusterJoinTokenPath config
+  cachix <- Hercules.Agent.Cachix.Init.newEnv config logEnv
   pure Env
     { manager = manager
     , herculesBaseUrl = baseUrl
     , herculesClientEnv = clientEnv
     , currentToken = Servant.Auth.Client.Token $ encodeUtf8 token
+    , cachixEnv = cachix
     , kNamespace = emptyNamespace
     , kContext = mempty
     , kLogEnv = logEnv

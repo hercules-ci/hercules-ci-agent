@@ -61,16 +61,20 @@ executable hercules-ci-agent
       Hercules.Agent.Batch
       Hercules.Agent.Build
       Hercules.Agent.CabalInfo
+      Hercules.Agent.Cachix.Env
+      Hercules.Agent.Cachix.Info
+      Hercules.Agent.Cachix.Init
+      Hercules.Agent.Cachix.Push
       Hercules.Agent.Client
       Hercules.Agent.Config
       Hercules.Agent.Env
       Hercules.Agent.EnvironmentInfo
       Hercules.Agent.Evaluate
       Hercules.Agent.Evaluate.TraversalQueue
-      Hercules.Agent.Evaluate.RetrieveDerivationInfo
       Hercules.Agent.Exception
       Hercules.Agent.Init
       Hercules.Agent.Log
+      Hercules.Agent.Nix.RetrieveDerivationInfo
       Hercules.Agent.NixPath
       Hercules.Agent.Options
       Hercules.Agent.Scribe

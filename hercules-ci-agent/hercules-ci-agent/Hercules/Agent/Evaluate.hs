@@ -52,7 +52,7 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
                                                as AttributeErrorEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
                                                as DerivationInfo
-import           Hercules.Agent.Evaluate.RetrieveDerivationInfo
+import           Hercules.Agent.Nix.RetrieveDerivationInfo
                                                 ( retrieveDerivationInfo )
 import qualified Hercules.API.Message          as Message
 import qualified Network.HTTP.Client.Conduit   as HTTP.Conduit
