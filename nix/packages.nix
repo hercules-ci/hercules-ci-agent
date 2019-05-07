@@ -80,10 +80,8 @@ let
 
     hercules-ci-api-swagger = pkgs.callPackage ../hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };
 
-    vmTest = pkgs.nixosTest or (import ./compat-nixosTest.nix pkgs);
-    agent-test-body = import ../tests/agent-test.nix;
     tests = recurseIntoAttrs {
-      agent-functional-test = vmTest (agent-test-body);
+      agent-functional-test = pkgs.nixosTest ../tests/agent-test.nix;
     };
   };
 in
