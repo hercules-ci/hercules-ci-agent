@@ -18,7 +18,8 @@ After reporting the bug, we try to investigate as soon as possible, to
  - help solve the problem, or
  - create a feature request for missing functionality
 
-Note that text before the --'s and the > is not visible after submission. -->
+Note that text before the --'s and the > is not visible after submission.
+-->
 
 **Description**
 
@@ -32,4 +33,7 @@ Note that text before the --'s and the > is not visible after submission. -->
 **Logs**
 
 
-**Platform**
+**Platform / Version**
+
+Best to go to https://hercules-ci.com/dashboard and click on the agents' tab for the account you're interested in.
+**hercules-ci-agent --help** version
