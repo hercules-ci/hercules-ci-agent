@@ -3,17 +3,20 @@ module Hercules.API.Projects where
 
 import           Servant.API
 import           Servant.API.Generic
-import           Hercules.API.Attribute
-import           Hercules.API.Result
 import           Hercules.API.Prelude
-import           Hercules.API.Projects.Job      ( Job, JobAndProject )
+import           Hercules.API.Projects.Job      ( Job
+                                                , JobAndProject
+                                                )
 import           Hercules.API.Projects.Project  ( Project )
 import           Hercules.API.Accounts.Account  ( Account )
 import           Hercules.API.Projects.CreateProject
                                                 ( CreateProject )
-import           Hercules.API.Derivation        ( Derivation )
 import           Hercules.API.SourceHostingSite.SourceHostingSite
                                                 ( SourceHostingSite )
+import           Hercules.API.Build.EvaluationDetail
+                                                ( EvaluationDetail )
+import   qualified        Hercules.API.Build.FailureGraph as
+                                                 FailureGraph
 
 data ProjectsAPI auth f = ProjectsAPI
   { projectsByOwner :: f :-
@@ -60,13 +63,24 @@ data ProjectsAPI auth f = ProjectsAPI
       auth :>
       Get '[JSON] [JobAndProject]
 
-  , projectJobAttributes :: f :-
+  , projectJobEvaluation :: f :-
       Summary "List all attributes in a job" :>
       Description "A list of all attributes that have been produced as part of the evaluation of a job." :>
       "jobs" :>
       Capture' '[Required, Strict] "jobId" (Id Job) :>
-      "attributes" :>
+      "evaluation" :>
       auth :>
-      Get '[JSON] [Attribute (Result Text Derivation)]
+      Get '[JSON] EvaluationDetail
+
+  , jobDerivationFailureGraph :: f :-
+       Summary "Find all failures in an evaluation's derivations" :>
+       Description "Returns all derivations that have failures in their \
+       \dependency closures." :>
+       "jobs" :>
+       Capture' '[Required, Strict] "jobId" (Id Job) :>
+       "derivations" :>
+       "failed" :>
+       auth :>
+       Get '[JSON] FailureGraph.Graph
 
   } deriving Generic

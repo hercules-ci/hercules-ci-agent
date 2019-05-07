@@ -23,6 +23,7 @@ source-repository head
 executable hercules-ci-agent-test
   main-is: Main.hs
   other-modules:
+      AgentTask
       DummyApi
       EvaluationSpec
       MockTasksApi
@@ -51,11 +52,9 @@ executable hercules-ci-agent-test
     , random
     , servant >=0.14.1
     , servant-auth-server
+    , servant-conduit
     , servant-server
-    , servant-streaming
-    , servant-streaming-server
     , stm
-    , streaming
     , tar-conduit
     , text
     , uuid

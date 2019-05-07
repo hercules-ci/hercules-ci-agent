@@ -14,14 +14,13 @@ import           Network.Wai.Handler.Warp       ( run )
 import           Servant.API
 import           Servant.API.Generic
 import           Servant.Auth.Server
+import           Servant.Conduit                ()
 import           Servant.Server.Generic
-import           Servant.Streaming.Server
 import           Conduit                        ( ResourceT
                                                 , MonadThrow
                                                 , MonadResource
                                                 , mapC
                                                 )
-import           Control.Monad.Morph            ( hoist )
 import           Data.Aeson                     ( eitherDecode
                                                 , ToJSON
                                                 , FromJSON
@@ -41,19 +40,22 @@ import           Hercules.API
 import           Hercules.API.Id
 import           Hercules.API.Agents            ( AgentsAPI )
 import qualified Hercules.API.Agents           as API.Agents
-import qualified Hercules.API.Agents.CreateAgentSession
+import qualified Hercules.API.Agents.CreateAgentSession_V2
                                                as CreateAgentSession
-import           Hercules.API.Agents.AgentSession      ( AgentSession )
-import qualified Hercules.API.AgentTask        as AgentTask
+import           Hercules.API.Agents.AgentSession
+                                                ( AgentSession )
+import qualified AgentTask
 import           Hercules.API.Task              ( Task )
 import qualified Hercules.API.Task             as Task
 import qualified Hercules.API.TaskStatus       as TaskStatus
-import qualified Hercules.API.EvaluateTask     as EvaluateTask
-import qualified Hercules.API.EvaluateEvent    as EvaluateEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask
+                                               as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent
+                                               as EvaluateEvent
+import           Hercules.API.Agent.Tasks       ( TasksAPI(..) )
+import           Hercules.API.Agent.Evaluate    ( EvalAPI(..) )
 import           Control.Concurrent             ( newEmptyMVar )
 import           Control.Concurrent.STM
-import qualified Streaming                     as Streaming
-import qualified Streaming.Prelude             as Streaming
 import           System.Environment             ( getEnvironment )
 import           System.Directory               ( canonicalizePath
                                                 , doesFileExist
@@ -64,7 +66,7 @@ import qualified Data.Text                     as T
 import qualified Data.Conduit.Tar              as Tar
 import           Data.Conduit.Zlib              ( gzip )
 import qualified DummyApi
-import           Orphans                        ()
+import           Orphans                        ( )
 
 data ServerState = ServerState
   { queue :: MVar (Task Task.Any)
@@ -152,7 +154,7 @@ type MockAPI = AddAPIVersion ( ToServantApi (TasksAPI Auth')
                              :<|> ToServantApi (EvalAPI Auth')
                              :<|> ToServantApi (AgentsAPI Auth')
                              )
-          :<|> "tarball" :> Capture "tarball" Text :> StreamResponseGet '[OctetStream]
+          :<|> "tarball" :> Capture "tarball" Text :> StreamGet NoFraming OctetStream (SourceIO ByteString)
 
 mockApi :: Proxy MockAPI
 mockApi = Proxy
@@ -168,7 +170,7 @@ jwtSettings =
         "{\"crv\":\"P-256\",\"d\":\"BWOmuvMiIPUWR-sPHIxaEKKr59OlVj-C7j24sgtCqA0\",\"x\":\"TTmrmU8p4PO3JGuW-8Fc2EvCBoR5NVoT2N5J3wJzBHg\",\"kty\":\"EC\",\"y\":\"6ATtNfAzjk_I4qf2hDrf2kAOw9IFZK8Y2ECJcs_fjqM\"}"
  where
   fromRight (Right r) = r
-  fromRight (Left l) = panic "test suite static jwk decode error"
+  fromRight (Left l) = panic $ "test suite static jwk decode error" <> show l
 
 cookieSettings :: CookieSettings
 cookieSettings = defaultCookieSettings
@@ -182,10 +184,7 @@ endpoints server =
     :<|> toServant (evalEndpoints server)
     :<|> toServant (agentsEndpoints server)
     )
-    :<|> sourceball
-
-instance Streaming.MFunctor (Conduit.ConduitT a b) where
-  hoist = Conduit.transPipe
+    :<|> (toSourceIO & liftA & liftA & ($ sourceball))
 
 relativePathConduit :: (MonadThrow m, MonadResource m)
                     => Conduit.ConduitM
@@ -227,30 +226,19 @@ makeRelative fp = mapC
 
 sourceball :: Text
            -> Handler
-                ( Streaming.Stream
-                    (Streaming.Of ByteString)
-                    (ResourceT IO)
-                    ()
+                (Conduit.ConduitT i ByteString (ResourceT IO) ()
                 )
-sourceball "broken-tarball" = do
-  pure $ streamConduit (Conduit.sourceLazy "i'm not a tarball")
+sourceball "broken-tarball" = pure (Conduit.sourceLazy "i'm not a tarball")
 sourceball fname = do
   cfname <- liftIO $ canonicalizePath $ toS ("testdata" </> toS fname)
   isFile <- liftIO $ doesFileExist cfname
   if isFile
-    then pure $ streamConduit $ Conduit.sourceFile cfname
-    else pure $ streamConduit
-      (Conduit.yield ("testdata" </> toS cfname)
+    then pure $ Conduit.sourceFile cfname
+    else pure (Conduit.yield ("testdata" </> toS cfname)
       .| relativePathConduit
       .| void Tar.tar
       .| gzip
       )
-
-streamConduit :: Conduit.ConduitT () o (ResourceT IO) ()
-              -> (Streaming.Stream (Streaming.Of o) (ResourceT IO) ())
-streamConduit conduit =
-  Conduit.runConduit $ hoist lift (conduit) .| Conduit.mapM_ (Streaming.yield)
-
 
 handleTasksReady :: ServerState
                  -> AuthResult Session
@@ -310,8 +298,9 @@ instance ToJWT Session
 type Auth' = Auth '[JWT] Session
 
 agentsEndpoints :: ServerState -> AgentsAPI Auth' AsServer
-agentsEndpoints server =
-  DummyApi.dummyAgentsEndpoints { API.Agents.agentSessionCreate = handleAgentCreate }
+agentsEndpoints server = DummyApi.dummyAgentsEndpoints
+  { API.Agents.agentSessionCreateV2 = handleAgentCreate
+  }
 
 handleAgentCreate :: CreateAgentSession.CreateAgentSession
                   -> AuthResult Session

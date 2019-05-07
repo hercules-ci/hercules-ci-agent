@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export LANG=en_US.utf-8
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+BRITTANY=$(nix-build --no-out-link ./nix -A devTools.brittany)/bin/brittany
+SHELLCHECK=$(nix-build --no-out-link ./nix -A devTools.shellcheck)/bin/shellcheck
+
+echo "Processing Haskell files with brittany"
+
+# Filtering out QuasiQuotes due to 
+# https://github.com/lspitzner/brittany/issues/90
+git ls-files | grep 'hs$' | xargs grep -L CPP | xargs grep -L QuasiQuotes | xargs "$BRITTANY" --write-mode inplace
+
+echo "Processing scripts with shellcheck"
+# shellcheck disable=SC2046
+$SHELLCHECK $(find scripts -executable -type f)
+
+git diff -w --text --exit-code

@@ -5,21 +5,19 @@ import qualified Data.Text                     as T
 import           Servant.Auth.Client            ( Token(Token) )
 
 import qualified Hercules.API.Agents
-import qualified Hercules.API.Agents.CreateAgentSession
-                                               as CreateAgentSession
-import           Hercules.Agent.Env            as Env
+import qualified Hercules.API.Agents.CreateAgentSession_V2 as CreateAgentSession
 import           Hercules.Agent.Client          ( agentsClient )
+import           Hercules.Agent.Env            as Env
+import qualified Hercules.Agent.EnvironmentInfo  as EnvironmentInfo
 import qualified System.Directory
 import           System.FilePath                ( (</>) )
 
-import           Network.BSD                    ( getHostName )
-import           Hercules.Agent.CabalInfo      as CabalInfo
 import           Hercules.Agent.Log
 
 getDataDirectory :: MonadIO m => m FilePath
-getDataDirectory = do
-  liftIO $ System.Directory.getXdgDirectory System.Directory.XdgData
-                                            "hercules-ci-agent"
+getDataDirectory = liftIO $ System.Directory.getXdgDirectory
+  System.Directory.XdgData
+  "hercules-ci-agent"
 
 writeAgentSessionKey :: Text -> App ()
 writeAgentSessionKey tok = do
@@ -29,8 +27,7 @@ writeAgentSessionKey tok = do
 
 -- | Reads a token file, strips whitespace
 readTokenFile :: MonadIO m => FilePath -> m Text
-readTokenFile fp = do
-  liftIO $ sanitize <$> readFile fp
+readTokenFile fp = liftIO $ sanitize <$> readFile fp
  where
   sanitize = T.map subst . T.strip
   subst '\n' = ' '
@@ -50,41 +47,38 @@ readAgentSessionKey = do
     False -> pure Nothing
 
 ensureAgentSession :: App Text
-ensureAgentSession = do
-  readAgentSessionKey >>= \case
-    Just x -> do
-      logLocM DebugS "Found agent session key"
-      pure x
-    Nothing -> do
-      writeAgentSessionKey "x" -- Sanity check
-      logLocM DebugS "Creating agent session"
-      agentSessionKey <- createAgentSession
-      logLocM DebugS "Agent session key acquired"
-      writeAgentSessionKey agentSessionKey
-      logLocM DebugS "Agent session key persisted"
-      readAgentSessionKey >>= \case
-        Just x -> do
-          logLocM DebugS "Found the new agent session"
-          pure x
-        Nothing ->
-          panic
-            "The file session.key seems to have disappeared. Refusing to continue."
+ensureAgentSession = readAgentSessionKey >>= \case
+  Just x -> do
+    logLocM DebugS "Found agent session key"
+    pure x
+  Nothing -> do
+    writeAgentSessionKey "x" -- Sanity check
+    logLocM DebugS "Creating agent session"
+    agentSessionKey <- createAgentSession
+    logLocM DebugS "Agent session key acquired"
+    writeAgentSessionKey agentSessionKey
+    logLocM DebugS "Agent session key persisted"
+    readAgentSessionKey >>= \case
+      Just x -> do
+        logLocM DebugS "Found the new agent session"
+        pure x
+      Nothing ->
+        panic
+          "The file session.key seems to have disappeared. Refusing to continue."
 
 createAgentSession :: App Text
 createAgentSession = do
-  hostname <- liftIO getHostName
-  let createAgentBody = CreateAgentSession.CreateAgentSession
-        { hostname = toS hostname
-        , agentVersion = CabalInfo.herculesAgentVersion -- TODO: Add git revision
-        , nixVersion = "" -- FIXME
-        , architectures = ["x86_64-linux"] -- FIXME
-        }
+  agentInfo <- EnvironmentInfo.extractAgentInfo
 
-  logLocM DebugS $ "CreateAgent data: " <> show createAgentBody
+  logLocM DebugS $ "Agent info: " <> show agentInfo
+
+  let createAgentBody = CreateAgentSession.CreateAgentSession {
+                agentInfo = agentInfo
+              }
   token <- asks Env.currentToken
-  agentSessionToken <- runHerculesClient'
-    $ Hercules.API.Agents.agentSessionCreate agentsClient createAgentBody token
-  pure agentSessionToken
+  runHerculesClient' $ Hercules.API.Agents.agentSessionCreateV2 agentsClient
+                                                              createAgentBody
+                                                              token
 
 -- TODO: Although this looks nice, the implicit limitation here is that we can
 --       only have one token at a time. I wouldn't be surprised if this becomes

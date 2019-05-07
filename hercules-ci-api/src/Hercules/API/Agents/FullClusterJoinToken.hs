@@ -3,7 +3,8 @@ module Hercules.API.Agents.FullClusterJoinToken where
 
 import           Hercules.API.Prelude
 
-import           Hercules.API.Agents.ClusterJoinToken ( ClusterJoinToken )
+import           Hercules.API.Agents.ClusterJoinToken
+                                                ( ClusterJoinToken )
 
 data FullClusterJoinToken = FullClusterJoinToken
   { metadata :: ClusterJoinToken

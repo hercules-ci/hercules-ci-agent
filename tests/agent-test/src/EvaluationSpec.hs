@@ -8,13 +8,19 @@ import           Prelude                        ( userError
 import qualified Data.Map                      as M
 import qualified Data.UUID.V4                  as UUID
 import           Hercules.API.Id                ( Id(Id) )
-import qualified Hercules.API.EvaluateTask     as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask
+                                               as EvaluateTask
 import qualified Hercules.API.TaskStatus       as TaskStatus
-import qualified Hercules.API.EvaluateEvent    as EvaluateEvent
-import qualified Hercules.API.EvaluateEvent.AttributeEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent
+                                               as EvaluateEvent
+import           Hercules.API.Agent.Evaluate.EvaluateEvent
+                                                ( EvaluateEvent )
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
                                                as AttributeEvent
-import qualified Hercules.API.EvaluateEvent.AttributeErrorEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
                                                as AttributeErrorEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
+                                               as DerivationInfo
 import qualified Hercules.API.Message          as Message
 import           MockTasksApi
 import           Test.Hspec
@@ -25,6 +31,15 @@ randomId = Id <$> UUID.nextRandom
 
 failWith :: [Char] -> IO a
 failWith = throwIO . userError
+
+attrLike :: [EvaluateEvent] -> [EvaluateEvent]
+attrLike = filter isAttrLike
+
+isAttrLike :: EvaluateEvent -> Bool
+isAttrLike EvaluateEvent.Attribute{} = True
+isAttrLike EvaluateEvent.AttributeError{} = True
+isAttrLike EvaluateEvent.Message{} = True -- this is a bit of a stretch but hey
+isAttrLike _ = False
 
 defaultTask :: EvaluateTask.EvaluateTask
 defaultTask = EvaluateTask.EvaluateTask
@@ -68,24 +83,63 @@ spec = describe "Evaluation" $ do
         "SubprocessFailure {message = \"Extracting tarball\"}"
       r `shouldBe` []
 
-  context "when the source download doesn't have a nix expression" $ do
-    it "yields an error message" $ \srv -> do
-      id <- randomId
-      (s, r) <- runEval
-        srv
-        defaultTask { EvaluateTask.id = id
-                    , EvaluateTask.primaryInput = "/tarball/no-nix-file"
-                    }
-      s `shouldBe` TaskStatus.Successful ()
-      case r of
-        [EvaluateEvent.AttributeError ae] -> do
-          AttributeErrorEvent.expressionPath ae `shouldBe` []
-          toS (AttributeErrorEvent.errorMessage ae)
-            `shouldContain` "No such file or directory"
-          toS (AttributeErrorEvent.errorMessage ae)
-            `shouldContain` "default.nix"
+  context "when the source download doesn't have a nix expression"
+    $ it "yields an error message"
+    $ \srv -> do
+        id <- randomId
+        (s, r) <- runEval
+          srv
+          defaultTask { EvaluateTask.id = id
+                      , EvaluateTask.primaryInput = "/tarball/no-nix-file"
+                      }
+        s `shouldBe` TaskStatus.Successful ()
+        case r of
+          [EvaluateEvent.Message msg] -> msg `shouldBe` Message.Message
+            { index = 0
+            , typ = Message.Error
+            , message = "Please provide a Nix expression to build. Could not find any of \"nix/ci.nix\", \"ci.nix\" or \"default.nix\" in your source"
+            }
 
-        _ -> failWith $ "Events should be a single error, not: " <> show r
+          _ -> failWith $ "Events should be a single message, not: " <> show r
+
+  context "when a ci.nix is provided"
+    $ it "it is preferred over default.nix"
+    $ \srv -> do
+        id <- randomId
+        (s, r) <- runEval
+          srv
+          defaultTask { EvaluateTask.id = id
+                      , EvaluateTask.primaryInput = "/tarball/ci-dot-nix"
+                      }
+
+        s `shouldBe` TaskStatus.Successful ()
+
+        case attrLike r of
+          [EvaluateEvent.Attribute ae] -> do
+            AttributeEvent.expressionPath ae `shouldBe` ["in-ci-dot-nix"]
+            toS (AttributeEvent.derivationPath ae)
+              `shouldContain` "-this-works.drv"
+          _ ->
+            failWith $ "Events should be a single attribute, not: " <> show r
+
+  context "when both ci.nix and nix/ci.nix are provided"
+    $ it "an error is raised"
+    $ \srv -> do
+        id <- randomId
+        (s, r) <- runEval
+          srv
+          defaultTask
+            { EvaluateTask.id = id
+            , EvaluateTask.primaryInput = "/tarball/ambiguous-nix-file"
+            }
+        s `shouldBe` TaskStatus.Successful ()
+        case r of
+          [EvaluateEvent.Message msg] -> msg `shouldBe` Message.Message
+            { index = 0
+            , typ = Message.Error
+            , message = "Don't know what to do, expecting only one of \"nix/ci.nix\" or \"ci.nix\""
+            }
+          _ -> failWith $ "Events should be a single message, not: " <> show r
 
   context "when the nix expression is one derivation in an attrset" $ do
     it "returns that attribute" $ \srv -> do
@@ -98,7 +152,7 @@ spec = describe "Evaluation" $ do
 
       s `shouldBe` TaskStatus.Successful ()
 
-      case r of
+      case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` ["hello"]
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
@@ -117,7 +171,7 @@ spec = describe "Evaluation" $ do
 
       s `shouldBe` TaskStatus.Successful ()
 
-      case r of
+      case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` []
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
@@ -155,7 +209,7 @@ spec = describe "Evaluation" $ do
 
           s `shouldBe` TaskStatus.Successful ()
 
-          case r of
+          case attrLike r of
             [EvaluateEvent.Attribute ae] -> do
               AttributeEvent.expressionPath ae `shouldBe` []
               toS (AttributeEvent.derivationPath ae)
@@ -179,7 +233,7 @@ spec = describe "Evaluation" $ do
 
           s `shouldBe` TaskStatus.Successful ()
 
-          case r of
+          case attrLike r of
             [EvaluateEvent.Attribute ae] -> do
               AttributeEvent.expressionPath ae `shouldBe` ["bar"]
               toS (AttributeEvent.derivationPath ae)
@@ -220,7 +274,7 @@ spec = describe "Evaluation" $ do
 
           s `shouldBe` TaskStatus.Successful ()
 
-          case r of
+          case attrLike r of
             [EvaluateEvent.AttributeError ae, EvaluateEvent.Attribute a] -> do
 
               AttributeEvent.expressionPath a `shouldBe` ["hello"]
@@ -293,7 +347,7 @@ spec = describe "Evaluation" $ do
 
       s `shouldBe` TaskStatus.Successful ()
 
-      case r of
+      case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` ["hello"]
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
@@ -315,7 +369,7 @@ spec = describe "Evaluation" $ do
 
       s `shouldBe` TaskStatus.Successful ()
 
-      case r of
+      case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` ["hello"]
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
@@ -338,7 +392,7 @@ spec = describe "Evaluation" $ do
 
       s `shouldBe` TaskStatus.Successful ()
 
-      case r of
+      case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` ["hello"]
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
@@ -361,9 +415,54 @@ spec = describe "Evaluation" $ do
 
       s `shouldBe` TaskStatus.Successful ()
 
-      case r of
+      case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` ["foo", "a"]
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
           toS (AttributeEvent.derivationPath ae) `shouldContain` "-zlib"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
+
+  describe "when derivations are returned"
+    $ it "upload information about the closure under the inputDrv relation"
+    $ \srv -> do
+
+        id <- randomId
+        (s, r) <- runEval
+          srv
+          defaultTask
+            { EvaluateTask.id = id
+            , EvaluateTask.primaryInput = "/tarball/nixpkgs-reference"
+            , EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs"
+            , EvaluateTask.autoArguments =
+              M.singleton "nixpkgs" (EvaluateTask.SubPathOf "n" Nothing)
+            }
+
+        s `shouldBe` TaskStatus.Successful ()
+
+        let drvMap :: Map
+                        DerivationInfo.DerivationPathText
+                        DerivationInfo.DerivationInfo
+            drvMap = flip foldMap r $ \case
+              EvaluateEvent.DerivationInfo drvInfo ->
+                M.singleton (DerivationInfo.derivationPath drvInfo) drvInfo
+              _ -> M.empty
+
+        forM_ (toList drvMap) $ \drvInfo -> do
+          forM_ (M.keys $ DerivationInfo.inputDerivations drvInfo) $ \d ->
+            unless (isJust (M.lookup d drvMap)) $ do
+              panic
+                $ "In drv info for "
+                <> DerivationInfo.derivationPath drvInfo
+                <> ": unknown inputDrv "
+                <> d
+
+        case attrLike r of
+          [EvaluateEvent.Attribute ae] -> do
+            AttributeEvent.expressionPath ae `shouldBe` ["hello"]
+            let p = AttributeEvent.derivationPath ae
+            toS p `shouldContain` "/nix/store"
+            toS p `shouldContain` "-hello"
+            isJust (M.lookup p drvMap) `shouldBe` True
+          _ ->
+            failWith $ "Events should be a single attribute, not: " <> show r
+

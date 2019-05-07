@@ -190,7 +190,7 @@ getAttrs v = do
   gather mempty begin
 
 getDrvFile :: MonadIO m => Ptr EvalState -> RawValue -> m ByteString
-getDrvFile evalState v = do
+getDrvFile evalState v =
   unsafeMallocBS [C.throwBlock| const char *{
     EvalState &state = *$(EvalState *evalState);
     auto drvInfo = getDerivation(state, *$fptr-ptr:(Value *v), false);

@@ -1,7 +1,7 @@
 cabal-version: 1.12
 
 name:           hercules-ci-agent
-version:        0.1.0.0
+version:        0.1.1
 homepage:       https://docs.hercules-ci.com
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
 author:         Hercules Labs
@@ -10,7 +10,7 @@ copyright:      2018-2019 Hercules Labs OÜ
 license:        Apache-2.0
 build-type:     Simple
 extra-source-files:
-    ChangeLog.md
+    CHANGELOG.md
     cbits/aliases.h
 
 source-repository head
@@ -63,7 +63,10 @@ executable hercules-ci-agent
       Hercules.Agent.Client
       Hercules.Agent.Config
       Hercules.Agent.Env
+      Hercules.Agent.EnvironmentInfo
       Hercules.Agent.Evaluate
+      Hercules.Agent.Evaluate.TraversalQueue
+      Hercules.Agent.Evaluate.RetrieveDerivationInfo
       Hercules.Agent.Exception
       Hercules.Agent.Init
       Hercules.Agent.Log
@@ -80,10 +83,12 @@ executable hercules-ci-agent
   build-depends:
       aeson
     , async
+    , attoparsec
     , base >=4.7 && <5
     , binary
     , binary-conduit
     , bytestring
+    , cachix
     , conduit
     , conduit-extra
     , containers
@@ -93,14 +98,18 @@ executable hercules-ci-agent
     , filepath
     , hercules-ci-agent
     , hercules-ci-api
+    , hostname
     , http-client
     , http-client-tls
     , http-conduit
     , katip
+    , lens
+    , lens-aeson
     , lifted-async
     , lifted-base
     , monad-control
     , mtl
+    , nix-derivation
     , network
     , optparse-applicative
     , process
@@ -110,6 +119,8 @@ executable hercules-ci-agent
     , servant-auth-client
     , servant-client
     , servant-client-core
+    , stm
+    , system-filepath
     , temporary
     , text
     , transformers-base

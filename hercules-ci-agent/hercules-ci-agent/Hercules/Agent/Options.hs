@@ -6,6 +6,7 @@ where
 
 import           Protolude               hiding ( option )
 
+import           Hercules.Agent.CabalInfo       ( herculesAgentVersion )
 import           Hercules.Agent.Config          ( Config )
 import qualified Hercules.Agent.Config         as Config
 import           Options.Applicative
@@ -55,7 +56,7 @@ parserInfo :: ParserInfo Options
 parserInfo = info
   (parseOptions <**> helper)
   (fullDesc <> progDesc "Accepts tasks from Hercules CI and run them" <> header
-    "hercules-ci-agent - The Hercules CI Agent"
+    ("hercules-ci-agent " <> toSL herculesAgentVersion)
   )
 
 parse :: IO Options

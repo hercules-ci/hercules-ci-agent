@@ -39,7 +39,7 @@ in
     };
     api = { ... }: {
       networking.firewall.allowedTCPPorts = [80];
-      environment.systemPackages = [ pkgs.hercules-ci-agent-packages.internal.haskellPackages.hercules-ci-agent-test ];
+      environment.systemPackages = [ pkgs.testSuitePkgs.hercules-ci-agent-packages.internal.haskellPackages.hercules-ci-agent-test ];
     };
   };
 

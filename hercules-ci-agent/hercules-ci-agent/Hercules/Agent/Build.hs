@@ -14,10 +14,11 @@ import qualified Hercules.API.Agent.Build.BuildEvent
 import qualified Hercules.API.Agent.Build.BuildTask
                                                as BuildTask
 import qualified Hercules.API.Agent.Build      as API.Build
+import qualified Hercules.API.Logs             as API.Logs
 import           Data.Conduit.Process           ( sourceProcessWithStreams )
 import           Hercules.Agent.Log
 import qualified Data.Conduit.Combinators      as Conduit
-
+import Servant.Auth.Client
 
 performBuild :: Task BuildTask.BuildTask -> App ()
 performBuild task = do
@@ -43,16 +44,16 @@ performBuild task = do
 
   logLocM DebugS $ "Invoking nix-store: " <> show procSpec
 
-  (status, _out, errBytes) <- liftIO $ do
-    sourceProcessWithStreams procSpec stdinc stdoutc stderrc
+  (status, _out, errBytes) <- liftIO
+    $ sourceProcessWithStreams procSpec stdinc stdoutc stderrc
 
   withNamedContext "exitStatus" (show status :: Text)
     $ logLocM DebugS
     $ "Returned from nix-store"
 
-  noContent $ defaultRetry $ runHerculesClient $ API.Build.writeBuildLog
-    Hercules.Agent.Client.buildClient
-    (BuildTask.id buildTask)
+  noContent $ defaultRetry $ runHerculesClient' $ API.Logs.writeLog
+    Hercules.Agent.Client.logsClient
+    (Token $ toSL $ BuildTask.logToken buildTask)
     errBytes
 
   case status of

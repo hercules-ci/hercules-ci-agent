@@ -1,8 +1,9 @@
 {-# LANGUAGE DeriveAnyClass #-}
-module Hercules.API.AgentTask where
+module AgentTask where
 
 import           Hercules.API.Prelude
-import qualified Hercules.API.EvaluateTask     as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask
+                                               as EvaluateTask
 
 data AgentTask = Evaluate EvaluateTask.EvaluateTask
                | Build Text

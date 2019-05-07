@@ -10,8 +10,6 @@ module Hercules.API
   , ClientAuth
   , HerculesAPI(..)
   , HerculesServantAPI
-  , TasksAPI(..)
-  , EvalAPI(..)
   , AddAPIVersion
   , Id
   , Name
@@ -26,38 +24,34 @@ module Hercules.API
 where
 
 import           Prelude
+
 import           Control.Lens
 import           Control.Monad
-import           Data.Aeson                     ( Object )
 import           Data.Proxy                     ( Proxy(..) )
 import           Data.Swagger            hiding ( Header )
-import           Data.Text                      ( Text )
 import           GHC.Generics                   ( Generic )
+import           Hercules.API.Accounts          ( AccountsAPI )
+import           Hercules.API.Agents            ( AgentsAPI )
+import           Hercules.API.Id                ( Id )
+import           Hercules.API.Name              ( Name )
+import           Hercules.API.Projects          ( ProjectsAPI )
+import           Hercules.API.Repos             ( ReposAPI )
 import           Servant.API
 import           Servant.API.Generic
 import           Servant.Auth
 import           Servant.Auth.Swagger           ( )
 import           Servant.Swagger
 import           Servant.Swagger.UI.Core        ( SwaggerSchemaUI )
-import           Hercules.API.Id                ( Id )
-import           Hercules.API.Name              ( Name )
-import qualified Hercules.API.TaskStatus       as TaskStatus
-import qualified Hercules.API.EvaluateTask     as EvaluateTask
-import qualified Hercules.API.EvaluateEvent    as EvaluateEvent
-import qualified Hercules.API.Task             as Task
-import           Hercules.API.Attribute         ( Attribute )
-import           Hercules.API.Message           ( Message )
-import           Hercules.API.Result            ( Result(..) )
-import           Hercules.API.Derivation        ( DerivationPath )
-
-import           Hercules.API.Accounts          ( AccountsAPI )
-import           Hercules.API.Repos             ( ReposAPI )
-import           Hercules.API.Projects          ( ProjectsAPI )
-import           Hercules.API.Agents            ( AgentsAPI )
 import           Hercules.API.Agent.Build      as Agent
                                                 ( BuildAPI )
+import           Hercules.API.Agent.Evaluate   as Agent
+                                                ( EvalAPI )
+import           Hercules.API.Agent.Tasks      as Agent
+                                                ( TasksAPI )
 import           Hercules.API.Build            as Client
                                                 ( BuildAPI )
+import           Hercules.API.Result            ( Result(..) )
+import           Hercules.API.Health            ( HealthAPI )
 
 data HerculesAPI auth f = HerculesAPI
    { accounts :: f :- ToServantApi (AccountsAPI auth)
@@ -68,6 +62,7 @@ data HerculesAPI auth f = HerculesAPI
    , eval :: f :- ToServantApi (EvalAPI auth)
    , agentBuild :: f :- ToServantApi (Agent.BuildAPI auth)
    , build :: f :- ToServantApi (Client.BuildAPI auth)
+   , health :: f :- ToServantApi (HealthAPI auth)
    } deriving Generic
 
 data ClientAPI auth f = ClientAPI
@@ -76,57 +71,6 @@ data ClientAPI auth f = ClientAPI
    , clientProjects :: f :- ToServantApi (ProjectsAPI auth)
    , clientAgents :: f :- ToServantApi (AgentsAPI auth)
    , clientBuild :: f :- ToServantApi (Client.BuildAPI auth)
-   } deriving Generic
-
--- TODO: add type parameter to specify types of corecord instead of
--- @Task.Task Task.Any@.
-data TasksAPI auth f = TasksAPI
-   { tasksReady :: f :-
-       "tasks" :>
-       auth :>
-       Post '[JSON] (Maybe (Task.Task Task.Any))
-   , tasksSetStatus :: f :-
-       "tasks" :>
-       Capture "taskId" (Id (Task.Task Task.Any)) :>
-       ReqBody '[JSON] TaskStatus.TaskStatus :>
-       auth :>
-       Post '[JSON] NoContent
-   , postLog :: f :-
-       "tasks" :>
-       "log" :>
-       ReqBody '[JSON] [Object] :>
-       auth :>
-       Post '[JSON] NoContent
-   } deriving Generic
-
-data EvalAPI auth f = EvalAPI
-   { tasksGetEvaluation :: f :-
-       "tasks" :>
-       Capture "taskId" (Id (Task.Task EvaluateTask.EvaluateTask)) :>
-       "eval" :>
-       auth :>
-       Get '[JSON] EvaluateTask.EvaluateTask
-   , tasksUpdateEvaluation :: f :-
-       "tasks" :>
-       Capture "taskId" (Id (Task.Task EvaluateTask.EvaluateTask)) :>
-       "eval" :>
-       ReqBody '[JSON] [EvaluateEvent.EvaluateEvent] :>
-       auth :>
-       Post '[JSON] NoContent
-   , tasksPreviewAttrs :: f :-
-       "tasks" :>
-       Capture "taskId" (Id (Task.Task EvaluateTask.EvaluateTask)) :>
-       "eval" :>
-       "attributes" :>
-       auth :>
-       Get '[JSON] [Attribute (Result Text DerivationPath)]
-   , tasksPreviewMessages :: f :-
-       "tasks" :>
-       Capture "evaluationId" (Id (Task.Task EvaluateTask.EvaluateTask)) :>
-       "eval" :>
-       "messages" :>
-       auth :>
-       Get '[JSON] [Message]
    } deriving Generic
 
 type ClientAuth = Auth '[JWT, Cookie] ()

@@ -1,10 +1,28 @@
 { sources ? import ./sources.nix
-, nixpkgsSource ? "nixos-18.09"
+, nixpkgsSource ? "nixos-19.03"
 , nixpkgs ? sources."${nixpkgsSource}"
+
+  # Sharing the test suite
+, allTargets ? import ../default.nix
+, testSuiteTarget ? "nixos-19_03"
+, testSuitePkgs ? allTargets."${testSuiteTarget}"
 }:
-with
-  { dev-overlay = self: pkgs:
-      { inherit (import sources.niv {}) niv;
-      };
+let
+  dev-and-test-overlay = self: pkgs: {
+
+    inherit testSuitePkgs;
+
+    devTools = {
+      inherit (pkgs)
+        shellcheck
+        ;
+      inherit (import sources.niv {})
+        niv
+        ;
+      inherit (pkgs.haskellPackages)
+        brittany
+        ;
+    };
   };
-import nixpkgs { overlays = [ (import ./overlay.nix) dev-overlay ] ; config = {}; }
+in
+import nixpkgs { overlays = [ (import ./overlay.nix) dev-and-test-overlay ] ; config = {}; }

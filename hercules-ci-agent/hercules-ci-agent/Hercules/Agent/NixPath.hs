@@ -7,7 +7,8 @@ where
 
 import           Protolude
 import qualified Data.Text                     as T
-import qualified Hercules.API.EvaluateTask     as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask
+                                               as EvaluateTask
 
 renderNixPath :: [EvaluateTask.NixPathElement (EvaluateTask.SubPathOf FilePath)]
               -> Text

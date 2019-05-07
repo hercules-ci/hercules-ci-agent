@@ -1,5 +1,3 @@
-{-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE DataKinds #-}
 
 module Hercules.Agent.Worker
@@ -74,8 +72,7 @@ runCommands = do
             hPutStrLn stderr $ "Caught exception: " <> renderException e
             yield $ Event.Error (renderException e)
           )
-        $ do
-            runEval eval
+        $ runEval eval
     Command.Build impossible -> absurd impossible
 
 -- TODO: test
@@ -104,11 +101,10 @@ runEval eval = do
         $ evalArgs evalState (autoArgArgs (Eval.autoArguments eval))
 
       Data.Conduit.handleC
-          (\e -> do
-            yield $ Event.AttributeError $ AttributeError.AttributeError
-              { AttributeError.path = []
-              , AttributeError.message = renderException e
-              }
+          (\e -> yield $ Event.AttributeError $ AttributeError.AttributeError
+            { AttributeError.path = []
+            , AttributeError.message = renderException e
+            }
           )
         $ do
             imprt <- liftIO $ evalFile evalState (toS $ Eval.file eval)
@@ -125,11 +121,10 @@ walk :: Ptr EvalState
 walk evalState = walk' True [] 10
  where
   handleErrors path = Data.Conduit.handleC
-    (\e -> do
-      yield $ Event.AttributeError $ AttributeError.AttributeError
-        { AttributeError.path = path
-        , AttributeError.message = renderException e
-        }
+    (\e -> yield $ Event.AttributeError $ AttributeError.AttributeError
+      { AttributeError.path = path
+      , AttributeError.message = renderException e
+      }
     )
 
   walk' :: Bool                -- ^ If True, always walk this attribute set. Only True for the root.
@@ -138,66 +133,66 @@ walk evalState = walk' True [] 10
         -> Bindings            -- ^ Auto arguments to pass to (attrset-)functions
         -> RawValue               -- ^ Current node of the walk
         -> ConduitT i1 Event (ResourceT IO) () -- ^ Program that performs the walk and emits 'Event's
-  walk' forceWalkAttrset path depthRemaining autoArgs v = do
+  walk' forceWalkAttrset path depthRemaining autoArgs v =
     -- liftIO $ hPutStrLn stderr $ "Walking " <> (show path :: Text)
-    handleErrors path $ do
-      liftIO (match evalState v) >>= \case
-        Left e -> yield $ Event.AttributeError $ AttributeError.AttributeError
-          { AttributeError.path = path
-          , AttributeError.message = renderException e
-          }
-        Right m -> case m of
-          IsAttrs attrValue -> do
-            isDeriv <- liftIO $ isDerivation evalState v
-            if isDeriv
-              then do
-                drvPath <- getDrvFile evalState v
-                yield $ Event.Attribute Attribute.Attribute
-                  { Attribute.path = path
-                  , Attribute.drv = drvPath
-                  }
-              else do
-                walkAttrset <- if forceWalkAttrset
-                  then pure True
-                  else
+    handleErrors path
+      $ liftIO (match evalState v)
+      >>= \case
+            Left e ->
+              yield $ Event.AttributeError $ AttributeError.AttributeError
+                { AttributeError.path = path
+                , AttributeError.message = renderException e
+                }
+            Right m -> case m of
+              IsAttrs attrValue -> do
+                isDeriv <- liftIO $ isDerivation evalState v
+                if isDeriv
+                  then do
+                    drvPath <- getDrvFile evalState v
+                    yield $ Event.Attribute Attribute.Attribute
+                      { Attribute.path = path
+                      , Attribute.drv = drvPath
+                      }
+                  else do
+                    walkAttrset <- if forceWalkAttrset
+                      then pure True
+                      else
 -- Hydra doesn't seem to obey this, because it walks the
 -- x64_64-linux etc attributes per package. Maybe those
 -- are special cases?
 -- For now, we will assume that people don't build a whole Nixpkgs
-                       liftIO $ getRecurseForDerivations evalState attrValue
+                           liftIO $ getRecurseForDerivations evalState attrValue
 
-                isfunctor <- liftIO $ isFunctor evalState v
-                if isfunctor && walkAttrset
-                  then do
-                    x <- liftIO (autoCallFunction evalState v autoArgs)
-                    walk' True path (depthRemaining - 1) autoArgs x
-                  else do
-                    attrs <- liftIO $ getAttrs attrValue
+                    isfunctor <- liftIO $ isFunctor evalState v
+                    if isfunctor && walkAttrset
+                      then do
+                        x <- liftIO (autoCallFunction evalState v autoArgs)
+                        walk' True path (depthRemaining - 1) autoArgs x
+                      else do
+                        attrs <- liftIO $ getAttrs attrValue
 
-                    void
-                      $ flip M.traverseWithKey attrs
-                      $ \name value -> do
-                          when (depthRemaining > 0 && walkAttrset) $ do -- TODO: else warn
-                            walk' False
-                                  (path ++ [name])
-                                  (depthRemaining - 1)
-                                  autoArgs
-                                  value
+                        void
+                          $ flip M.traverseWithKey attrs
+                          $ \name value ->
+                              when (depthRemaining > 0 && walkAttrset) $ -- TODO: else warn
+                                                                         walk'
+                                False
+                                (path ++ [name])
+                                (depthRemaining - 1)
+                                autoArgs
+                                value
 
-          _any -> liftIO $ do
-            vt <- rawValueType v
-            when
-                (not
-                  (last path
-                  == "recurseForDerivations"
-                  && vt
-                  == CNix.Internal.Raw.Bool
-                  )
-                )
-              $ do
-                  hPutStrLn stderr
-                    $ "Ignoring "
-                    <> show path
-                    <> " : "
-                    <> (show vt :: Text)
-            pass
+              _any -> liftIO $ do
+                vt <- rawValueType v
+                unless
+                    (last path
+                    == "recurseForDerivations"
+                    && vt
+                    == CNix.Internal.Raw.Bool
+                    )
+                  $ hPutStrLn stderr
+                  $ "Ignoring "
+                  <> show path
+                  <> " : "
+                  <> (show vt :: Text)
+                pass

@@ -10,7 +10,7 @@ copyright:      2018-2019 Hercules Labs OÜ
 license:        Apache-2.0
 build-type:     Simple
 extra-source-files:
-    ChangeLog.md
+    CHANGELOG.md
 
 source-repository head
   type: git
@@ -24,24 +24,32 @@ library
       Hercules.API.Agent.Build
       Hercules.API.Agent.Build.BuildEvent
       Hercules.API.Agent.Build.BuildTask
+      Hercules.API.Agent.Evaluate
+      Hercules.API.Agent.Evaluate.EvaluateEvent
+      Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
+      Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
+      Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
+      Hercules.API.Agent.Evaluate.EvaluateTask
+      Hercules.API.Agent.Tasks
       Hercules.API.Agents
+      Hercules.API.Agents.AgentInfo
       Hercules.API.Agents.AgentSession
       Hercules.API.Agents.AgentSessionCreated
       Hercules.API.Agents.ClusterJoinToken
       Hercules.API.Agents.CreateAgentSession
+      Hercules.API.Agents.CreateAgentSession_V2
       Hercules.API.Agents.CreateClusterJoinToken
       Hercules.API.Agents.FullClusterJoinToken
-      Hercules.API.AgentTask
       Hercules.API.Attribute
       Hercules.API.Auth
       Hercules.API.Build
+      Hercules.API.Build.EvaluationDetail
+      Hercules.API.Build.FailureGraph
       Hercules.API.Derivation
-      Hercules.API.EvaluateEvent
-      Hercules.API.EvaluateEvent.AttributeErrorEvent
-      Hercules.API.EvaluateEvent.AttributeEvent
-      Hercules.API.EvaluateTask
       Hercules.API.Evaluation.Evaluation
+      Hercules.API.Health
       Hercules.API.Id
+      Hercules.API.Logs
       Hercules.API.Message
       Hercules.API.Name
       Hercules.API.Orphans

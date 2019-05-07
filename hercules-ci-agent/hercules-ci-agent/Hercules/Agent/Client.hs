@@ -4,19 +4,18 @@ module Hercules.Agent.Client
   , evalClient
   , agentsClient
   , buildClient
+  , logsClient
   )
 where
 
 import           Protolude
 import qualified Servant.Client
 import           Servant.Client                 ( ClientM )
-import           Servant.API.Generic            ( fromServant )
 import           Servant.Auth.Client            ( )
 import           Servant.Client.Generic         ( AsClientT )
 import           Hercules.API                   ( HerculesAPI
-                                                , TasksAPI
-                                                , EvalAPI
                                                 , ClientAuth
+                                                , AddAPIVersion
                                                 , servantApi
                                                 , eval
                                                 , agentBuild
@@ -25,7 +24,11 @@ import           Hercules.API                   ( HerculesAPI
                                                 , useApi
                                                 )
 import           Hercules.API.Agent.Build       ( BuildAPI )
+import           Hercules.API.Agent.Evaluate    ( EvalAPI )
+import           Hercules.API.Agent.Tasks       ( TasksAPI )
+import           Hercules.API.Logs              ( LogsAPI )
 import qualified Hercules.API.Agents
+import           Servant.API.Generic
 
 client :: HerculesAPI ClientAuth (AsClientT ClientM)
 client = fromServant $ Servant.Client.client (servantApi @ClientAuth)
@@ -41,3 +44,7 @@ buildClient = useApi agentBuild $ Hercules.Agent.Client.client
 
 agentsClient :: Hercules.API.Agents.AgentsAPI ClientAuth (AsClientT ClientM)
 agentsClient = useApi agents $ Hercules.Agent.Client.client
+
+logsClient :: LogsAPI () (AsClientT ClientM)
+logsClient = fromServant $ Servant.Client.client $ 
+  (Proxy @(AddAPIVersion (ToServantApi (LogsAPI ()))))

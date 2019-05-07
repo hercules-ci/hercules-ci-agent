@@ -1,4 +1,3 @@
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DeriveAnyClass #-}
 module Hercules.API.Projects.Job where
 
@@ -6,6 +5,7 @@ import           Hercules.API.Prelude
 
 import           Hercules.API.Repos.Repo        ( Repo )
 import           Hercules.API.Projects.Project  ( Project )
+import           Hercules.API.Accounts.Account  ( Account )
 import           Hercules.API.Evaluation.Evaluation
                                                 ( Evaluation )
 
@@ -14,16 +14,27 @@ data Job = Job
   , projectId :: Id Project
   , index :: Int64
   , repoId :: Id Repo
-  , revision :: Text
   , startTime :: UTCTime
   , endTime :: Maybe UTCTime
   , jobPhase :: JobPhase
   , jobStatus :: JobStatus
   , evaluationStatus :: JobStatus
   , derivationStatus :: JobStatus
-  , evaluation :: Evaluation
+  , evaluationId :: Id Evaluation
+  , source :: GitCommitSource
   }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+
+
+data GitCommitSource = GitCommitSource
+  { revision :: Text
+  , ref :: Text
+  , message :: Text
+  , gitCommitterName :: Text
+  , committerSlug :: Maybe (Name Account)
+  }
+  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+
 
 data JobPhase
   = Queued
