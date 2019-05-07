@@ -5,9 +5,6 @@ let
     "nixos-unstable" = {
       nixpkgsSource = "nixos-unstable";
     };
-    "nixos-18_09" = {
-      nixpkgsSource = "nixos-18.09";
-    };
     "nixos-19_03" = {
       nixpkgsSource = "nixos-19.03";
     };
