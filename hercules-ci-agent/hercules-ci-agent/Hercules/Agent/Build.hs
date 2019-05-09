@@ -8,6 +8,7 @@ import qualified Data.Conduit.Combinators      as Conduit
 import qualified Data.Map                      as M
 import qualified Data.Text                     as T
 import qualified Hercules.Agent.Cachix.Push    as Cachix.Push
+import qualified Hercules.Agent.Cachix.Info    as Cachix.Info
 import qualified Hercules.Agent.Client
 import           Hercules.Agent.Env
 import           Hercules.Agent.Exception       ( defaultRetry )
@@ -23,6 +24,8 @@ import qualified Hercules.API.Agent.Build.BuildEvent.OutputInfo
                                                as OutputInfo
 import           Hercules.API.Agent.Build.BuildEvent.OutputInfo
                                                 ( OutputInfo )
+import qualified Hercules.API.Agent.Build.BuildEvent.Pushed
+                                               as Pushed
 import qualified Hercules.API.Agent.Build.BuildTask
                                                as BuildTask
 import           Hercules.API.Agent.Build.BuildTask
@@ -46,7 +49,7 @@ performBuild task = do
 
   reportOutputInfos buildTask outs
 
-  push outs
+  push buildTask outs
 
   reportSuccess buildTask
 
@@ -125,11 +128,13 @@ getOutputPathInfos buildTask = do
                                }
 
 
-push :: Map Text OutputInfo -> App ()
-push outs = do
+push :: BuildTask -> Map Text OutputInfo -> App ()
+push buildTask outs = do
   let paths = OutputInfo.path <$> toList outs
   Cachix.Push.push paths
-  -- TODO: emit pushed events
+  caches <- Cachix.Info.activePushCaches
+  emitEvents buildTask
+    $ map (\c -> BuildEvent.Pushed $ Pushed.Pushed { cache = c }) caches
 
 reportSuccess :: BuildTask -> App ()
 reportSuccess buildTask = emitEvents buildTask [BuildEvent.Done True]

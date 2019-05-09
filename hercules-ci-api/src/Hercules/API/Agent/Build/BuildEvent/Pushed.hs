@@ -1,9 +1,8 @@
 {-# LANGUAGE DeriveAnyClass #-}
-module Hercules.API.Agent.Build.BuildEvent.Pushing where
+module Hercules.API.Agent.Build.BuildEvent.Pushed where
 
 import Hercules.API.Prelude
 
--- FIXME: rename to pushed
-data Pushing = Pushing
+data Pushed = Pushed
  { cache :: Text
  } deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
