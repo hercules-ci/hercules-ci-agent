@@ -88,18 +88,12 @@ realise buildTask = do
     ExitFailure e -> do
       withNamedContext "exitStatus" e $ logLocM ErrorS "Worker failed"
 
-      let events :: [BuildEvent.BuildEvent]
-          events = [BuildEvent.Done False]
-
-      noContent $ defaultRetry $ runHerculesClient $ API.Build.updateBuild
-        Hercules.Agent.Client.buildClient
-        (BuildTask.id buildTask)
-        events
+      emitEvents buildTask [BuildEvent.Done False]
 
       panic "Build failure" -- FIXME: this error is expected and should be handled normally
                             -- nonetheless it passes on to the tasks system
 
-    ExitSuccess -> logLocM DebugS $ "Clean nix-store exit"
+    ExitSuccess -> logLocM DebugS "Clean nix-store exit"
 
 
 getOutputPathInfos :: BuildTask -> App (Map Text OutputInfo)
@@ -113,7 +107,11 @@ getOutputPathInfos buildTask = do
       $ readProcess "nix-store" ["--query", "--size", toS outputPath] ""
     size <- case reads (toS $ T.dropAround isSpace $ toS sizeStr) of
       [(x, "")] -> pure x
-      _ -> throwIO $ FatalError $ "nix-store returned invalid size " <> show sizeStr
+      _ ->
+        throwIO
+          $ FatalError
+          $ "nix-store returned invalid size "
+          <> show sizeStr
 
     hashStr <- liftIO
       $ readProcess "nix-store" ["--query", "--hash", toS outputPath] ""
@@ -129,27 +127,21 @@ getOutputPathInfos buildTask = do
 
 push :: Map Text OutputInfo -> App ()
 push outs = do
-  let paths = outs & toList <&> OutputInfo.path
+  let paths = OutputInfo.path <$> toList outs
   Cachix.Push.push paths
   -- TODO: emit pushed events
 
 reportSuccess :: BuildTask -> App ()
-reportSuccess buildTask = do
-  let events :: [BuildEvent.BuildEvent]
-      events = [BuildEvent.Done True]
-
-  noContent $ defaultRetry $ runHerculesClient $ API.Build.updateBuild
-    Hercules.Agent.Client.buildClient
-    (BuildTask.id buildTask)
-    events
+reportSuccess buildTask = emitEvents buildTask [BuildEvent.Done True]
 
 
 reportOutputInfos :: BuildTask -> Map Text OutputInfo -> App ()
-reportOutputInfos buildTask outs = do
-  let events :: [BuildEvent.BuildEvent]
-      events = map BuildEvent.OutputInfo (toList outs)
+reportOutputInfos buildTask outs =
+  emitEvents buildTask $ map BuildEvent.OutputInfo (toList outs)
 
-  noContent $ defaultRetry $ runHerculesClient $ API.Build.updateBuild
+
+emitEvents :: BuildTask -> [BuildEvent.BuildEvent] -> App ()
+emitEvents buildTask =
+  noContent . defaultRetry . runHerculesClient . API.Build.updateBuild
     Hercules.Agent.Client.buildClient
     (BuildTask.id buildTask)
-    events
