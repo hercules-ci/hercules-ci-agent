@@ -139,10 +139,21 @@ executable hercules-ci-agent-worker
   hs-source-dirs:
       hercules-ci-agent-worker
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
-  ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-maxN8
-  -- GC_INCLUDE_NEW to use <new> header and standard C++ exception on OOM
-  cc-options: -Wall -std=c++11
-  ld-options: -lstdc++
+  ghc-options:
+    -Wall
+    -fwarn-tabs
+    -fwarn-unused-imports
+    -fwarn-missing-signatures
+    -fwarn-name-shadowing
+    -fwarn-incomplete-patterns
+    -threaded
+    -rtsopts
+    -with-rtsopts=-maxN8
+    -- match what Nix is using
+    -optc=-std=c++14
+  if os(darwin)
+    ghc-options: -pgmc=clang++
+  cc-options: -Wall
   include-dirs:
       cbits
   extra-libraries:
