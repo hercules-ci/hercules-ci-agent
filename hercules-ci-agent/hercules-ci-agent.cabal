@@ -61,10 +61,10 @@ executable hercules-ci-agent
       Hercules.Agent.Batch
       Hercules.Agent.Build
       Hercules.Agent.CabalInfo
+      Hercules.Agent.Cachix
       Hercules.Agent.Cachix.Env
       Hercules.Agent.Cachix.Info
       Hercules.Agent.Cachix.Init
-      Hercules.Agent.Cachix.Push
       Hercules.Agent.Client
       Hercules.Agent.Config
       Hercules.Agent.Env

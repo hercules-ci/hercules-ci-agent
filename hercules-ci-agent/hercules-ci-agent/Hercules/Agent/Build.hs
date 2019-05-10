@@ -7,8 +7,7 @@ import           Data.Conduit.Process           ( sourceProcessWithStreams )
 import qualified Data.Conduit.Combinators      as Conduit
 import qualified Data.Map                      as M
 import qualified Data.Text                     as T
-import qualified Hercules.Agent.Cachix.Push    as Cachix.Push
-import qualified Hercules.Agent.Cachix.Info    as Cachix.Info
+import qualified Hercules.Agent.Cachix         as Agent.Cachix
 import qualified Hercules.Agent.Client
 import           Hercules.Agent.Env
 import           Hercules.Agent.Exception       ( defaultRetry )
@@ -131,10 +130,10 @@ getOutputPathInfos buildTask = do
 push :: BuildTask -> Map Text OutputInfo -> App ()
 push buildTask outs = do
   let paths = OutputInfo.path <$> toList outs
-  Cachix.Push.push paths
-  caches <- Cachix.Info.activePushCaches
-  emitEvents buildTask
-    $ map (\c -> BuildEvent.Pushed $ Pushed.Pushed { cache = c }) caches
+  caches <- Agent.Cachix.activePushCaches
+  forM_ caches $ \cache -> do
+    Agent.Cachix.push cache paths
+    emitEvents buildTask [BuildEvent.Pushed $ Pushed.Pushed { cache = cache }]
 
 reportSuccess :: BuildTask -> App ()
 reportSuccess buildTask = emitEvents buildTask [BuildEvent.Done True]
