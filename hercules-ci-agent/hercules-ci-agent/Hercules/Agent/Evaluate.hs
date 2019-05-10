@@ -11,6 +11,7 @@ import           Conduit
 import qualified Control.Concurrent.Async.Lifted
                                                as Async.Lifted
 import qualified Data.Map                      as M
+import qualified Data.Set                      as S
 import           Paths_hercules_ci_agent        ( getBinDir )
 import           System.FilePath
 import           System.Process
@@ -18,6 +19,7 @@ import qualified System.Directory              as Dir
 import           WorkerProcess
 import           Hercules.Agent.Batch
 import qualified Hercules.Agent.Client
+import qualified Hercules.Agent.Cachix         as Agent.Cachix
 import           Hercules.Agent.Env
 import           Hercules.Agent.Log
 import           Hercules.Agent.Exception       ( defaultRetry )
@@ -52,6 +54,8 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
                                                as AttributeErrorEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
                                                as DerivationInfo
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll
+                                               as PushedAll
 import           Hercules.Agent.Nix.RetrieveDerivationInfo
                                                 ( retrieveDerivationInfo )
 import qualified Hercules.API.Message          as Message
@@ -62,6 +66,7 @@ import           System.IO.Temp                 ( withSystemTempDirectory )
 import           Data.Conduit.Process           ( sourceProcessWithStreams )
 import           Data.IORef                     ( newIORef
                                                 , atomicModifyIORef
+                                                , readIORef
                                                 )
 
 runEvaluator :: FilePath
@@ -179,6 +184,8 @@ performEvaluation task' = do
 
         eventCounter <- liftIO $ newIORef 0
 
+        allAttrPaths <- liftIO $ newIORef mempty
+
         let
           emit :: EvaluateEvent.EvaluateEvent -> IO ()
           emit update = unlift $ do
@@ -217,8 +224,20 @@ performEvaluation task' = do
                                autoArguments
                                nixPath
                                captureAttrDrvAndEmit
-                TraversalQueue.waitUntilDone derivationQueue
-                TraversalQueue.close derivationQueue
+                -- process has finished
+                Async.Lifted.concurrently_
+                  pushDrvs
+                  (do
+                    TraversalQueue.waitUntilDone derivationQueue
+                    TraversalQueue.close derivationQueue
+                  )
+
+              pushDrvs = do
+                caches <- Agent.Cachix.activePushCaches
+                paths <- liftIO $ readIORef allAttrPaths
+                forM_ caches $ \cache -> do
+                  Agent.Cachix.push cache (toList paths)
+                  liftIO $ emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll { cache = cache }
 
               captureAttrDrvAndEmit msg = do
                 case msg of
@@ -230,6 +249,7 @@ performEvaluation task' = do
 
               emitDrvs =
                 TraversalQueue.work derivationQueue $ \recurse drvPath -> do
+                  liftIO $ atomicModifyIORef allAttrPaths ((,()) . S.insert drvPath)
                   drvInfo <- retrieveDerivationInfo drvPath
                   forM_ (M.keys $ DerivationInfo.inputDerivations drvInfo)
                         recurse -- asynchronously
