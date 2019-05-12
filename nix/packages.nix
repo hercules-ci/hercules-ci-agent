@@ -7,17 +7,14 @@
 
 let
   haskellPackages_ = haskellPackages;
-  inherit (pkgs) recurseIntoAttrs;
+  inherit (pkgs) recurseIntoAttrs lib;
   inherit (pkgs.lib) cleanSource makeBinPath optionalAttrs;
   inherit (haskell.lib) addBuildDepends overrideCabal buildFromSdist doJailbreak;
 
   inherit (pkgs.haskell.lib) overrideSrc;
 
   sources = import ./sources.nix;
-  gitignoreSource = sources.nix-gitignore;
-  inherit (pkgs.callPackage gitignoreSource {}) gitignoreFilterRecursiveSource;
-  gitignoreRecursiveSource = gitignoreFilterRecursiveSource (_: _: true);
-  src = gitignoreRecursiveSource "" ../.;
+  inherit (import sources.gitignore { inherit lib; }) gitignoreSource;
 
   internal = rec {
     inherit pkgs;
@@ -31,14 +28,14 @@ let
       #cachix = super.callCabal2nix "cachix" (sources.cachix + "/cachix") {};
 
       hercules-ci-api =
-        let basePkg = super.callCabal2nix "hercules-ci-api" (src + "/hercules-ci-api") {};
+        let basePkg = super.callCabal2nix "hercules-ci-api" ../hercules-ci-api {};
         in
           buildFromSdist basePkg;
 
       hercules-ci-agent =
         let basePkg = super.callCabal2nix
                    "hercules-ci-agent"
-                   (src + "/hercules-ci-agent")
+                   ../hercules-ci-agent
                    {
                      nix-store = nix;
                      nix-expr = nix;
