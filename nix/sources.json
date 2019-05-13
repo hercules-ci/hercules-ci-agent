@@ -1,16 +1,4 @@
 {
-    "nix-gitignore": {
-        "homepage": "",
-        "url": "https://github.com/siers/nix-gitignore/archive/6c584a80648ae82edc64d65b76271e2a4504eca0.tar.gz",
-        "owner": "siers",
-        "branch": "master",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "repo": "nix-gitignore",
-        "type": "tarball",
-        "sha256": "15vci73gzz8vi8va6dwffzx70g4vlk5z6zhhdg6kpcyvp747mcqi",
-        "description": "A nix expression that filters source based on a .gitignore file.",
-        "rev": "6c584a80648ae82edc64d65b76271e2a4504eca0"
-    },
     "nixos-19.03": {
         "url": "https://github.com/NixOS/nixpkgs-channels/archive/7b36963e7a7363f1b40ac0a829c4644923dda909.tar.gz",
         "owner": "NixOS",
@@ -21,6 +9,17 @@
         "sha256": "00ni9yca0pyy8xc949sck5ppgprzcl8bbhl15l09wp03pxr90va5",
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "rev": "7b36963e7a7363f1b40ac0a829c4644923dda909"
+    },
+    "gitignore": {
+        "url": "https://github.com/hercules-ci/gitignore/archive/4064e436313191f11969986e66b81cb6bb61bae6.tar.gz",
+        "owner": "hercules-ci",
+        "branch": "master",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "repo": "gitignore",
+        "type": "tarball",
+        "sha256": "0358wcmgmc5mx4xfr08fxra4k05zvl2qyaix4gdlm7iwcscz609a",
+        "description": "Nix source function for gitignore that just works",
+        "rev": "4064e436313191f11969986e66b81cb6bb61bae6"
     },
     "nixos-18.09": {
         "url": "https://github.com/NixOS/nixpkgs-channels/archive/2aa505b77c04bfd8bb702cbf261f1141a3fe55c2.tar.gz",
