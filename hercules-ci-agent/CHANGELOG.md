@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.2] - 2019-05-14
+
+- use [gitignore] instead of [nix-gitignore]
+- fix build on Darwin
+- limit internal concurrency to max eight OS threads for beefier machines
+- show version on `--help`
+- build against NixOS 19.03 as default
+- propagate agent information to agent view: Nix version, substituters,
+  platform and Nix features
+
 ## [0.1.1] - 2019-04-16
 
 ## Added
@@ -15,8 +25,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.1.0.0] - 2019-03-28
 
-- Initial release 
+- Initial release
 
-[Unreleased]: https://github.com/cachix/cachix/compare/stable...master
+[0.2]: https://github.com/cachix/cachix/compare/v0.1.1...v0.2
 [0.1.1]: https://github.com/cachix/cachix/compare/v0.1.0.0...v0.1.1
-
+[Unreleased]: https://github.com/cachix/cachix/compare/stable...master
+[nix-gitignore]: https://github.com/siers/nix-gitignore
+[gitignore]: https://github.com/hercules-ci/gitignore
