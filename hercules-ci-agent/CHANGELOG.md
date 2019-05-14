@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.2] - 2019-05-14
 
-- use [gitignore] instead of [nix-ignore]
+- use [gitignore] instead of [nix-gitignore]
 - fix build on Darwin
 - limit internal concurrency to max eight OS threads for beefier machines
 - show version on `--help`
