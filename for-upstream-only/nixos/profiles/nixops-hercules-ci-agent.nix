@@ -10,9 +10,10 @@
 
   users.extraUsers.hercules-ci-agent.extraGroups = [ "keys" ];
 
-  deployment.keys."agent-token.key" = {
+  deployment.keys."hercules-ci-agent-token" = {
     user = config.services.hercules-ci-agent.user;
     destDir = "/var/lib/keys/hercules-ci-agent";
+    path = "/var/lib/keys/hercules-ci-agent/agent-token.key";
   };
 
 }
