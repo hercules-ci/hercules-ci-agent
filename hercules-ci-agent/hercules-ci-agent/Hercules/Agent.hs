@@ -83,11 +83,15 @@ main = Init.setupLogging $ \logEnv -> do
         forM_ taskMaybe $ performTask
 
 performTask :: Task Task.Any -> App ()
-performTask task =
-  withNamedContext "task" (Task.id task)
-    $ withNamedContext "task-type" (Task.typ task)
-    $ safeLiftedHandle
-        (\e -> do
+performTask task = contextually $ do
+  happy <- handleExceptions performTaskPerType
+  when happy reportSuccess
+ where
+
+  contextually = withNamedContext "task" (Task.id task)
+     . withNamedContext "task-type" (Task.typ task)
+  
+  handleExceptions m = safeLiftedHandle (\e -> do
           logLocM ErrorS $ "Exception in task: " <> show (e :: SomeException)
           retry (cap 60 exponential)
             $ noContent
@@ -95,24 +99,27 @@ performTask task =
             $ tasksSetStatus tasksClient
                              (Task.id task)
                              (TaskStatus.Exceptional $ show e)
-        )
-    $ do
-        logLocM InfoS "Starting task"
+          pure False
+    ) (m >> pure True)
 
-        case Task.typ task of
-          "eval" -> do
-            let evalTask :: Task EvaluateTask.EvaluateTask
-                evalTask = Task.uncheckedCast task
-            Evaluate.performEvaluation evalTask
-          "build" -> do
-            let buildTask :: Task BuildTask.BuildTask
-                buildTask = Task.uncheckedCast task
-            Build.performBuild buildTask
-          _ -> panicWithLog "Unknown task type"
+  performTaskPerType = do
+    logLocM InfoS "Starting task"
 
-        logLocM InfoS "Completed task successfully"
+    case Task.typ task of
+      "eval" -> do
+        let evalTask :: Task EvaluateTask.EvaluateTask
+            evalTask = Task.uncheckedCast task
+        Evaluate.performEvaluation evalTask
+      "build" -> do
+        let buildTask :: Task BuildTask.BuildTask
+            buildTask = Task.uncheckedCast task
+        Build.performBuild buildTask
+      _ -> panicWithLog "Unknown task type"
 
-        noContent $ runHerculesClient $ tasksSetStatus
-          tasksClient
-          (Task.id task)
-          (TaskStatus.Successful ())
+  reportSuccess = do
+    logLocM InfoS "Completed task successfully"
+
+    retry (cap 60 exponential)
+      $ noContent
+      $ runHerculesClient
+      $ tasksSetStatus tasksClient (Task.id task) (TaskStatus.Successful ())
