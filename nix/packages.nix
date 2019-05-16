@@ -28,14 +28,14 @@ let
       #cachix = super.callCabal2nix "cachix" (sources.cachix + "/cachix") {};
 
       hercules-ci-api =
-        let basePkg = super.callCabal2nix "hercules-ci-api" ../hercules-ci-api {};
+        let basePkg = super.callCabal2nix "hercules-ci-api" (gitignoreSource ../hercules-ci-api) {};
         in
           buildFromSdist basePkg;
 
       hercules-ci-agent =
         let basePkg = super.callCabal2nix
                    "hercules-ci-agent"
-                   ../hercules-ci-agent
+                   (gitignoreSource ../hercules-ci-agent)
                    {
                      nix-store = nix;
                      nix-expr = nix;
