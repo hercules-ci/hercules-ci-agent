@@ -1,7 +1,13 @@
 # Agent for Hercules CI
 
-Hercules CI Agent executes tasks for your Hercules CI account.
+Hercules CI Agent executes tasks (evaluation, builds, etc)
+for your Hercules CI account.
 
-### Documentation
 
-Documentation is provided at [docs.hercules-ci.com](https://docs.hercules-ci.com)
+## [Documentation](https://docs.hercules-ci.com)
+
+
+## Hacking
+
+   $ nix-shell -p stack
+   $ stack --nix test --file-watch
