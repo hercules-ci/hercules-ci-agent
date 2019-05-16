@@ -9,5 +9,5 @@ for your Hercules CI account.
 
 ## Hacking
 
-   $ nix-shell -p stack
-   $ stack --nix test --file-watch
+    $ nix-shell -p stack
+    $ stack --nix test --file-watch
