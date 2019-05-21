@@ -57,6 +57,8 @@ library
 executable hercules-ci-agent
   main-is: Main.hs
   other-modules:
+      Data.Functor.Partitioner
+      Data.Map.Extras.Hercules
       Hercules.Agent
       Hercules.Agent.Batch
       Hercules.Agent.Build
@@ -94,6 +96,7 @@ executable hercules-ci-agent
     , binary-conduit
     , bytestring
     , cachix
+    , cachix-api
     , conduit
     , conduit-extra
     , containers
@@ -131,6 +134,7 @@ executable hercules-ci-agent
     , time
     , transformers-base
     , unix
+    , unliftio-core
     , uuid
   default-language: Haskell2010
 

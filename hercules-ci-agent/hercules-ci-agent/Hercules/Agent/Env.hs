@@ -6,6 +6,7 @@ import           Protolude
 
 import           Control.Monad.Catch
 import           Control.Monad.Base             ( MonadBase )
+import           Control.Monad.IO.Unlift
 import           Control.Monad.Trans.Control    ( MonadBaseControl )
 import           Hercules.Error
 import qualified Network.HTTP.Client
@@ -36,7 +37,7 @@ instance Cachix.HasEnv Env where
   getEnv = cachixEnv
 
 newtype App a = App { fromApp :: ReaderT Env IO a }
-  deriving (Functor, Applicative, Monad, MonadReader Env, MonadIO, MonadThrow, MonadBase IO, MonadBaseControl IO)
+  deriving (Functor, Applicative, Monad, MonadReader Env, MonadIO, MonadCatch, MonadMask, MonadThrow, MonadUnliftIO, MonadBase IO, MonadBaseControl IO)
 
 runApp :: Env -> App a -> IO a
 runApp env (App m) = runReaderT m env

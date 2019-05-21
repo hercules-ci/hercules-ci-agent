@@ -1,11 +1,10 @@
 module Hercules.Agent.Cachix.Env where
 
 import           Protolude
-import qualified Cachix.Client.Env             as Cachix.Env
+import qualified Cachix.Client.Push as Cachix
 
 data Env = Env
- { cachixEnv :: Cachix.Env.Env
- , pushCaches :: [Text]
+ { pushCaches :: Map Text Cachix.PushCache
  }
 
 class HasEnv env where
