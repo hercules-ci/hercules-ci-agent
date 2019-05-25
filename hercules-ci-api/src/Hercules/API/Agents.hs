@@ -70,6 +70,18 @@ data AgentsAPI auth f = AgentsAPI
       auth :>
       Post '[JSON] Text
 
+  , agentSessionForget :: f :-
+      Summary "Reschedule an agent's tasks immediately. Use with care." :>
+      Description "Use only when the agent has not finished the tasks it was\
+                 \ working on. No cancel signal is sent to the agent. If the\
+                 \ agent session was actually still active, it may interfere\
+                 \ with other agents to which the tasks are rescheduled." :>
+      "agentSessions" :>
+      Capture' '[Required, Strict] "agentSessionId" (Id AgentSession) :>
+      "forgetTasks" :>
+      auth :>
+      Post '[JSON] NoContent
+
   } deriving Generic
 
 {-# DEPRECATED agentSessionCreate "Use agentSessionCreateV2" #-}
