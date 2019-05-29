@@ -8,13 +8,4 @@ in {
 
   # overrides
   hercules-ci-agent = pkgs.haskell.lib.justStaticExecutables self.hercules-ci-agent-packages.hercules-ci-agent;
-
-  devTools = {
-    inherit (pkgs)
-      shellcheck
-      ;
-    inherit (import sources.niv {})
-      niv
-      ;
-  };
 }

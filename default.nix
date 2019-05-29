@@ -14,4 +14,12 @@ let
   pkgs = import nixpkgs { overlays = [ (import ./nix/overlay.nix) dev-and-test-overlay ] ; config = {}; };
 in pkgs.recurseIntoAttrs {
   inherit (pkgs) hercules-ci-agent hercules-ci-agent-packages;
+  devTools = {
+    inherit (pkgs)
+      shellcheck
+      ;
+    inherit (import sources.niv {})
+      niv
+      ;
+  };
 }

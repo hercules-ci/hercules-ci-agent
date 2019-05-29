@@ -5,6 +5,7 @@
 
 let
   pkgs = import nixpkgs { overlays = [ (import ./nix/overlay.nix) ] ; config = {}; };
+  agentpkgs = import ./default.nix {};
 in pkgs.mkShell {
-  buildInputs = [ pkgs.devTools.niv pkgs.devTools.shellcheck ];
+  buildInputs = [ agentpkgs.devTools.niv agentpkgs.devTools.shellcheck ];
 }
