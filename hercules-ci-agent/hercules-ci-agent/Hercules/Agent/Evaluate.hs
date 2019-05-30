@@ -28,6 +28,7 @@ import           Hercules.Agent.NixPath         ( renderNixPath
                                                 )
 import qualified Hercules.Agent.Evaluate.TraversalQueue
                                                as TraversalQueue
+import qualified Hercules.Agent.Nix            as Nix
 import qualified Hercules.Agent.WorkerProtocol.Event
                                                as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute
@@ -258,7 +259,9 @@ performEvaluation task' = do
               doIt
         flushSyncTimeout eventChan
 
-runEvalProcess :: KatipContext m
+runEvalProcess :: ( KatipContext m
+                  , MonadReader Env m
+                  )
                => FilePath
                -> FilePath
                -> Map Text Eval.Arg
@@ -268,10 +271,14 @@ runEvalProcess :: KatipContext m
                -> (EvaluateEvent.EvaluateEvent -> IO ())
                -> m ()
 runEvalProcess projectDir file autoArguments nixPath emit = do
+
+  extraOpts <- Nix.askExtraOptions
+
   let eval = Eval.Eval
         { Eval.cwd = projectDir
         , Eval.file = toS file
         , Eval.autoArguments = autoArguments
+        , Eval.extraNixOptions = extraOpts
         }
 
    -- FIXME: write stderr to service

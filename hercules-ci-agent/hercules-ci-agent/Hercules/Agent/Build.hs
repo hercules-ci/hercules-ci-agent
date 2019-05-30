@@ -12,6 +12,7 @@ import qualified Hercules.Agent.Client
 import           Hercules.Agent.Env
 import           Hercules.Agent.Exception       ( defaultRetry )
 import           Hercules.Agent.Log
+import qualified Hercules.Agent.Nix            as Nix
 import           Hercules.Agent.Nix.RetrieveDerivationInfo
                                                 ( retrieveDerivationInfo )
 import           Hercules.API                   ( noContent )
@@ -58,19 +59,19 @@ realise buildTask = do
   let stdinc = pass
       stdoutc = pass -- FIXME: use
       stderrc = Conduit.fold
-      procSpec = (System.Process.proc
+  procSpec <-
+    (\procSpec -> procSpec { close_fds = True -- Disable on Windows?
+                           , cwd = Just "/"
+    }) <$> Nix.nixProc
                    "nix-store"
                    [ "--realise"
                    , "--timeout"
                    , "36000" -- 10h TODO: make configurable via meta.timeout and decrease default to 3600s or so
                    , "--max-silent-time"
                    , "1800" -- 0.5h TODO: make configurable via (?) and decrease default to 600s
-                   , "--"
-                   , toS $ BuildTask.derivationPath buildTask
                    ]
-                 ) { close_fds = True -- Disable on Windows?
-                   , cwd = Just "/"
-                   }
+                   [ BuildTask.derivationPath buildTask
+                   ]
 
   logLocM DebugS $ "Invoking nix-store: " <> show procSpec
 
@@ -105,8 +106,7 @@ getOutputPathInfos buildTask = do
   flip M.traverseWithKey (DerivationInfo.outputs drvInfo) $ \outputName o -> do
     let outputPath = DerivationInfo.path o
 
-    sizeStr <- liftIO
-      $ readProcess "nix-store" ["--query", "--size", toS outputPath] ""
+    sizeStr <- Nix.readNixProcess "nix-store" ["--query", "--size"] [toS outputPath] ""
     size <- case reads (toS $ T.dropAround isSpace $ toS sizeStr) of
       [(x, "")] -> pure x
       _ ->
@@ -115,8 +115,7 @@ getOutputPathInfos buildTask = do
           $ "nix-store returned invalid size "
           <> show sizeStr
 
-    hashStr <- liftIO
-      $ readProcess "nix-store" ["--query", "--hash", toS outputPath] ""
+    hashStr <- Nix.readNixProcess "nix-store" ["--query", "--hash"] [toS outputPath] ""
     let h = T.dropAround isSpace (toS hashStr)
 
     pure OutputInfo.OutputInfo { OutputInfo.deriver = drvPath

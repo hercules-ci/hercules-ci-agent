@@ -52,7 +52,6 @@ mapLeft _ (Right r) = Right (r :: Aeson.Value)
 
 newEnv :: Config.Config -> K.LogEnv -> IO Env.Env
 newEnv config logEnv = do
-  -- readConfig <-
   jsons <-
     fmap fold $ forM (Config.cachixSecretsPath config) $ readJSONLines . toS
 
@@ -65,8 +64,8 @@ newEnv config logEnv = do
         toMaybe _ = Nothing
       signingKeyList :: [SigningKey.CachixSigningKey]
       pullTokenList :: [PullToken.CachixPullToken]
-      _pubkeys :: [PublicKey.CachixPublicKey]
-      (signingKeyList, pullTokenList, _pubkeys, errors) =
+      pubKeyList :: [PublicKey.CachixPublicKey]
+      (signingKeyList, pullTokenList, pubKeyList, errors) =
         partitionList partitioner jsons
 
   forM_ errors $ \(ln, e) -> runKatipT logEnv $ K.logLoc
@@ -89,5 +88,14 @@ newEnv config logEnv = do
                                        , pushCacheToken = Servant.Auth.Client.Token $ toSL t
                                        }
 
-  pure Env.Env { pushCaches = pcs }
 
+  pure Env.Env
+   { pushCaches = pcs
+   , publicKeys = pubKeyList
+   , netrcLines = toNetrcLines pullTokenList
+   }
+
+toNetrcLines :: [PullToken.CachixPullToken] -> [Text]
+toNetrcLines = map toNetrcLine where
+  toNetrcLine pt = "machine " <> PullToken.cacheName pt <> ".cachix.org"
+                 <> " password " <> PullToken.secretToken pt

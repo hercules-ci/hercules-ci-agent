@@ -15,6 +15,8 @@ import qualified Servant.Auth.Client
 import qualified Katip                         as K
 import qualified Hercules.Agent.Cachix.Env     as Cachix
                                                 ( Env, HasEnv(..) )
+import qualified Hercules.Agent.Nix.Env        as Nix
+                                                ( Env )
 
 data Env = Env
   { manager :: Network.HTTP.Client.Manager
@@ -26,6 +28,7 @@ data Env = Env
   --       reader monad like RIO when we hit that limitation.
   , currentToken :: Servant.Auth.Client.Token
   , cachixEnv :: Cachix.Env
+  , nixEnv :: Nix.Env
 
     -- katip
   , kNamespace :: K.Namespace

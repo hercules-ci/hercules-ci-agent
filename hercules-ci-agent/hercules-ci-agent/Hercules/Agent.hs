@@ -24,6 +24,7 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateTask
 import qualified Hercules.API.Agent.Build.BuildTask
                                                as BuildTask
 import           Hercules.Agent.CabalInfo       ( herculesAgentVersion )
+import qualified Hercules.Agent.Cachix         as Cachix
 import           Hercules.Agent.Client          ( tasksClient )
 import           Hercules.Agent.Token           ( withAgentToken )
 import qualified Hercules.Agent.Evaluate       as Evaluate
@@ -109,11 +110,13 @@ performTask task = contextually $ do
       "eval" -> do
         let evalTask :: Task EvaluateTask.EvaluateTask
             evalTask = Task.uncheckedCast task
-        Evaluate.performEvaluation evalTask
+        Cachix.withCaches $
+          Evaluate.performEvaluation evalTask
       "build" -> do
         let buildTask :: Task BuildTask.BuildTask
             buildTask = Task.uncheckedCast task
-        Build.performBuild buildTask
+        Cachix.withCaches $
+          Build.performBuild buildTask
       _ -> panicWithLog "Unknown task type"
 
   reportSuccess = do

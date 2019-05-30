@@ -75,9 +75,13 @@ executable hercules-ci-agent
       Hercules.Agent.Exception
       Hercules.Agent.Init
       Hercules.Agent.Log
+      Hercules.Agent.Nix
+      Hercules.Agent.Nix.Env
+      Hercules.Agent.Nix.Init
       Hercules.Agent.Nix.RetrieveDerivationInfo
       Hercules.Agent.NixPath
       Hercules.Agent.Options
+      Hercules.Agent.SecureDirectory
       Hercules.Agent.Scribe
       Hercules.Agent.Token
       WorkerProcess
@@ -132,6 +136,7 @@ executable hercules-ci-agent
     , text
     , transformers-base
     , unliftio-core
+    , unix
   default-language: Haskell2010
 
 executable hercules-ci-agent-worker
