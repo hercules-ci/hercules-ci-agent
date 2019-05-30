@@ -33,6 +33,7 @@ import qualified Hercules.API.Agent.LifeCycle
 import qualified Hercules.API.Agent.LifeCycle.StartInfo
                                                as StartInfo
 import           Hercules.Agent.CabalInfo       ( herculesAgentVersion )
+import qualified Hercules.Agent.Cachix         as Cachix
 import           Hercules.Agent.Client          ( tasksClient
                                                 , lifeCycleClient
                                                 )
@@ -157,11 +158,13 @@ performTask task = contextually $ do
       "eval" -> do
         let evalTask :: Task EvaluateTask.EvaluateTask
             evalTask = Task.uncheckedCast task
-        Evaluate.performEvaluation evalTask
+        Cachix.withCaches $
+          Evaluate.performEvaluation evalTask
       "build" -> do
         let buildTask :: Task BuildTask.BuildTask
             buildTask = Task.uncheckedCast task
-        Build.performBuild buildTask
+        Cachix.withCaches $
+          Build.performBuild buildTask
       _ -> panicWithLog "Unknown task type"
 
   reportSuccess = do
