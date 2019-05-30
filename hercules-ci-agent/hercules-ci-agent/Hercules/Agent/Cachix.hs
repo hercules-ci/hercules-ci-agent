@@ -48,8 +48,8 @@ push cache paths = withNamedContext "cache" cache $ do
       in  Cachix.Push.PushStrategy
             { onAlreadyPresent = pass
             , onAttempt = \_retry -> ctx $ logLocM DebugS "pushing"
-            , on401 = panic "Cachix push is unauthorized"
-            , onError = \err -> panic $ "Error pushing to cachix: " <> show err
+            , on401 = throwIO $ FatalError $ "Cachix push is unauthorized"
+            , onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err
             , onDone = ctx $ logLocM DebugS "push done"
             , withXzipCompressor = Cachix.Push.defaultWithXzipCompressor
             }
