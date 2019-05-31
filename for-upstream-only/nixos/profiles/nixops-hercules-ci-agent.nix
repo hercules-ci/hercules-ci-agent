@@ -5,6 +5,9 @@
 { config, lib, pkgs, ... }:
 let
   cfg = config.profile.hercules-ci-agent;
+  inherit (lib) mkIf;
+
+  cfgHasCachix = cfg.cachixSecretsFile != null;
 
 in
 {
@@ -19,15 +22,14 @@ in
       destDir = "/var/lib/keys/hercules-ci-agent";
     };
 
-    services.hercules-ci-agent.cachixSecretsPath = "/var/lib/keys/hercules-ci-agent/cachix.jsonl.key";
-    deployment.keys."cachix.jsonl.key" = {
+    profile.hercules-ci-agent.cachixDeployedSecretsPath = mkIf cfgHasCachix
+      "/var/lib/keys/hercules-ci-agent/cachix.jsonl.key";
+    deployment.keys."cachix.jsonl.key" = mkIf cfgHasCachix {
       user = config.services.hercules-ci-agent.user;
       destDir = "/var/lib/keys/hercules-ci-agent";
-      keyFile = if cfg.cachixSecretsFile == null
-                then pkgs.writeText "empty" ""
-                else cfg.cachixSecretsFile;
-
+      keyFile = cfg.cachixSecretsFile;
     };
+
   };
 
 }
