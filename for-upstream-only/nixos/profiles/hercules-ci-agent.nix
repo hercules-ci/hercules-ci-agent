@@ -66,6 +66,7 @@ in
   config = {
     services.hercules-ci-agent.enable = true;
     services.hercules-ci-agent.cachixSecretsPath = cfg.cachixDeployedSecretsPath;
+    systemd.services.hercules-ci-agent.after = ifCachix [ "cachix-install-netrc.service" ];
 
     nix.cachix.secretsFile = ifCachixAndOk cfg.cachixSecretsFile;
     nix.cachix.deployedSecretsPath = ifCachixAndOk cfg.cachixDeployedSecretsPath;
