@@ -104,8 +104,7 @@ in
     };
 
     systemd.services.cachix-install-netrc = {
-      wantedBy = [ "multi-user.target" ];
-      before = [ "nix-daemon.service" ];
+      requires = [ "cachix-secrets.path" ];
       serviceConfig.Type = "oneshot";
       script = ''
         ${pkgs.jq}/bin/jq -r <${escapeShellArg cfg.deployedSecretsPath} \
