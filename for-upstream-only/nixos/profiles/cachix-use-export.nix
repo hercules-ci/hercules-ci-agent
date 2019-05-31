@@ -36,9 +36,14 @@ in
       type = types.nullOr types.path;
       default = null;
       description = ''
-        The path to the deployed JSON Lines file on the machine(s) that this
-        configuration describes. This should be a plain string
+        The path to the deployed nix.cachix.secretsFile on the target
+        machine(s). This should be a plain string
         literal, to avoid accidentally copying secrets into the Nix store.
+
+        The file will be read by root and any pull credentials will be made
+        available exclusively to the Nix daemon. Non-root users of Nix tools
+        may need to provide the credentials themselves to function properly.
+        For this reason the caches are merely trusted and not enabled by default.
       '';
     };
     /*
@@ -62,22 +67,23 @@ in
   config = lib.mkIf ( # || because of the assertions
                      cfg.secretsFile != null || cfg.deployedSecretsPath != null
                     ) {
+
     assertions = [
       { assertion = cfg.deployedSecretsPath != null -> cfg.secretsFile != null;
         message = ''
           You need to specify nix.cachix.secretsFile in order to provide the
           non-sensitive parts of the cache configuration.
 
-          NB: If you've accidentally used a path expression here, make sure that
-          it wasn't added to your local Nix store.
+          WARNING: If you've used a path expression in cfg.deployedSecretsPath,
+          you may want to delete it from your Nix store!
         '';
       }
 
       # TODO: not required when file is not sensitive.
       { assertion = cfg.secretsFile != null -> cfg.deployedSecretsPath != null;
         message = ''
-          You need to deploy the secrets file to the machine outside the Nix
-          store and set nix.cachix.deployedSecretsPath to the location of the
+          You need to deploy the Cachix secrets file to the machine outside the
+          Nix store and set nix.cachix.deployedSecretsPath to the location of the
           deployed file.
         '';
       }
