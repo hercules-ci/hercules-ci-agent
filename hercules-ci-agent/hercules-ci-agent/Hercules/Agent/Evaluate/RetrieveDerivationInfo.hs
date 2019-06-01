@@ -13,6 +13,7 @@ import           Hercules.Error
 import qualified Filesystem.Path.CurrentOS     as Deprecated.FilePath
                                                 ( toText )
 import qualified Data.Map                      as M
+import qualified Data.Text                     as T
 import           Hercules.Agent.Log
 import           Control.Monad.Catch
 
@@ -69,9 +70,13 @@ retrieveDerivationInfo drvPath = do
         }
       )
 
+  let requiredSystemFeatures = maybe [] splitFeatures $ M.lookup "requiredSystemFeatures" (Drv.env drv)
+      splitFeatures = filter (not . T.null) . T.split (== ' ')
+
   pure $ DerivationInfo
     { derivationPath = drvPath
     , platform = Drv.platform drv
+    , requiredSystemFeatures = requiredSystemFeatures
     , inputDerivations = M.fromList inputDrvPaths
     , inputSources = sourcePaths
     , outputs = M.fromList outputInfo
