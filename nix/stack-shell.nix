@@ -1,5 +1,5 @@
 { ghc }:
-let pkgs = import ./. {};
+let pkgs = (import ../. {}).devTools.pkgs;
 in pkgs.haskell.lib.buildStackProject {
   inherit ghc;
   name = "hercules-ci-stack-shell";
@@ -10,4 +10,7 @@ in pkgs.haskell.lib.buildStackProject {
     pkgs.nix
     pkgs.boost
   ];
+  # Block any inherited shellHook when nesting shells without nix-shell --pure,
+  # because we must be quite for HIE to work.
+  shellHook = ":";
 }
