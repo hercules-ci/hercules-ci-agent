@@ -84,6 +84,7 @@ library
     , http-api-data
     , http-media
     , lens
+    , lens-aeson
     , memory
     , network-uri
     , profunctors
@@ -137,6 +138,7 @@ test-suite hercules-api-test
   main-is: Main.hs
   other-modules:
       Spec
+      Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfoSpec
   hs-source-dirs:
       test
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
