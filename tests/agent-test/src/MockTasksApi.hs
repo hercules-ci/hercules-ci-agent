@@ -84,7 +84,7 @@ enqueue (ServerHandle st) t = do
   t' <- fixup t
 
   case t' of
-    AgentTask.Evaluate evalTask -> do
+    AgentTask.Evaluate evalTask ->
       atomicModifyIORef_ (evalTasks st)
         $ M.insert (EvaluateTask.id evalTask) evalTask
     _ -> panic "non-evaluate task not supported"
@@ -165,12 +165,12 @@ context = jwtSettings :. cookieSettings :. EmptyContext
 jwtSettings :: JWTSettings
 jwtSettings =
   defaultJWTSettings
-    $ fromRight
+    $ fromRight'
     $ eitherDecode
         "{\"crv\":\"P-256\",\"d\":\"BWOmuvMiIPUWR-sPHIxaEKKr59OlVj-C7j24sgtCqA0\",\"x\":\"TTmrmU8p4PO3JGuW-8Fc2EvCBoR5NVoT2N5J3wJzBHg\",\"kty\":\"EC\",\"y\":\"6ATtNfAzjk_I4qf2hDrf2kAOw9IFZK8Y2ECJcs_fjqM\"}"
  where
-  fromRight (Right r) = r
-  fromRight (Left l) = panic $ "test suite static jwk decode error" <> show l
+  fromRight' (Right r) = r
+  fromRight' (Left l) = panic $ "test suite static jwk decode error" <> show l
 
 cookieSettings :: CookieSettings
 cookieSettings = defaultCookieSettings
@@ -243,14 +243,14 @@ sourceball fname = do
 handleTasksReady :: ServerState
                  -> AuthResult Session
                  -> Handler (Maybe (Task Task.Any))
-handleTasksReady st authResult = liftIO $ tryTakeMVar (queue st)
+handleTasksReady st _authResult = liftIO $ tryTakeMVar (queue st)
 
 handleTasksSetStatus :: ServerState
                      -> Id (Task Task.Any)
                      -> TaskStatus.TaskStatus
                      -> AuthResult Session
                      -> Handler NoContent
-handleTasksSetStatus st tid status authResult = do
+handleTasksSetStatus st tid status _authResult = do
   liftIO $ atomically $ modifyTVar (done st) (M.insert (idText tid) status) -- FIXME: check for double setStatus
   pure NoContent
 
@@ -265,7 +265,7 @@ handleTasksUpdate :: ServerState
                   -> [EvaluateEvent.EvaluateEvent]
                   -> AuthResult Session
                   -> Handler NoContent
-handleTasksUpdate st id body authResult = do
+handleTasksUpdate st id body _authResult = do
   liftIO $ atomicModifyIORef_ (evalEvents st) $ \m ->
     M.alter (\prev -> Just $ fromMaybe mempty prev <> body) id m
 
@@ -275,7 +275,7 @@ handleTasksGetEvaluation :: ServerState
                          -> Id (Task EvaluateTask.EvaluateTask)
                          -> AuthResult Session
                          -> Handler EvaluateTask.EvaluateTask
-handleTasksGetEvaluation st id authResult = do
+handleTasksGetEvaluation st id _authResult = do
   ts <- liftIO $ readIORef (evalTasks st)
   case M.lookup id ts of
     Nothing -> throwError err404
@@ -305,5 +305,4 @@ agentsEndpoints server = DummyApi.dummyAgentsEndpoints
 handleAgentCreate :: CreateAgentSession.CreateAgentSession
                   -> AuthResult Session
                   -> Handler Text
-handleAgentCreate ca r = do
-  pure "pretend-jwt"
+handleAgentCreate _ca _r = pure "pretend-jwt"
