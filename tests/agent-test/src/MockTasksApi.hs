@@ -52,8 +52,8 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent
                                                as EvaluateEvent
 import           Hercules.API.Agent.Tasks       ( TasksAPI(..) )
 import           Hercules.API.Agent.Evaluate    ( EvalAPI(..) )
-import           Hercules.API.Agent.Meta        ( MetaAPI(..) )
-import qualified Hercules.API.Agent.Meta       as Meta
+import           Hercules.API.Agent.LifeCycle   ( LifeCycleAPI(..) )
+import qualified Hercules.API.Agent.LifeCycle  as LifeCycle
 import           Control.Concurrent             ( newEmptyMVar )
 import           Control.Concurrent.STM
 import           System.Environment             ( getEnvironment )
@@ -152,7 +152,7 @@ withServer doIt = do
 
 type MockAPI = AddAPIVersion ( ToServantApi (TasksAPI Auth')
                              :<|> ToServantApi (EvalAPI Auth')
-                             :<|> ToServantApi (MetaAPI Auth')
+                             :<|> ToServantApi (LifeCycleAPI Auth')
                              )
           :<|> "tarball" :> Capture "tarball" Text :> StreamGet NoFraming OctetStream (SourceIO ByteString)
 
@@ -182,7 +182,7 @@ endpoints :: ServerState -> Server MockAPI
 endpoints server =
   (toServant (taskEndpoints server)
     :<|> toServant (evalEndpoints server)
-    :<|> toServant (metaEndpoints server)
+    :<|> toServant (lifeCycleEndpoints server)
     )
     :<|> (toSourceIO & liftA & liftA & ($ sourceball))
 
@@ -297,11 +297,12 @@ instance ToJWT Session
 
 type Auth' = Auth '[JWT] Session
 
-metaEndpoints :: ServerState -> MetaAPI Auth' AsServer
-metaEndpoints _server = DummyApi.dummyMetaEndpoints
-  { Meta.agentSessionCreate = handleAgentCreate
-  , Meta.agentSessionHeartbeat = \_ _ -> pure NoContent
-  , Meta.agentSessionHello = \_ _ -> pure NoContent
+lifeCycleEndpoints :: ServerState -> LifeCycleAPI Auth' AsServer
+lifeCycleEndpoints _server = DummyApi.dummyLifeCycleEndpoints
+  { LifeCycle.agentSessionCreate = handleAgentCreate
+  , LifeCycle.hello = \_ _ -> pure NoContent
+  , LifeCycle.heartbeat = \_ _ -> pure NoContent
+  , LifeCycle.goodbye = \_ _ -> pure NoContent
   }
 
 handleAgentCreate :: CreateAgentSession.CreateAgentSession

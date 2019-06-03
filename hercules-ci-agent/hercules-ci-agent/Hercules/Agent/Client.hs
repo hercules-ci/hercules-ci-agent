@@ -2,7 +2,7 @@ module Hercules.Agent.Client
   ( client
   , tasksClient
   , evalClient
-  , metaClient
+  , lifeCycleClient
   , buildClient
   , logsClient
   )
@@ -19,13 +19,13 @@ import           Hercules.API                   ( HerculesAPI
                                                 , servantApi
                                                 , eval
                                                 , agentBuild
-                                                , agentMeta
+                                                , agentLifeCycle
                                                 , tasks
                                                 , useApi
                                                 )
 import           Hercules.API.Agent.Build       ( BuildAPI )
 import           Hercules.API.Agent.Evaluate    ( EvalAPI )
-import           Hercules.API.Agent.Meta        ( MetaAPI )
+import           Hercules.API.Agent.LifeCycle   ( LifeCycleAPI )
 import           Hercules.API.Agent.Tasks       ( TasksAPI )
 import           Hercules.API.Logs              ( LogsAPI )
 import           Servant.API.Generic
@@ -42,8 +42,8 @@ evalClient = useApi eval $ Hercules.Agent.Client.client
 buildClient :: BuildAPI ClientAuth (AsClientT ClientM)
 buildClient = useApi agentBuild $ Hercules.Agent.Client.client
 
-metaClient :: MetaAPI ClientAuth (AsClientT ClientM)
-metaClient = useApi agentMeta $ Hercules.Agent.Client.client
+lifeCycleClient :: LifeCycleAPI ClientAuth (AsClientT ClientM)
+lifeCycleClient = useApi agentLifeCycle $ Hercules.Agent.Client.client
 
 logsClient :: LogsAPI () (AsClientT ClientM)
 logsClient = fromServant $ Servant.Client.client $ 

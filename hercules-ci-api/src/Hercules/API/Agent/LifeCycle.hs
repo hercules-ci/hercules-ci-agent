@@ -1,18 +1,20 @@
 {-# LANGUAGE DataKinds #-}
 {-# OPTIONS_GHC -fno-warn-deprecations #-}
-module Hercules.API.Agent.Meta where
+module Hercules.API.Agent.LifeCycle where
 
 import           Servant.API
 import           Servant.API.Generic
 import           Hercules.API.Prelude
-import           Hercules.API.Agents.CreateAgentSession_V2 as CreateAgentSession_V2
+import           Hercules.API.Agents.CreateAgentSession_V2
+                                               as CreateAgentSession_V2
                                                 ( CreateAgentSession )
-import           Hercules.API.Agent.Meta.StartInfo  ( StartInfo
-                                                    , Hello
-                                                    )
+import           Hercules.API.Agent.LifeCycle.StartInfo
+                                                ( StartInfo
+                                                , Hello
+                                                )
 
 -- | Agent session and "connection" endpoints
-data MetaAPI auth f = MetaAPI
+data LifeCycleAPI auth f = LifeCycleAPI
   { agentSessionCreate :: f :-
       Summary "Create a new agent session." :>
       Description "Authenticated using the cluster join token acquired through POST /accounts/:accountId/clusterJoinTokens" :>
@@ -23,7 +25,7 @@ data MetaAPI auth f = MetaAPI
       Post '[JSON] Text
       -- ^ This is also available in the client API as 'Hercules.API.Agents.agentSessionCreateV2'
 
-  , agentSessionHello :: f :-
+  , hello :: f :-
       Summary "Update an agent session wrt features, versions, capabilities etc." :>
       Description "Authenticated using the agent session token acquired through agentSessionCreate." :>
       "agent" :>
@@ -32,11 +34,20 @@ data MetaAPI auth f = MetaAPI
       auth :>
       Post '[JSON] NoContent
 
-  , agentSessionHeartbeat :: f :-
+  , heartbeat :: f :-
       Summary "Update an agent session to indicate liveness." :>
       Description "Authenticated using the agent session token acquired through agentSessionCreate." :>
       "agent" :>
       "heartbeat" :>
+      ReqBody '[JSON] StartInfo :>
+      auth :>
+      Post '[JSON] NoContent
+
+  , goodbye :: f :-
+      Summary "Report that an agent has stopped." :>
+      Description "Authenticated using the agent session token acquired through agentSessionCreate." :>
+      "agent" :>
+      "goodbye" :>
       ReqBody '[JSON] StartInfo :>
       auth :>
       Post '[JSON] NoContent

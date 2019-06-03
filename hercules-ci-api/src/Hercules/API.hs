@@ -46,8 +46,8 @@ import           Hercules.API.Agent.Build      as Agent
                                                 ( BuildAPI )
 import           Hercules.API.Agent.Evaluate   as Agent
                                                 ( EvalAPI )
-import           Hercules.API.Agent.Meta       as Agent
-                                                ( MetaAPI )
+import           Hercules.API.Agent.LifeCycle  as Agent
+                                                ( LifeCycleAPI )
 import           Hercules.API.Agent.Tasks      as Agent
                                                 ( TasksAPI )
 import           Hercules.API.Build            as Client
@@ -63,7 +63,7 @@ data HerculesAPI auth f = HerculesAPI
    , tasks :: f :- ToServantApi (TasksAPI auth)
    , eval :: f :- ToServantApi (Agent.EvalAPI auth)
    , agentBuild :: f :- ToServantApi (Agent.BuildAPI auth)
-   , agentMeta :: f :- ToServantApi (Agent.MetaAPI auth)
+   , agentLifeCycle :: f :- ToServantApi (Agent.LifeCycleAPI auth)
    , build :: f :- ToServantApi (Client.BuildAPI auth)
    , health :: f :- ToServantApi (HealthAPI auth)
    } deriving Generic

@@ -7,11 +7,13 @@ import           Protolude               hiding ( handle
                                                 , withMVar
                                                 , retry
                                                 , race
+                                                , bracket
                                                 )
 
 import           Control.Concurrent.Async.Lifted
                                                 ( replicateConcurrently_, race )
 import           Control.Concurrent.MVar.Lifted ( withMVar )
+import           Control.Exception.Lifted       ( bracket )
 import           Data.Time                      ( getCurrentTime )
 import qualified Data.UUID.V4                 as UUID
 import           Hercules.API                   ( noContent )
@@ -26,13 +28,13 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateTask
                                                as EvaluateTask
 import qualified Hercules.API.Agent.Build.BuildTask
                                                as BuildTask
-import qualified Hercules.API.Agent.Meta
-                                               as Meta
-import qualified Hercules.API.Agent.Meta.StartInfo
+import qualified Hercules.API.Agent.LifeCycle
+                                               as LifeCycle
+import qualified Hercules.API.Agent.LifeCycle.StartInfo
                                                as StartInfo
 import           Hercules.Agent.CabalInfo       ( herculesAgentVersion )
 import           Hercules.Agent.Client          ( tasksClient
-                                                , metaClient
+                                                , lifeCycleClient
                                                 )
 import           Hercules.Agent.Token           ( withAgentToken )
 import qualified Hercules.Agent.Evaluate       as Evaluate
@@ -67,8 +69,7 @@ main = Init.setupLogging $ \logEnv -> do
     $ katipAddContext (sl "agent-version" (A.String herculesAgentVersion))
     $ withAgentToken
     $ withHerculesScribe
-    $ withHello
-    $ withHeartbeat
+    $ withLifeCycle
     $ (logLocM InfoS "Agent online." >>)
     $ replicateConcurrently_ (fromIntegral $ Config.concurrentTasks cfg)
     $ forever
@@ -94,36 +95,40 @@ main = Init.setupLogging $ \logEnv -> do
 
         forM_ taskMaybe $ performTask
 
-withHello :: (StartInfo.StartInfo -> App a) -> App a
-withHello m = do
+withLifeCycle :: App a -> App a
+withLifeCycle app = do
   agentInfo <- extractAgentInfo
   now <- liftIO getCurrentTime
   freshId <- Id <$> liftIO UUID.nextRandom
 
-  let hello = StartInfo.Hello
-                  { agentInfo = agentInfo
-                  , startInfo = startInfo
-                  }
-      startInfo = StartInfo.StartInfo { id = freshId, startTime = now }
+  let
+    startInfo = StartInfo.StartInfo { id = freshId, startTime = now }
 
-  retry (cap 60 exponential)
-    $ noContent
-    $ runHerculesClient
-    $ Meta.agentSessionHello metaClient hello
-  m startInfo
+    hello = StartInfo.Hello
+                { agentInfo = agentInfo
+                , startInfo = startInfo
+                }
 
-withHeartbeat :: App a -> StartInfo.StartInfo -> App a
-withHeartbeat m launchInfo = either identity identity
-  <$> race m (
-    forever $ do
-      retry (cap 60 exponential)
-        $ noContent
-        $ runHerculesClient
-        $ Meta.agentSessionHeartbeat metaClient launchInfo
+    req r = retry (cap 60 exponential)
+          $ noContent
+          $ runHerculesClient
+          $ r
+
+    sayHello = req $ LifeCycle.hello lifeCycleClient hello
+
+    pinger = forever $ do
+      req $ LifeCycle.heartbeat lifeCycleClient startInfo
 
       let oneSecond = 1000 * 1000
       liftIO $ threadDelay (oneSecond * 60)
-    )
+
+    sayGoodbye = req $ LifeCycle.goodbye lifeCycleClient startInfo
+
+    withPinger = fmap (either identity identity)
+                  . race pinger
+
+  bracket sayHello (\() -> sayGoodbye) (\() -> withPinger app)
+
 
 performTask :: Task Task.Any -> App ()
 performTask task = contextually $ do

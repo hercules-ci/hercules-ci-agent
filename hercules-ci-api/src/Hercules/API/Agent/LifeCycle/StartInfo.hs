@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
-module Hercules.API.Agent.Meta.StartInfo where
+module Hercules.API.Agent.LifeCycle.StartInfo where
 
 import Hercules.API.Prelude
 
