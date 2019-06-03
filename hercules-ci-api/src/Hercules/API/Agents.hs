@@ -69,6 +69,7 @@ data AgentsAPI auth f = AgentsAPI
       ReqBody '[JSON] CreateAgentSession_V2.CreateAgentSession :>
       auth :>
       Post '[JSON] Text
+      -- ^ This replicates an endpoint from the agent's 'Hercules.API.Agent.Meta.MetaAPI'
 
   } deriving Generic
 

@@ -4,9 +4,9 @@ import           Protolude
 import qualified Data.Text                     as T
 import           Servant.Auth.Client            ( Token(Token) )
 
-import qualified Hercules.API.Agents
+import qualified Hercules.API.Agent.Meta
 import qualified Hercules.API.Agents.CreateAgentSession_V2 as CreateAgentSession
-import           Hercules.Agent.Client          ( agentsClient )
+import           Hercules.Agent.Client          ( metaClient )
 import           Hercules.Agent.Env            as Env
 import qualified Hercules.Agent.EnvironmentInfo  as EnvironmentInfo
 import qualified System.Directory
@@ -76,7 +76,7 @@ createAgentSession = do
                 agentInfo = agentInfo
               }
   token <- asks Env.currentToken
-  runHerculesClient' $ Hercules.API.Agents.agentSessionCreateV2 agentsClient
+  runHerculesClient' $ Hercules.API.Agent.Meta.agentSessionCreate metaClient
                                                               createAgentBody
                                                               token
 

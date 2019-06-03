@@ -38,8 +38,6 @@ import qualified Data.List                     as L
 import qualified Data.Map                      as M
 import           Hercules.API
 import           Hercules.API.Id
-import           Hercules.API.Agents            ( AgentsAPI )
-import qualified Hercules.API.Agents           as API.Agents
 import qualified Hercules.API.Agents.CreateAgentSession_V2
                                                as CreateAgentSession
 import           Hercules.API.Agents.AgentSession
@@ -54,6 +52,8 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent
                                                as EvaluateEvent
 import           Hercules.API.Agent.Tasks       ( TasksAPI(..) )
 import           Hercules.API.Agent.Evaluate    ( EvalAPI(..) )
+import           Hercules.API.Agent.Meta        ( MetaAPI(..) )
+import qualified Hercules.API.Agent.Meta       as Meta
 import           Control.Concurrent             ( newEmptyMVar )
 import           Control.Concurrent.STM
 import           System.Environment             ( getEnvironment )
@@ -152,7 +152,7 @@ withServer doIt = do
 
 type MockAPI = AddAPIVersion ( ToServantApi (TasksAPI Auth')
                              :<|> ToServantApi (EvalAPI Auth')
-                             :<|> ToServantApi (AgentsAPI Auth')
+                             :<|> ToServantApi (MetaAPI Auth')
                              )
           :<|> "tarball" :> Capture "tarball" Text :> StreamGet NoFraming OctetStream (SourceIO ByteString)
 
@@ -182,7 +182,7 @@ endpoints :: ServerState -> Server MockAPI
 endpoints server =
   (toServant (taskEndpoints server)
     :<|> toServant (evalEndpoints server)
-    :<|> toServant (agentsEndpoints server)
+    :<|> toServant (metaEndpoints server)
     )
     :<|> (toSourceIO & liftA & liftA & ($ sourceball))
 
@@ -297,9 +297,11 @@ instance ToJWT Session
 
 type Auth' = Auth '[JWT] Session
 
-agentsEndpoints :: ServerState -> AgentsAPI Auth' AsServer
-agentsEndpoints server = DummyApi.dummyAgentsEndpoints
-  { API.Agents.agentSessionCreateV2 = handleAgentCreate
+metaEndpoints :: ServerState -> MetaAPI Auth' AsServer
+metaEndpoints _server = DummyApi.dummyMetaEndpoints
+  { Meta.agentSessionCreate = handleAgentCreate
+  , Meta.agentSessionHeartbeat = \_ _ -> pure NoContent
+  , Meta.agentSessionHello = \_ _ -> pure NoContent
   }
 
 handleAgentCreate :: CreateAgentSession.CreateAgentSession

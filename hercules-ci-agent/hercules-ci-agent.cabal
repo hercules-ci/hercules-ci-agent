@@ -124,7 +124,9 @@ executable hercules-ci-agent
     , system-filepath
     , temporary
     , text
+    , time
     , transformers-base
+    , uuid
   default-language: Haskell2010
 
 executable hercules-ci-agent-worker
