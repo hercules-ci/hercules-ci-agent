@@ -36,6 +36,9 @@ in
     };
     clusterJoinTokenPath = mkOption {
       description = ''
+        Important: Avoid putting secrets in the Nix store. Use a string file
+        location here and deploy the actual file to that location separately.
+
         Location of a the cluster join token. It authorizes the agent to add
         itself to the cluster that the token represents.
 
@@ -43,6 +46,18 @@ in
         will be ignored after the agent has used the token successfully.
       '';
       type = types.path;
+    };
+    cachixSecretsPath = mkOption {
+      description = ''
+        Important: Avoid putting secrets in the Nix store. Use a string file
+        location here and deploy the actual file to that location separately.
+
+        JSON Lines file with secrets that authorize the agent to use the caches.
+
+        Generate this file with the cachix export command.
+      '';
+      type = types.nullOr types.path;
+      default = null;
     };
     concurrentTasks = mkOption {
       description = "Number of tasks to perform simultaneously, such as evaluations, derivations";
@@ -69,7 +84,7 @@ in
       after = [ "network.target" ];
       serviceConfig = {
         User = cfg.user;
-        ExecStart = "${cfg.package}/bin/hercules-ci-agent ${if (cfg.apiBaseUrl == null) then "" else "--api-base-url ${escapeShellArg cfg.apiBaseUrl}"} --cluster-join-token-path ${escapeShellArg cfg.clusterJoinTokenPath} --concurrent-tasks ${toString cfg.concurrentTasks}";
+        ExecStart = "${cfg.package}/bin/hercules-ci-agent ${if (cfg.apiBaseUrl == null) then "" else "--api-base-url ${escapeShellArg cfg.apiBaseUrl}"} --cluster-join-token-path ${escapeShellArg cfg.clusterJoinTokenPath} --concurrent-tasks ${toString cfg.concurrentTasks} ${if (cfg.cachixSecretsPath == null) then "" else "--cachix-secrets-path ${escapeShellArg cfg.cachixSecretsPath}"}";
         Restart = "on-failure";
         RestartSec = 120;
         StartLimitBurst = 30 * 1000000; # practically infitine

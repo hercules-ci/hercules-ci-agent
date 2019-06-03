@@ -10,23 +10,31 @@ import qualified Servant.Client
 import qualified Servant.Auth.Client
 import qualified Katip                         as K
 import qualified Hercules.Agent.Token          as Token
+import qualified Hercules.Agent.Cachix.Init
+import qualified Hercules.Agent.Nix.Init
+import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 
 newEnv :: Config.Config -> K.LogEnv -> IO Env
 newEnv config logEnv = do
+  SecureDirectory.init
   let endpoint = Config.herculesApiBaseURL config
   manager <- Network.HTTP.Client.TLS.newTlsManager
   baseUrl <- Servant.Client.parseBaseUrl (toS endpoint)
   let clientEnv :: Servant.Client.ClientEnv
       clientEnv = Servant.Client.mkClientEnv manager baseUrl
   token <- Token.readTokenFile $ toS $ Config.clusterJoinTokenPath config
+  cachix <- Hercules.Agent.Cachix.Init.newEnv config logEnv
+  nix <- Hercules.Agent.Nix.Init.newEnv
   pure Env
     { manager = manager
     , herculesBaseUrl = baseUrl
     , herculesClientEnv = clientEnv
     , currentToken = Servant.Auth.Client.Token $ encodeUtf8 token
+    , cachixEnv = cachix
     , kNamespace = emptyNamespace
     , kContext = mempty
     , kLogEnv = logEnv
+    , nixEnv = nix
     }
 
 setupLogging :: (K.LogEnv -> IO ()) -> IO ()

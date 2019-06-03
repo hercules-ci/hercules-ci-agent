@@ -86,6 +86,8 @@ autoArgArgs kvs = do
 runEval :: Eval -> ConduitM i Event (ResourceT IO) ()
 runEval eval = do
 
+  forM_ (Eval.extraNixOptions eval) $ liftIO . uncurry setGlobalOption
+
   hPutStrLn stderr ("Initializing store and evaluator..." :: Text)
 
   withStore $ \store -> do

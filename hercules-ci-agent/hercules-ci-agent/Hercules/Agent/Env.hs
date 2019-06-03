@@ -6,12 +6,17 @@ import           Protolude
 
 import           Control.Monad.Catch
 import           Control.Monad.Base             ( MonadBase )
+import           Control.Monad.IO.Unlift
 import           Control.Monad.Trans.Control    ( MonadBaseControl )
 import           Hercules.Error
 import qualified Network.HTTP.Client
 import qualified Servant.Client
 import qualified Servant.Auth.Client
 import qualified Katip                         as K
+import qualified Hercules.Agent.Cachix.Env     as Cachix
+                                                ( Env, HasEnv(..) )
+import qualified Hercules.Agent.Nix.Env        as Nix
+                                                ( Env )
 
 data Env = Env
   { manager :: Network.HTTP.Client.Manager
@@ -22,6 +27,8 @@ data Env = Env
   --       problematic at some point. Perhaps we should switch to a polymorphic
   --       reader monad like RIO when we hit that limitation.
   , currentToken :: Servant.Auth.Client.Token
+  , cachixEnv :: Cachix.Env
+  , nixEnv :: Nix.Env
 
     -- katip
   , kNamespace :: K.Namespace
@@ -29,8 +36,11 @@ data Env = Env
   , kLogEnv :: K.LogEnv
   }
 
+instance Cachix.HasEnv Env where
+  getEnv = cachixEnv
+
 newtype App a = App { fromApp :: ReaderT Env IO a }
-  deriving (Functor, Applicative, Monad, MonadReader Env, MonadIO, MonadThrow, MonadBase IO, MonadBaseControl IO)
+  deriving (Functor, Applicative, Monad, MonadReader Env, MonadIO, MonadCatch, MonadMask, MonadThrow, MonadUnliftIO, MonadBase IO, MonadBaseControl IO)
 
 runApp :: Env -> App a -> IO a
 runApp env (App m) = runReaderT m env

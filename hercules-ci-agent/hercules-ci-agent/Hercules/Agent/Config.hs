@@ -9,6 +9,7 @@ data Config = Config
   { herculesApiBaseURL :: Text
   , clusterJoinTokenPath :: Text
   , concurrentTasks :: Integer
+  , cachixSecretsPath :: Maybe Text
   } deriving (Generic, Dhall.Inject, Dhall.Interpret)
 
 newDefaultConfig :: IO Config
@@ -18,6 +19,7 @@ newDefaultConfig = do
     { herculesApiBaseURL = baseUrl
     , clusterJoinTokenPath = panic "Config.clusterJoinTokenPath wasn't set."
     , concurrentTasks = 4
+    , cachixSecretsPath = Nothing
     }
 
 determineDefaultApiBaseUrl :: IO Text

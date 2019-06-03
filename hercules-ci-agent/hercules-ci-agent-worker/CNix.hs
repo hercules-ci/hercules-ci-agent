@@ -66,6 +66,14 @@ init =
       nix::initGC();
     } |]
 
+setGlobalOption :: Text -> Text -> IO Bool
+setGlobalOption opt value = do
+  let optionStr = encodeUtf8 opt
+      valueStr = encodeUtf8 value
+  (== 0) <$> [C.throwBlock| int {
+    globalConfig.set($bs-cstr:optionStr, $bs-cstr:valueStr);
+  }|]
+
 mkBindings :: Ptr Bindings' -> IO Bindings
 mkBindings p = pure $ Bindings p
 
