@@ -3,14 +3,14 @@
 module DummyApi
   ( dummyEvalEndpoints
   , dummyTasksEndpoints
-  , dummyAgentsEndpoints
+  , dummyLifeCycleEndpoints
   )
 where
 
 import           Servant.Server.Generic
 import           Hercules.API.Agent.Evaluate
 import           Hercules.API.Agent.Tasks
-import           Hercules.API.Agents
+import           Hercules.API.Agent.LifeCycle
 
 -- Provide uninitialised API records without warnings
 
@@ -20,5 +20,5 @@ dummyEvalEndpoints = EvalAPI{}
 dummyTasksEndpoints :: TasksAPI auth AsServer
 dummyTasksEndpoints = TasksAPI{}
 
-dummyAgentsEndpoints :: AgentsAPI auth AsServer
-dummyAgentsEndpoints = AgentsAPI{}
+dummyLifeCycleEndpoints :: LifeCycleAPI auth AsServer
+dummyLifeCycleEndpoints = LifeCycleAPI{}

@@ -56,20 +56,22 @@ data AgentsAPI auth f = AgentsAPI
 
   , agentSessionCreate :: f :-
       Summary "DEPRECATED" :>
-      Description "Authenticated using the agent token acquired through POST /accounts/:accountId/clusterJoinTokens" :>
+      Description "Session creation by client is unsupported at this time. This endpoint may be removed." :>
       "agentSessions" :>
       ReqBody '[JSON] CreateAgentSession.CreateAgentSession :>
       auth :>
       Post '[JSON] Text
 
   , agentSessionCreateV2 :: f :-
-      Summary "Create a new agent session." :>
-      Description "Authenticated using the agent token acquired through POST /accounts/:accountId/clusterJoinTokens" :>
+      Summary "DEPRECATED" :>
+      Description "Session creation by client is unsupported at this time. This endpoint may be removed." :>
       "agentSessions2" :>
       ReqBody '[JSON] CreateAgentSession_V2.CreateAgentSession :>
       auth :>
       Post '[JSON] Text
+      -- ^ This replicates an endpoint from the agent's 'Hercules.API.Agent.LifeCycle.LifeCycleAPI'
 
   } deriving Generic
 
-{-# DEPRECATED agentSessionCreate "Use agentSessionCreateV2" #-}
+{-# DEPRECATED agentSessionCreate "Session creation by client is unsupported at this time. This endpoint may be removed." #-}
+{-# DEPRECATED agentSessionCreateV2 "Session creation by client is unsupported at this time. This endpoint may be removed." #-}

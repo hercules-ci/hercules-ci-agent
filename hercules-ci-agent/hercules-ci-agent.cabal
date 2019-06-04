@@ -124,7 +124,10 @@ executable hercules-ci-agent
     , system-filepath
     , temporary
     , text
+    , time
     , transformers-base
+    , unix
+    , uuid
   default-language: Haskell2010
 
 executable hercules-ci-agent-worker
@@ -193,11 +196,12 @@ test-suite hercules-test
   type: exitcode-stdio-1.0
   main-is: TestMain.hs
   other-modules:
-      Spec
+      Hercules.Agent.Log
       Hercules.Agent.NixPath
       Hercules.Agent.NixPathSpec
       Hercules.Agent.Nix.RetrieveDerivationInfo
       Hercules.Agent.Nix.RetrieveDerivationInfoSpec
+      Spec
   hs-source-dirs:
       test
       hercules-ci-agent
