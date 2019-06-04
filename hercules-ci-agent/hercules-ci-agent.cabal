@@ -126,6 +126,7 @@ executable hercules-ci-agent
     , text
     , time
     , transformers-base
+    , unix
     , uuid
   default-language: Haskell2010
 
