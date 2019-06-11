@@ -99,7 +99,7 @@ in
       {
         assertion = cfg.cacheKeysFile != null -> cfg.cacheKeysDeployedPath != null;
         message = ''
-          You need to deploy the Cachix secrets file to the machine outside the
+          You need to deploy the CacheKeys file to the machine outside the
           Nix store and set profile.hercules-ci-agent.cacheKeysDeployedPath to
           the location of the deployed file.
         '';
