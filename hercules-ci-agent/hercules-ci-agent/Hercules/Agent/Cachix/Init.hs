@@ -32,7 +32,7 @@ newEnv :: Config.Config -> K.LogEnv -> IO Env.Env
 newEnv config _logEnv = do
   cks <-
     fmap (fromMaybe (CacheKeys.CacheKeys mempty))
-    $ forM (Config.cachixSecretsPath config)
+    $ forM (Config.cacheKeysPath config)
     $ readJSON . toS
 
   pcs <- toPushCaches cks

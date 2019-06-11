@@ -7,7 +7,7 @@ let
   cfg = config.profile.hercules-ci-agent;
   inherit (lib) mkIf;
 
-  cfgHasCachix = cfg.cachixSecretsFile != null;
+  hasCacheKeys = cfg.cacheKeysFile != null;
 
 in
 {
@@ -22,12 +22,12 @@ in
       destDir = "/var/lib/keys/hercules-ci-agent";
     };
 
-    profile.hercules-ci-agent.cachixDeployedSecretsPath = mkIf cfgHasCachix
-      "/var/lib/keys/hercules-ci-agent/cachix.json.key";
-    deployment.keys."cachix.json.key" = mkIf cfgHasCachix {
+    profile.hercules-ci-agent.cacheKeysDeployedPath = mkIf hasCacheKeys
+      "/var/lib/keys/hercules-ci-agent/caches.json.key";
+    deployment.keys."caches.json.key" = mkIf hasCacheKeys {
       user = config.services.hercules-ci-agent.user;
       destDir = "/var/lib/keys/hercules-ci-agent";
-      keyFile = cfg.cachixSecretsFile;
+      keyFile = cfg.cacheKeysFile;
     };
 
   };

@@ -32,9 +32,9 @@ parseOverrides = mconcat <$> many
         (long "cluster-join-token-path" <> metavar "FILE" <> help
           "Token file that authorizes the agent to join a cluster"
         )
-  <|> update (\x c -> c { Config.cachixSecretsPath = Just x })
+  <|> update (\x c -> c { Config.cacheKeysPath = Just x })
   <$> strOption
-        (long "cachix-secrets-path" <> metavar "FILE" <> help
+        (long "cache-keys-path" <> metavar "FILE" <> help
           "CacheKeys JSON file with secrets to access this agent's caches"
           -- TODO (doc) CacheKeys JSON reference link
         )

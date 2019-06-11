@@ -47,7 +47,7 @@ in
       '';
       type = types.path;
     };
-    cachixSecretsPath = mkOption {
+    cacheKeysPath = mkOption {
       description = ''
         Important: Avoid putting secrets in the Nix store. Use a string file
         location here and deploy the actual file to that location separately.
@@ -82,7 +82,7 @@ in
       after = [ "network.target" ];
       serviceConfig = {
         User = cfg.user;
-        ExecStart = "${cfg.package}/bin/hercules-ci-agent ${if (cfg.apiBaseUrl == null) then "" else "--api-base-url ${escapeShellArg cfg.apiBaseUrl}"} --cluster-join-token-path ${escapeShellArg cfg.clusterJoinTokenPath} --concurrent-tasks ${toString cfg.concurrentTasks} ${if (cfg.cachixSecretsPath == null) then "" else "--cachix-secrets-path ${escapeShellArg cfg.cachixSecretsPath}"}";
+        ExecStart = "${cfg.package}/bin/hercules-ci-agent ${if (cfg.apiBaseUrl == null) then "" else "--api-base-url ${escapeShellArg cfg.apiBaseUrl}"} --cluster-join-token-path ${escapeShellArg cfg.clusterJoinTokenPath} --concurrent-tasks ${toString cfg.concurrentTasks} ${if (cfg.cacheKeysPath == null) then "" else "--cache-keys-path ${escapeShellArg cfg.cacheKeysPath}"}";
         Restart = "on-failure";
         RestartSec = 120;
         StartLimitBurst = 30 * 1000000; # practically infitine

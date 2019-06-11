@@ -7,11 +7,12 @@ let
   cfg = config.profile.hercules-ci-agent;
   inherit (lib) types isAttrs mkIf mkDefault escapeShellArg;
 
-  ifCachix = mkIf (cfg.cachixSecretsFile != null || cfg.cachixDeployedSecretsPath != null);
+  ifHasCacheKeys = mkIf (cfg.cacheKeysFile != null || cfg.cacheKeysDeployedPath != null);
 
-  # Don't set it or the cachix module will emit confusing errors. This module
+  # Don't set it or the cache-keys-json module will emit confusing errors. This module
   # should fully wrap this aspect of deployment to avoid mistakes.
-  ifCachixAndOk = mkIf (cfg.cachixSecretsFile != null && cfg.cachixDeployedSecretsPath != null);
+  # Reusing that module's config is a bad idea because the intent is different.
+  ifHasCacheKeysAndOk = mkIf (cfg.cacheKeysFile != null && cfg.cacheKeysDeployedPath != null);
 
 in
 {
@@ -26,11 +27,13 @@ in
     };
 
     # This option is replicated here in order to improve error messages.
-    profile.hercules-ci-agent.cachixDeployedSecretsPath = lib.mkOption {
+    profile.hercules-ci-agent.cacheKeysDeployedPath = lib.mkOption {
       type = types.nullOr types.str;
       default = null;
       # TODO (doc) CacheKeys format reference link
       description = ''
+        Separately deployed file that configures the agent to use specified caches.
+
         If not null, this option must point to a CacheKeys JSON file on the
         deployed machine by means of a literal string, in order to avoid putting
         secrets in the Nix store.
@@ -38,65 +41,66 @@ in
         The file must be readable by the hercules-ci-agent user. Part of the
         file will be made available to the Nix daemon exclusively.
 
-        Sets both nix.cachix.deployedSecretsPath and
-        services.hercules-ci-agent.cachixSecretsPath.
+        Sets both profile.cacheKeys.deployedPath and
+        services.hercules-ci-agent.cacheKeysPath.
       '';
     };
 
-    profile.hercules-ci-agent.cachixSecretsFile = lib.mkOption {
+    profile.hercules-ci-agent.cacheKeysFile = lib.mkOption {
       type = types.nullOr types.path;
       default = null;
       # TODO (doc) CacheKeys format reference link
       description = ''
-        A CacheKeys JSON file produced by the cachix export command. It
+        File that configures the agent to use specified caches.
+
+        A CacheKeys JSON file. It
         will be read during evaluation; this should be a local file reference.
 
         If you're using the NixOps profile, this option is sufficient to
         configure the Cachix integration.
 
-        If you're using only the generic profile, this file will be used to
-        configure Cachix read access. You will need to take care of the deployment
-        of this file, so that it is available at the path configured in
-        services.hercules-ci-agent.cachixSecretsPath.
+        If you're using only the generic profile, you will need to take care of
+        the deployment of this file, so that it is available at the path configured in
+        profile.hercules-ci-agent.cacheKeysDeployedPath.
       '';
     };
 
   };
 
-  imports = [ ./cachix-via-json.nix ];
+  imports = [ ./cache-keys-json.nix ];
 
   config = {
     services.hercules-ci-agent.enable = true;
-    services.hercules-ci-agent.cachixSecretsPath = cfg.cachixDeployedSecretsPath;
-    systemd.services.hercules-ci-agent.after = ifCachix [ "cachix-install-netrc.service" ];
+    services.hercules-ci-agent.cacheKeysPath = cfg.cacheKeysDeployedPath;
+    systemd.services.hercules-ci-agent.after = ifHasCacheKeys [ "cache-keys-install.service" ];
 
-    nix.cachix.secretsFile = ifCachixAndOk cfg.cachixSecretsFile;
-    nix.cachix.deployedSecretsPath = ifCachixAndOk cfg.cachixDeployedSecretsPath;
+    profile.cacheKeys.file = ifHasCacheKeysAndOk cfg.cacheKeysFile;
+    profile.cacheKeys.deployedPath = ifHasCacheKeysAndOk cfg.cacheKeysDeployedPath;
 
     nix.gc.automatic = true;
     nix.gc.options = ''--max-freed "$((${toString config.profile.hercules-ci-agent.freespaceGB} * 1024**3 - 1024 * $(df -P -k /nix/store | tail -n 1 | ${pkgs.gawk}/bin/awk '{ print $4 }')))"'';
 
-    # These are essentially duplications of the cachix module, but doing so is
+    # These are essentially duplications of the cache-keys-json module, but doing so is
     # required in order to provide the right error messages.
-    assertions = ifCachix [
+    assertions = ifHasCacheKeys [
       {
-        assertion = cfg.cachixDeployedSecretsPath != null -> cfg.cachixSecretsFile != null;
+        assertion = cfg.cacheKeysDeployedPath != null -> cfg.cacheKeysFile != null;
         message = ''
-          You need to specify profile.hercules-ci-agent.cachixSecretsFile in
+          You need to specify profile.hercules-ci-agent.cacheKeysFile in
           order to provide the non-sensitive parts of the cache configuration.
 
           WARNING: If you've used a path expression in
-          profile.hercules-ci-agent.cachixDeployedSecretsPath, you may want to
+          profile.hercules-ci-agent.cacheKeysDeployedPath, you may want to
           delete it from your Nix store!
         '';
       }
 
       # TODO: not required when file is not sensitive.
       {
-        assertion = cfg.cachixSecretsFile != null -> cfg.cachixDeployedSecretsPath != null;
+        assertion = cfg.cacheKeysFile != null -> cfg.cacheKeysDeployedPath != null;
         message = ''
           You need to deploy the Cachix secrets file to the machine outside the
-          Nix store and set profile.hercules-ci-agent.cachixDeployedSecretsPath to
+          Nix store and set profile.hercules-ci-agent.cacheKeysDeployedPath to
           the location of the deployed file.
         '';
       }

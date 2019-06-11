@@ -1,10 +1,13 @@
+# TODO (doc) CacheKeys format reference link
 /*
-  A module that configures cachix caches for reading, similar in functionality
-  to the `cachix use` command.
+  A module that configures an agent machine to use caches for reading and/or
+  writing, based on a secret JSON file in the CacheKeys format.
+
+  Like the format, it is currently limited to cachix.org caches.
  */
 { pkgs, lib, config, ...}:
 let
-  cfg = config.nix.cachix;
+  cfg = config.profile.cacheKeys;
   inherit (lib.lists) filter concatMap concatLists;
   inherit (lib) types isAttrs mkIf escapeShellArg attrValues mapAttrsToList;
   inherit (builtins) readFile fromJSON map split;
@@ -14,28 +17,28 @@ let
     then { kind = "CacheKeys"; caches = {}; }
     else fromJSON (readFile fileOrNull);
 
-  json = readCacheKeys cfg.secretsFile;
+  json = readCacheKeys cfg.file;
   inherit (json) caches;
 
   pubkeys = concatMap (cache: cache.publicKeys) (attrValues json.caches);
 
 in
 {
-  options.nix.cachix = {
-    secretsFile = lib.mkOption {
+  options.profile.cacheKeys = {
+    file = lib.mkOption {
       type = types.nullOr types.path;
       default = null;
       description = ''
-        A CacheKeys JSON file produced by the cachix export command. It
-        will be read during evaluation. This can be a path expression, which
-        will not be loaded into the Nix store by the declaring module.
+        A CacheKeys JSON file, to be read during evaluation. This can be a
+        path expression, which will not be loaded into the Nix store by the
+        declaring module.
       ''; # TODO (doc) CacheKeys format reference link
     };
-    deployedSecretsPath = lib.mkOption {
+    deployedPath = lib.mkOption {
       type = types.nullOr types.path;
       default = null;
       description = ''
-        The path to the deployed nix.cachix.secretsFile on the target
+        The path to the deployed profile.cacheKeys.file on the target
         machine(s). This should be a plain string
         literal, to avoid accidentally copying secrets into the Nix store.
 
@@ -64,42 +67,42 @@ in
   };
 
   config = lib.mkIf ( # || because of the assertions
-                     cfg.secretsFile != null || cfg.deployedSecretsPath != null
+                     cfg.file != null || cfg.deployedPath != null
                     ) {
 
     assertions = [
-      { assertion = cfg.secretsFile != null -> json.kind == "CacheKeys";
+      { assertion = cfg.file != null -> json.kind == "CacheKeys";
         message = ''
-          ${toString cfg.secretsFile}:
-          nix.cachix.secretsFile must point to a JSON file with "kind":"CacheKeys"
+          ${toString cfg.file}:
+          profile.cacheKeys.file must point to a JSON file with "kind":"CacheKeys"
         '';
       }
-      { assertion = (cfg.secretsFile != null && json.kind == "CacheKeys")
+      { assertion = (cfg.file != null && json.kind == "CacheKeys")
                       -> (json ? apiVersion) != true;
         message = ''
-          ${toString cfg.secretsFile}:
-          nix.cachix.secretsFile points to a CacheKeys JSON file with an unsupported
+          ${toString cfg.file}:
+          profile.cacheKeys.file points to a CacheKeys JSON file with an unsupported
           apiVersion.
           Please check the file and make sure you're using an up to date version of the
           Hercules CI Agent profile NixOS modules.
         '';
       }
-      { assertion = cfg.deployedSecretsPath != null -> cfg.secretsFile != null;
+      { assertion = cfg.deployedPath != null -> cfg.file != null;
         message = ''
-          You need to specify nix.cachix.secretsFile in order to provide the
+          You need to specify profile.cacheKeys.file in order to provide the
           non-sensitive parts of the cache configuration.
 
-          WARNING: If you've used a path expression in cfg.deployedSecretsPath,
+          WARNING: If you've used a path expression in cfg.deployedPath,
           you may want to delete it from your Nix store!
         '';
       }
 
       # TODO: not required when file is not sensitive.
       # TODO (doc) CacheKeys format reference link
-      { assertion = cfg.secretsFile != null -> cfg.deployedSecretsPath != null;
+      { assertion = cfg.file != null -> cfg.deployedPath != null;
         message = ''
           You need to deploy the CacheKeys JSON file to the machine outside the
-          Nix store and set nix.cachix.deployedSecretsPath to the location of the
+          Nix store and set profile.cacheKeys.deployedPath to the location of the
           deployed file.
         '';
       }
@@ -112,18 +115,18 @@ in
       netrc-file = /etc/nix/daemon-netrc
     '';
 
-    systemd.paths.cachix-secrets = {
+    systemd.paths.cache-keys-json = {
       wantedBy = [ "multi-user.target" ];
-      pathConfig.PathExists = cfg.deployedSecretsPath;
-      pathConfig.PathChanged = cfg.deployedSecretsPath;
-      pathConfig.Unit = "cachix-install-netrc.service";
+      pathConfig.PathExists = cfg.deployedPath;
+      pathConfig.PathChanged = cfg.deployedPath;
+      pathConfig.Unit = "cache-keys-install.service";
     };
 
-    systemd.services.cachix-install-netrc = {
-      requires = [ "cachix-secrets.path" ];
+    systemd.services.cache-keys-install = {
+      requires = [ "cache-keys-json.path" ];
       serviceConfig.Type = "oneshot";
       script = ''
-        ${pkgs.jq}/bin/jq -r <${escapeShellArg cfg.deployedSecretsPath} \
+        ${pkgs.jq}/bin/jq -r <${escapeShellArg cfg.deployedPath} \
             '.caches | to_entries[] | .key as $key | .value.pullToken | select (. != null) | "machine \($key).cachix.org password \(.)" ' \
           | install --mode=0400 --owner=root --group=root \
               /dev/stdin \
