@@ -29,10 +29,11 @@ in
     profile.hercules-ci-agent.cachixDeployedSecretsPath = lib.mkOption {
       type = types.nullOr types.str;
       default = null;
+      # TODO (doc) CacheKeys format reference link
       description = ''
-        If not null, this option must point to a file on the deployed machine
-        by means of a literal string, in order to avoid putting secrets in the
-        Nix store.
+        If not null, this option must point to a CacheKeys JSON file on the
+        deployed machine by means of a literal string, in order to avoid putting
+        secrets in the Nix store.
 
         The file must be readable by the hercules-ci-agent user. Part of the
         file will be made available to the Nix daemon exclusively.
@@ -45,8 +46,9 @@ in
     profile.hercules-ci-agent.cachixSecretsFile = lib.mkOption {
       type = types.nullOr types.path;
       default = null;
+      # TODO (doc) CacheKeys format reference link
       description = ''
-        A JSON Lines file produced by the cachix export command. It
+        A CacheKeys JSON file produced by the cachix export command. It
         will be read during evaluation; this should be a local file reference.
 
         If you're using the NixOps profile, this option is sufficient to

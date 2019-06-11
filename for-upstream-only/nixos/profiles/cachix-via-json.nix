@@ -9,12 +9,12 @@ let
   inherit (lib) types isAttrs mkIf escapeShellArg attrValues mapAttrsToList;
   inherit (builtins) readFile fromJSON map split;
 
-  readJSONLines = fileOrNull:
+  readCacheKeys = fileOrNull:
     if fileOrNull == null
-    then []
+    then { kind = "CacheKeys"; caches = {}; }
     else fromJSON (readFile fileOrNull);
 
-  json = readJSONLines cfg.secretsFile;
+  json = readCacheKeys cfg.secretsFile;
   inherit (json) caches;
 
   pubkeys = concatMap (cache: cache.publicKeys) (attrValues json.caches);
@@ -26,10 +26,10 @@ in
       type = types.nullOr types.path;
       default = null;
       description = ''
-        A JSON Lines file produced by the cachix export command. It
+        A CacheKeys JSON file produced by the cachix export command. It
         will be read during evaluation. This can be a path expression, which
         will not be loaded into the Nix store by the declaring module.
-      '';
+      ''; # TODO (doc) CacheKeys format reference link
     };
     deployedSecretsPath = lib.mkOption {
       type = types.nullOr types.path;
@@ -95,9 +95,10 @@ in
       }
 
       # TODO: not required when file is not sensitive.
+      # TODO (doc) CacheKeys format reference link
       { assertion = cfg.secretsFile != null -> cfg.deployedSecretsPath != null;
         message = ''
-          You need to deploy the Cachix secrets file to the machine outside the
+          You need to deploy the CacheKeys JSON file to the machine outside the
           Nix store and set nix.cachix.deployedSecretsPath to the location of the
           deployed file.
         '';

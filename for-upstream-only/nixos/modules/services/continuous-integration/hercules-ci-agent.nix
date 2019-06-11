@@ -52,10 +52,8 @@ in
         Important: Avoid putting secrets in the Nix store. Use a string file
         location here and deploy the actual file to that location separately.
 
-        JSON Lines file with secrets that authorize the agent to use the caches.
-
-        Generate this file with the cachix export command.
-      '';
+        CacheKeys JSON file with secrets that authorize the agent to use the caches.
+      ''; # TODO (doc) CacheKeys format reference documentation link
       type = types.nullOr types.path;
       default = null;
     };
