@@ -11,6 +11,11 @@ let
   dev-and-test-overlay = self: pkgs: {
     inherit testSuitePkgs;
     devTools = {
+      inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
+        ghc
+        ghcid
+        stack
+        ;
       inherit (pkgs)
         shellcheck
         ;
