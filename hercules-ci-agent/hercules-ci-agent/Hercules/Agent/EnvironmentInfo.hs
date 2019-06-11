@@ -37,7 +37,7 @@ extractAgentInfo = do
         , platforms = nixPlatforms nix
         , cachixPushCaches = pushCaches
         , systemFeatures = nixSystemFeatures nix
-        , substituters = nixSubstituters nix
+        , substituters = nixSubstituters nix -- TODO: Add cachix substituters
         }
   logLocM DebugS $ "Determined environment info: " <> show s
   pure s

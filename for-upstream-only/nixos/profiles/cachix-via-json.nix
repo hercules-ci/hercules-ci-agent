@@ -1,24 +1,23 @@
 /*
   A module that configures cachix caches for reading, similar in functionality
-  to the `cachix use` command. It relies on JSON Lines files produced by cachix.
+  to the `cachix use` command.
  */
 { pkgs, lib, config, ...}:
 let
   cfg = config.nix.cachix;
-  inherit (lib.lists) filter;
-  inherit (lib) types isAttrs mkIf escapeShellArg;
-  inherit (builtins) fromJSON map split;
+  inherit (lib.lists) filter concatMap concatLists;
+  inherit (lib) types isAttrs mkIf escapeShellArg attrValues mapAttrsToList;
+  inherit (builtins) readFile fromJSON map split;
 
   readJSONLines = fileOrNull:
-    if fileOrNull == null then [] else
-    let
-      lines = split "\n" (builtins.readFile fileOrNull);
-    in
-      map fromJSON (filter (ln: ln != "" && ln != []) lines);
+    if fileOrNull == null
+    then []
+    else fromJSON (readFile fileOrNull);
 
-  jsonLines = readJSONLines cfg.secretsFile;
+  json = readJSONLines cfg.secretsFile;
+  inherit (json) caches;
 
-  pubkeys = filter (json: isAttrs json && json.kind == "CachixPublicKey") jsonLines;
+  pubkeys = concatMap (cache: cache.publicKeys) (attrValues json.caches);
 
 in
 {
@@ -69,6 +68,22 @@ in
                     ) {
 
     assertions = [
+      { assertion = cfg.secretsFile != null -> json.kind == "CacheKeys";
+        message = ''
+          ${toString cfg.secretsFile}:
+          nix.cachix.secretsFile must point to a JSON file with "kind":"CacheKeys"
+        '';
+      }
+      { assertion = (cfg.secretsFile != null && json.kind == "CacheKeys")
+                      -> (json ? apiVersion) != true;
+        message = ''
+          ${toString cfg.secretsFile}:
+          nix.cachix.secretsFile points to a CacheKeys JSON file with an unsupported
+          apiVersion.
+          Please check the file and make sure you're using an up to date version of the
+          Hercules CI Agent profile NixOS modules.
+        '';
+      }
       { assertion = cfg.deployedSecretsPath != null -> cfg.secretsFile != null;
         message = ''
           You need to specify nix.cachix.secretsFile in order to provide the
@@ -89,8 +104,8 @@ in
       }
     ];
 
-    nix.trustedBinaryCaches = ["https://cache.nixos.org"] ++ map (o: "https://${o.cacheName}.cachix.org") pubkeys;
-    nix.binaryCachePublicKeys = map (o: o.publicKey) pubkeys;
+    nix.trustedBinaryCaches = ["https://cache.nixos.org"] ++ mapAttrsToList (name: keys: "https://${name}.cachix.org") caches;
+    nix.binaryCachePublicKeys = concatLists (mapAttrsToList (name: keys: keys.publicKeys) caches);
 
     nix.extraOptions = ''
       netrc-file = /etc/nix/daemon-netrc
@@ -108,7 +123,7 @@ in
       serviceConfig.Type = "oneshot";
       script = ''
         ${pkgs.jq}/bin/jq -r <${escapeShellArg cfg.deployedSecretsPath} \
-            'select(.kind == "CachixPullToken") | "machine \(.cacheName).cachix.org password \(.secretToken)"' \
+            '.caches | to_entries[] | .key as $key | .value.pullToken | select (. != null) | "machine \($key).cachix.org password \(.)" ' \
           | install --mode=0400 --owner=root --group=root \
               /dev/stdin \
               /etc/nix/daemon-netrc \

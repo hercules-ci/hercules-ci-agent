@@ -3,99 +3,61 @@ import           Protolude
 
 import qualified Cachix.Client.Push            as Cachix.Push
 import qualified Cachix.Client.Secrets         as Cachix.Secrets
-import qualified Cachix.Formats.CachixSigningKey
-                                               as SigningKey
-import qualified Cachix.Formats.CachixPullToken
-                                               as PullToken
-import qualified Cachix.Formats.CachixPublicKey
-                                               as PublicKey
 import           Hercules.Agent.Cachix.Env     as Env
-import           Hercules.Agent.Log
+import qualified Hercules.Formats.CacheKeys    as CacheKeys
+import qualified Hercules.Formats.CacheKeys.Keys
+                                               as CacheKeys.Keys
 import qualified Hercules.Agent.Config         as Config
 import           Hercules.Error
 import qualified Servant.Auth.Client
 
 import qualified Katip                         as K
-import qualified Katip.Core                    as K
-import qualified Data.ByteString               as BS
-import qualified Data.ByteString.Char8         as BC
+import qualified Data.ByteString.Lazy          as BL
 import qualified Data.Aeson                    as Aeson
-import           Data.Functor.Partitioner
-import qualified Data.Map.Extras.Hercules      as ME
 import qualified Data.Map                      as M
-import qualified Data.List.NonEmpty            as NEL
 
-readJSONLines :: FilePath -> IO [(Int, Aeson.Value)]
-readJSONLines fname = do
-  lines <-
-    filter (not . BS.null . snd)
-    . zip [1 ..]
-    . BC.lines
-    . toSL
-    <$> BS.readFile fname
-  escalate $ forM lines $ \(lineNo, res) -> case Aeson.eitherDecode (toS res) of
-    Left e ->
-      Left
-        $ FatalError
-        $ "JSON syntax error "
-        <> toSL fname
-        <> ":"
-        <> show (lineNo :: Int)
-        <> ": "
-        <> toSL e
-    Right r -> Right $ (lineNo, r)
+readJSON :: Aeson.FromJSON a => FilePath -> IO a
+readJSON fname = do
+  bytes <- BL.readFile fname
 
+  escalateAs
+    (\e -> FatalError $ "JSON syntax error " <> toSL fname <> ":" <> toSL e)
+    (Aeson.eitherDecode bytes)
 
 mapLeft :: (e -> e') -> Either e Aeson.Value -> Either e' Aeson.Value
 mapLeft f (Left a) = Left $ f a
 mapLeft _ (Right r) = Right (r :: Aeson.Value)
 
 newEnv :: Config.Config -> K.LogEnv -> IO Env.Env
-newEnv config logEnv = do
-  jsons <-
-    fmap fold $ forM (Config.cachixSecretsPath config) $ readJSONLines . toS
+newEnv config _logEnv = do
+  cks <-
+    fmap (fromMaybe (CacheKeys.CacheKeys mempty))
+    $ forM (Config.cachixSecretsPath config)
+    $ readJSON . toS
 
-  let partitioner = (,,,) <$> part dec <*> part dec <*> part dec <*> part
-        (\(ln, _json) -> Just (ln, "Unrecognized value"))
-      dec :: Aeson.FromJSON a => (Int, Aeson.Value) -> Maybe a
-      dec = toMaybe . Aeson.fromJSON . snd
-       where
-        toMaybe (Aeson.Success a) = Just a
-        toMaybe _ = Nothing
-      signingKeyList :: [SigningKey.CachixSigningKey]
-      pullTokenList :: [PullToken.CachixPullToken]
-      pubKeyList :: [PublicKey.CachixPublicKey]
-      (signingKeyList, pullTokenList, pubKeyList, errors) =
-        partitionList partitioner jsons
+  pcs <- toPushCaches cks
 
-  forM_ errors $ \(ln, e) -> runKatipT logEnv $ K.logLoc
-    (K.sl "filename" (Config.cachixSecretsPath config) <> K.sl "line" ln)
-    mempty
-    WarningS
-    e
+  pure Env.Env { pushCaches = pcs
+               , netrcLines = toNetrcLines cks
+               , cacheKeys = cks
+               }
 
-  let signingKeys = ME.groupOnNEL SigningKey.cacheName signingKeyList
-      pullTokens = ME.groupOnNEL PullToken.cacheName pullTokenList
+toNetrcLines :: CacheKeys.CacheKeys -> [Text]
+toNetrcLines = concatMap toNetrcLine . M.toList . CacheKeys.caches where
+  toNetrcLine (name, keys) = do
+    pt <- toList $ CacheKeys.Keys.pullToken keys
+    pure $ "machine " <> name <> ".cachix.org" <> " password " <> pt
 
-  pcs <- escalateAs FatalError $ forM signingKeys $ \sks ->
-    let k = NEL.head sks
-        name = SigningKey.cacheName k
-        t = maybe "" (PullToken.secretToken . NEL.head) $ M.lookup name pullTokens
+toPushCaches :: CacheKeys.CacheKeys -> IO (Map Text Cachix.Push.PushCache)
+toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches' . CacheKeys.caches where
+  toPushCaches' name keys =
+    let t = fromMaybe "" (CacheKeys.Keys.pullToken keys)
     in  do
-          k' <- Cachix.Secrets.parseSigningKeyLenient $ SigningKey.secretKey k
-          pure $ Cachix.Push.PushCache { pushCacheName = name
-                                       , pushCacheSigningKey = k'
-                                       , pushCacheToken = Servant.Auth.Client.Token $ toSL t
-                                       }
-
-
-  pure Env.Env
-   { pushCaches = pcs
-   , publicKeys = pubKeyList
-   , netrcLines = toNetrcLines pullTokenList
-   }
-
-toNetrcLines :: [PullToken.CachixPullToken] -> [Text]
-toNetrcLines = map toNetrcLine where
-  toNetrcLine pt = "machine " <> PullToken.cacheName pt <> ".cachix.org"
-                 <> " password " <> PullToken.secretToken pt
+          sk <- head $ CacheKeys.Keys.signingKeys keys
+          Just $ escalateAs FatalError $ do
+            k' <- Cachix.Secrets.parseSigningKeyLenient sk
+            pure $ Cachix.Push.PushCache
+              { pushCacheName = name
+              , pushCacheSigningKey = k'
+              , pushCacheToken = Servant.Auth.Client.Token $ toSL t
+              }

@@ -1,14 +1,14 @@
 {
     "cachix": {
         "homepage": "https://cachix.org",
-        "url": "https://github.com/cachix/cachix/archive/94a409db926b217284cb91d97442fe266bee7fbf.tar.gz",
+        "url": "https://github.com/cachix/cachix/archive/91e1b719aa2384b470bda5995f5e38d1abefc924.tar.gz",
         "owner": "cachix",
-        "branch": "export-keys",
+        "branch": "master",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "repo": "cachix",
-        "sha256": "1q5lg83msg5lyg6pl5ksqjspph5zp44308pggp22cp6j6wiz08gj",
+        "sha256": "1jsnblc21nxnp1ixblivwnbz8xpll4cxpyyalrg4bxcwmv0rmr31",
         "description": "Command line client for Nix binary cache hosting:",
-        "rev": "94a409db926b217284cb91d97442fe266bee7fbf"
+        "rev": "91e1b719aa2384b470bda5995f5e38d1abefc924"
     },
     "nixos-19.03": {
         "url": "https://github.com/NixOS/nixpkgs-channels/archive/7b36963e7a7363f1b40ac0a829c4644923dda909.tar.gz",

@@ -23,8 +23,8 @@ in
     };
 
     profile.hercules-ci-agent.cachixDeployedSecretsPath = mkIf cfgHasCachix
-      "/var/lib/keys/hercules-ci-agent/cachix.jsonl.key";
-    deployment.keys."cachix.jsonl.key" = mkIf cfgHasCachix {
+      "/var/lib/keys/hercules-ci-agent/cachix.json.key";
+    deployment.keys."cachix.json.key" = mkIf cfgHasCachix {
       user = config.services.hercules-ci-agent.user;
       destDir = "/var/lib/keys/hercules-ci-agent";
       keyFile = cfg.cachixSecretsFile;

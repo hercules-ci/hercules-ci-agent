@@ -10,7 +10,7 @@ extra-deps:
   - katip-0.7.0.0@sha256:a130d70f7165c0a35396bed70f0f21f34fb07724f8b48b5370e30bda26d3e25f
   - nix-derivation-1.0.2@sha256:dc1f13f89d37d4dcc7a46dbac7f6b4e8cd2877f4af99e35b9cb8255d08179bd4
   - git: https://github.com/cachix/cachix
-    commit: 94a409db926b217284cb91d97442fe266bee7fbf
+    commit: 91e1b719aa2384b470bda5995f5e38d1abefc924
     subdirs:
       - cachix
       - cachix-api

@@ -7,7 +7,6 @@ where
 import           Protolude
 import qualified Cachix.Client.Push            as Cachix.Push
 import qualified Cachix.Client.URI             as Cachix.URI
-import qualified Cachix.Formats.CachixPublicKey as CachixPublicKey
 import           Control.Monad.IO.Unlift
 import qualified Data.Map                      as M
 import qualified Data.Text                     as Text
@@ -19,6 +18,7 @@ import           Hercules.Agent.Cachix.Info     ( activePushCaches )
 import           Hercules.Agent.Env            as Agent.Env
 import qualified Hercules.Agent.Nix            as Nix
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
+import qualified Hercules.Formats.CacheKeys    as CacheKeys
 import qualified Servant.Client                as Servant
 import           System.IO                      ( hClose )
 
@@ -61,10 +61,10 @@ getNetrcLines = asks (Agent.Cachix.netrcLines . Agent.Env.cachixEnv)
 
 getSubstituters :: App [Text]
 getSubstituters = do
-  pks <- asks (Agent.Cachix.publicKeys . Agent.Env.cachixEnv)
+  (CacheKeys.CacheKeys cks) <- asks (Agent.Cachix.cacheKeys . Agent.Env.cachixEnv)
 
   -- TODO: merge with system config instead
-  pure $ ["https://cache.nixos.org"] ++ map (\c -> "https://" <> CachixPublicKey.cacheName c <> ".cachix.org") pks
+  pure $ ["https://cache.nixos.org"] ++ map (\c -> "https://" <> c <> ".cachix.org") (M.keys cks)
 
 withCaches :: App a -> App a
 withCaches m = do

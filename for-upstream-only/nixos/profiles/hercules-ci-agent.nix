@@ -61,7 +61,7 @@ in
 
   };
 
-  imports = [ ./cachix-use-export.nix ];
+  imports = [ ./cachix-via-json.nix ];
 
   config = {
     services.hercules-ci-agent.enable = true;
