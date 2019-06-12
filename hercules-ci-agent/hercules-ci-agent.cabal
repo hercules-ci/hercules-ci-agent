@@ -57,7 +57,6 @@ library
 executable hercules-ci-agent
   main-is: Main.hs
   other-modules:
-      Data.Functor.Partitioner
       Data.Map.Extras.Hercules
       Hercules.Agent
       Hercules.Agent.Batch
