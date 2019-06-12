@@ -52,7 +52,7 @@ in
         Important: Avoid putting secrets in the Nix store. Use a string file
         location here and deploy the actual file to that location separately.
 
-        CacheKeys JSON file with secrets that authorize the agent to use the caches.
+        JSON file with secrets called CacheKeys that authorizes the agent to use binary caches.
       ''; # TODO (doc) CacheKeys format reference documentation link
       type = types.nullOr types.path;
       default = null;

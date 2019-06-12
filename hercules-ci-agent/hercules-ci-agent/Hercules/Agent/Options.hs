@@ -35,7 +35,7 @@ parseOverrides = mconcat <$> many
   <|> update (\x c -> c { Config.cacheKeysPath = Just x })
   <$> strOption
         (long "cache-keys-path" <> metavar "FILE" <> help
-          "CacheKeys JSON file with secrets to access this agent's caches"
+          "JSON file with secrets called CacheKeys to access this agent's binary caches"
           -- TODO (doc) CacheKeys JSON reference link
         )
   <|> update (\x c -> c { Config.concurrentTasks = x })
