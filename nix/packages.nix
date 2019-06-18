@@ -74,6 +74,16 @@ let
         in
           buildFromSdist basePkg;
 
+      tomland =
+        super.callPackage ./haskell-tomland-1-0-1-0.nix {
+          hedgehog = self.hedgehog_1_0;
+          tasty-hedgehog = self.tasty-hedgehog_1_0;
+        };
+
+      hedgehog_1_0 =
+        super.callPackage ./haskell-hedgehog-1-0.nix {};
+      tasty-hedgehog_1_0 =
+        super.callPackage ./haskell-tasty-hedgehog-1-0.nix { hedgehog = self.hedgehog_1_0; };
     });
 
     hercules-ci-api-swagger = pkgs.callPackage ../hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };

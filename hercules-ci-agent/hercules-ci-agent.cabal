@@ -41,7 +41,6 @@ library
     , bytestring
     , conduit
     , containers
-    , dhall
     , exceptions
     , katip
     , lifted-async
@@ -74,6 +73,7 @@ executable hercules-ci-agent
       Hercules.Agent.Evaluate.TraversalQueue
       Hercules.Agent.Exception
       Hercules.Agent.Init
+      Hercules.Agent.Json
       Hercules.Agent.Log
       Hercules.Agent.Nix
       Hercules.Agent.Nix.Env
@@ -103,7 +103,6 @@ executable hercules-ci-agent
     , conduit
     , conduit-extra
     , containers
-    , dhall
     , directory
     , exceptions
     , filepath
@@ -135,6 +134,8 @@ executable hercules-ci-agent
     , temporary
     , text
     , time
+    , tomland >= 1.0.1.0
+    , transformers
     , transformers-base
     , unix
     , unliftio-core
@@ -182,7 +183,6 @@ executable hercules-ci-agent-worker
     , bytestring
     , conduit
     , containers
-    , dhall
     , exceptions
     , hercules-ci-agent
     , inline-c
@@ -228,7 +228,6 @@ test-suite hercules-test
     , bytestring
     , conduit
     , containers
-    , dhall
     , exceptions
     , hercules-ci-api
     , hspec

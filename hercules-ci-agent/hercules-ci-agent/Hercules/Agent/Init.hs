@@ -19,7 +19,8 @@ newEnv config logEnv = do
   SecureDirectory.init
   let endpoint = Config.herculesApiBaseURL config
   manager <- Network.HTTP.Client.TLS.newTlsManager
-  baseUrl <- Servant.Client.parseBaseUrl (toS endpoint)
+  defaultBaseUrl <- Config.determineDefaultApiBaseUrl
+  baseUrl <- Servant.Client.parseBaseUrl (toS (fromMaybe defaultBaseUrl endpoint))
   let clientEnv :: Servant.Client.ClientEnv
       clientEnv = Servant.Client.mkClientEnv manager baseUrl
   token <- Token.readTokenFile $ toS $ Config.clusterJoinTokenPath config

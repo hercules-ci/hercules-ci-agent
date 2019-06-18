@@ -1,26 +1,53 @@
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Hercules.Agent.Config where
 
-import           Protolude
+import           Protolude               hiding ( to )
 import qualified System.Environment
-import qualified Dhall
+import           Toml
+import           Hercules.Agent.Json           as Json
+
+data ConfigPath = TomlPath FilePath
+                | JsonPath FilePath
 
 data Config = Config
-  { herculesApiBaseURL :: Text
+  { herculesApiBaseURL :: Maybe Text
   , clusterJoinTokenPath :: Text
   , concurrentTasks :: Integer
   , cacheKeysPath :: Maybe Text
-  } deriving (Generic, Dhall.Inject, Dhall.Interpret)
+  } deriving (Generic)
 
-newDefaultConfig :: IO Config
-newDefaultConfig = do
-  baseUrl <- determineDefaultApiBaseUrl
-  pure Config
-    { herculesApiBaseURL = baseUrl
-    , clusterJoinTokenPath = panic "Config.clusterJoinTokenPath wasn't set."
-    , concurrentTasks = 4
-    , cacheKeysPath = Nothing
-    }
+tomlCodec :: TomlCodec Config
+tomlCodec =
+  Config
+    <$> dioptional (Toml.text "apiBaseUrl")
+    .= herculesApiBaseURL
+    <*> Toml.text "clusterJoinTokenPath"
+    .= clusterJoinTokenPath
+    <*> Toml.integer "concurrentTasks"
+    .= concurrentTasks
+    <*> dioptional (Toml.text "cacheKeysPath")
+    .= cacheKeysPath
+
+jsonCodec :: JsonCodec Config
+jsonCodec =
+  Config
+    <$> dioptional (Json.text "apiBaseUrl")
+    .= herculesApiBaseURL
+    <*> Json.text "clusterJoinTokenPath"
+    .= clusterJoinTokenPath
+    <*> Json.integer "concurrentTasks"
+    .= concurrentTasks
+    <*> (dioptional (Json.text "cacheKeysPath"))
+    .= cacheKeysPath
+
+
+defaultConfig :: Config
+defaultConfig = Config
+  { herculesApiBaseURL = Nothing
+  , clusterJoinTokenPath = panic "Config.clusterJoinTokenPath wasn't set." -- TODO optional?
+  , concurrentTasks = 4
+  , cacheKeysPath = Nothing
+  }
 
 determineDefaultApiBaseUrl :: IO Text
 determineDefaultApiBaseUrl = do
@@ -30,7 +57,8 @@ determineDefaultApiBaseUrl = do
 defaultApiBaseUrl :: Text
 defaultApiBaseUrl = "https://hercules-ci.com"
 
-readConfig :: Maybe Text -> IO Config
+readConfig :: Maybe ConfigPath -> IO Config
 readConfig loc = case loc of
-  Just x -> Dhall.input Dhall.auto $ toS x
-  Nothing -> newDefaultConfig
+  Just (TomlPath fp) -> Toml.decodeFile tomlCodec (toSL fp)
+  Just (JsonPath fp) -> Json.decodeFile jsonCodec (toSL fp)
+  Nothing -> pure defaultConfig
