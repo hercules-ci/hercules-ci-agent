@@ -57,8 +57,7 @@ determineDefaultApiBaseUrl = do
 defaultApiBaseUrl :: Text
 defaultApiBaseUrl = "https://hercules-ci.com"
 
-readConfig :: Maybe ConfigPath -> IO Config
+readConfig :: ConfigPath -> IO Config
 readConfig loc = case loc of
-  Just (TomlPath fp) -> Toml.decodeFile tomlCodec (toSL fp)
-  Just (JsonPath fp) -> Json.decodeFile jsonCodec (toSL fp)
-  Nothing -> pure defaultConfig
+  TomlPath fp -> Toml.decodeFile tomlCodec (toSL fp)
+  JsonPath fp -> Json.decodeFile jsonCodec (toSL fp)

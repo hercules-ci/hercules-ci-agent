@@ -62,7 +62,7 @@ main :: IO ()
 main = Init.setupLogging $ \logEnv -> do
   opts <- Options.parse
   cfg <- Config.readConfig (Options.configFile opts)
-  env <- Init.newEnv (Options.configOverrides opts `appEndo` cfg) logEnv
+  env <- Init.newEnv cfg logEnv
 
   fetchTaskMutex <- newMVar ()
 
