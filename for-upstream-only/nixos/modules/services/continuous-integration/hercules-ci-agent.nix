@@ -3,6 +3,7 @@
 let
 
   inherit (lib) mkOption mkIf types escapeShellArg;
+  inherit (pkgs.callPackage ../../../../../to-toml.nix {}) toTOML;
 
   cfg = config.services.hercules-ci-agent;
 
@@ -23,8 +24,8 @@ let
     inherit (cfg) cacheKeysPath;
   } // cfg.extraOptions;
 
-  jsonFile = pkgs.writeText "hercules-ci-agent.json"
-                            (builtins.toJSON configJSON);
+  tomlFile = pkgs.writeText "hercules-ci-agent.json"
+                            (toTOML configJSON);
 
 in
 {
@@ -107,7 +108,7 @@ in
       after = [ "network.target" ];
       serviceConfig = {
         User = cfg.user;
-        ExecStart = "${cfg.package}/bin/hercules-ci-agent --config-json ${jsonFile}";
+        ExecStart = "${cfg.package}/bin/hercules-ci-agent --config-toml ${tomlFile}";
         Restart = "on-failure";
         RestartSec = 120;
         StartLimitBurst = 30 * 1000000; # practically infitine

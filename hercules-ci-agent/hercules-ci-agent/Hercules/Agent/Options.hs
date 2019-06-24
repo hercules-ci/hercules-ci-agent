@@ -7,8 +7,7 @@ where
 import           Protolude               hiding ( option )
 
 import           Hercules.Agent.CabalInfo       ( herculesAgentVersion )
-import           Hercules.Agent.Config          ( ConfigPath(..)
-                                                )
+import           Hercules.Agent.Config          ( ConfigPath(..) )
 import           Options.Applicative
 
 data Options = Options
@@ -19,17 +18,10 @@ parseOptions :: Parser Options
 parseOptions = Options <$> parseConfigPath
 
 parseConfigPath :: Parser ConfigPath
-parseConfigPath =
-  TomlPath
-    <$> strOption
-          (long "config-toml" <> metavar "FILE" <> help
-            "File path to the configuration file (TOML)"
-          )
-    <|> JsonPath
-    <$> strOption
-          (long "config-json" <> metavar "FILE" <> help
-            "File path to the configuration file (JSON)"
-          )
+parseConfigPath = TomlPath <$> strOption
+  (long "config-toml" <> metavar "FILE" <> help
+    "File path to the configuration file (TOML)"
+  )
 
 parserInfo :: ParserInfo Options
 parserInfo = info

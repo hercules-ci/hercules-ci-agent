@@ -4,10 +4,8 @@ module Hercules.Agent.Config where
 import           Protolude               hiding ( to )
 import qualified System.Environment
 import           Toml
-import           Hercules.Agent.Json           as Json
 
 data ConfigPath = TomlPath FilePath
-                | JsonPath FilePath
 
 data Config = Config
   { herculesApiBaseURL :: Maybe Text
@@ -28,19 +26,6 @@ tomlCodec =
     <*> dioptional (Toml.text "cacheKeysPath")
     .= cacheKeysPath
 
-jsonCodec :: JsonCodec Config
-jsonCodec =
-  Config
-    <$> dioptional (Json.text "apiBaseUrl")
-    .= herculesApiBaseURL
-    <*> Json.text "clusterJoinTokenPath"
-    .= clusterJoinTokenPath
-    <*> Json.integer "concurrentTasks"
-    .= concurrentTasks
-    <*> (dioptional (Json.text "cacheKeysPath"))
-    .= cacheKeysPath
-
-
 defaultConfig :: Config
 defaultConfig = Config
   { herculesApiBaseURL = Nothing
@@ -60,4 +45,3 @@ defaultApiBaseUrl = "https://hercules-ci.com"
 readConfig :: ConfigPath -> IO Config
 readConfig loc = case loc of
   TomlPath fp -> Toml.decodeFile tomlCodec (toSL fp)
-  JsonPath fp -> Json.decodeFile jsonCodec (toSL fp)

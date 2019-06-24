@@ -73,7 +73,6 @@ executable hercules-ci-agent
       Hercules.Agent.Evaluate.TraversalQueue
       Hercules.Agent.Exception
       Hercules.Agent.Init
-      Hercules.Agent.Json
       Hercules.Agent.Log
       Hercules.Agent.Nix
       Hercules.Agent.Nix.Env
