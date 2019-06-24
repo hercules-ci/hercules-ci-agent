@@ -108,7 +108,7 @@ in
       after = [ "network.target" ];
       serviceConfig = {
         User = cfg.user;
-        ExecStart = "${cfg.package}/bin/hercules-ci-agent --config-toml ${tomlFile}";
+        ExecStart = "${cfg.package}/bin/hercules-ci-agent --config ${tomlFile}";
         Restart = "on-failure";
         RestartSec = 120;
         StartLimitBurst = 30 * 1000000; # practically infitine

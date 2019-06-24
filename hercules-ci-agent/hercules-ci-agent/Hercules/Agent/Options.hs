@@ -19,7 +19,7 @@ parseOptions = Options <$> parseConfigPath
 
 parseConfigPath :: Parser ConfigPath
 parseConfigPath = TomlPath <$> strOption
-  (long "config-toml" <> metavar "FILE" <> help
+  (long "config" <> metavar "FILE" <> help
     "File path to the configuration file (TOML)"
   )
 
