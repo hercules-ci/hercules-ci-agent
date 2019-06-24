@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 module Hercules.Agent.Cachix.Init where
 import           Protolude
 
@@ -28,7 +29,7 @@ mapLeft :: (e -> e') -> Either e Aeson.Value -> Either e' Aeson.Value
 mapLeft f (Left a) = Left $ f a
 mapLeft _ (Right r) = Right (r :: Aeson.Value)
 
-newEnv :: Config.Config -> K.LogEnv -> IO Env.Env
+newEnv :: Config.Config 'Config.Final -> K.LogEnv -> IO Env.Env
 newEnv config _logEnv = do
   cks <-
     fmap (fromMaybe (CacheKeys.CacheKeys mempty))

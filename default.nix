@@ -10,5 +10,6 @@ pkgs.recurseIntoAttrs {
     hercules-ci-agent
     hercules-ci-agent-packages
     devTools
+    toTOML-test
     ;
 }

@@ -61,8 +61,8 @@ import qualified Data.Aeson                    as A
 main :: IO ()
 main = Init.setupLogging $ \logEnv -> do
   opts <- Options.parse
-  cfg <- Config.readConfig (toS <$> Options.configFile opts)
-  env <- Init.newEnv (Options.configOverrides opts `appEndo` cfg) logEnv
+  cfg <- Config.finalizeConfig =<< Config.readConfig (Options.configFile opts)
+  env <- Init.newEnv cfg logEnv
 
   fetchTaskMutex <- newMVar ()
 

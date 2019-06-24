@@ -10,5 +10,5 @@ import           System.Posix.Signals
 
 main :: IO ()
 main = do
-  installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
+  _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
   Hercules.Agent.main

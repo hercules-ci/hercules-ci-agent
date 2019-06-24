@@ -339,7 +339,7 @@ lifeCycleEndpoints _server = DummyApi.dummyLifeCycleEndpoints
 handleAgentCreate :: CreateAgentSession.CreateAgentSession
                   -> AuthResult Session
                   -> Handler Text
-handleAgentCreate ca r = pure "pretend-jwt"
+handleAgentCreate _ca _r = pure "pretend-jwt"
 
 buildEndpoints :: ServerState -> BuildAPI Auth' AsServer
 buildEndpoints server = DummyApi.dummyBuildEndpoints
@@ -352,7 +352,7 @@ handleUpdateBuild :: ServerState
                   -> [BuildEvent.BuildEvent]
                   -> AuthResult Session
                   -> Handler NoContent
-handleUpdateBuild st id body authResult = do
+handleUpdateBuild st id body _authResult = do
   liftIO $ atomicModifyIORef_ (buildEvents st) $ \m ->
     M.alter (\prev -> Just $ fromMaybe mempty prev <> body) id m
 
@@ -362,14 +362,14 @@ handleGetBuild :: ServerState
                          -> Id (Task BuildTask.BuildTask)
                          -> AuthResult Session
                          -> Handler BuildTask.BuildTask
-handleGetBuild st id authResult = do
+handleGetBuild st id _authResult = do
   ts <- liftIO $ readIORef (buildTasks st)
   case M.lookup id ts of
     Nothing -> throwError err404
     Just x -> pure x
 
 logsEndpoints :: ServerState -> LogsAPI Session AsServer
-logsEndpoints server = LogsAPI
+logsEndpoints _server = LogsAPI
   { writeLog = \_authResult logBytes -> NoContent <$ do
       hPutStrLn stderr $ "Got log: " <> logBytes
   }

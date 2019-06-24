@@ -3,6 +3,7 @@
 let
 
   inherit (lib) mkOption mkIf types escapeShellArg;
+  inherit (pkgs.callPackage ../../../../../to-toml.nix {}) toTOML;
 
   cfg = config.services.hercules-ci-agent;
 
@@ -14,6 +15,17 @@ let
     isSystemUser = true;
     createHome = true;
   };
+
+  configJSON = {
+    inherit (cfg) clusterJoinTokenPath concurrentTasks;
+  } // lib.optionalAttrs (cfg.apiBaseUrl != null) {
+    inherit (cfg) apiBaseUrl;
+  } // lib.optionalAttrs (cfg.cacheKeysPath != null) {
+    inherit (cfg) cacheKeysPath;
+  } // cfg.extraOptions;
+
+  tomlFile = pkgs.writeText "hercules-ci-agent.json"
+                            (toTOML configJSON);
 
 in
 {
@@ -68,6 +80,20 @@ in
       default = pkgs.hercules-ci-agent;
       defaultText = "pkgs.hercules-ci-agent";
     };
+    extraOptions = mkOption {
+      description = ''
+        This lets you can add extra options to the agent's config file, in case
+        you are using an upstreamed module with a newer version of the package.
+
+        These will override the other options in this module.
+
+        We recommend that you use the other options where possible, because
+        extraOptions can not provide a merge function for the contents of the
+        fields.
+        '';
+      type = types.attrsOf types.unspecified;
+      default = {};
+    };
   };
 
   config = mkIf cfg.enable {
@@ -82,7 +108,7 @@ in
       after = [ "network.target" ];
       serviceConfig = {
         User = cfg.user;
-        ExecStart = "${cfg.package}/bin/hercules-ci-agent ${if (cfg.apiBaseUrl == null) then "" else "--api-base-url ${escapeShellArg cfg.apiBaseUrl}"} --cluster-join-token-path ${escapeShellArg cfg.clusterJoinTokenPath} --concurrent-tasks ${toString cfg.concurrentTasks} ${if (cfg.cacheKeysPath == null) then "" else "--cache-keys-path ${escapeShellArg cfg.cacheKeysPath}"}";
+        ExecStart = "${cfg.package}/bin/hercules-ci-agent --config ${tomlFile}";
         Restart = "on-failure";
         RestartSec = 120;
         StartLimitBurst = 30 * 1000000; # practically infitine
