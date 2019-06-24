@@ -1,38 +1,52 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module Hercules.Agent.Config where
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+module Hercules.Agent.Config
+  ( Config(..)
+  , ConfigPath(..)
+  , Purpose(..)
+  , readConfig
+  , finalizeConfig
+  )
+where
 
 import           Protolude               hiding ( to )
 import qualified System.Environment
+import           Hercules.Error
 import           Toml
 
 data ConfigPath = TomlPath FilePath
 
-data Config = Config
-  { herculesApiBaseURL :: Maybe Text
-  , clusterJoinTokenPath :: Text
-  , concurrentTasks :: Integer
-  , cacheKeysPath :: Maybe Text
+data Purpose = Input | Final
+
+-- | Whether the 'Final' value is optional.
+data Sort = Required | Optional
+type family Item purpose sort a where
+  Item 'Input _sort a = Maybe a
+  Item 'Final 'Required a = a
+  Item 'Final 'Optional a = Maybe a
+
+data Config purpose = Config
+  { herculesApiBaseURL :: Item purpose 'Required Text
+  , clusterJoinTokenPath :: Item purpose 'Required Text
+  , concurrentTasks :: Item purpose 'Required Integer
+  , cacheKeysPath :: Item purpose 'Optional Text
   } deriving (Generic)
 
-tomlCodec :: TomlCodec Config
+tomlCodec :: TomlCodec (Config 'Input)
 tomlCodec =
   Config
     <$> dioptional (Toml.text "apiBaseUrl")
     .= herculesApiBaseURL
-    <*> Toml.text "clusterJoinTokenPath"
+    <*> dioptional (Toml.text keyClusterJoinTokenPath)
     .= clusterJoinTokenPath
-    <*> Toml.integer "concurrentTasks"
+    <*> dioptional (Toml.integer "concurrentTasks")
     .= concurrentTasks
     <*> dioptional (Toml.text "cacheKeysPath")
     .= cacheKeysPath
 
-defaultConfig :: Config
-defaultConfig = Config
-  { herculesApiBaseURL = Nothing
-  , clusterJoinTokenPath = panic "Config.clusterJoinTokenPath wasn't set." -- TODO optional?
-  , concurrentTasks = 4
-  , cacheKeysPath = Nothing
-  }
+keyClusterJoinTokenPath :: Key
+keyClusterJoinTokenPath = "clusterJoinTokenPath"
 
 determineDefaultApiBaseUrl :: IO Text
 determineDefaultApiBaseUrl = do
@@ -42,6 +56,26 @@ determineDefaultApiBaseUrl = do
 defaultApiBaseUrl :: Text
 defaultApiBaseUrl = "https://hercules-ci.com"
 
-readConfig :: ConfigPath -> IO Config
+defaultConcurrentTasks :: Integer
+defaultConcurrentTasks = 4
+
+readConfig :: ConfigPath -> IO (Config 'Input)
 readConfig loc = case loc of
   TomlPath fp -> Toml.decodeFile tomlCodec (toSL fp)
+
+finalizeConfig :: Config 'Input -> IO (Config 'Final)
+finalizeConfig input = do
+  dabu <- determineDefaultApiBaseUrl
+  cjtp <- escalate $ maybeToEither
+    (FatalError
+    $ "You need to specify key "
+    <> show keyClusterJoinTokenPath
+    <> " in your configuration file"
+    )
+    (clusterJoinTokenPath input)
+  pure Config
+    { herculesApiBaseURL = fromMaybe dabu $ herculesApiBaseURL input
+    , cacheKeysPath = cacheKeysPath input
+    , clusterJoinTokenPath = cjtp
+    , concurrentTasks = fromMaybe defaultConcurrentTasks $ concurrentTasks input
+    }

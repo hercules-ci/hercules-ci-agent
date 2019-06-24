@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 module Hercules.Agent.Init where
 
 import           Protolude
@@ -14,13 +15,11 @@ import qualified Hercules.Agent.Cachix.Init
 import qualified Hercules.Agent.Nix.Init
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 
-newEnv :: Config.Config -> K.LogEnv -> IO Env
+newEnv :: Config.Config 'Config.Final -> K.LogEnv -> IO Env
 newEnv config logEnv = do
   SecureDirectory.init
-  let endpoint = Config.herculesApiBaseURL config
   manager <- Network.HTTP.Client.TLS.newTlsManager
-  defaultBaseUrl <- Config.determineDefaultApiBaseUrl
-  baseUrl <- Servant.Client.parseBaseUrl (toS (fromMaybe defaultBaseUrl endpoint))
+  baseUrl <- Servant.Client.parseBaseUrl $ toS $ Config.herculesApiBaseURL config
   let clientEnv :: Servant.Client.ClientEnv
       clientEnv = Servant.Client.mkClientEnv manager baseUrl
   token <- Token.readTokenFile $ toS $ Config.clusterJoinTokenPath config
