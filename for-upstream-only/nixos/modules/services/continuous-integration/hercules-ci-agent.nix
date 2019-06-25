@@ -24,7 +24,7 @@ let
     inherit (cfg) cacheKeysPath;
   } // cfg.extraOptions;
 
-  tomlFile = pkgs.writeText "hercules-ci-agent.json"
+  tomlFile = pkgs.writeText "hercules-ci-agent.toml"
                             (toTOML configJSON);
 
 in
@@ -65,7 +65,8 @@ in
         location here and deploy the actual file to that location separately.
 
         JSON file with secrets called CacheKeys that authorizes the agent to use binary caches.
-      ''; # TODO (doc) CacheKeys format reference documentation link
+      For more see https://docs.hercules-ci.com/#cachekeyspath
+      '';
       type = types.nullOr types.path;
       default = null;
     };
