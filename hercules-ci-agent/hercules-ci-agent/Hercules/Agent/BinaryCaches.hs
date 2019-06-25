@@ -31,7 +31,7 @@ instance FromJSON BinaryCaches where
   -- note that parseBag already preserves object names.
  parseJSON = parseBag
   (BinaryCaches
-  <$> part (\_name -> whenKind "CachixCache" $ \v -> pure $ (parseJSON v))
+  <$> part (\_name -> whenKind "CachixCache" $ \v -> Just $ (parseJSON v))
   <*> part (\_name v -> Just $ parseJSON v)
   )
 
