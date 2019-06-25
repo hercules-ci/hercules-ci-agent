@@ -22,6 +22,7 @@ import qualified Data.HashMap.Strict           as HashMap
 newtype ParseBag a b = ParseBag { getReadBag :: Compose (Partitioner (WithKey Text a)) Parser b }
   deriving (Functor, Applicative)
 
+-- | Text argument: Map key, a: thing you're parsing. Return 'Nothing' to skip the object and let another part handle it.
 part :: (Text -> a -> Maybe (Parser b)) -> ParseBag a (Map Text b)
 part f = ParseBag $ Compose $ traversePartWithKey f
 
