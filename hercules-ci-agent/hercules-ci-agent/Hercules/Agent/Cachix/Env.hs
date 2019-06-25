@@ -1,12 +1,12 @@
 module Hercules.Agent.Cachix.Env where
 
 import           Protolude
-import qualified Cachix.Client.Push as Cachix
-import           Hercules.Formats.CacheKeys (CacheKeys)
+import qualified Cachix.Client.Push            as Cachix
+import           Hercules.Formats.CachixCache    ( CachixCache )
 
 data Env = Env
  { pushCaches :: Map Text Cachix.PushCache
- , cacheKeys :: CacheKeys
+ , cacheKeys :: Map Text CachixCache
  , netrcLines :: [Text]
  }
 

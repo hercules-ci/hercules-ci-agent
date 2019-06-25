@@ -74,8 +74,7 @@ library
       Hercules.API.TaskStatus
       Hercules.Error
       Hercules.Formats.Common
-      Hercules.Formats.CacheKeys
-      Hercules.Formats.CacheKeys.Keys
+      Hercules.Formats.CachixCache
       Hercules.Frontend
   hs-source-dirs:
       src
@@ -148,7 +147,7 @@ test-suite hercules-api-test
       Spec
       AesonSupport
       Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfoSpec
-      Hercules.Formats.CacheKeysSpec
+      Hercules.Formats.CachixCacheSpec
   hs-source-dirs:
       test
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators

@@ -18,7 +18,6 @@ import           Hercules.Agent.Cachix.Info     ( activePushCaches )
 import           Hercules.Agent.Env            as Agent.Env
 import qualified Hercules.Agent.Nix            as Nix
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
-import qualified Hercules.Formats.CacheKeys    as CacheKeys
 import qualified Servant.Client                as Servant
 import           System.IO                      ( hClose )
 
@@ -61,7 +60,7 @@ getNetrcLines = asks (Agent.Cachix.netrcLines . Agent.Env.cachixEnv)
 
 getSubstituters :: App [Text]
 getSubstituters = do
-  (CacheKeys.CacheKeys cks) <- asks (Agent.Cachix.cacheKeys . Agent.Env.cachixEnv)
+  cks <- asks (Agent.Cachix.cacheKeys . Agent.Env.cachixEnv)
 
   -- TODO: merge with system config instead
   pure $ ["https://cache.nixos.org"] ++ map (\c -> "https://" <> c <> ".cachix.org") (M.keys cks)
