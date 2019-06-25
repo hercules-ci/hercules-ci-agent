@@ -1,26 +1,33 @@
 # TODO (doc) CacheKeys format reference link
 /*
   A module that configures an agent machine to use caches for reading and/or
-  writing, based on a secret JSON file in the CacheKeys format.
-
-  Like the format, it is currently limited to cachix.org caches.
+  writing.
  */
 { pkgs, lib, config, ...}:
 let
   cfg = config.profile.cacheKeys;
   inherit (lib.lists) filter concatMap concatLists;
-  inherit (lib) types isAttrs mkIf escapeShellArg attrValues mapAttrsToList;
+  inherit (lib) types isAttrs mkIf escapeShellArg attrValues mapAttrsToList filterAttrs;
   inherit (builtins) readFile fromJSON map split;
 
-  readCacheKeys = fileOrNull:
-    if fileOrNull == null
-    then { kind = "CacheKeys"; caches = {}; }
-    else fromJSON (readFile fileOrNull);
+  allBinaryCaches = 
+    if cfg.file == null
+    then {}
+    else builtins.fromJSON (builtins.readFile cfg.file);
 
-  json = readCacheKeys cfg.file;
-  inherit (json) caches;
+  cachixCaches =
+    filterAttrs (k: v: (v.kind or null) == "CachixCache") allBinaryCaches;
 
-  pubkeys = concatMap (cache: cache.publicKeys) (attrValues json.caches);
+  cachixVersionWarnings =
+    mapAttrsToList (k: v: "In file ${cfg.file}, entry ${k}, unsupported CachixCache version ${(v.apiVersion or null)}")
+    (filterAttrs (k: v: (v.apiVersion or null) != null) cachixCaches);
+
+  otherCaches =
+    filterAttrs (k: v: (v.kind or null) != "CachixCache") allBinaryCaches;
+  otherCachesWarnings =
+    mapAttrsToList (k: v: "In file ${cfg.file}, entry ${k}, unsupported cache with kind ${(v.kind or null)}") otherCaches;
+
+  pubkeys = concatMap (cache: cache.publicKeys) (attrValues cachixCaches);
 
 in
 {
@@ -48,21 +55,6 @@ in
         For this reason the caches are merely trusted and not enabled by default.
       '';
     };
-    /*
-      TODO: make this actually configurable
-            This module is currently limited to the hardened version which
-            deploys netrc to daemon-netrc with 0400, root:root
-
-    rootOnly = lib.mkOption {
-      type = types.bool;
-      default = true;
-      description = ''
-        Writes the pull tokens (if any) to a file that is only readable by root
-        and the Nix daemon. This makes it harder for users to retrieve these
-        tokens.
-      '';
-    };
-    */
 
   };
 
@@ -70,23 +62,9 @@ in
                      cfg.file != null || cfg.deployedPath != null
                     ) {
 
+    warnings = otherCachesWarnings ++ cachixVersionWarnings;
+
     assertions = [
-      { assertion = cfg.file != null -> json.kind == "CacheKeys";
-        message = ''
-          ${toString cfg.file}:
-          profile.cacheKeys.file must point to a JSON file with "kind":"CacheKeys"
-        '';
-      }
-      { assertion = (cfg.file != null && json.kind == "CacheKeys")
-                      -> (json ? apiVersion) != true;
-        message = ''
-          ${toString cfg.file}:
-          profile.cacheKeys.file points to a CacheKeys JSON file with an unsupported
-          apiVersion.
-          Please check the file and make sure you're using an up to date version of the
-          Hercules CI Agent profile NixOS modules.
-        '';
-      }
       { assertion = cfg.deployedPath != null -> cfg.file != null;
         message = ''
           You need to specify profile.cacheKeys.file in order to provide the
@@ -108,8 +86,8 @@ in
       }
     ];
 
-    nix.trustedBinaryCaches = ["https://cache.nixos.org"] ++ mapAttrsToList (name: keys: "https://${name}.cachix.org") caches;
-    nix.binaryCachePublicKeys = concatLists (mapAttrsToList (name: keys: keys.publicKeys) caches);
+    nix.trustedBinaryCaches = ["https://cache.nixos.org"] ++ mapAttrsToList (name: keys: "https://${name}.cachix.org") cachixCaches;
+    nix.binaryCachePublicKeys = concatLists (mapAttrsToList (name: keys: keys.publicKeys) cachixCaches);
 
     nix.extraOptions = ''
       netrc-file = /etc/nix/daemon-netrc
@@ -127,7 +105,7 @@ in
       serviceConfig.Type = "oneshot";
       script = ''
         ${pkgs.jq}/bin/jq -r <${escapeShellArg cfg.deployedPath} \
-            '.caches | to_entries[] | .key as $key | .value.pullToken | select (. != null) | "machine \($key).cachix.org password \(.)" ' \
+            'to_entries[] | .key as $key | .value | select (.kind == "CachixCache") | .authToken | select (. != null) | "machine \($key).cachix.org password \(.)" ' \
           | install --mode=0400 --owner=root --group=root \
               /dev/stdin \
               /etc/nix/daemon-netrc \
