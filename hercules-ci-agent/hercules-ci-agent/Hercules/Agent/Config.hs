@@ -1,6 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Hercules.Agent.Config
   ( Config(..)
   , ConfigPath(..)
@@ -30,8 +32,9 @@ data Config purpose = Config
   { herculesApiBaseURL :: Item purpose 'Required Text
   , clusterJoinTokenPath :: Item purpose 'Required Text
   , concurrentTasks :: Item purpose 'Required Integer
-  , cacheKeysPath :: Item purpose 'Optional Text
+  , binaryCachesPath :: Item purpose 'Optional Text
   } deriving (Generic)
+deriving instance Show (Config 'Final)
 
 tomlCodec :: TomlCodec (Config 'Input)
 tomlCodec =
@@ -42,8 +45,8 @@ tomlCodec =
     .= clusterJoinTokenPath
     <*> dioptional (Toml.integer "concurrentTasks")
     .= concurrentTasks
-    <*> dioptional (Toml.text "cacheKeysPath")
-    .= cacheKeysPath
+    <*> dioptional (Toml.text "binaryCachesPath")
+    .= binaryCachesPath
 
 keyClusterJoinTokenPath :: Key
 keyClusterJoinTokenPath = "clusterJoinTokenPath"
@@ -75,7 +78,7 @@ finalizeConfig input = do
     (clusterJoinTokenPath input)
   pure Config
     { herculesApiBaseURL = fromMaybe dabu $ herculesApiBaseURL input
-    , cacheKeysPath = cacheKeysPath input
+    , binaryCachesPath = binaryCachesPath input
     , clusterJoinTokenPath = cjtp
     , concurrentTasks = fromMaybe defaultConcurrentTasks $ concurrentTasks input
     }
