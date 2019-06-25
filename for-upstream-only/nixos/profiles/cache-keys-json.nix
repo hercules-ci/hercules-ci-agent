@@ -27,8 +27,6 @@ let
   otherCachesWarnings =
     mapAttrsToList (k: v: "In file ${cfg.file}, entry ${k}, unsupported cache with kind ${(v.kind or null)}") otherCaches;
 
-  pubkeys = concatMap (cache: cache.publicKeys) (attrValues cachixCaches);
-
 in
 {
   options.profile.cacheKeys = {
