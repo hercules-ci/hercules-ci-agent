@@ -63,7 +63,7 @@ getSubstituters = do
   cks <- asks (Agent.Cachix.cacheKeys . Agent.Env.cachixEnv)
 
   -- TODO: merge with system config instead
-  pure $ ["https://cache.nixos.org"] ++ map (\c -> "https://" <> c <> ".cachix.org") (M.keys cks)
+  pure $ ["https://cache.nixos.org/"] ++ map (\c -> "https://" <> c <> ".cachix.org") (M.keys cks)
 
 withCaches :: App a -> App a
 withCaches m = do
