@@ -84,7 +84,7 @@ in
       }
     ];
 
-    nix.trustedBinaryCaches = ["https://cache.nixos.org"] ++ mapAttrsToList (name: keys: "https://${name}.cachix.org") cachixCaches;
+    nix.trustedBinaryCaches = ["https://cache.nixos.org/"] ++ mapAttrsToList (name: keys: "https://${name}.cachix.org") cachixCaches;
     nix.binaryCachePublicKeys = concatLists (mapAttrsToList (name: keys: keys.publicKeys) cachixCaches);
 
     nix.extraOptions = ''
