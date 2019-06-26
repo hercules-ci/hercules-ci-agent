@@ -22,9 +22,9 @@ in
       destDir = "/var/lib/keys/hercules-ci-agent";
     };
 
-    profile.hercules-ci-agent.cacheKeysDeployedPath = mkIf hasCacheKeys
-      "/var/lib/keys/hercules-ci-agent/caches.json.key";
-    deployment.keys."caches.json.key" = mkIf hasCacheKeys {
+    profile.hercules-ci-agent.binaryCachesDeployedPath = mkIf hasCacheKeys
+      "/var/lib/keys/hercules-ci-agent/binary-caches.json.key";
+    deployment.keys."binary-caches.json.key" = mkIf hasCacheKeys {
       user = config.services.hercules-ci-agent.user;
       destDir = "/var/lib/keys/hercules-ci-agent";
       keyFile = cfg.cacheKeysFile;

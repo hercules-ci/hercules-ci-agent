@@ -20,8 +20,8 @@ let
     inherit (cfg) clusterJoinTokenPath concurrentTasks;
   } // lib.optionalAttrs (cfg.apiBaseUrl != null) {
     inherit (cfg) apiBaseUrl;
-  } // lib.optionalAttrs (cfg.cacheKeysPath != null) {
-    inherit (cfg) cacheKeysPath;
+  } // lib.optionalAttrs (cfg.binaryCachesPath != null) {
+    inherit (cfg) binaryCachesPath;
   } // cfg.extraOptions;
 
   tomlFile = pkgs.writeText "hercules-ci-agent.toml"
@@ -59,13 +59,13 @@ in
       '';
       type = types.path;
     };
-    cacheKeysPath = mkOption {
+    binaryCachesPath = mkOption {
       description = ''
         Important: Avoid putting secrets in the Nix store. Use a string file
         location here and deploy the actual file to that location separately.
 
-        JSON file with secrets called CacheKeys that authorizes the agent to use binary caches.
-      For more see https://docs.hercules-ci.com/#cachekeyspath
+        JSON file with secrets that authorize the agent to use binary caches.
+        For more, see https://docs.hercules-ci.com/#binaryCachesPath
       '';
       type = types.nullOr types.path;
       default = null;
