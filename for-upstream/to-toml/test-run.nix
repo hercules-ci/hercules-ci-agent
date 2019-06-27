@@ -15,7 +15,7 @@ runCommand "to-toml-test-run" {
     --json \
     --option sandbox false \
     --readonly-mode \
-    --expr "with (import <nixpkgs> {}); import ${./to-toml.test.nix} { src = ${./to-toml.nix}; inherit lib; }" \
+    --expr "with (import <nixpkgs> {}); import ${./tests.nix} { src = ${./default.nix}; inherit lib; }" \
     > $out
   diff <(echo -n '{"failures":{}}') $out
 ''

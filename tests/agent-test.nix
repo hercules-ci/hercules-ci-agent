@@ -32,7 +32,7 @@ in
         # It's an offline test, so no caches are available
         nix.binaryCaches = lib.mkForce [];
         services.hercules-ci-agent.enable = true;
-        services.hercules-ci-agent.apiBaseUrl = "http://api";
+        services.hercules-ci-agent.extraOptions.apiBaseUrl = "http://api";
         services.hercules-ci-agent.clusterJoinTokenPath = (pkgs.writeText "pretend-agent-token" "").outPath;
         services.hercules-ci-agent.concurrentTasks = 4; # Decrease on itest memory problems
 

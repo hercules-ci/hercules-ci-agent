@@ -9,5 +9,5 @@ in {
   # overrides
   hercules-ci-agent = pkgs.haskell.lib.justStaticExecutables self.hercules-ci-agent-packages.hercules-ci-agent;
 
-  toTOML-test = pkgs.callPackage ../to-toml.test.run.nix {};
+  toTOML-test = pkgs.callPackage ../for-upstream/to-toml/test-run.nix {};
 }
