@@ -7,14 +7,6 @@ let
   cfg =
     config.services.hercules-ci-agent;
 
-  finalConfig = filterAttrs (k: v: k == "binaryCachesPath" -> v != null) (
-    {
-      inherit (cfg) clusterJoinTokenPath concurrentTasks;
-    } // cfg.extraOptions
-  );
-
-  tomlFile = pkgs.writeText "hercules-ci-agent.toml"
-                            (toTOML finalConfig);
 in
 {
   imports = [
@@ -117,7 +109,15 @@ in
       }
     ];
     services.hercules-ci-agent = {
-      inherit finalConfig tomlFile;
+
+      tomlFile = pkgs.writeText "hercules-ci-agent.toml"
+                                (toTOML cfg.finalConfig);
+
+      finalConfig = filterAttrs (k: v: k == "binaryCachesPath" -> v != null) (
+        {
+          inherit (cfg) clusterJoinTokenPath concurrentTasks;
+        } // cfg.extraOptions
+      );
 
       # TODO: expose only the (future) main directory as an option and derive 
       # all locations from finalConfig.
