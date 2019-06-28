@@ -26,6 +26,7 @@ in
   config = mkIf cfg.enable {
 
     services.hercules-ci-agent.user = mkDefault defaultUser;
+    services.hercules-ci-agent.extraOptions.baseDirectory = lib.mkDefault defaultUserDetails.home;
 
     systemd.services.hercules-ci-agent = {
       wantedBy = [ "multi-user.target" ];

@@ -16,6 +16,8 @@ import           Hercules.Error
 import           Data.Aeson
 import qualified Data.ByteString.Lazy          as BL
 import qualified Data.Map                      as M
+import           System.Directory               ( doesFileExist )
+import           System.FilePath                ( (</>) )
 
 data BinaryCaches = BinaryCaches {
   cachixCaches :: Map Text CachixCache,
@@ -29,25 +31,38 @@ data UnknownKind = UnknownKind { kind :: Text }
 
 instance FromJSON BinaryCaches where
   -- note that parseBag already preserves object names.
- parseJSON = parseBag
-  (BinaryCaches
-  <$> part (\_name -> whenKind "CachixCache" $ \v -> Just $ (parseJSON v))
-  <*> part (\_name v -> Just $ parseJSON v)
-  )
+  parseJSON = parseBag
+    (BinaryCaches
+    <$> part (\_name -> whenKind "CachixCache" $ \v -> Just $ (parseJSON v))
+    <*> part (\_name v -> Just $ parseJSON v)
+    )
 
 parseFile :: Config 'Final -> KatipContextT IO BinaryCaches
-parseFile cfg = case binaryCachesPath cfg of
-  Just fname -> do
-    bytes <- liftIO $ BL.readFile $ toS fname
-    bcs <- escalateAs (FatalError . toS) $ eitherDecode bytes
-    validate (toS fname) bcs
-    pure bcs
-  Nothing -> do
-    logLocM WarningS
-      $ "You did not configure any caches. This is ok for evaluation purposes,\
-      \ but a cache is required for multi-agent operation and\
-      \ to work well across garbage collection."
-    pure noCaches
+parseFile cfg = do
+
+  let
+    doIt (Just fname) = do
+      bytes <- liftIO $ BL.readFile $ toS fname
+      bcs <- escalateAs (FatalError . toS) $ eitherDecode bytes
+      validate (toS fname) bcs
+      pure bcs
+    doIt Nothing = do
+      logLocM
+        WarningS
+        "You did not configure any caches. This is ok for evaluation purposes,\
+        \ but a cache is required for multi-agent operation and\
+        \ to work well across garbage collection."
+      pure noCaches
+
+  path <- case binaryCachesPath cfg of
+    Just x -> pure $ Just x
+    Nothing -> do
+      let pathByConvention =
+            staticSecretsDirectory cfg </> "binary-caches.json.key"
+      exists <- liftIO (doesFileExist pathByConvention)
+      pure (guard exists *> Just pathByConvention)
+
+  doIt path
 
 validate :: FilePath -> BinaryCaches -> KatipContextT IO ()
 validate fname BinaryCaches { unknownKinds = uks } =

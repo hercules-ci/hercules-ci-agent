@@ -121,9 +121,9 @@ in
 
       # TODO: expose only the (future) main directory as an option and derive 
       # all locations from finalConfig.
-      clusterJoinTokenPath = lib.mkDefault "/var/lib/keys/hercules-ci-agent/cluster-join-token.key";
+      clusterJoinTokenPath = lib.mkDefault "/var/lib/hercules-ci-agent/secrets/cluster-join-token.key";
       extraOptions.binaryCachesPath = lib.mkDefault (
-        lib.mapNullable (_f: "/var/lib/keys/hercules-ci-agent/binary-caches.json.key") cfg.binaryCachesFile
+        lib.mapNullable (_f: "/var/lib/hercules-ci-agent/secrets/binary-caches.json.key") cfg.binaryCachesFile
       );
 
     };

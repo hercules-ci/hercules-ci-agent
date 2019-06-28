@@ -5,6 +5,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Hercules.Agent.Config
   ( Config(..)
+  , FinalConfig
   , ConfigPath(..)
   , Purpose(..)
   , readConfig
@@ -14,8 +15,9 @@ where
 
 import           Protolude               hiding ( to )
 import qualified System.Environment
-import           Hercules.Error
 import           Toml
+import qualified System.Directory
+import           System.FilePath ((</>))
 
 data ConfigPath = TomlPath FilePath
 
@@ -28,11 +30,21 @@ type family Item purpose sort a where
   Item 'Final 'Required a = a
   Item 'Final 'Optional a = Maybe a
 
+type FinalConfig = Config 'Final
 data Config purpose = Config
   { herculesApiBaseURL :: Item purpose 'Required Text
-  , clusterJoinTokenPath :: Item purpose 'Required Text
   , concurrentTasks :: Item purpose 'Required Integer
-  , binaryCachesPath :: Item purpose 'Optional Text
+
+  , baseDirectory :: Item purpose 'Required FilePath
+
+  , staticSecretsDirectory :: Item purpose 'Required FilePath
+    -- ^ Read-only
+
+  , workDirectory :: Item purpose 'Required FilePath
+
+  , clusterJoinTokenPath :: Item purpose 'Required FilePath
+  , binaryCachesPath :: Item purpose 'Optional FilePath
+
   } deriving (Generic)
 deriving instance Show (Config 'Final)
 
@@ -41,11 +53,17 @@ tomlCodec =
   Config
     <$> dioptional (Toml.text "apiBaseUrl")
     .= herculesApiBaseURL
-    <*> dioptional (Toml.text keyClusterJoinTokenPath)
-    .= clusterJoinTokenPath
     <*> dioptional (Toml.integer "concurrentTasks")
     .= concurrentTasks
-    <*> dioptional (Toml.text "binaryCachesPath")
+    <*> dioptional (Toml.string "baseDirectory")
+    .= baseDirectory
+    <*> dioptional (Toml.string "staticSecretsDirectory")
+    .= staticSecretsDirectory
+    <*> dioptional (Toml.string "workDirectory")
+    .= workDirectory
+    <*> dioptional (Toml.string keyClusterJoinTokenPath)
+    .= clusterJoinTokenPath
+    <*> dioptional (Toml.string "binaryCachesPath")
     .= binaryCachesPath
 
 keyClusterJoinTokenPath :: Key
@@ -59,6 +77,10 @@ determineDefaultApiBaseUrl = do
 defaultApiBaseUrl :: Text
 defaultApiBaseUrl = "https://hercules-ci.com"
 
+defaultBaseDirectory :: IO FilePath
+defaultBaseDirectory =
+  System.Directory.getAppUserDataDirectory "hercules-ci-agent"
+
 defaultConcurrentTasks :: Integer
 defaultConcurrentTasks = 4
 
@@ -68,17 +90,27 @@ readConfig loc = case loc of
 
 finalizeConfig :: Config 'Input -> IO (Config 'Final)
 finalizeConfig input = do
+
+  baseDir <- case baseDirectory input of
+    Just x -> pure x
+    Nothing -> defaultBaseDirectory
+
+  let staticSecretsDir =
+        fromMaybe (baseDir </> "secrets") (staticSecretsDirectory input)
+      clusterJoinTokenP = fromMaybe
+        (staticSecretsDir </> "cluster-join-token.key")
+        (clusterJoinTokenPath input)
+      
+      workDir = fromMaybe (baseDir </> "work") (workDirectory input)
+
   dabu <- determineDefaultApiBaseUrl
-  cjtp <- escalate $ maybeToEither
-    (FatalError
-    $ "You need to specify key "
-    <> show keyClusterJoinTokenPath
-    <> " in your configuration file"
-    )
-    (clusterJoinTokenPath input)
+
   pure Config
     { herculesApiBaseURL = fromMaybe dabu $ herculesApiBaseURL input
     , binaryCachesPath = binaryCachesPath input
-    , clusterJoinTokenPath = cjtp
+    , clusterJoinTokenPath = clusterJoinTokenP
     , concurrentTasks = fromMaybe defaultConcurrentTasks $ concurrentTasks input
+    , baseDirectory = baseDir
+    , staticSecretsDirectory = staticSecretsDir
+    , workDirectory = workDir
     }

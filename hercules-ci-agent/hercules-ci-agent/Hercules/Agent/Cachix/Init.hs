@@ -11,23 +11,9 @@ import           Hercules.Error
 import qualified Servant.Auth.Client
 
 import qualified Katip                         as K
-import qualified Data.ByteString.Lazy          as BL
-import qualified Data.Aeson                    as Aeson
 import qualified Data.Map                      as M
 
-readJSON :: Aeson.FromJSON a => FilePath -> IO a
-readJSON fname = do
-  bytes <- BL.readFile fname
-
-  escalateAs
-    (\e -> FatalError $ "JSON syntax error " <> toSL fname <> ":" <> toSL e)
-    (Aeson.eitherDecode bytes)
-
-mapLeft :: (e -> e') -> Either e Aeson.Value -> Either e' Aeson.Value
-mapLeft f (Left a) = Left $ f a
-mapLeft _ (Right r) = Right (r :: Aeson.Value)
-
-newEnv :: Config.Config 'Config.Final -> Map Text CachixCache.CachixCache -> K.KatipContextT IO Env.Env
+newEnv :: Config.FinalConfig -> Map Text CachixCache.CachixCache -> K.KatipContextT IO Env.Env
 newEnv _config cks = do
   -- FIXME: sl doesn't work??
   K.katipAddContext (K.sl "caches" (M.keys cks)) $
