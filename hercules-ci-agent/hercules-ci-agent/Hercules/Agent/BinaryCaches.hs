@@ -40,20 +40,6 @@ instance FromJSON BinaryCaches where
 parseFile :: Config 'Final -> KatipContextT IO BinaryCaches
 parseFile cfg = do
 
-  let
-    doIt (Just fname) = do
-      bytes <- liftIO $ BL.readFile $ toS fname
-      bcs <- escalateAs (FatalError . toS) $ eitherDecode bytes
-      validate (toS fname) bcs
-      pure bcs
-    doIt Nothing = do
-      logLocM
-        WarningS
-        "You did not configure any caches. This is ok for evaluation purposes,\
-        \ but a cache is required for multi-agent operation and\
-        \ to work well across garbage collection."
-      pure noCaches
-
   path <- case binaryCachesPath cfg of
     Just x -> pure $ Just x
     Nothing -> do
@@ -62,7 +48,19 @@ parseFile cfg = do
       exists <- liftIO (doesFileExist pathByConvention)
       pure (guard exists *> Just pathByConvention)
 
-  doIt path
+  case path of
+    Just fname -> do
+      bytes <- liftIO $ BL.readFile $ toS fname
+      bcs <- escalateAs (FatalError . toS) $ eitherDecode bytes
+      validate (toS fname) bcs
+      pure bcs
+    Nothing -> do
+      logLocM
+        WarningS
+        "You did not configure any caches. This is ok for evaluation purposes,\
+        \ but a cache is required for multi-agent operation and\
+        \ to work well across garbage collection."
+      pure noCaches
 
 validate :: FilePath -> BinaryCaches -> KatipContextT IO ()
 validate fname BinaryCaches { unknownKinds = uks } =
