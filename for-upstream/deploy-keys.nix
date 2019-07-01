@@ -60,7 +60,7 @@ in
     deployment.keys."binary-caches.json" = mkIf (binaryCachesPath != null) {
       user = config.services.hercules-ci-agent.user;
       destDir = binaryCachesDir;
-      keyFile = cfg.binaryCachesPath;
+      keyFile = cfg.binaryCachesFile;
     };
 
   };

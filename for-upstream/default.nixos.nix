@@ -9,7 +9,7 @@ let
   defaultUser = "hercules-ci-agent";
   defaultUserDetails = {
     name = defaultUser;
-    home = cfg.baseDirectory;
+    home = "/var/lib/hercules-ci-agent";
     description = "System user for the Hercules Agent";
     isSystemUser = true;
     createHome = true;

@@ -13,25 +13,25 @@ let
   inherit (builtins) readFile fromJSON map split;
 
   allBinaryCaches =
-    if cfg.binaryCachesPath == null
+    if cfg.binaryCachesFile == null
     then {}
-    else builtins.fromJSON (builtins.readFile cfg.binaryCachesPath);
+    else builtins.fromJSON (builtins.readFile cfg.binaryCachesFile);
 
   cachixCaches =
     filterAttrs (k: v: (v.kind or null) == "CachixCache") allBinaryCaches;
 
   cachixVersionWarnings =
-    mapAttrsToList (k: v: "In file ${toString cfg.binaryCachesPath}, entry ${k}, unsupported CachixCache version ${(v.apiVersion or null)}")
+    mapAttrsToList (k: v: "In file ${toString cfg.binaryCachesFile}, entry ${k}, unsupported CachixCache version ${(v.apiVersion or null)}")
     (filterAttrs (k: v: (v.apiVersion or null) != null) cachixCaches);
 
   otherCaches =
     filterAttrs (k: v: (v.kind or null) != "CachixCache") allBinaryCaches;
   otherCachesWarnings =
-    mapAttrsToList (k: v: "In file ${toString cfg.binaryCachesPath}, entry ${k}, unsupported cache with kind ${(v.kind or null)}") otherCaches;
+    mapAttrsToList (k: v: "In file ${toString cfg.binaryCachesFile}, entry ${k}, unsupported cache with kind ${(v.kind or null)}") otherCaches;
 
 in
 {
-  config = mkIf (cfg.enable && cfg.binaryCachesPath != null) {
+  config = mkIf (cfg.enable && cfg.binaryCachesFile != null) {
 
     warnings = otherCachesWarnings ++ cachixVersionWarnings;
 
