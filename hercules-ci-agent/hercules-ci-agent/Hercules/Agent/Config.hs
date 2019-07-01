@@ -55,7 +55,7 @@ tomlCodec =
     .= herculesApiBaseURL
     <*> dioptional (Toml.integer "concurrentTasks")
     .= concurrentTasks
-    <*> dioptional (Toml.string "baseDirectory")
+    <*> dioptional (Toml.string keyBaseDirectory)
     .= baseDirectory
     <*> dioptional (Toml.string "staticSecretsDirectory")
     .= staticSecretsDirectory
@@ -69,6 +69,9 @@ tomlCodec =
 keyClusterJoinTokenPath :: Key
 keyClusterJoinTokenPath = "clusterJoinTokenPath"
 
+keyBaseDirectory :: Key
+keyBaseDirectory = "baseDirectory"
+
 determineDefaultApiBaseUrl :: IO Text
 determineDefaultApiBaseUrl = do
   maybeEnv <- System.Environment.lookupEnv "HERCULES_API_BASE_URL"
@@ -76,10 +79,6 @@ determineDefaultApiBaseUrl = do
 
 defaultApiBaseUrl :: Text
 defaultApiBaseUrl = "https://hercules-ci.com"
-
-defaultBaseDirectory :: IO FilePath
-defaultBaseDirectory =
-  System.Directory.getAppUserDataDirectory "hercules-ci-agent"
 
 defaultConcurrentTasks :: Integer
 defaultConcurrentTasks = 4
@@ -93,7 +92,7 @@ finalizeConfig input = do
 
   baseDir <- case baseDirectory input of
     Just x -> pure x
-    Nothing -> defaultBaseDirectory
+    Nothing -> throwIO $ FatalError $ "You need to specify " <> show keyBaseDirectory <> " in the configuration file."
 
   let staticSecretsDir =
         fromMaybe (baseDir </> "secrets") (staticSecretsDirectory input)
