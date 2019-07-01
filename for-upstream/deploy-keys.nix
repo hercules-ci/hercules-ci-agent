@@ -4,8 +4,8 @@ let
   inherit (lib) mkIf types;
 
   binaryCachesPath = cfg.finalConfig.binaryCachesPath or null;
-  binaryCachesDir = lib.removeSuffix "binary-caches.json.key" binaryCachesPath;
-  binaryCachesCorrect = lib.hasSuffix "binary-caches.json.key" binaryCachesPath;
+  binaryCachesDir = lib.removeSuffix "binary-caches.json" binaryCachesPath;
+  binaryCachesCorrect = lib.hasSuffix "binary-caches.json" binaryCachesPath;
 
   clusterJoinTokenPath = cfg.finalConfig.clusterJoinTokenPath or null;
   clusterJoinTokenDir = lib.removeSuffix "cluster-join-token.key" clusterJoinTokenPath;
@@ -57,7 +57,7 @@ in
       destDir = clusterJoinTokenDir;
     };
 
-    deployment.keys."binary-caches.json.key" = mkIf (binaryCachesPath != null) {
+    deployment.keys."binary-caches.json" = mkIf (binaryCachesPath != null) {
       user = config.services.hercules-ci-agent.user;
       destDir = binaryCachesDir;
       keyFile = cfg.binaryCachesPath;
