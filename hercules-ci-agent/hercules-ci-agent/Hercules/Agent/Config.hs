@@ -21,6 +21,9 @@ import           System.FilePath ((</>))
 
 data ConfigPath = TomlPath FilePath
 
+nounPhrase :: ConfigPath -> Text
+nounPhrase (TomlPath p) = "your agent.toml file from " <> show p
+
 data Purpose = Input | Final
 
 -- | Whether the 'Final' value is optional.
@@ -87,12 +90,12 @@ readConfig :: ConfigPath -> IO (Config 'Input)
 readConfig loc = case loc of
   TomlPath fp -> Toml.decodeFile tomlCodec (toSL fp)
 
-finalizeConfig :: Config 'Input -> IO (Config 'Final)
-finalizeConfig input = do
+finalizeConfig :: ConfigPath -> Config 'Input -> IO (Config 'Final)
+finalizeConfig loc input = do
 
   baseDir <- case baseDirectory input of
     Just x -> pure x
-    Nothing -> throwIO $ FatalError $ "You need to specify " <> show keyBaseDirectory <> " in the configuration file."
+    Nothing -> throwIO $ FatalError $ "You need to specify " <> show keyBaseDirectory <> " in " <> nounPhrase loc
 
   let staticSecretsDir =
         fromMaybe (baseDir </> "secrets") (staticSecretsDirectory input)

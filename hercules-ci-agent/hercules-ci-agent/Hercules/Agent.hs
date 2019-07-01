@@ -61,7 +61,10 @@ import qualified Data.Aeson                    as A
 main :: IO ()
 main = Init.setupLogging $ \logEnv -> do
   opts <- Options.parse
-  cfg <- Config.finalizeConfig =<< Config.readConfig (Options.configFile opts)
+
+  let cfgPath = Options.configFile opts
+  cfg <- Config.finalizeConfig cfgPath =<< Config.readConfig cfgPath
+
   env <- Init.newEnv cfg logEnv
 
   fetchTaskMutex <- newMVar ()
