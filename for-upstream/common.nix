@@ -6,7 +6,6 @@ let
 
   cfg =
     config.services.hercules-ci-agent;
-
 in
 {
   imports = [
@@ -20,15 +19,22 @@ in
       default = false;
       description = "If true, run the agent as a system service";
     };
+    baseDirectory = mkOption {
+      type = types.path;
+      default = "/var/lib/hercules-ci-agent";
+      description = "State directory (secrets, work directory, etc) for agent";
+    };
     user = mkOption {
       description = "Unix system user that runs the agent service";
       type = types.string;
     };
-    package = mkOption {
+    package = let
+        version = "0.3";
+      in mkOption {
       description = "Package containing the bin/hercules-ci-agent program";
       type = types.package;
-      default = pkgs.hercules-ci-agent;
-      defaultText = "pkgs.hercules-ci-agent";
+      default = (import (builtins.fetchTarball "https://github.com/hercules-ci/hercules-ci-agent/archive/v${version}.gz") {}).hercules-ci-agent;
+      defaultText = "hercules-ci-agent-${version}";
     };
     extraOptions = mkOption {
       description = ''
@@ -55,23 +61,6 @@ in
       '';
     };
 
-    /*
-      Options that go into the config file
-     */
-    # TODO: Remove, use default, point to extraOptions?
-    clusterJoinTokenPath = mkOption {
-      description = ''
-        Important: Avoid putting secrets in the Nix store. Use a string file
-        location here and deploy the actual file to that location separately.
-
-        Location of a the cluster join token. It authorizes the agent to add
-        itself to the cluster that the token represents.
-
-        This file is only required to be present for the agent's first run. It
-        will be ignored after the agent has used the token successfully.
-      '';
-      type = types.path;
-    };
     concurrentTasks = mkOption {
       description = "Number of tasks to perform simultaneously, such as evaluations, derivations";
       type = types.int;
@@ -98,34 +87,33 @@ in
         The fully assembled config file.
       '';
     };
+    secretsDirectory = mkOption {
+      type = types.path;
+      readOnly = true;
+      internal = true;
+      description = ''
+        Secrets directory derived from baseDirectory.
+      '';
+    };
     # TODO: expose all file and directory locations as readOnly options
   };
 
   config = mkIf cfg.enable {
-    assertions = [
-      {
-        assertion = config.nix.package == cfg.package.nix;
-        message = "config.nix.package must match the version of Nix used in hercules-ci-agent. If you are trying to use a different version of Nix, try overriding the pkgs.nix attribute by means of an overlay.";
-      }
-    ];
     services.hercules-ci-agent = {
-
+      secretsDirectory = cfg.baseDirectory + "/secrets";
       tomlFile = pkgs.writeText "hercules-ci-agent.toml"
                                 (toTOML cfg.finalConfig);
 
       finalConfig = filterAttrs (k: v: k == "binaryCachesPath" -> v != null) (
         {
-          inherit (cfg) clusterJoinTokenPath concurrentTasks;
+          inherit (cfg) concurrentTasks baseDirectory;
         } // cfg.extraOptions
       );
 
-      # TODO: expose only the (future) main directory as an option and derive 
+      # TODO: expose only the (future) main directory as an option and derive
       # all locations from finalConfig.
-      clusterJoinTokenPath = lib.mkDefault "/var/lib/hercules-ci-agent/secrets/cluster-join-token.key";
-      extraOptions.binaryCachesPath = lib.mkDefault (
-        lib.mapNullable (_f: "/var/lib/hercules-ci-agent/secrets/binary-caches.json") cfg.binaryCachesFile
-      );
-
+      extraOptions.clusterJoinTokenPath = lib.mkDefault (cfg.secretsDirectory + "/cluster-join-token.key");
+      extraOptions.binaryCachesPath = lib.mkDefault (lib.mapNullable (_f: cfg.secretsDirectory + "/binary-caches.json") cfg.binaryCachesFile);
     };
   };
 }
