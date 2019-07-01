@@ -44,7 +44,7 @@ parseFile cfg = do
     Just x -> pure $ Just x
     Nothing -> do
       let pathByConvention =
-            staticSecretsDirectory cfg </> "binary-caches.json.key"
+            staticSecretsDirectory cfg </> "binary-caches.json"
       exists <- liftIO (doesFileExist pathByConvention)
       pure (guard exists *> Just pathByConvention)
 

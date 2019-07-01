@@ -123,7 +123,7 @@ in
       # all locations from finalConfig.
       clusterJoinTokenPath = lib.mkDefault "/var/lib/hercules-ci-agent/secrets/cluster-join-token.key";
       extraOptions.binaryCachesPath = lib.mkDefault (
-        lib.mapNullable (_f: "/var/lib/hercules-ci-agent/secrets/binary-caches.json.key") cfg.binaryCachesFile
+        lib.mapNullable (_f: "/var/lib/hercules-ci-agent/secrets/binary-caches.json") cfg.binaryCachesFile
       );
 
     };
