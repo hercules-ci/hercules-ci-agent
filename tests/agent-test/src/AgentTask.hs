@@ -2,9 +2,11 @@
 module AgentTask where
 
 import           Hercules.API.Prelude
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask
-                                               as EvaluateTask
+import           Hercules.API.Agent.Evaluate.EvaluateTask
+                                               ( EvaluateTask)
+import           Hercules.API.Agent.Build.BuildTask
+                                               ( BuildTask)
 
-data AgentTask = Evaluate EvaluateTask.EvaluateTask
-               | Build Text
+data AgentTask = Evaluate EvaluateTask
+               | Build BuildTask
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

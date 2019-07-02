@@ -5,25 +5,26 @@ import qualified Data.Text                     as T
 import           Servant.Auth.Client            ( Token(Token) )
 
 import qualified Hercules.API.Agent.LifeCycle
-import qualified Hercules.API.Agents.CreateAgentSession_V2 as CreateAgentSession
+import qualified Hercules.API.Agents.CreateAgentSession_V2
+                                               as CreateAgentSession
 import           Hercules.Agent.Client          ( lifeCycleClient )
 import           Hercules.Agent.Env            as Env
-import qualified Hercules.Agent.EnvironmentInfo  as EnvironmentInfo
+import           Hercules.Agent.Config          ( baseDirectory )
+import qualified Hercules.Agent.EnvironmentInfo
+                                               as EnvironmentInfo
 import qualified System.Directory
 import           System.FilePath                ( (</>) )
 
 import           Hercules.Agent.Log
 
-getDataDirectory :: MonadIO m => m FilePath
-getDataDirectory = liftIO $ System.Directory.getXdgDirectory
-  System.Directory.XdgData
-  "hercules-ci-agent"
+getDir :: App FilePath
+getDir = asks (baseDirectory . config)
 
 writeAgentSessionKey :: Text -> App ()
 writeAgentSessionKey tok = do
-  dataDir <- getDataDirectory
-  liftIO $ System.Directory.createDirectoryIfMissing True dataDir
-  liftIO $ writeFile (dataDir </> "session.key") (toS tok)
+  dir <- getDir
+  liftIO $ System.Directory.createDirectoryIfMissing True dir
+  liftIO $ writeFile (dir </> "session.key") (toS tok)
 
 -- | Reads a token file, strips whitespace
 readTokenFile :: MonadIO m => FilePath -> m Text
@@ -35,9 +36,9 @@ readTokenFile fp = liftIO $ sanitize <$> readFile fp
 
 readAgentSessionKey :: App (Maybe Text)
 readAgentSessionKey = do
-  dataDir <- liftIO $ getDataDirectory
-  logLocM DebugS $ "Data directory: " <> show dataDir
-  let file = dataDir </> "session.key"
+  dir <- getDir
+  logLocM DebugS $ "Data directory: " <> show dir
+  let file = dir </> "session.key"
   liftIO (System.Directory.doesFileExist file) >>= \case
     True -> notEmpty <$> readTokenFile file
      where
@@ -72,13 +73,13 @@ createAgentSession = do
 
   logLocM DebugS $ "Agent info: " <> show agentInfo
 
-  let createAgentBody = CreateAgentSession.CreateAgentSession {
-                agentInfo = agentInfo
-              }
+  let createAgentBody =
+        CreateAgentSession.CreateAgentSession { agentInfo = agentInfo }
   token <- asks Env.currentToken
-  runHerculesClient' $ Hercules.API.Agent.LifeCycle.agentSessionCreate lifeCycleClient
-                                                              createAgentBody
-                                                              token
+  runHerculesClient' $ Hercules.API.Agent.LifeCycle.agentSessionCreate
+    lifeCycleClient
+    createAgentBody
+    token
 
 -- TODO: Although this looks nice, the implicit limitation here is that we can
 --       only have one token at a time. I wouldn't be surprised if this becomes

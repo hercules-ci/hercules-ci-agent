@@ -24,6 +24,7 @@ executable hercules-ci-agent-test
   main-is: Main.hs
   other-modules:
       AgentTask
+      BuildSpec
       DummyApi
       EvaluationSpec
       MockTasksApi

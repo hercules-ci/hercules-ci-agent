@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -O0 #-} -- TODO https://github.com/haskell-servant/servant/issues/986
 module Hercules.Agent.Client
   ( client
   , tasksClient

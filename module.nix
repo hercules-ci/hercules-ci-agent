@@ -1,12 +1,15 @@
 /*
-  Like the upstream NixOS module in nixpkgs, but bleeding edge.
-
-  Importing this file as a NixOS module is equivalent to loading the upstream
-  module from NixOS *after* this version is released.
+  Like the upstream NixOS module in nixpkgs, but for the version of the agent
+  that this file was bundled with.
  */
+{ pkgs, ... }:
 {
-  # Override hercules-ci-agent to the version in this repo.
+  imports = [ ./for-upstream/default.nixos.nix ];
+
+  # Overrides hercules-ci-agent to the version in this repo.
   nixpkgs.overlays = [ (import ./nix/overlay.nix) ];
 
-  imports = [ ./for-upstream-only/nixos/modules/services/continuous-integration/hercules-ci-agent.nix ];
+  services.hercules-ci-agent.package = pkgs.hercules-ci-agent;
+
+  # TODO blacklist the upstream module (does that blacklist imports transitively?...)
 }

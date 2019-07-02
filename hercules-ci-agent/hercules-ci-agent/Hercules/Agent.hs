@@ -33,6 +33,7 @@ import qualified Hercules.API.Agent.LifeCycle
 import qualified Hercules.API.Agent.LifeCycle.StartInfo
                                                as StartInfo
 import           Hercules.Agent.CabalInfo       ( herculesAgentVersion )
+import qualified Hercules.Agent.Cachix         as Cachix
 import           Hercules.Agent.Client          ( tasksClient
                                                 , lifeCycleClient
                                                 )
@@ -60,8 +61,11 @@ import qualified Data.Aeson                    as A
 main :: IO ()
 main = Init.setupLogging $ \logEnv -> do
   opts <- Options.parse
-  cfg <- Config.readConfig (toS <$> Options.configFile opts)
-  env <- Init.newEnv (Options.configOverrides opts `appEndo` cfg) logEnv
+
+  let cfgPath = Options.configFile opts
+  cfg <- Config.finalizeConfig cfgPath =<< Config.readConfig cfgPath
+
+  env <- Init.newEnv cfg logEnv
 
   fetchTaskMutex <- newMVar ()
 
@@ -157,11 +161,13 @@ performTask task = contextually $ do
       "eval" -> do
         let evalTask :: Task EvaluateTask.EvaluateTask
             evalTask = Task.uncheckedCast task
-        Evaluate.performEvaluation evalTask
+        Cachix.withCaches $
+          Evaluate.performEvaluation evalTask
       "build" -> do
         let buildTask :: Task BuildTask.BuildTask
             buildTask = Task.uncheckedCast task
-        Build.performBuild buildTask
+        Cachix.withCaches $
+          Build.performBuild buildTask
       _ -> panicWithLog "Unknown task type"
 
   reportSuccess = do

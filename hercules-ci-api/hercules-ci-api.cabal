@@ -23,12 +23,15 @@ library
       Hercules.API.Accounts.Account
       Hercules.API.Agent.Build
       Hercules.API.Agent.Build.BuildEvent
+      Hercules.API.Agent.Build.BuildEvent.Pushed
+      Hercules.API.Agent.Build.BuildEvent.OutputInfo
       Hercules.API.Agent.Build.BuildTask
       Hercules.API.Agent.Evaluate
       Hercules.API.Agent.Evaluate.EvaluateEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
+      Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll
       Hercules.API.Agent.Evaluate.EvaluateTask
       Hercules.API.Agent.LifeCycle
       Hercules.API.Agent.LifeCycle.StartInfo
@@ -70,6 +73,8 @@ library
       Hercules.API.TaskState
       Hercules.API.TaskStatus
       Hercules.Error
+      Hercules.Formats.Common
+      Hercules.Formats.CachixCache
       Hercules.Frontend
   hs-source-dirs:
       src
@@ -140,7 +145,9 @@ test-suite hercules-api-test
   main-is: Main.hs
   other-modules:
       Spec
+      AesonSupport
       Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfoSpec
+      Hercules.Formats.CachixCacheSpec
   hs-source-dirs:
       test
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
@@ -160,6 +167,7 @@ test-suite hercules-api-test
     , lens
     , memory
     , network-uri
+    , QuickCheck
     , profunctors
     , servant >=0.14.1
     , servant-auth

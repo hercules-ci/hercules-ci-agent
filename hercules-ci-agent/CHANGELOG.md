@@ -27,8 +27,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Initial release
 
-[0.2]: https://github.com/cachix/cachix/compare/v0.1.1...v0.2
-[0.1.1]: https://github.com/cachix/cachix/compare/v0.1.0.0...v0.1.1
-[Unreleased]: https://github.com/cachix/cachix/compare/stable...master
+[0.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.1.1...hercules-ci-agent-0.2
+[0.1.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.1.0.0...hercules-ci-agent-0.1.1
+[Unreleased]: https://github.com/hercules-ci/hercules-ci-agent/compare/stable...master
 [nix-gitignore]: https://github.com/siers/nix-gitignore
 [gitignore]: https://github.com/hercules-ci/gitignore

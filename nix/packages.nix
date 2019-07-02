@@ -20,12 +20,10 @@ let
     inherit pkgs;
 
     # TODO: upstream the overrides
-    haskellPackages = haskellPackages_.extend (self: super:
-     optionalAttrs (!super ? servant-conduit) {
-      cachix = super.callHackage "cachix" "0.1.2" {};
-      cachix-api = super.callHackage "cachix-api" "0.1.0.2" {};
-     } // {
-      #cachix = super.callCabal2nix "cachix" (sources.cachix + "/cachix") {};
+    haskellPackages = haskellPackages_.extend (self: super: {
+
+      cachix = super.callCabal2nix "cachix" (sources.cachix + "/cachix") {};
+      cachix-api = super.callCabal2nix "cachix-api" (sources.cachix + "/cachix-api") {};
 
       hercules-ci-api =
         let basePkg = super.callCabal2nix "hercules-ci-api" (gitignoreSource ../hercules-ci-api) {};
@@ -76,14 +74,22 @@ let
         in
           buildFromSdist basePkg;
 
+      tomland =
+        super.callPackage ./haskell-tomland-1-0-1-0.nix {
+          hedgehog = self.hedgehog_1_0;
+          tasty-hedgehog = self.tasty-hedgehog_1_0;
+        };
+
+      hedgehog_1_0 =
+        super.callPackage ./haskell-hedgehog-1-0.nix {};
+      tasty-hedgehog_1_0 =
+        super.callPackage ./haskell-tasty-hedgehog-1-0.nix { hedgehog = self.hedgehog_1_0; };
     });
 
     hercules-ci-api-swagger = pkgs.callPackage ../hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };
 
-    vmTest = pkgs.nixosTest or (import ./compat-nixosTest.nix pkgs);
-    agent-test-body = import ../tests/agent-test.nix;
     tests = recurseIntoAttrs {
-      agent-functional-test = vmTest (agent-test-body);
+      agent-functional-test = pkgs.nixosTest ../tests/agent-test.nix;
     };
   };
 in

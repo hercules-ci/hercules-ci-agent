@@ -1,4 +1,15 @@
 {
+    "cachix": {
+        "homepage": "https://cachix.org",
+        "url": "https://github.com/cachix/cachix/archive/91e1b719aa2384b470bda5995f5e38d1abefc924.tar.gz",
+        "owner": "cachix",
+        "branch": "master",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "repo": "cachix",
+        "sha256": "1jsnblc21nxnp1ixblivwnbz8xpll4cxpyyalrg4bxcwmv0rmr31",
+        "description": "Command line client for Nix binary cache hosting:",
+        "rev": "91e1b719aa2384b470bda5995f5e38d1abefc924"
+    },
     "nixos-19.03": {
         "url": "https://github.com/NixOS/nixpkgs-channels/archive/7b36963e7a7363f1b40ac0a829c4644923dda909.tar.gz",
         "owner": "NixOS",
@@ -20,17 +31,6 @@
         "sha256": "0358wcmgmc5mx4xfr08fxra4k05zvl2qyaix4gdlm7iwcscz609a",
         "description": "Nix source function for gitignore that just works",
         "rev": "4064e436313191f11969986e66b81cb6bb61bae6"
-    },
-    "nixos-18.09": {
-        "url": "https://github.com/NixOS/nixpkgs-channels/archive/2aa505b77c04bfd8bb702cbf261f1141a3fe55c2.tar.gz",
-        "owner": "NixOS",
-        "branch": "nixos-18.09",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "repo": "nixpkgs-channels",
-        "type": "tarball",
-        "sha256": "14lp7lcwfy6zs2xlhmc71dbq767inz6rp9v2wcma3lf3jf46acvl",
-        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
-        "rev": "2aa505b77c04bfd8bb702cbf261f1141a3fe55c2"
     },
     "nixos-unstable": {
         "url": "https://github.com/NixOS/nixpkgs-channels/archive/1fc591f9a5bd1b016b5d66dfab29560073955a14.tar.gz",

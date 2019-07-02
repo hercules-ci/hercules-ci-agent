@@ -41,7 +41,6 @@ library
     , bytestring
     , conduit
     , containers
-    , dhall
     , exceptions
     , katip
     , lifted-async
@@ -57,22 +56,34 @@ library
 executable hercules-ci-agent
   main-is: Main.hs
   other-modules:
+      Data.Functor.Partitioner
+      Data.Map.Extras.Hercules
       Hercules.Agent
+      Hercules.Agent.Bag
       Hercules.Agent.Batch
+      Hercules.Agent.BinaryCaches
       Hercules.Agent.Build
       Hercules.Agent.CabalInfo
+      Hercules.Agent.Cachix
+      Hercules.Agent.Cachix.Env
+      Hercules.Agent.Cachix.Info
+      Hercules.Agent.Cachix.Init
       Hercules.Agent.Client
       Hercules.Agent.Config
       Hercules.Agent.Env
       Hercules.Agent.EnvironmentInfo
       Hercules.Agent.Evaluate
       Hercules.Agent.Evaluate.TraversalQueue
-      Hercules.Agent.Evaluate.RetrieveDerivationInfo
       Hercules.Agent.Exception
       Hercules.Agent.Init
       Hercules.Agent.Log
+      Hercules.Agent.Nix
+      Hercules.Agent.Nix.Env
+      Hercules.Agent.Nix.Init
+      Hercules.Agent.Nix.RetrieveDerivationInfo
       Hercules.Agent.NixPath
       Hercules.Agent.Options
+      Hercules.Agent.SecureDirectory
       Hercules.Agent.Scribe
       Hercules.Agent.Token
       WorkerProcess
@@ -90,10 +101,10 @@ executable hercules-ci-agent
     , binary-conduit
     , bytestring
     , cachix
+    , cachix-api
     , conduit
     , conduit-extra
     , containers
-    , dhall
     , directory
     , exceptions
     , filepath
@@ -125,8 +136,12 @@ executable hercules-ci-agent
     , temporary
     , text
     , time
+    , tomland >= 1.0.1.0
+    , transformers
     , transformers-base
     , unix
+    , unliftio-core
+    , unordered-containers
     , uuid
   default-language: Haskell2010
 
@@ -171,7 +186,6 @@ executable hercules-ci-agent-worker
     , bytestring
     , conduit
     , containers
-    , dhall
     , exceptions
     , hercules-ci-agent
     , inline-c
@@ -217,7 +231,6 @@ test-suite hercules-test
     , bytestring
     , conduit
     , containers
-    , dhall
     , exceptions
     , hercules-ci-api
     , hspec
