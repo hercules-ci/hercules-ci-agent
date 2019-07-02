@@ -20,6 +20,7 @@ import           WorkerProcess
 import           Hercules.Agent.Batch
 import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Cachix         as Agent.Cachix
+import qualified Hercules.Agent.Config         as Config
 import           Hercules.Agent.Env
 import           Hercules.Agent.Log
 import           Hercules.Agent.Exception       ( defaultRetry )
@@ -63,7 +64,7 @@ import qualified Hercules.API.Message          as Message
 import qualified Network.HTTP.Client.Conduit   as HTTP.Conduit
 import qualified Network.HTTP.Simple           as HTTP.Simple
 import qualified Servant.Client
-import           System.IO.Temp                 ( withSystemTempDirectory )
+import           System.IO.Temp                 ( withTempDirectory )
 import           Data.Conduit.Process           ( sourceProcessWithStreams )
 import           Data.IORef                     ( newIORef
                                                 , atomicModifyIORef
@@ -124,11 +125,12 @@ performEvaluation task' = do
                                  events
           )
 
+  workDir <- asks (Config.workDirectory . config)
   -- TODO: configurable temp directory
   liftIO
     $ boundedDelayBatcher (1000 * 1000) 1000 eventChan submitBatch
     $ const
-    $ withSystemTempDirectory "hercules-ci-agent"
+    $ withTempDirectory workDir "eval"
     $ \tmpdir -> unlift $ do
         withNamedContext "tmpdir" tmpdir $ logLocM DebugS "Determined tmpdir"
 

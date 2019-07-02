@@ -1,4 +1,3 @@
-{-# LANGUAGE DataKinds #-}
 module Hercules.Agent.Init where
 
 import           Protolude
@@ -15,8 +14,9 @@ import qualified Hercules.Agent.Token          as Token
 import qualified Hercules.Agent.Cachix.Init
 import qualified Hercules.Agent.Nix.Init
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
+import qualified System.Directory
 
-newEnv :: Config.Config 'Config.Final -> K.LogEnv -> IO Env
+newEnv :: Config.FinalConfig -> K.LogEnv -> IO Env
 newEnv config logEnv = do
   let 
     withLogging :: K.KatipContextT IO a -> IO a
@@ -24,7 +24,9 @@ newEnv config logEnv = do
 
   withLogging $ K.logLocM K.DebugS $ "Config: " <> show config
 
-  SecureDirectory.init
+  System.Directory.createDirectoryIfMissing True (Config.workDirectory config)
+
+  SecureDirectory.init config
 
   bcs <- withLogging $ BC.parseFile config
 
@@ -37,6 +39,7 @@ newEnv config logEnv = do
   nix <- Hercules.Agent.Nix.Init.newEnv
   pure Env
     { manager = manager
+    , config = config
     , herculesBaseUrl = baseUrl
     , herculesClientEnv = clientEnv
     , currentToken = Servant.Auth.Client.Token $ encodeUtf8 token
