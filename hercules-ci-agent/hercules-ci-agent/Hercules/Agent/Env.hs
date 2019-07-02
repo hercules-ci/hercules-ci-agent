@@ -17,9 +17,11 @@ import qualified Hercules.Agent.Cachix.Env     as Cachix
                                                 ( Env, HasEnv(..) )
 import qualified Hercules.Agent.Nix.Env        as Nix
                                                 ( Env )
+import           Hercules.Agent.Config          ( FinalConfig )
 
 data Env = Env
   { manager :: Network.HTTP.Client.Manager
+  , config :: FinalConfig
   , herculesBaseUrl :: Servant.Client.BaseUrl
   , herculesClientEnv :: Servant.Client.ClientEnv
   -- TODO: The implicit limitation here is that we can

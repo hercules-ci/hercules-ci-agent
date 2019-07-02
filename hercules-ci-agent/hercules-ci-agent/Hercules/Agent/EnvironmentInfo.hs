@@ -57,28 +57,28 @@ getNixInfo = do
 
   rawJson <- Process.readProcess "nix" ["show-config", "--json"] stdinEmpty
 
-  config <- case Aeson.eitherDecode (toS rawJson) of
+  cfg <- case Aeson.eitherDecode (toS rawJson) of
     Left e -> panic $ "Could not parse nix show-config --json: " <> show e
     Right r -> pure r
 
   pure NixInfo
     { nixExeVersion = T.dropAround isSpace (toSL version)
     , nixPlatforms =
-      ((config :: Aeson.Value) ^.. key "system" . key "value" . _String)
-        <> (config
+      ((cfg :: Aeson.Value) ^.. key "system" . key "value" . _String)
+        <> (cfg
            ^.. key "extra-platforms"
            . key "value"
            . _Array
            . traverse
            . _String
            )
-    , nixSystemFeatures = config
+    , nixSystemFeatures = cfg
                           ^.. key "system-features"
                           . key "value"
                           . _Array
                           . traverse
                           . _String
-    , nixSubstituters = config
+    , nixSubstituters = cfg
                         ^.. key "substituters"
                         . key "value"
                         . _Array

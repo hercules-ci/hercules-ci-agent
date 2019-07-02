@@ -2,28 +2,28 @@ module Hercules.Agent.SecureDirectory where
 
 import Protolude
 
+import           Hercules.Agent.Config (FinalConfig, workDirectory)
+import           Hercules.Agent.Env
 import           System.FilePath ((</>))
 import qualified System.Directory
 import qualified System.IO.Temp
 import qualified System.Posix.Files as Posix
-import           Control.Monad.Catch (MonadMask)
 
-init :: IO ()
-init = do
-  d <- getSecureDirectory
+init :: FinalConfig -> IO ()
+init cfg = do
+  d <- getSecureDirectory cfg
   System.Directory.createDirectoryIfMissing True d
   -- ideally this would be atomic
   Posix.setFileMode d Posix.ownerModes -- owner only
 
-getSecureDirectory :: IO FilePath
-getSecureDirectory =
-  System.Directory.getAppUserDataDirectory "hercules-ci-agent" <&> (</> "secure")
+getSecureDirectory :: FinalConfig -> IO FilePath
+getSecureDirectory cfg = pure $ workDirectory cfg </> "secure"
 
 withSecureTempFile
-  :: (MonadIO m, MonadMask m)
-  => [Char] -- ^ file name template
-  -> (FilePath -> Handle -> m a)
-  -> m a
+  :: [Char] -- ^ file name template
+  -> (FilePath -> Handle -> App a)
+  -> App a
 withSecureTempFile tpl m = do
-  d <- liftIO getSecureDirectory
+  cfg <- asks config
+  d <- liftIO (getSecureDirectory cfg)
   System.IO.Temp.withTempFile d tpl m
