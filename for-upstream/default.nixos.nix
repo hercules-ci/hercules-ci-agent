@@ -40,6 +40,13 @@ in
       };
     };
 
+    systemd.paths.hercules-ci-agent = {
+      wantedBy = [ "herucles-ci-agent.service" ];
+      pathConfig = {
+        PathChanged = [ cfg.secretsDirectory ];
+      };
+    };
+
     users = mkIf (cfg.user == defaultUser) {
       users.hercules-ci-agent =
         if config.ids.uids ? "hercules-ci-agent"
