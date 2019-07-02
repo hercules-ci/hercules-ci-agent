@@ -17,12 +17,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
   See https://docs.hercules-ci.com/#agent-configuration-file
 
+- NixOS-based deployments now require `enable`.
+
+      services.hercules-ci-agent.enable = true;
+
 - All files are placed/expected in new locations that by default derive
   from the `baseDirectory` option in the `agent.toml` file.
 
   You may remove `~/.hercules-ci-agent` and `~/.local/share/hercules-ci-agent` after upgrading.
 
-## Fixed 
+## Fixed
 
 - Added retries to status reporting to fix potential
   inconsistencies on the service
