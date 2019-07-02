@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Added
 
-- Added Cachix support (for multi-agent and multi-platform support)
+- Added Cachix support, for multi-agent and multi-platform support
 
 - Report derivation outputs with their size and hashes
 
@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support `requiredFeatures` attribute on derivations
 
 - Hello and hearthbeat protocol, which will allow the
-  service to be aware of how agent is configured and
+  service to be aware of how the agent is configured and
   when it's online.
 
 ## [0.2] - 2019-05-14
