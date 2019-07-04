@@ -18,7 +18,7 @@ import           System.FilePath                ( (</>) )
 import           Hercules.Agent.Log
 
 getDir :: App FilePath
-getDir = asks (baseDirectory . config)
+getDir = asks ((</> "secrets") . baseDirectory . config)
 
 writeAgentSessionKey :: Text -> App ()
 writeAgentSessionKey tok = do
