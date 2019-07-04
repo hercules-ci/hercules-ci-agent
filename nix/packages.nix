@@ -97,7 +97,7 @@ in
 recurseIntoAttrs {
   inherit (internal.haskellPackages) hercules-ci-agent;
   inherit (internal) hercules-ci-api-swagger;
-  inherit (internal) tests;
+  tests = if pkgs.stdenv.isLinux then internal.tests else null;
 
   # Not traversed for derivations:
   inherit internal;
