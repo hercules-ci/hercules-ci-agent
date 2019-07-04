@@ -168,11 +168,11 @@ executable hercules-ci-agent-worker
     -threaded
     -rtsopts
     -with-rtsopts=-maxN8
-    -optc-std=c++14
-  cxx-flags: -std=c++14
-  cc-options: -std=c++14
+    -optc-std=c++17
+  cxx-flags: -std=c++17
+  cc-options: -std=c++17
   if os(darwin)
-    ghc-options: -pgmc=clang++ -optc-std=c++14
+    ghc-options: -pgmc=clang++ -optc-std=c++17
   -- https://github.com/haskell/cabal/pull/5315#issuecomment-508483918
   include-dirs:
       cbits
