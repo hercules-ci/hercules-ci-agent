@@ -81,6 +81,8 @@ let
           tasty-hedgehog = self.tasty-hedgehog_1_0;
         };
 
+      inline-c-cpp = haskell.lib.appendPatch super.inline-c-cpp ./inline-c-cpp.patch;
+
       hedgehog_1_0 =
         self.callPackage ./haskell-hedgehog-1-0.nix {};
       tasty-hedgehog_1_0 =

@@ -1,4 +1,4 @@
-cabal-version: 1.12
+cabal-version: 2.4
 
 name:           hercules-ci-agent
 version:        0.2
@@ -168,11 +168,12 @@ executable hercules-ci-agent-worker
     -threaded
     -rtsopts
     -with-rtsopts=-maxN8
-    -- match what Nix is using
-    -optc=-std=c++14
+    -optc-std=c++14
+  cxx-flags: -std=c++14
+  cc-options: -std=c++14
   if os(darwin)
-    ghc-options: -pgmc=clang++
-  cc-options: -Wall
+    ghc-options: -pgmc=clang++ -optc-std=c++14
+  -- https://github.com/haskell/cabal/pull/5315#issuecomment-508483918
   include-dirs:
       cbits
   extra-libraries:
