@@ -2,15 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
-and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ## [0.3] - 2019-07-02
 
 
-## Changed
+### Changed
 
 - Configuration of the agent is now done via `--config agent.toml`
   so all command line arguments were removed.
@@ -26,12 +26,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
   You may remove `~/.hercules-ci-agent` and `~/.local/share/hercules-ci-agent` after upgrading.
 
-## Fixed
+### Fixed
 
 - Added retries to status reporting to fix potential
   inconsistencies on the service
 
-## Added
+### Added
 
 - Added Cachix support, for multi-agent and multi-platform support
 
@@ -57,7 +57,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.1.1] - 2019-04-16
 
-## Added
+### Added
 
 - Support ci.nix or nix/ci.nix along with default.nix
 
