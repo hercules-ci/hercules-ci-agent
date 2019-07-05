@@ -219,7 +219,13 @@ performEvaluation task' = do
                   }
           Right file -> TraversalQueue.with $ \derivationQueue ->
             let
-              doIt = Async.Lifted.concurrently_ evaluation emitDrvs
+              doIt = do
+                Async.Lifted.concurrently_ evaluation emitDrvs
+
+                -- derivationInfo upload has finished
+                -- allAttrPaths :: IORef has been populated
+
+                pushDrvs
 
               evaluation = do
                 runEvalProcess projectDir
@@ -228,12 +234,9 @@ performEvaluation task' = do
                                nixPath
                                captureAttrDrvAndEmit
                 -- process has finished
-                Async.Lifted.concurrently_
-                  pushDrvs
-                  (do
-                    TraversalQueue.waitUntilDone derivationQueue
-                    TraversalQueue.close derivationQueue
-                  )
+
+                TraversalQueue.waitUntilDone derivationQueue
+                TraversalQueue.close derivationQueue
 
               pushDrvs = do
                 caches <- Agent.Cachix.activePushCaches
