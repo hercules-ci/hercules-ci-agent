@@ -7,6 +7,8 @@ Example releasing hercules-ci-agent and optionally hercules-ci-api:
    - CHANGELOG.md
    - hercules-ci-api/hercules-ci-api.cabal
    - hercules-ci-agent/hercules-ci-agent.cabal
+- scripts/generate-nix
+- git add --patch
 - git commit -m "hercules-ci-api-Y.Y.Y.Y"
 - update hercules-ci-agent/CHANGELOG.md
    - git log PREVIOUS..HEAD -- ./for-upstream ./hercules-ci-agent
@@ -14,6 +16,8 @@ Example releasing hercules-ci-agent and optionally hercules-ci-api:
    - hercules-ci-agent/CHANGELOG.md
    - hercules-ci-agent/hercules-ci-agent.cabal
    - for-upstream/common.nix package option
+- scripts/generate-nix
+- git add --patch
 - git commit -m "hercules-ci-agent-X.X.X"
 - wait for CI to succeed
 - git log -2
