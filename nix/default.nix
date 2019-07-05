@@ -19,6 +19,9 @@ let
         ;
       inherit (pkgs)
         shellcheck
+        jq
+        cabal2nix
+        nix-prefetch-git
         ;
       inherit (import sources.niv {})
         niv

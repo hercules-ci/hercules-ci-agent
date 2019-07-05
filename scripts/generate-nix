@@ -1,5 +1,8 @@
-#!/bin/sh
-# TODO: move to haskell.nix 
+#!/usr/bin/env nix-shell
+#!nix-shell -i bash
+#!nix-shell ../shell.nix
+
+# TODO: move to haskell.nix?
 
 set -xe
 
