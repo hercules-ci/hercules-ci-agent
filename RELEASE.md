@@ -1,11 +1,25 @@
-Example releasing hercules-ci-agent, although same could be done for hercules-ci-api:
+Example releasing hercules-ci-agent and optionally hercules-ci-api:
 
-- git checkout -B v0.X.X # or PVP for api package
-- bump version in hercules-ci-agent/hercules-ci-agent.cabal
-- using git log update hercules-ci-agent/CHANGELOG.md
-- git commit -m "hercules-ci-agent-0.X.X" # or PVP for api package
-- copy the contents of the changelog for this release to: git tag -s -a hercules-ci-agent-0.X.X
+- git checkout -B vX.X.X (new agent version)
+- update hercules-ci-api/CHANGELOG.md
+   - git log PREVIOUS..HEAD -- ./hercules-ci-api
+- bump api version
+   - CHANGELOG.md
+   - hercules-ci-api/hercules-ci-api.cabal
+   - hercules-ci-agent/hercules-ci-agent.cabal
+- git commit -m "hercules-ci-api-Y.Y.Y.Y"
+- update hercules-ci-agent/CHANGELOG.md
+   - git log PREVIOUS..HEAD -- ./for-upstream ./hercules-ci-agent
+- bump agent version
+   - hercules-ci-agent/CHANGELOG.md
+   - hercules-ci-agent/hercules-ci-agent.cabal
+   - for-upstream/common.nix package option
+- git commit -m "hercules-ci-agent-X.X.X"
+- wait for CI to succeed
+- git log -2
+- copy the contents of the api changelog for this release to: git tag -s -a hercules-ci-api-Y.Y.Y.Y API_COMMIT
+- copy the contents of the agent changelog for this release to: git tag -s -a hercules-ci-agent-X.X.X AGENT_COMMIT
 - git push --tags
-- bump agent version in for-upstream/common.nix package option
 - open a PR against master
 - open a PR against stable using the tag as a base
+- create/update nix-darwin PR
