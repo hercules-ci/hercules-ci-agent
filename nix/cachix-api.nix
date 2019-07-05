@@ -1,14 +1,21 @@
 { mkDerivation, aeson, base, base16-bytestring, bytestring, conduit
-, cookie, cryptonite, deepseq, exceptions, hspec, hspec-discover
-, http-api-data, http-media, lens, memory, protolude, resourcet
-, servant, servant-auth, servant-auth-server, servant-auth-swagger
-, servant-client, servant-swagger, servant-swagger-ui-core, stdenv
-, string-conv, swagger2, text, transformers
+, cookie, cryptonite, deepseq, exceptions, fetchgit, hspec
+, hspec-discover, http-api-data, http-media, lens, memory
+, protolude, resourcet, servant, servant-auth, servant-auth-server
+, servant-auth-swagger, servant-client, servant-swagger
+, servant-swagger-ui-core, stdenv, string-conv, swagger2, text
+, transformers
 }:
 mkDerivation {
   pname = "cachix-api";
   version = "0.2.0";
-  src = /nix/store/irklvl0wgz2nl8sjdd7x3b884hfqqrfh-source/cachix-api;
+  src = fetchgit {
+    url = "https://github.com/cachix/cachix";
+    sha256 = "046r64n9z1k6l2hndcfz7wawpqxhrvvfr5lwfzq63rqrdf0ja38i";
+    rev = "70a8673e15adf50833e5183cc4fd69cab35ba29d";
+    fetchSubmodules = true;
+  };
+  postUnpack = "sourceRoot+=/cachix-api; echo source root reset to $sourceRoot";
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
