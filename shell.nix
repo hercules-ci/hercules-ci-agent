@@ -12,6 +12,9 @@ in pkgs.mkShell {
     agentpkgs.devTools.shellcheck
     agentpkgs.devTools.stack
     agentpkgs.devTools.ghcid
+    agentpkgs.devTools.jq
+    agentpkgs.devTools.cabal2nix
+    agentpkgs.devTools.nix-prefetch-git
     agentpkgs.hercules-ci-agent-packages.internal.haskellPackages.ghc
   ];
 }
