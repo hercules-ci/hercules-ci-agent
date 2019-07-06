@@ -242,6 +242,7 @@ performEvaluation task' = do
                 caches <- Agent.Cachix.activePushCaches
                 paths <- liftIO $ readIORef allAttrPaths
                 forM_ caches $ \cache -> do
+                  withNamedContext "cache" cache $ logLocM DebugS "Pushing drvs to cachix"
                   Agent.Cachix.push cache (toList paths)
                   liftIO $ emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll { cache = cache }
 
