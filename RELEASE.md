@@ -26,4 +26,5 @@ Example releasing hercules-ci-agent and optionally hercules-ci-api:
 - git push --tags
 - open a PR against master
 - open a PR against stable using the tag as a base
-- create/update nix-darwin PR
+- update `for-upstream` (bump version, etc) and sync with nix-darwin
+- make sure to verify default pacakge url is accesible
