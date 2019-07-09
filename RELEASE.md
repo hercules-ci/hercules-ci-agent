@@ -7,6 +7,7 @@ Example releasing hercules-ci-agent and optionally hercules-ci-api:
    - CHANGELOG.md
    - hercules-ci-api/hercules-ci-api.cabal
    - hercules-ci-agent/hercules-ci-agent.cabal
+- add a markdown link in CHANGELOG.md markdown link for the added version tag (header and link map at the bottom)
 - scripts/generate-nix
 - git add --patch
 - git commit -m "hercules-ci-api-Y.Y.Y.Y"
