@@ -5,7 +5,7 @@ import           Servant.API
 import           Servant.API.Generic
 import           Hercules.API.Prelude
 import           Hercules.API.Projects.Job      ( Job
-                                                , JobAndProject
+                                                , ProjectAndJobs
                                                 )
 import           Hercules.API.Projects.Project  ( Project )
 import           Hercules.API.Accounts.Account  ( Account )
@@ -61,7 +61,7 @@ data ProjectsAPI auth f = ProjectsAPI
       QueryParam' '[Optional, Description "To get a specific job by index"] "index" Int :>
       QueryParam' '[Optional, Description "Number of latest jobs to get, when project name is omitted. Range [1..50], default 10."] "latest" Int :>
       auth :>
-      Get '[JSON] [JobAndProject]
+      Get '[JSON] [ProjectAndJobs]
 
   , projectJobEvaluation :: f :-
       Summary "List all attributes in a job" :>

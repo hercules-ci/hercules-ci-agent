@@ -64,8 +64,8 @@ instance Monoid JobStatus where
   mappend = (<>)
   mempty = Success
 
-data JobAndProject = JobAndProject
+data ProjectAndJobs = ProjectAndJobs
   { project :: Project
-  , job :: Job
+  , jobs :: [Job]
   }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
