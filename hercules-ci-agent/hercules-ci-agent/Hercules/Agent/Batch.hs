@@ -29,14 +29,24 @@ flushSyncTimeout ch = liftIO $ do
         writeChan ch $ Flush $ Just v
         readMVar v
 
-boundedDelayBatcher :: forall last a b
+boundedDelayBatcher  :: forall a b
+                     . Int -- ^ Max time before flushing in microseconds
+                    -> Int -- ^ Max number of items in batch
+                    -> Chan (StreamItem () a) -- ^ Producer
+                    -> ([a] -> IO ()) -- ^ Perform a batch
+                    -> IO b -- ^ the work, producing items on the 'Chan'
+                    -> IO b -- ^ start batcher, do the work, close and wait for the batcher
+boundedDelayBatcher maxDelay maxItems chan performBatch m =
+  boundedDelayBatcher' maxDelay maxItems chan performBatch (\batcherDone -> m <* endStream chan () <* wait batcherDone)
+
+boundedDelayBatcher' :: forall last a b
                      . Int -- ^ Max time before flushing in microseconds
                     -> Int -- ^ Max number of items in batch
                     -> Chan (StreamItem last a) -- ^ Producer
                     -> ([a] -> IO ()) -- ^ Perform a batch
                     -> (Async last -> IO b)
                     -> IO b
-boundedDelayBatcher maxDelay maxItems chan performBatch m = do
+boundedDelayBatcher' maxDelay maxItems chan performBatch m = do
   withAsync
       (forever $ do
         threadDelay $ maxDelay
