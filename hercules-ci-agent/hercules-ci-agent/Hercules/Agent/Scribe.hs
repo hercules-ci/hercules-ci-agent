@@ -55,6 +55,6 @@ withHerculesScribe' verbosity m = do
               li
             finalize :: IO ()
             finalize = do
-              writeChan chan $ Stop ()
+              endStream chan ()
               wait batchResult
         in  runApp env $ m $ Scribe {liPush = push, scribeFinalizer = finalize}

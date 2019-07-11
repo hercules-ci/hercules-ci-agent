@@ -10,9 +10,11 @@ data StreamItem last a = Payload !a
 writePayload :: MonadIO m => Chan (StreamItem last a) -> a -> m ()
 writePayload ch a = liftIO $ writeChan ch $ Payload a
 
+endStream :: MonadIO m => Chan (StreamItem last a) -> last -> m ()
+endStream ch a = liftIO $ writeChan ch $ Stop a
+
 flushAsync :: MonadIO m => Chan (StreamItem last a) -> m ()
-flushAsync ch = liftIO $ do
-  writeChan ch $ Flush Nothing
+flushAsync ch = liftIO $ writeChan ch $ Flush Nothing
 
 -- | Flush and wait for flush to happen with 1 minute timeout
 flushSyncTimeout :: MonadIO m => Chan (StreamItem last a) -> m ()
