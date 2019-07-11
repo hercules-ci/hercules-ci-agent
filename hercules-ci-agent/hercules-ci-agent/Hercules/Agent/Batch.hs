@@ -40,7 +40,7 @@ boundedDelayBatcher maxDelay maxItems chan performBatch m = do
         threadDelay $ maxDelay
         writeChan chan (Flush Nothing)
       )
-    $ \flusher -> flip finally (cancel flusher) $ do
+    $ \_flusher -> do
 
         let beginReading :: IO last
             beginReading = readItems (max 1 maxItems) []
