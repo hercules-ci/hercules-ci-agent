@@ -129,7 +129,6 @@ performEvaluation task' = do
   -- TODO: configurable temp directory
   liftIO
     $ boundedDelayBatcher (1000 * 1000) 1000 eventChan submitBatch
-    $ const
     $ withTempDirectory workDir "eval"
     $ \tmpdir -> unlift $ do
         withNamedContext "tmpdir" tmpdir $ logLocM DebugS "Determined tmpdir"
@@ -263,7 +262,6 @@ performEvaluation task' = do
                   liftIO $ emit $ EvaluateEvent.DerivationInfo drvInfo
             in
               doIt
-        flushSyncTimeout eventChan
 
 runEvalProcess :: ( KatipContext m
                   , MonadReader Env m
