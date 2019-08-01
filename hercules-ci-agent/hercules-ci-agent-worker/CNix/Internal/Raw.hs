@@ -6,10 +6,8 @@ import           Prelude()
 import           Protolude hiding (evalState)
 
 import           CNix.Internal.Context
-import           Foreign.ForeignPtr
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
-import           System.IO.Unsafe (unsafePerformIO)
 
 C.context context
 
@@ -23,20 +21,11 @@ C.include "<gc/gc_allocator.h>"
 
 C.using "namespace nix"
 
-newtype RawValue = RawValue (ForeignPtr Value')
+newtype RawValue = RawValue (Ptr Value')
 
 -- | Takes ownership of the value.
 mkRawValue :: Ptr Value' -> IO RawValue
-mkRawValue p = RawValue <$>
-  newForeignPtr finalizeValue p
-
-finalizeValue :: FinalizerPtr Value'
-{-# NOINLINE finalizeValue #-}
-finalizeValue = unsafePerformIO [C.exp|
-  void (*)(Value *) {
-    [](Value *v){ GC_FREE(v); }
-  } |]
-
+mkRawValue p = pure $ RawValue p
 
 -- | Similar to Nix's Value->type but conflates the List variations
 data RawValueType
@@ -62,7 +51,7 @@ data RawValueType
 rawValueType :: RawValue -> IO RawValueType
 rawValueType (RawValue v) =
   f <$> [C.block| int {
-    switch ($fptr-ptr:(Value* v)->type) {
+    switch ($(Value* v)->type) {
       case tInt:         return 1;
       case tBool:        return 2;
       case tString:      return 3;
@@ -103,8 +92,8 @@ rawValueType (RawValue v) =
     f _ = Other
 
 forceValue :: Exception a => Ptr EvalState -> RawValue -> IO (Either a ())
-forceValue evalState v = try [C.catchBlock|  {
-    Value *v = $fptr-ptr:(Value *v);
+forceValue evalState (RawValue v) = try [C.catchBlock|  {
+    Value *v = $(Value *v);
     if (v == NULL) throw std::invalid_argument("forceValue value must be non-null");
     $(EvalState *evalState)->forceValue(*v);
   }|]
