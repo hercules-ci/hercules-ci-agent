@@ -47,7 +47,7 @@ withHerculesScribe' verbosity m = do
       ensureObject x = ensureObject (object [("value", x)]) -- Doesn't happen
 
   liftIO
-    $ boundedDelayBatcher maxDelay maxItems chan submitBatch
+    $ boundedDelayBatcher' maxDelay maxItems chan submitBatch
     $ \batchResult ->
         let push :: LogItem a => Item a -> IO ()
             push li = writeChan chan $ Payload $ ensureObject $ itemJson
@@ -55,6 +55,6 @@ withHerculesScribe' verbosity m = do
               li
             finalize :: IO ()
             finalize = do
-              writeChan chan $ Stop ()
+              endStream chan ()
               wait batchResult
         in  runApp env $ m $ Scribe {liPush = push, scribeFinalizer = finalize}

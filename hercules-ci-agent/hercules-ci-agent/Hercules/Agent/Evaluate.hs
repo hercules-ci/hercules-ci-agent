@@ -129,7 +129,6 @@ performEvaluation task' = do
   -- TODO: configurable temp directory
   liftIO
     $ boundedDelayBatcher (1000 * 1000) 1000 eventChan submitBatch
-    $ const
     $ withTempDirectory workDir "eval"
     $ \tmpdir -> unlift $ do
         withNamedContext "tmpdir" tmpdir $ logLocM DebugS "Determined tmpdir"
@@ -219,7 +218,13 @@ performEvaluation task' = do
                   }
           Right file -> TraversalQueue.with $ \derivationQueue ->
             let
-              doIt = Async.Lifted.concurrently_ evaluation emitDrvs
+              doIt = do
+                Async.Lifted.concurrently_ evaluation emitDrvs
+
+                -- derivationInfo upload has finished
+                -- allAttrPaths :: IORef has been populated
+
+                pushDrvs
 
               evaluation = do
                 runEvalProcess projectDir
@@ -228,17 +233,15 @@ performEvaluation task' = do
                                nixPath
                                captureAttrDrvAndEmit
                 -- process has finished
-                Async.Lifted.concurrently_
-                  pushDrvs
-                  (do
-                    TraversalQueue.waitUntilDone derivationQueue
-                    TraversalQueue.close derivationQueue
-                  )
+
+                TraversalQueue.waitUntilDone derivationQueue
+                TraversalQueue.close derivationQueue
 
               pushDrvs = do
                 caches <- Agent.Cachix.activePushCaches
                 paths <- liftIO $ readIORef allAttrPaths
                 forM_ caches $ \cache -> do
+                  withNamedContext "cache" cache $ logLocM DebugS "Pushing drvs to cachix"
                   Agent.Cachix.push cache (toList paths)
                   liftIO $ emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll { cache = cache }
 
@@ -259,7 +262,6 @@ performEvaluation task' = do
                   liftIO $ emit $ EvaluateEvent.DerivationInfo drvInfo
             in
               doIt
-        flushSyncTimeout eventChan
 
 runEvalProcess :: ( KatipContext m
                   , MonadReader Env m

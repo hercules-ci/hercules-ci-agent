@@ -1,7 +1,7 @@
 cabal-version: 1.12
 
 name:           hercules-ci-agent
-version:        0.2
+version:        0.3.0
 homepage:       https://docs.hercules-ci.com
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
 author:         Hercules Labs
@@ -97,6 +97,7 @@ executable hercules-ci-agent
     , async
     , attoparsec
     , base >=4.7 && <5
+    , base64-bytestring
     , binary
     , binary-conduit
     , bytestring
@@ -109,7 +110,7 @@ executable hercules-ci-agent
     , exceptions
     , filepath
     , hercules-ci-agent
-    , hercules-ci-api
+    , hercules-ci-api == 0.3.*
     , hostname
     , http-client
     , http-client-tls

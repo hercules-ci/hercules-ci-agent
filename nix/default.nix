@@ -5,6 +5,7 @@
 , allTargets ? import ./ci.nix
 , testSuiteTarget ? "nixos-19_03"
 , testSuitePkgs ? allTargets."${testSuiteTarget}"
+, system ? builtins.currentSystem
 }:
 
 let
@@ -18,6 +19,9 @@ let
         ;
       inherit (pkgs)
         shellcheck
+        jq
+        cabal2nix
+        nix-prefetch-git
         ;
       inherit (import sources.niv {})
         niv
@@ -25,5 +29,5 @@ let
       inherit pkgs;
     };
   };
-  pkgs = import nixpkgs { overlays = [ (import ./overlay.nix) dev-and-test-overlay ] ; config = {}; };
+  pkgs = import nixpkgs { overlays = [ (import ./overlay.nix) dev-and-test-overlay ] ; config = {}; inherit system; };
 in pkgs
