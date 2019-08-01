@@ -1,6 +1,7 @@
 module Hercules.Agent.Token where
 
 import           Protolude
+import qualified Data.ByteString.Lazy          as BL
 import qualified Data.Text                     as T
 import           Servant.Auth.Client            ( Token(Token) )
 
@@ -16,6 +17,12 @@ import qualified System.Directory
 import           System.FilePath                ( (</>) )
 
 import           Hercules.Agent.Log
+import           Hercules.Error
+import           Hercules.Agent.Exception
+import qualified Data.Aeson                    as Aeson
+import           Data.Aeson.Lens                ( key, _String )
+import           Control.Lens                   ( (^?) )
+import qualified Data.ByteString.Base64.Lazy   as B64L
 
 getDir :: App FilePath
 getDir = asks ((</> "secretState") . baseDirectory . config)
@@ -49,12 +56,28 @@ readAgentSessionKey = do
 
 ensureAgentSession :: App Text
 ensureAgentSession = readAgentSessionKey >>= \case
-  Just x -> do
+  Just sessKey -> do
     logLocM DebugS "Found agent session key"
-    pure x
+    let
+      handler e = do
+        logLocM WarningS $ "Failed to check whether session token matches cluster join token. Using old session. Remove session.key if you need to force a session update. Exception: " <> show e
+        pure sessKey
+
+    safeLiftedHandle handler $ do
+      cjt <- getClusterJoinTokenId
+      logLocM DebugS $ "Found clusterJoinTokenId " <> show cjt
+      scjt <- getSessionClusterJoinTokenId sessKey
+      logLocM DebugS $ "Found sessionClusterJoinTokenId " <> show scjt
+      if cjt == scjt then pure sessKey else do
+        logLocM DebugS "Getting new session key to match cluster join token..."
+        updateAgentSession
   Nothing -> do
     writeAgentSessionKey "x" -- Sanity check
     logLocM DebugS "Creating agent session"
+    updateAgentSession
+
+updateAgentSession :: App Text
+updateAgentSession = do
     agentSessionKey <- createAgentSession
     logLocM DebugS "Agent session key acquired"
     writeAgentSessionKey agentSessionKey
@@ -89,3 +112,25 @@ withAgentToken :: App a -> App a
 withAgentToken m = do
   agentSessionToken <- ensureAgentSession
   local (\env -> env { Env.currentToken = Token $ toS agentSessionToken }) m
+
+data TokenError = TokenError Text
+  deriving (Typeable, Show)
+instance Exception TokenError
+
+getClusterJoinTokenId :: App Text
+getClusterJoinTokenId = do
+  t <- asks Env.currentToken >>= \case
+    Token jwt -> pure jwt
+  v <- decodeToken (toSL t)
+  sub <- escalate $ maybeToEither (TokenError "No sub field in cluster join token") (v ^? key "sub" . _String)
+  escalate $ maybeToEither (TokenError "Unrecognized token type") $ T.stripPrefix "t$" sub
+
+getSessionClusterJoinTokenId :: Text -> App Text
+getSessionClusterJoinTokenId t = do
+  v <- decodeToken (toSL t)
+  escalate $ maybeToEither (TokenError "No parent field in session token") (v ^? key "parent" . _String)
+
+decodeToken :: BL.ByteString -> App Aeson.Value
+decodeToken bs = case BL.split (fromIntegral $ ord '.') bs of
+  (_:payload:_) -> escalateAs (TokenError . toS) $ Aeson.eitherDecode (B64L.decodeLenient payload)
+  _ -> throwIO $ FatalError "JWT without periods?"

@@ -16,7 +16,6 @@ where
 import           Protolude               hiding ( to )
 import qualified System.Environment
 import           Toml
-import qualified System.Directory
 import           System.FilePath ((</>))
 
 data ConfigPath = TomlPath FilePath

@@ -97,6 +97,7 @@ executable hercules-ci-agent
     , async
     , attoparsec
     , base >=4.7 && <5
+    , base64-bytestring
     , binary
     , binary-conduit
     , bytestring
