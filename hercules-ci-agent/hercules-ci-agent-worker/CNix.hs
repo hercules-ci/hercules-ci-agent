@@ -136,31 +136,31 @@ evalArgs evalState args = do
   }|]
 
 autoCallFunction :: Ptr EvalState -> RawValue -> Bindings -> IO RawValue
-autoCallFunction evalState fun (Bindings autoArgs) =
+autoCallFunction evalState (RawValue fun) (Bindings autoArgs) =
   mkRawValue =<< [C.throwBlock| Value* {
     Value result;
     $(EvalState *evalState)->autoCallFunction(
             *$(Bindings *autoArgs),
-            *$fptr-ptr:(Value *fun),
+            *$(Value *fun),
             result);
     return new (NoGC) Value (result);
   }|]
 
 isDerivation :: Ptr EvalState -> RawValue -> IO Bool
-isDerivation evalState v = (0 /=) <$> [C.throwBlock| int {
-    if ($fptr-ptr:(Value *v) == NULL) { throw std::invalid_argument("forceValue value must be non-null"); }
-    return $(EvalState *evalState)->isDerivation(*$fptr-ptr:(Value *v));
+isDerivation evalState (RawValue v) = (0 /=) <$> [C.throwBlock| int {
+    if ($(Value *v) == NULL) { throw std::invalid_argument("forceValue value must be non-null"); }
+    return $(EvalState *evalState)->isDerivation(*$(Value *v));
   }|]
 
 isFunctor :: Ptr EvalState -> RawValue -> IO Bool
-isFunctor evalState v = (0 /=) <$> [C.throwBlock| int {
-    if ($fptr-ptr:(Value *v) == NULL) { throw std::invalid_argument("forceValue value must be non-null"); }
-    return $(EvalState *evalState)->isFunctor(*$fptr-ptr:(Value *v));
+isFunctor evalState (RawValue v) = (0 /=) <$> [C.throwBlock| int {
+    if ($(Value *v) == NULL) { throw std::invalid_argument("forceValue value must be non-null"); }
+    return $(EvalState *evalState)->isFunctor(*$(Value *v));
   }|]
 
 getRecurseForDerivations :: Ptr EvalState -> Value NixAttrs -> IO Bool
-getRecurseForDerivations evalState v = (0 /=) <$> [C.throwBlock| int {
-    Value *v = $fptr-ptr:(Value *v);
+getRecurseForDerivations evalState (Value (RawValue v)) = (0 /=) <$> [C.throwBlock| int {
+    Value *v = $(Value *v);
     EvalState *evalState = $(EvalState *evalState);
     Symbol rfd = evalState->symbols.create("recurseForDerivations");
     Bindings::iterator iter = v->attrs->find(rfd);
@@ -179,12 +179,12 @@ getRecurseForDerivations evalState v = (0 /=) <$> [C.throwBlock| int {
   } |]
 
 getAttrBindings :: Value NixAttrs -> IO Bindings
-getAttrBindings v = mkBindings =<< [C.exp| Bindings *{ $fptr-ptr:(Value *v)->attrs } |]
+getAttrBindings (Value (RawValue v)) = mkBindings =<< [C.exp| Bindings *{ $(Value *v)->attrs } |]
 
 getAttrs :: Value NixAttrs -> IO (Map ByteString RawValue)
-getAttrs v = do
-  begin <- [C.exp| Attr *{ $fptr-ptr:(Value *v)->attrs->begin() }|]
-  end <- [C.exp| Attr *{ $fptr-ptr:(Value *v)->attrs->end() }|]
+getAttrs (Value (RawValue v)) = do
+  begin <- [C.exp| Attr *{ $(Value *v)->attrs->begin() }|]
+  end <- [C.exp| Attr *{ $(Value *v)->attrs->end() }|]
   let
     gather :: Map ByteString RawValue -> Ptr Attr' -> IO (Map ByteString RawValue)
     gather acc i | i == end  = pure acc
@@ -198,10 +198,10 @@ getAttrs v = do
   gather mempty begin
 
 getDrvFile :: MonadIO m => Ptr EvalState -> RawValue -> m ByteString
-getDrvFile evalState v =
+getDrvFile evalState (RawValue v) =
   unsafeMallocBS [C.throwBlock| const char *{
     EvalState &state = *$(EvalState *evalState);
-    auto drvInfo = getDerivation(state, *$fptr-ptr:(Value *v), false);
+    auto drvInfo = getDerivation(state, *$(Value *v), false);
     if (!drvInfo)
       throw EvalError("Not a valid derivation");
 
