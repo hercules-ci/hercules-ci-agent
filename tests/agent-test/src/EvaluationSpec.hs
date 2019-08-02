@@ -302,7 +302,7 @@ spec = describe "Evaluation" $ do
         (Message.Message
           { index = 0
           , typ = Message.Error
-          , message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than 10000 attributes or messages, please contact info@hercules-ci.com."
+          , message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than 50000 attributes or messages, please contact info@hercules-ci.com."
           }
         )
 
@@ -322,7 +322,7 @@ spec = describe "Evaluation" $ do
         (Message.Message
           { index = 0 -- This is the interesting part.
           , typ = Message.Error
-          , message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than 10000 attributes or messages, please contact info@hercules-ci.com."
+          , message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than 50000 attributes or messages, please contact info@hercules-ci.com."
           }
         )
 

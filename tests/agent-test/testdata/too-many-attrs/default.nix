@@ -8,4 +8,4 @@ let
     builder = "foo";
     system = "x86_64-linux";
   };
-in many (many (many (many (many (many pkg)))))
+in many (many (many (many (many (many (many (many pkg)))))))
