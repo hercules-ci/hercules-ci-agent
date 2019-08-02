@@ -86,7 +86,7 @@ runEvaluator workingDirectory nixPath stderrConduit interaction = do
   runWorker wps stderrConduit interaction
 
 eventLimit :: Int
-eventLimit = 10000
+eventLimit = 50000
 
 workerProcessSpec :: FilePath
                   -> [ EvaluateTask.NixPathElement
