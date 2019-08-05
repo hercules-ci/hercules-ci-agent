@@ -52,7 +52,7 @@ newEnv config logEnv = do
 
 setupLogging :: (K.LogEnv -> IO ()) -> IO ()
 setupLogging f = do
-  handleScribe <- K.mkHandleScribe K.ColorIfTerminal stderr K.DebugS K.V2
+  handleScribe <- K.mkHandleScribe K.ColorIfTerminal stderr (K.permitItem K.DebugS) K.V2
   let mkLogEnv =
         K.registerScribe "stderr" handleScribe K.defaultScribeSettings
           =<< K.initLogEnv emptyNamespace ""
