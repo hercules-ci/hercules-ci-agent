@@ -20,9 +20,11 @@ let
     # TODO: upstream the overrides
     haskellPackages = haskellPackages_.extend (self: super: {
       cachix =
-        addBuildDepends
-          (self.callPackage ./cachix.nix { nix-main = nix; nix-store = nix; })
-          [ pkgs.boost ];
+        # avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
+        haskell.lib.disableLibraryProfiling (
+          addBuildDepends
+            (self.callPackage ./cachix.nix { nix-main = nix; nix-store = nix; })
+            [ pkgs.boost ]);
       cachix-api = self.callPackage ./cachix-api.nix {};
 
       hercules-ci-api =
