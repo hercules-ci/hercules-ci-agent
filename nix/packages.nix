@@ -9,9 +9,7 @@ let
   haskellPackages_ = haskellPackages;
   inherit (pkgs) recurseIntoAttrs lib;
   inherit (pkgs.lib) cleanSource makeBinPath optionalAttrs;
-  inherit (haskell.lib) addBuildDepends overrideCabal buildFromSdist doJailbreak;
-
-  inherit (pkgs.haskell.lib) overrideSrc;
+  inherit (haskell.lib) overrideSrc addBuildDepends overrideCabal buildFromSdist doJailbreak;
 
   sources = import ./sources.nix;
   inherit (import sources.gitignore { inherit lib; }) gitignoreSource;
@@ -21,7 +19,12 @@ let
 
     # TODO: upstream the overrides
     haskellPackages = haskellPackages_.extend (self: super: {
-      cachix = self.callPackage ./cachix.nix {};
+      cachix =
+        # avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
+        haskell.lib.disableLibraryProfiling (
+          addBuildDepends
+            (self.callPackage ./cachix.nix { nix-main = nix; nix-store = nix; })
+            [ pkgs.boost ]);
       cachix-api = self.callPackage ./cachix-api.nix {};
 
       hercules-ci-api =

@@ -23,7 +23,7 @@ import           System.IO                      ( hClose )
 
 push :: Text -> [Text] -> App ()
 push cache paths = withNamedContext "cache" cache $ do
-  Agent.Cachix.Env { pushCaches = pushCaches } <-
+  Agent.Cachix.Env { pushCaches = pushCaches, nixStore = nixStore } <-
     asks $ Agent.Cachix.getEnv
   httpManager <- asks $ manager
 
@@ -41,6 +41,7 @@ push cache paths = withNamedContext "cache" cache $ do
       liftIO $ Cachix.Push.mapConcurrentlyBounded 4 (fmap (unliftIO ul) f) l
     )
     clientEnv
+    nixStore
     pushCache
     (\storePath ->
       let ctx = withNamedContext "path" storePath
