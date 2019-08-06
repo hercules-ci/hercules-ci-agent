@@ -34,15 +34,15 @@
         "rev": "4064e436313191f11969986e66b81cb6bb61bae6"
     },
     "nixos-unstable": {
-        "url": "https://github.com/NixOS/nixpkgs-channels/archive/73392e79aa62e406683d6a732eb4f4101f4732be.tar.gz",
-        "owner": "NixOS",
-        "branch": "nixos-unstable",
+        "url": "https://github.com/domenkozar/nixpkgs/archive/304cd462eb19b5c0b5fef39a30c6742b646a669d.tar.gz",
+        "owner": "domenkozar",
+        "branch": "inline-c-cpp-darwin-fix",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "repo": "nixpkgs-channels",
+        "repo": "nixpkgs",
         "type": "tarball",
-        "sha256": "049fq37sxdn5iis7ni407j2jsfrxbb41pgv5zawi02qj47f74az9",
-        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
-        "rev": "73392e79aa62e406683d6a732eb4f4101f4732be"
+        "sha256": "00wq9pqdvzb11w365hpbayvkv9cyrk6npz21hd0xa6zzscrv0v5w",
+        "description": "Nix Packages collection",
+        "rev": "304cd462eb19b5c0b5fef39a30c6742b646a669d"
     },
     "niv": {
         "homepage": "https://github.com/nmattia/niv",

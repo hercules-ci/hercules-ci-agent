@@ -14,6 +14,14 @@ let
   sources = import ./sources.nix;
   inherit (import sources.gitignore { inherit lib; }) gitignoreSource;
 
+  # Nix 2.2.2 requires clang 6 or lower
+  replaceStdenv = drv: drv.overrideAttrs (old: { 
+    stdenv = 
+      if old.stdenv.cc.isDarwin
+      then pkgs.llvmPackages_6.stdenv
+      else old.stdenv;
+  });
+
   internal = rec {
     inherit pkgs;
 
@@ -21,10 +29,11 @@ let
     haskellPackages = haskellPackages_.extend (self: super: {
       cachix =
         # avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
-        haskell.lib.disableLibraryProfiling (
-          addBuildDepends
-            (self.callPackage ./cachix.nix { nix-main = nix; nix-store = nix; })
-            [ pkgs.boost ]);
+        replaceStdenv (
+          haskell.lib.disableLibraryProfiling (
+            addBuildDepends (
+                self.callPackage ./cachix.nix { nix-main = nix; nix-store = nix; })
+              [ pkgs.boost ]));
       cachix-api = self.callPackage ./cachix-api.nix {};
 
       hercules-ci-api =
@@ -34,14 +43,15 @@ let
             { src = gitignoreSource ../hercules-ci-api; });
 
       hercules-ci-agent =
-        let basePkg = overrideSrc 
-                        (self.callPackage ../hercules-ci-agent/pkg.nix {
+        let basePkg = replaceStdenv (
+                        overrideSrc (
+                         self.callPackage ../hercules-ci-agent/pkg.nix {
                            nix-store = nix;
                            nix-expr = nix;
                            nix-main = nix;
                            bdw-gc = pkgs.boehmgc;
                         })
-                        { src = gitignoreSource ../hercules-ci-agent; };
+                        { src = gitignoreSource ../hercules-ci-agent; });
                    
         in
           buildFromSdist (overrideCabal (
