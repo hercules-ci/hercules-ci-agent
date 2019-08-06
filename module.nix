@@ -3,13 +3,13 @@
   that this file was bundled with.
  */
 { pkgs, ... }:
-{
+
+let
+ agentpkgs = import ./. {};
+in {
   imports = [ ./for-upstream/default.nixos.nix ];
 
-  # Overrides hercules-ci-agent to the version in this repo.
-  nixpkgs.overlays = [ (import ./nix/overlay.nix) ];
-
-  services.hercules-ci-agent.package = pkgs.hercules-ci-agent;
+  services.hercules-ci-agent.package = agentpkgs.hercules-ci-agent;
 
   # TODO blacklist the upstream module (does that blacklist imports transitively?...)
 }
