@@ -4,6 +4,7 @@ import           Protolude
 
 import qualified Cachix.Client.Push            as Cachix.Push
 import qualified Cachix.Client.Secrets         as Cachix.Secrets
+import qualified Cachix.Client.Store           as Cachix.Store
 import           Hercules.Agent.Cachix.Env     as Env
 import qualified Hercules.Formats.CachixCache   as CachixCache
 import qualified Hercules.Agent.Config         as Config
@@ -21,9 +22,12 @@ newEnv _config cks = do
 
   pcs <- liftIO $ toPushCaches cks
 
+  store <- liftIO Cachix.Store.openStore
+
   pure Env.Env { pushCaches = pcs
                , netrcLines = toNetrcLines cks
                , cacheKeys = cks
+               , nixStore = store
                }
 
 toNetrcLines :: Map Text CachixCache.CachixCache -> [Text]
