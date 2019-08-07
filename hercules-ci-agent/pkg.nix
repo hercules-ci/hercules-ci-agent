@@ -1,10 +1,10 @@
-{ mkDerivation, aeson, async, attoparsec, base, bdw-gc, binary
-, binary-conduit, bytestring, cachix, cachix-api, conduit
-, conduit-extra, containers, directory, exceptions, filepath
-, hercules-ci-api, hostname, hspec, http-client, http-client-tls
-, http-conduit, inline-c, inline-c-cpp, katip, lens, lens-aeson
-, lifted-async, lifted-base, monad-control, mtl, network
-, nix-derivation, nix-expr, nix-main, nix-store
+{ mkDerivation, aeson, async, attoparsec, base, base64-bytestring
+, bdw-gc, binary, binary-conduit, bytestring, cachix, cachix-api
+, conduit, conduit-extra, containers, directory, exceptions
+, filepath, hercules-ci-api, hostname, hspec, http-client
+, http-client-tls, http-conduit, inline-c, inline-c-cpp, katip
+, lens, lens-aeson, lifted-async, lifted-base, monad-control, mtl
+, network, nix-derivation, nix-expr, nix-main, nix-store
 , optparse-applicative, process, protolude, safe-exceptions
 , servant, servant-auth-client, servant-client, servant-client-core
 , stdenv, stm, system-filepath, temporary, text, time, tomland
@@ -13,7 +13,7 @@
 }:
 mkDerivation {
   pname = "hercules-ci-agent";
-  version = "0.3.0";
+  version = "0.3.1";
   src = ./hercules-ci-agent;
   isLibrary = true;
   isExecutable = true;
@@ -24,15 +24,16 @@ mkDerivation {
     transformers-base
   ];
   executableHaskellDepends = [
-    aeson async attoparsec base binary binary-conduit bytestring cachix
-    cachix-api conduit conduit-extra containers directory exceptions
-    filepath hercules-ci-api hostname http-client http-client-tls
-    http-conduit inline-c inline-c-cpp katip lens lens-aeson
-    lifted-async lifted-base monad-control mtl network nix-derivation
-    optparse-applicative process protolude safe-exceptions servant
-    servant-auth-client servant-client servant-client-core stm
-    system-filepath temporary text time tomland transformers
-    transformers-base unix unliftio-core unordered-containers uuid
+    aeson async attoparsec base base64-bytestring binary binary-conduit
+    bytestring cachix cachix-api conduit conduit-extra containers
+    directory exceptions filepath hercules-ci-api hostname http-client
+    http-client-tls http-conduit inline-c inline-c-cpp katip lens
+    lens-aeson lifted-async lifted-base monad-control mtl network
+    nix-derivation optparse-applicative process protolude
+    safe-exceptions servant servant-auth-client servant-client
+    servant-client-core stm system-filepath temporary text time tomland
+    transformers transformers-base unix unliftio-core
+    unordered-containers uuid
   ];
   executablePkgconfigDepends = [
     bdw-gc nix-expr nix-main nix-store
