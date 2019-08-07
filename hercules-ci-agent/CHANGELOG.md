@@ -7,8 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.0] - 2019-07-05
+## [0.3.1] - 2019-08-07
 
+### Changed
+
+- Emit a log when evaluator starts to push to cachix
+
+- Increase attribute limit to 50k
+
+- Pin nixpkgs commit and speed up compilation via https://hercules-ci.cachix.org
+
+
+### Fixed
+
+- Possible exception during evaluation was not propagated,
+  resulting into lack of retries
+
+- #8: Refresh agent session on cluster join token change
+
+- Fix segfault on involved IFD project (remove a finalizer)
+
+- Cachix: fix a crash with a lot of attributes (when determining closure graph)
+
+## [0.3.0] - 2019-07-05
 
 ### Changed
 
@@ -65,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
-[0.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.2...hercules-ci-agent-0.3
+[0.3.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.3.0...hercules-ci-agent-0.3.1
+[0.3.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.2...hercules-ci-agent-0.3.0
 [0.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.1.1...hercules-ci-agent-0.2
 [0.1.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.1.0.0...hercules-ci-agent-0.1.1
 [Unreleased]: https://github.com/hercules-ci/hercules-ci-agent/compare/stable...master
