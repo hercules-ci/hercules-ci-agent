@@ -12,6 +12,7 @@ import           Hercules.API.Derivation        ( DerivationPath )
 import           Hercules.API.Message           ( Message )
 import           Hercules.API.Result            ( Result )
 import           Hercules.API.Task              ( Task )
+import           Hercules.API.TaskStatus        ( TaskStatus )
 import           Servant.API
 import           Servant.API.Generic
 
@@ -30,6 +31,13 @@ data EvalAPI auth f = EvalAPI
     ReqBody '[JSON] [EvaluateEvent] :>
     auth :>
     Post '[JSON] NoContent
+
+ , pollBuild :: f :-
+    "agent" :>
+    "build" :>
+    Capture "derivationPath" Text :>
+    auth :>
+    Get '[JSON] (Maybe TaskStatus)
 
     -- TODO: Remove
  , tasksPreviewAttrs :: f :-

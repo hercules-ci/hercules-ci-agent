@@ -52,7 +52,8 @@ defaultTask = EvaluateTask.EvaluateTask
 
 spec :: SpecWith ServerHandle
 spec = describe "Evaluation" $ do
-  context "when the source tarball cannot be fetched" $ do
+
+  context "when the source tarball cannot be fetched" $
     it "crashes with an error message" $ \srv -> do
       id <- randomId
       (s, r) <- runEval
@@ -71,7 +72,7 @@ spec = describe "Evaluation" $ do
       toS msg `shouldContain` "Connection refused"
       r `shouldBe` []
 
-  context "when the source download is not a valid tarball" $ do
+  context "when the source download is not a valid tarball" $
     it "crashes with an error message" $ \srv -> do
       id <- randomId
       (s, r) <- runEval
@@ -141,7 +142,7 @@ spec = describe "Evaluation" $ do
             }
           _ -> failWith $ "Events should be a single message, not: " <> show r
 
-  context "when the nix expression is one derivation in an attrset" $ do
+  context "when the nix expression is one derivation in an attrset" $
     it "returns that attribute" $ \srv -> do
       id <- randomId
       (s, r) <- runEval
@@ -160,7 +161,7 @@ spec = describe "Evaluation" $ do
             `shouldContain` "-myPackage.drv"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
 
-  context "when the nix expression is a naked derivation" $ do
+  context "when the nix expression is a naked derivation" $
     it "returns that attribute" $ \srv -> do
       id <- randomId
       (s, r) <- runEval
@@ -179,7 +180,7 @@ spec = describe "Evaluation" $ do
             `shouldContain` "-myPackage.drv"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
 
-  context "when the nix expression is an empty attrset" $ do
+  context "when the nix expression is an empty attrset" $
     it "returns no events but succeed" $ \srv -> do
       id <- randomId
       (s, r) <- runEval
@@ -196,7 +197,7 @@ spec = describe "Evaluation" $ do
 
   context
       "when the nix expression is a naked derivation behind default arguments"
-    $ do
+    $
         it "returns that attribute" $ \srv -> do
           id <- randomId
           (s, r) <- runEval
@@ -220,7 +221,7 @@ spec = describe "Evaluation" $ do
               failWith $ "Events should be a single attribute, not: " <> show r
 
   context "when the nix expression is an attribute set with further functions"
-    $ do
+    $
         it "ignores the functions and return the derivations" $ \srv -> do
           id <- randomId
           (s, r) <- runEval
@@ -243,7 +244,7 @@ spec = describe "Evaluation" $ do
             _ ->
               failWith $ "Events should be a single attribute, not: " <> show r
 
-  context "when the nix expression is an abort expression" $ do
+  context "when the nix expression is an abort expression" $
     it "returns the message as an error" $ \srv -> do
       id <- randomId
       (s, r) <- runEval
@@ -261,7 +262,7 @@ spec = describe "Evaluation" $ do
             `shouldContain` "evaluation aborted with the following error message: 'I refuse to do anything today.'"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
 
-  context "when one of the attributes has an abort expression" $ do
+  context "when one of the attributes has an abort expression" $
     it "returns the message as an error alongside the successful derivations"
       $ \srv -> do
           id <- randomId
@@ -288,7 +289,7 @@ spec = describe "Evaluation" $ do
                 `shouldContain` "evaluation aborted with the following error message: 'I am not doing this today.'"
             _ -> failWith $ "Wrong. It should not be: " <> show r
 
-  context "when the source produces too many attributes" $ do
+  context "when the source produces too many attributes" $
     it "yields an error message" $ \srv -> do
       id <- randomId
       (s, r) <- runEval
@@ -306,7 +307,7 @@ spec = describe "Evaluation" $ do
           }
         )
 
-  context "when the source produces too many messages" $ do
+  context "when the source produces too many messages" $
     it "yields an error message" $ \srv -> do
       pendingWith
         "This does not produce the right kind of message, because they are still bound to attributes. It seems that we need builtins.trace reporting for this test case to be useful."
@@ -326,8 +327,8 @@ spec = describe "Evaluation" $ do
           }
         )
 
-  context "when multiple messages are emitted" $ do
-    it "assigns distinct index numbers to the messages" $ \_env -> do
+  context "when multiple messages are emitted" $
+    it "assigns distinct index numbers to the messages" $ \_env ->
       pendingWith "Need to emit multiple messages first"
 
   context "multiple inputs" $ do
@@ -399,7 +400,7 @@ spec = describe "Evaluation" $ do
           toS (AttributeEvent.derivationPath ae) `shouldContain` "-hello"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
 
-  describe "functor" $ do
+  describe "functor" $
     it "is ok" $ \srv -> do
       id <- randomId
       (s, r) <- runEval
@@ -447,9 +448,9 @@ spec = describe "Evaluation" $ do
                 M.singleton (DerivationInfo.derivationPath drvInfo) drvInfo
               _ -> M.empty
 
-        forM_ (toList drvMap) $ \drvInfo -> do
+        forM_ (toList drvMap) $ \drvInfo ->
           forM_ (M.keys $ DerivationInfo.inputDerivations drvInfo) $ \d ->
-            unless (isJust (M.lookup d drvMap)) $ do
+            unless (isJust (M.lookup d drvMap)) $
               panic
                 $ "In drv info for "
                 <> DerivationInfo.derivationPath drvInfo
@@ -466,3 +467,47 @@ spec = describe "Evaluation" $ do
           _ ->
             failWith $ "Events should be a single attribute, not: " <> show r
 
+  describe "when 'ifd' is used" $ do
+    it "can request a build" $ \srv -> do
+      id <- randomId
+      (s, r) <- runEval
+        srv
+        defaultTask
+          { EvaluateTask.id = id
+          , EvaluateTask.primaryInput = "/tarball/ifd"
+          , EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs"
+          , EvaluateTask.autoArguments = M.singleton
+                                           "nixpkgs"
+                                           (EvaluateTask.SubPathOf "n" Nothing)
+          }
+
+      s `shouldBe` TaskStatus.Successful ()
+
+      case attrLike r of
+        [EvaluateEvent.Attribute ae] -> do
+          AttributeEvent.expressionPath ae `shouldBe` ["helloIfd"]
+          toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
+          toS (AttributeEvent.derivationPath ae) `shouldContain` "-hello"
+        _ -> failWith $ "Events should be a single attribute, not: " <> show r
+
+    it "can request a build again" $ \srv -> do
+      id <- randomId
+      (s, r) <- runEval
+        srv
+        defaultTask
+          { EvaluateTask.id = id
+          , EvaluateTask.primaryInput = "/tarball/ifd"
+          , EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs"
+          , EvaluateTask.autoArguments = M.singleton
+                                           "nixpkgs"
+                                           (EvaluateTask.SubPathOf "n" Nothing)
+          }
+
+      s `shouldBe` TaskStatus.Successful ()
+
+      case attrLike r of
+        [EvaluateEvent.Attribute ae] -> do
+          AttributeEvent.expressionPath ae `shouldBe` ["helloIfd"]
+          toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
+          toS (AttributeEvent.derivationPath ae) `shouldContain` "-hello"
+        _ -> failWith $ "Events should be a single attribute, not: " <> show r

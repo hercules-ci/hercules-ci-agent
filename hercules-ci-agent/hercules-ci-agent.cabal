@@ -1,4 +1,4 @@
-cabal-version: 1.12
+cabal-version: 2.1
 
 name:           hercules-ci-agent
 version:        0.3.0
@@ -21,11 +21,13 @@ source-repository head
 library
   exposed-modules:
       Hercules.Agent.WorkerProtocol.Command
-      Hercules.Agent.WorkerProtocol.Command.Build
+      Hercules.Agent.WorkerProtocol.Command.BuildResult
       Hercules.Agent.WorkerProtocol.Command.Eval
       Hercules.Agent.WorkerProtocol.Event
       Hercules.Agent.WorkerProtocol.Event.Attribute
       Hercules.Agent.WorkerProtocol.Event.AttributeError
+      Data.Conduit.Extras
+
   other-modules:
       Paths_hercules_ci_agent
   hs-source-dirs:
@@ -158,6 +160,9 @@ executable hercules-ci-agent-worker
       Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent-worker
+  cxx-sources:
+      cbits/hercules-store.cc
+      cbits/hercules-store.hh
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
     -Wall
@@ -198,6 +203,7 @@ executable hercules-ci-agent-worker
     , optparse-applicative
     , protolude
     , safe-exceptions
+    , stm
     , text
     , transformers-base
   pkgconfig-depends:

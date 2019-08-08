@@ -10,6 +10,10 @@ import           Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
                                                 ( DerivationInfo )
 import           Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll
                                                 ( PushedAll )
+import           Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired
+                                                ( BuildRequired )
+import           Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest
+                                                ( BuildRequest )
 import           Hercules.API.Message           ( Message )
 
 data EvaluateEvent
@@ -18,4 +22,6 @@ data EvaluateEvent
   | Message Message
   | DerivationInfo DerivationInfo
   | PushedAll PushedAll
+  | BuildRequired BuildRequired
+  | BuildRequest BuildRequest
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

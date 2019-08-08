@@ -5,7 +5,10 @@ import           Protolude
 import           Data.Binary
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval
                                                as Eval
+import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult
+                                               as BuildResult
 
-data Command = Eval Eval.Eval
-             | Build Void -- TODO: add fields
-             deriving (Generic, Binary, Show, Eq)
+data Command
+  = Eval Eval.Eval
+  | BuildResult BuildResult.BuildResult
+  deriving (Generic, Binary, Show, Eq)

@@ -6,15 +6,23 @@ module Hercules.Agent.Worker
 where
 
 import           Prelude                        ( )
-import           Control.Monad
 import           Protolude               hiding ( evalState )
+
+import           Conduit
+import           Control.Concurrent.STM
+import           CNix
+import qualified CNix.Internal.Raw
+import qualified Data.ByteString               as BS
 import           Data.Conduit.Serialization.Binary
                                                 ( conduitEncode
                                                 , conduitDecode
                                                 )
-import           Conduit
 import qualified Data.Conduit
+import           Data.Conduit.Extras            ( sinkChan, sourceChan )
+import           Data.IORef
+import           Data.List                      ( last )
 import qualified Data.Map                      as M
+import qualified Data.Set                      as S
 import qualified Hercules.Agent.WorkerProtocol.Command
                                                as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval
@@ -29,51 +37,97 @@ import           Hercules.Agent.WorkerProtocol.Command
                                                 ( Command )
 import           Hercules.Agent.WorkerProtocol.Command.Eval
                                                 ( Eval )
+import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult
+                                               as BuildResult
 import           Hercules.Agent.WorkerProtocol.Event
                                                 ( Event )
 import qualified Language.C.Inline.Cpp.Exceptions
                                                as C
 
-import           CNix
-import qualified CNix.Internal.Raw
-import           Data.List                      ( last )
+data HerculesState = HerculesState
+  { drvsCompleted :: TVar (Map Text BuildResult.BuildStatus)
+  , drvsInProgress :: IORef (Set Text)
+  , herculesStore :: Ptr (Ref HerculesStore)
+  , wrappedStore :: Ptr (Ref NixStore)
+  , shortcutChannel :: Chan (Maybe Event)
+  }
 
 main :: IO ()
-main = do -- runInBoundThread $ do
+main = do
+  hPutStrLn stderr ("Initializing store..." :: Text)
   CNix.init
 
-  runConduitRes
-    (sourceHandle stdin
-    .| conduitDecode
-    .| mapMC
+  drvsCompleted_ <- newTVarIO mempty
+  drvsInProgress_ <- newIORef mempty
+
+  withStore $ \wrappedStore_ -> withHerculesStore wrappedStore_ $ \herculesStore_ -> do
+    setBuilderCallback herculesStore_ mempty
+
+    ch <- liftIO newChan
+
+    let st = HerculesState
+              { drvsCompleted = drvsCompleted_
+              , drvsInProgress = drvsInProgress_
+              , herculesStore = herculesStore_
+              , wrappedStore = wrappedStore_
+              , shortcutChannel = ch
+              }
+
+    void $ concurrently
+      (runConduitRes
+        (sourceHandle stdin
+        .| conduitDecode
+        .| printCommands
+        .| runCommands st
+        .| sinkChan ch
+        )
+      )
+      (runConduitRes
+        (sourceChan ch
+        .| conduitEncode
+        .| concatMapC (\x -> [Chunk x, Flush])
+        .| sinkHandleFlush stdout
+        )
+      )
+
+printCommands :: ConduitT Command Command (ResourceT IO) ()
+printCommands = mapMC
          (\x -> do
            liftIO $ hPutStrLn stderr ("Received command: " <> show x :: Text)
            pure x
          )
-    .| runCommands
-    .| conduitEncode
-    .| concatMapC (\x -> [Chunk x, Flush])
-    .| sinkHandleFlush stdout
-    )
 
 renderException :: SomeException -> Text
 renderException e | Just (C.CppStdException m) <- fromException e = toS m
 renderException e = toS $ displayException e
 
-runCommands :: ConduitM Command Event (ResourceT IO) ()
-runCommands = do
-  let peekLoop m = peekC >>= \case
-        Just a -> m a
-        Nothing -> pass
-  peekLoop $ \case
+runCommands :: HerculesState -> ConduitM Command Event (ResourceT IO) ()
+runCommands herculesState = do
+
+  mainThread <- liftIO $ myThreadId
+
+  awaitForever $ \case
     Command.Eval eval ->
-      Data.Conduit.handleC
-          (\e -> do
-            hPutStrLn stderr $ "Caught exception: " <> renderException e
-            yield $ Event.Error (renderException e)
+      void $ liftIO $ flip forkFinally (\eeu -> case eeu of
+        Left e -> throwIO $ FatalError $ "Failed to fork: " <> show e
+        Right _ -> pure ()) $
+        runConduitRes (
+              Data.Conduit.handleC
+                  (\e -> do
+                    hPutStrLn stderr $ "Caught exception: " <> renderException e
+                    yield $ Event.Error (renderException e)
+                    liftIO $ throwTo mainThread (ExitFailure 1)
+                  )
+                  (do 
+                    runEval herculesState eval
+                    liftIO $ throwTo mainThread ExitSuccess
+                  )
+          .| sinkChan (shortcutChannel herculesState)
           )
-        $ runEval eval
-    Command.Build impossible -> absurd impossible
+
+    Command.BuildResult (BuildResult.BuildResult path result) -> do
+      hPutStrLn stderr $ ("BuildResult: " <> show path <> " " <> show result :: Text)
+      liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (<> M.singleton path result)
 
 -- TODO: test
 autoArgArgs :: Map Text Eval.Arg -> [ByteString]
@@ -83,15 +137,56 @@ autoArgArgs kvs = do
     Eval.LiteralArg s -> ["--argstr", toS k, s]
     Eval.ExprArg s -> ["--arg", toS k, s]
 
-runEval :: Eval -> ConduitM i Event (ResourceT IO) ()
-runEval eval = do
+withDrvInProgress :: HerculesState -> Text -> IO a -> IO a
+withDrvInProgress HerculesState { drvsInProgress = ref } drvPath =
+  bracket acquire release . const
+    where
+      acquire =
+        join $ atomicModifyIORef ref $ \inprg ->
+          if drvPath `S.member` inprg
+            then (inprg, throwIO $ FatalError "Refusing to build derivation that should have been built remotely. Presumably, substitution has failed.")
+            else (S.insert drvPath inprg, pass)
+      release _ =
+        atomicModifyIORef ref $ \inprg ->
+           (S.delete drvPath inprg, ())
 
+anyAlternative :: (Foldable l, Alternative f) => l a -> f a
+anyAlternative = getAlt . foldMap (Alt . pure)
+
+runEval :: HerculesState -> Eval -> ConduitM i Event (ResourceT IO) ()
+runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
+
+  -- FIXME
   forM_ (Eval.extraNixOptions eval) $ liftIO . uncurry setGlobalOption
 
-  hPutStrLn stderr ("Initializing store and evaluator..." :: Text)
+  do
+    let store = nixStore hStore
 
-  withStore $ \store -> do
     s <- storeUri store
+
+    liftIO $ setBuilderCallback hStore $ \path -> do
+      hPutStrLn stderr ("Building " <> show path :: Text)
+      let (plainDrv, bangOut) = BS.span (/= fromIntegral (ord '!')) path
+          outputName = BS.dropWhile (== fromIntegral (ord '!')) bangOut
+          plainDrvText = toS plainDrv
+      withDrvInProgress st plainDrvText $ do
+        writeChan shortcutChan $ Just $ Event.Build plainDrvText
+        -- TODO: try to fetch immediately
+        hPutStrLn stderr ("Awaiting " <> show plainDrvText :: Text)
+        result <- liftIO $ atomically $ do
+          c <- readTVar drvsCompl
+          anyAlternative $ M.lookup plainDrvText c
+
+        case result of
+          BuildResult.Exceptional msg -> throwIO $ FatalError $ "Technical failure in build of " <> plainDrvText <> ": " <> msg
+          BuildResult.Failure -> throwIO $ FatalError $ "Build failed: " <> plainDrvText
+          BuildResult.Success -> pass
+
+        derivation <- getDerivation store plainDrv
+        outputPath <- derivationOutputPath derivation outputName
+        ensurePath (wrappedStore st) outputPath
+
+      hPutStrLn stderr ("Built " <> show path :: Text)
 
     hPutStrLn stderr ("Store uri: " <> s)
 

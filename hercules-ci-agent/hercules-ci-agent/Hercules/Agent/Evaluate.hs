@@ -10,6 +10,11 @@ import           Protolude
 import           Conduit
 import qualified Control.Concurrent.Async.Lifted
                                                as Async.Lifted
+import           Data.Conduit.Process           ( sourceProcessWithStreams )
+import           Data.IORef                     ( newIORef
+                                                , atomicModifyIORef
+                                                , readIORef
+                                                )
 import qualified Data.Map                      as M
 import qualified Data.Set                      as S
 import           Paths_hercules_ci_agent        ( getBinDir )
@@ -40,12 +45,17 @@ import qualified Hercules.Agent.WorkerProtocol.Command
                                                as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval
                                                as Eval
+import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult
+                                               as BuildResult
 import           Hercules.API                   ( noContent )
 import           Hercules.API.Agent.Evaluate    ( tasksUpdateEvaluation
                                                 , tasksGetEvaluation
+                                                , pollBuild
                                                 )
 import           Hercules.API.Task              ( Task )
 import qualified Hercules.API.Task             as Task
+import           Hercules.API.TaskStatus        ( TaskStatus )
+import qualified Hercules.API.TaskStatus       as TaskStatus
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask
                                                as EvaluateTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent
@@ -54,6 +64,10 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
                                                as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
                                                as AttributeErrorEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest
+                                               as BuildRequest
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired
+                                               as BuildRequired
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
                                                as DerivationInfo
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll
@@ -65,11 +79,6 @@ import qualified Network.HTTP.Client.Conduit   as HTTP.Conduit
 import qualified Network.HTTP.Simple           as HTTP.Simple
 import qualified Servant.Client
 import           System.IO.Temp                 ( withTempDirectory )
-import           Data.Conduit.Process           ( sourceProcessWithStreams )
-import           Data.IORef                     ( newIORef
-                                                , atomicModifyIORef
-                                                , readIORef
-                                                )
 
 runEvaluator :: FilePath
              -> [ EvaluateTask.NixPathElement
@@ -232,6 +241,8 @@ performEvaluation task' = do
                                autoArguments
                                nixPath
                                captureAttrDrvAndEmit
+                               derivationQueue
+                               (flushSyncTimeout eventChan)
                 -- process has finished
 
                 TraversalQueue.waitUntilDone derivationQueue
@@ -263,20 +274,23 @@ performEvaluation task' = do
             in
               doIt
 
-runEvalProcess :: ( KatipContext m
-                  , MonadReader Env m
-                  )
-               => FilePath
+runEvalProcess :: FilePath
                -> FilePath
                -> Map Text Eval.Arg
                -> [ EvaluateTask.NixPathElement
                       (EvaluateTask.SubPathOf FilePath)
                   ]
                -> (EvaluateEvent.EvaluateEvent -> IO ())
-               -> m ()
-runEvalProcess projectDir file autoArguments nixPath emit = do
+               -> TraversalQueue.Queue Text
+               -> App ()
+               -> App ()
+runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush = do
 
   extraOpts <- Nix.askExtraOptions
+
+  appEnv <- ask
+  let unlift :: forall a m. MonadIO m => App a -> m a
+      unlift = liftIO . runApp appEnv
 
   let eval = Eval.Eval
         { Eval.cwd = projectDir
@@ -289,9 +303,10 @@ runEvalProcess projectDir file autoArguments nixPath emit = do
   let
     stderrSink = mapC (\ln -> "worker: " <> ln <> "\n") .| stderrC
 
+    interaction :: ConduitM i Event.Event IO () -> ConduitT i Command.Command IO ()
     interaction eventStream = do
       yield $ Command.Eval eval
-      eventStream .| concatMapMC
+      eventStream .| awaitForever
         (\msg -> do
           case msg of
             Event.Attribute a ->
@@ -323,6 +338,27 @@ runEvalProcess projectDir file autoArguments nixPath emit = do
                     , Message.typ = Message.Error
                     , Message.message = e
                     }
+            Event.Build drv -> do
+                liftIO
+                  $ emit
+                  $ EvaluateEvent.BuildRequired BuildRequired.BuildRequired { BuildRequired.derivationPath = drv }
+                caches <- unlift $ Agent.Cachix.activePushCaches
+                unlift $ forM_ caches $ \cache -> do
+                  withNamedContext "cache" cache $ logLocM DebugS "Pushing ifd drvs to cachix"
+                  TraversalQueue.enqueue derivationQueue drv
+                  Async.Lifted.concurrently_
+                    (Agent.Cachix.push cache [drv])
+                    (TraversalQueue.waitUntilDone derivationQueue)
+                liftIO
+                  $ emit
+                  $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest { BuildRequest.derivationPath = drv }
+                unlift flush
+                status <- unlift $ drvPoller drv
+                unlift $ withNamedContext "derivation" drv $ logLocM DebugS $ "Found status " <> show status
+                case status of
+                  TaskStatus.Successful {} -> yield $ Command.BuildResult $ BuildResult.BuildResult drv BuildResult.Success
+                  TaskStatus.Terminated {} -> yield $ Command.BuildResult $ BuildResult.BuildResult drv BuildResult.Failure
+                  TaskStatus.Exceptional emsg -> yield $ Command.BuildResult $ BuildResult.BuildResult drv $ BuildResult.Exceptional emsg
           pure []
         )
 
@@ -335,6 +371,17 @@ runEvalProcess projectDir file autoArguments nixPath emit = do
       withNamedContext "exitStatus" e $ logLocM ErrorS "Worker failed"
       panic "worker failure"
             -- FIXME: handle failure
+
+drvPoller :: Text -> App TaskStatus
+drvPoller drvPath = do
+  let oneSecond = 1000 * 1000
+  liftIO $ threadDelay oneSecond
+  resp <- defaultRetry $ runHerculesClient $ pollBuild
+    Hercules.Agent.Client.evalClient
+    drvPath
+  case resp of
+    Nothing -> drvPoller drvPath
+    Just x -> pure x
 
 fetchSource :: FilePath -> Text -> App FilePath
 fetchSource targetDir url = do
