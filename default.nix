@@ -10,5 +10,6 @@ pkgs.recurseIntoAttrs {
     devTools
     toTOML-test
     pre-commit-check
+    doc
     ;
 }

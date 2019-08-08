@@ -1,5 +1,5 @@
 { sources ? import ./sources.nix
-, nixpkgsSource ? "nixos-19.03"
+, nixpkgsSource ? "nixos-unstable"
 , nixpkgs ? sources."${nixpkgsSource}"
   # Sharing the test suite
 , allTargets ? import ./ci.nix
