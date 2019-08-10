@@ -5,7 +5,7 @@
 { pkgs, ... }:
 
 let
- agentpkgs = import ./. {};
+ agentpkgs = import ./. { system = pkgs.system; };
 in {
   imports = [ ./for-upstream/default.nixos.nix ];
 
