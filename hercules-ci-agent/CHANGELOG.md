@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2019-08-11
+
+### Fixed
+
+- Deploying the agent from different system (darwin to linux) resulted into
+  using the wrong executable 
+
+
 ## [0.3.1] - 2019-08-07
 
 ### Changed
