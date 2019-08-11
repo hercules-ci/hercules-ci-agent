@@ -50,12 +50,11 @@ import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult
 import           Hercules.API                   ( noContent )
 import           Hercules.API.Agent.Evaluate    ( tasksUpdateEvaluation
                                                 , tasksGetEvaluation
-                                                , pollBuild
+                                                , getDerivationStatus
                                                 )
+import qualified Hercules.API.Derivation       as Derivation
 import           Hercules.API.Task              ( Task )
 import qualified Hercules.API.Task             as Task
-import           Hercules.API.TaskStatus        ( TaskStatus )
-import qualified Hercules.API.TaskStatus       as TaskStatus
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask
                                                as EvaluateTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent
@@ -298,6 +297,7 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
         , Eval.autoArguments = autoArguments
         , Eval.extraNixOptions = extraOpts
         }
+  buildRequiredIndex <- liftIO $ newIORef (0 :: Int)
 
   let
     stderrSink pid = awaitForever $ \ln -> unlift $ withNamedContext "worker" (pid :: Int) $ logLocM InfoS $ "Evaluator: " <> logStr (toSL ln :: Text)
@@ -327,6 +327,8 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                       <$> WorkerAttributeError.path e
                     , AttributeErrorEvent.errorMessage = toSL
                       $ WorkerAttributeError.message e
+                    , AttributeErrorEvent.errorType = toSL <$> WorkerAttributeError.errorType e
+                    , AttributeErrorEvent.errorDerivation = toSL <$> WorkerAttributeError.errorDerivation e
                     }
             Event.EvaluationDone -> pass -- FIXME
             Event.Error e ->
@@ -337,10 +339,15 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                     , Message.typ = Message.Error
                     , Message.message = e
                     }
-            Event.Build drv -> do
+            Event.Build drv outputName -> do
+                currentIndex <- liftIO $ atomicModifyIORef buildRequiredIndex (\i -> (i + 1, i))
                 liftIO
                   $ emit
-                  $ EvaluateEvent.BuildRequired BuildRequired.BuildRequired { BuildRequired.derivationPath = drv }
+                  $ EvaluateEvent.BuildRequired BuildRequired.BuildRequired
+                    { BuildRequired.derivationPath = drv
+                    , BuildRequired.index = currentIndex
+                    , BuildRequired.outputName = outputName
+                    }
                 caches <- unlift $ Agent.Cachix.activePushCaches
                 unlift $ forM_ caches $ \cache -> do
                   withNamedContext "cache" cache $ logLocM DebugS "Pushing ifd drvs to cachix"
@@ -354,10 +361,7 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                 unlift flush
                 status <- unlift $ drvPoller drv
                 unlift $ withNamedContext "derivation" drv $ logLocM DebugS $ "Found status " <> show status
-                case status of
-                  TaskStatus.Successful {} -> yield $ Command.BuildResult $ BuildResult.BuildResult drv BuildResult.Success
-                  TaskStatus.Terminated {} -> yield $ Command.BuildResult $ BuildResult.BuildResult drv BuildResult.Failure
-                  TaskStatus.Exceptional emsg -> yield $ Command.BuildResult $ BuildResult.BuildResult drv $ BuildResult.Exceptional emsg
+                yield $ Command.BuildResult $ BuildResult.BuildResult drv status
           pure []
         )
 
@@ -371,17 +375,22 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
       panic "worker failure"
             -- FIXME: handle failure
 
-drvPoller :: Text -> App TaskStatus
+drvPoller :: Text -> App BuildResult.BuildStatus
 drvPoller drvPath = do
-  resp <- defaultRetry $ runHerculesClient $ pollBuild
+  resp <- defaultRetry $ runHerculesClient $ getDerivationStatus
     Hercules.Agent.Client.evalClient
     drvPath
+  let oneSecond = 1000 * 1000
+      again = do
+        liftIO $ threadDelay oneSecond
+        drvPoller drvPath
   case resp of
-    Nothing -> do
-      let oneSecond = 1000 * 1000
-      liftIO $ threadDelay oneSecond
-      drvPoller drvPath
-    Just x -> pure x
+    Nothing -> again
+    Just Derivation.Waiting -> again
+    Just Derivation.Building -> again
+    Just Derivation.BuildFailure -> pure BuildResult.Failure
+    Just Derivation.DependencyFailure -> pure BuildResult.DependencyFailure
+    Just Derivation.BuildSuccess -> pure BuildResult.Success
 
 fetchSource :: FilePath -> Text -> App FilePath
 fetchSource targetDir url = do

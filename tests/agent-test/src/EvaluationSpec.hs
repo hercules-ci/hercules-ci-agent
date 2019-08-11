@@ -21,6 +21,8 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
                                                as AttributeErrorEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
                                                as DerivationInfo
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired
+                                               as BuildRequired
 import qualified Hercules.API.Message          as Message
 import           MockTasksApi
 import           Test.Hspec
@@ -39,6 +41,7 @@ isAttrLike :: EvaluateEvent -> Bool
 isAttrLike EvaluateEvent.Attribute{} = True
 isAttrLike EvaluateEvent.AttributeError{} = True
 isAttrLike EvaluateEvent.Message{} = True -- this is a bit of a stretch but hey
+isAttrLike EvaluateEvent.BuildRequired{} = True -- this is a bit of a stretch but hey
 isAttrLike _ = False
 
 defaultTask :: EvaluateTask.EvaluateTask
@@ -467,47 +470,96 @@ spec = describe "Evaluation" $ do
           _ ->
             failWith $ "Events should be a single attribute, not: " <> show r
 
-  describe "when 'ifd' is used" $ do
-    it "can request a build" $ \srv -> do
-      id <- randomId
-      (s, r) <- runEval
-        srv
-        defaultTask
-          { EvaluateTask.id = id
-          , EvaluateTask.primaryInput = "/tarball/ifd"
-          , EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs"
-          , EvaluateTask.autoArguments = M.singleton
-                                           "nixpkgs"
-                                           (EvaluateTask.SubPathOf "n" Nothing)
-          }
+  describe "when builds are required for evaluation" $ do
 
-      s `shouldBe` TaskStatus.Successful ()
+    let
+      ifdTest srv = do
+        id <- randomId
+        (s, r) <- runEval
+          srv
+          defaultTask
+            { EvaluateTask.id = id
+            , EvaluateTask.primaryInput = "/tarball/ifd"
+            , EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs"
+            , EvaluateTask.autoArguments = M.singleton
+                                            "nixpkgs"
+                                            (EvaluateTask.SubPathOf "n" Nothing)
+            }
 
-      case attrLike r of
-        [EvaluateEvent.Attribute ae] -> do
-          AttributeEvent.expressionPath ae `shouldBe` ["helloIfd"]
-          toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
-          toS (AttributeEvent.derivationPath ae) `shouldContain` "-hello"
-        _ -> failWith $ "Events should be a single attribute, not: " <> show r
+        s `shouldBe` TaskStatus.Successful ()
 
-    it "can request a build again" $ \srv -> do
-      id <- randomId
-      (s, r) <- runEval
-        srv
-        defaultTask
-          { EvaluateTask.id = id
-          , EvaluateTask.primaryInput = "/tarball/ifd"
-          , EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs"
-          , EvaluateTask.autoArguments = M.singleton
-                                           "nixpkgs"
-                                           (EvaluateTask.SubPathOf "n" Nothing)
-          }
+        case attrLike r of
+          [ EvaluateEvent.BuildRequired br1
+            , EvaluateEvent.Attribute ae1
+            , EvaluateEvent.BuildRequired br2
+            , EvaluateEvent.Attribute ae2
+            ] -> do
 
-      s `shouldBe` TaskStatus.Successful ()
+              BuildRequired.index br1 `shouldBe` 0
+              toSL (BuildRequired.derivationPath br1) `shouldContain` "/nix/store/"
+              toSL (BuildRequired.derivationPath br1) `shouldContain` "-ifd-2.nix"
+              BuildRequired.outputName br1 `shouldBe` "out"
 
-      case attrLike r of
-        [EvaluateEvent.Attribute ae] -> do
-          AttributeEvent.expressionPath ae `shouldBe` ["helloIfd"]
-          toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
-          toS (AttributeEvent.derivationPath ae) `shouldContain` "-hello"
-        _ -> failWith $ "Events should be a single attribute, not: " <> show r
+              AttributeEvent.expressionPath ae1 `shouldBe` ["figletIfd"]
+              toS (AttributeEvent.derivationPath ae1) `shouldContain` "/nix/store"
+              toS (AttributeEvent.derivationPath ae1) `shouldContain` "-figlet"
+
+              BuildRequired.index br2 `shouldBe` 1
+              toSL (BuildRequired.derivationPath br2) `shouldContain` "/nix/store/"
+              toSL (BuildRequired.derivationPath br2) `shouldContain` "-ifd-1.nix"
+              BuildRequired.outputName br2 `shouldBe` "out"
+
+              AttributeEvent.expressionPath ae2 `shouldBe` ["helloIfd"]
+              toS (AttributeEvent.derivationPath ae2) `shouldContain` "/nix/store"
+              toS (AttributeEvent.derivationPath ae2) `shouldContain` "-hello"
+
+          _ -> failWith $ "Events should be a two attributes, not: " <> show r
+
+    it "can request a build" $ ifdTest
+    it "can request a build again" $ ifdTest
+
+    it "can handle a failed build" $ \srv -> do
+        id <- randomId
+        (s, r) <- runEval
+          srv
+          defaultTask
+            { EvaluateTask.id = id
+            , EvaluateTask.primaryInput = "/tarball/ifd-fail"
+            , EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs"
+            , EvaluateTask.autoArguments = M.singleton
+                                            "nixpkgs"
+                                            (EvaluateTask.SubPathOf "n" Nothing)
+            }
+
+        s `shouldBe` TaskStatus.Successful ()
+
+        case attrLike r of
+          [ EvaluateEvent.BuildRequired br1
+            , EvaluateEvent.AttributeError ae1
+            , EvaluateEvent.BuildRequired br2
+            , EvaluateEvent.Attribute ae2
+            ] -> do
+
+              BuildRequired.index br1 `shouldBe` 0
+              toSL (BuildRequired.derivationPath br1) `shouldContain` "/nix/store/"
+              toSL (BuildRequired.derivationPath br1) `shouldContain` "-ifd-2.nix"
+              BuildRequired.outputName br1 `shouldBe` "out"
+
+              AttributeErrorEvent.expressionPath ae1 `shouldBe` ["figletIfd"]
+              length (AttributeErrorEvent.errorDerivation ae1) `shouldBe` 1
+              toS (fromMaybe "" (AttributeErrorEvent.errorDerivation ae1)) `shouldContain` "/nix/store"
+              toS (fromMaybe "" (AttributeErrorEvent.errorDerivation ae1)) `shouldContain` "-ifd-2.nix"
+              toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "/nix/store"
+              toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "-ifd-2.nix"
+              toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "BuildFailure"
+              toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "evaluat"
+              toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "derivation"
+
+              BuildRequired.index br2 `shouldBe` 1
+              toSL (BuildRequired.derivationPath br2) `shouldContain` "/nix/store/"
+              toSL (BuildRequired.derivationPath br2) `shouldContain` "-ifd-1.nix"
+              BuildRequired.outputName br2 `shouldBe` "out"
+
+              AttributeEvent.expressionPath ae2 `shouldBe` ["helloIfd"]
+              toS (AttributeEvent.derivationPath ae2) `shouldContain` "/nix/store"
+              toS (AttributeEvent.derivationPath ae2) `shouldContain` "-hello"

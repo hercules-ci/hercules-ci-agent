@@ -8,5 +8,7 @@ import           Data.Binary
 data AttributeError = AttributeError
   { path :: [ByteString]
   , message :: Text
+  , errorType :: Maybe Text
+  , errorDerivation :: Maybe Text
   }
   deriving (Generic, Binary, Show, Eq)

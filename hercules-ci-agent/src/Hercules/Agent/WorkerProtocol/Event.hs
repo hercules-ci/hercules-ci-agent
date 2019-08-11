@@ -11,5 +11,5 @@ data Event = Attribute Attribute
            | AttributeError AttributeError
            | EvaluationDone
            | Error Text
-           | Build Text
+           | Build Text Text
              deriving (Generic, Binary, Show, Eq)

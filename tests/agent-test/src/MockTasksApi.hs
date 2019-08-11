@@ -61,9 +61,11 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest
 import           Hercules.API.Agent.Tasks       ( TasksAPI(..) )
 import           Hercules.API.Agent.Evaluate    ( EvalAPI(..) )
 import           Hercules.API.Agent.Build       ( BuildAPI(..) )
-import           Hercules.API.Logs              ( LogsAPI(..) )
 import           Hercules.API.Agent.LifeCycle   ( LifeCycleAPI(..) )
 import qualified Hercules.API.Agent.LifeCycle  as LifeCycle
+import           Hercules.API.Derivation        ( DerivationStatus )
+import qualified Hercules.API.Derivation       as Derivation
+import           Hercules.API.Logs              ( LogsAPI(..) )
 import           Control.Concurrent             ( newEmptyMVar )
 import           Control.Concurrent.STM
 import           System.Environment             ( getEnvironment )
@@ -342,17 +344,21 @@ evalEndpoints :: ServerState -> EvalAPI Auth' AsServer
 evalEndpoints server = DummyApi.dummyEvalEndpoints
   { tasksGetEvaluation = handleTasksGetEvaluation server
   , tasksUpdateEvaluation = handleTasksUpdate server
-  , pollBuild = handlePollBuild server
+  , getDerivationStatus = handleGetDerivationStatus server
   }
 
-handlePollBuild :: ServerState -> Text -> AuthResult Session -> Handler (Maybe TaskStatus.TaskStatus)
-handlePollBuild server drv _auth = do
+handleGetDerivationStatus :: ServerState -> Text -> AuthResult Session -> Handler (Maybe DerivationStatus)
+handleGetDerivationStatus server drv _auth = do
   drvPaths <- liftIO $ readIORef (drvTasks server)
   case M.lookup drv drvPaths of
-    Nothing -> pure $ Just $ TaskStatus.Exceptional "No such drv"
+    Nothing -> pure $ Just $ Derivation.BuildFailure -- TODO exception failure
     Just taskId -> do
       dones <- liftIO $ atomically $ readTVar (done server)
-      pure (M.lookup (idText taskId) dones)
+      pure (translate <$> M.lookup (idText taskId) dones)
+  where
+    translate TaskStatus.Exceptional {} = Derivation.BuildFailure
+    translate TaskStatus.Terminated {} = Derivation.BuildFailure
+    translate TaskStatus.Successful {} = Derivation.BuildSuccess
 
 atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_ r = atomicModifyIORef r . ((, ()) .)

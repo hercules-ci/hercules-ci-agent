@@ -15,7 +15,8 @@ let
       {
         code = "pkgs: pkgs.figlet";
       }
-      ''echo "$code" >$out
+      ''echo I'm sorry Dave, I'm afraid I can't do that. 1>&2
+        exit 1
       '';
 in
 {

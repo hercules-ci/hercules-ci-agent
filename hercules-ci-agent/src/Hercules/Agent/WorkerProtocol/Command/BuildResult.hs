@@ -7,8 +7,9 @@ import           Data.Binary
 data BuildResult = BuildResult Text BuildStatus
   deriving (Generic, Binary, Show, Eq)
 
+-- | Subset of @DerivationStatus@, with a @Binary@ instance.
 data BuildStatus
   = Success
   | Failure
-  | Exceptional Text
+  | DependencyFailure
   deriving (Generic, Binary, Show, Eq)

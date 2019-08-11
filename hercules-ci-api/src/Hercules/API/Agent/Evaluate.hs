@@ -8,11 +8,10 @@ import           Hercules.API.Agent.Evaluate.EvaluateEvent
 import           Hercules.API.Agent.Evaluate.EvaluateTask
                                                 ( EvaluateTask )
 import           Hercules.API.Attribute         ( Attribute )
-import           Hercules.API.Derivation        ( DerivationPath )
+import           Hercules.API.Derivation        ( DerivationPath, DerivationStatus )
 import           Hercules.API.Message           ( Message )
 import           Hercules.API.Result            ( Result )
 import           Hercules.API.Task              ( Task )
-import           Hercules.API.TaskStatus        ( TaskStatus )
 import           Servant.API
 import           Servant.API.Generic
 
@@ -32,12 +31,12 @@ data EvalAPI auth f = EvalAPI
     auth :>
     Post '[JSON] NoContent
 
- , pollBuild :: f :-
+ , getDerivationStatus :: f :-
     "agent" :>
     "build" :>
     Capture "derivationPath" Text :>
     auth :>
-    Get '[JSON] (Maybe TaskStatus)
+    Get '[JSON] (Maybe DerivationStatus)
 
     -- TODO: Remove
  , tasksPreviewAttrs :: f :-

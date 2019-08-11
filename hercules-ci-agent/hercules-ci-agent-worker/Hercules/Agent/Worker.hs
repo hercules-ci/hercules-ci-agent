@@ -23,6 +23,7 @@ import           Data.IORef
 import           Data.List                      ( last )
 import qualified Data.Map                      as M
 import qualified Data.Set                      as S
+import           Data.Typeable                  ( typeOf )
 import qualified Hercules.Agent.WorkerProtocol.Command
                                                as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval
@@ -178,12 +179,17 @@ yieldAttributeError path e | (Just e') <- fromException e =
   yield $ Event.AttributeError $ AttributeError.AttributeError
     { AttributeError.path = path
     , AttributeError.message = "Could not build derivation " <> buildExceptionDerivationPath e' <> ", which is required during evaluation. Build status was " <> show (buildExceptionDerivationStatus e')
+    , AttributeError.errorDerivation = Just (buildExceptionDerivationPath e')
+    , AttributeError.errorType = Just "BuildException"
     }
 yieldAttributeError path e =
   yield $ Event.AttributeError $ AttributeError.AttributeError
     { AttributeError.path = path
     , AttributeError.message = renderException e
+    , AttributeError.errorDerivation = Nothing
+    , AttributeError.errorType = Just (show (typeOf e))
     }
+
 
 runEval :: HerculesState -> Eval -> ConduitM i Event (ResourceT IO) ()
 runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
@@ -202,7 +208,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
           outputName = BS.dropWhile (== fromIntegral (ord '!')) bangOut
           plainDrvText = toS plainDrv
       withDrvInProgress st plainDrvText $ do
-        writeChan shortcutChan $ Just $ Event.Build plainDrvText
+        writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName)
         -- TODO: try to fetch immediately
         hPutStrLn stderr ("Awaiting " <> show plainDrvText :: Text)
         result <- liftIO $ atomically $ do
@@ -210,8 +216,8 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
           anyAlternative $ M.lookup plainDrvText c
 
         case result of
-          BuildResult.Exceptional _msg -> throwIO $ BuildException plainDrvText Derivation.BuildFailure
           BuildResult.Failure -> throwIO $ BuildException plainDrvText Derivation.BuildFailure
+          BuildResult.DependencyFailure -> throwIO $ BuildException plainDrvText Derivation.DependencyFailure
           BuildResult.Success -> pass
 
         derivation <- getDerivation store plainDrv

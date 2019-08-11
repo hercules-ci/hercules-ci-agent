@@ -7,7 +7,6 @@ let
   '';
 
   testdata = pkgs.runCommand "testdata" {} ''
-    set -x
     mkdir -p $out/testdata
     for p in ${./agent-test/testdata}/*; do
       ln -s $p $out/testdata/$(basename $p);

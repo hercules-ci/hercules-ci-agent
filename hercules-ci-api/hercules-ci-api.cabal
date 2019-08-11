@@ -50,10 +50,12 @@ library
       Hercules.API.Attribute
       Hercules.API.Auth
       Hercules.API.Build
+      Hercules.API.Build.EvaluationDependency
       Hercules.API.Build.EvaluationDetail
       Hercules.API.Build.FailureGraph
       Hercules.API.Derivation
       Hercules.API.Evaluation.Evaluation
+      Hercules.API.Evaluation.AttributeError
       Hercules.API.Health
       Hercules.API.Id
       Hercules.API.Logs
