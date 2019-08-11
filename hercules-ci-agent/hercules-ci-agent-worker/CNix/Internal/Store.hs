@@ -8,11 +8,14 @@ module CNix.Internal.Store
 import           Prelude()
 import           Protolude
 
+import           Control.Exception
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
-import qualified Data.ByteString as BS
+import qualified Data.ByteString.Unsafe as BS
 import qualified Foreign.C
 import           Foreign.ForeignPtr
+import           Foreign.C.String (withCString)
+import           Foreign.StablePtr
 import           CNix.Internal.Context
 import           Data.Coerce
 import           System.IO.Unsafe (unsafePerformIO)
@@ -83,9 +86,9 @@ derivationOutputPath fd outputName = withForeignPtr fd $ \d ->
     const char *{
       std::string outputName($bs-ptr:outputName, $bs-len:outputName);
       Derivation *d = $(Derivation *d);
-      return d->outputs.at(outputName).path.c_str();
+      return strdup(d->outputs.at(outputName).path.c_str());
     }
-  |] >>= BS.packCString
+  |] >>= BS.unsafePackMallocCString
 
 
 
@@ -112,14 +115,20 @@ printDiagnostics s = [C.throwBlock| void{
     (*$(refHerculesStore* s))->printDiagnostics();
   }|]
 
+-- TODO catch pure exceptions from displayException
 setBuilderCallback :: Ptr (Ref HerculesStore) -> (ByteString -> IO ()) -> IO ()
-setBuilderCallback s f = do
-  let f2 = f <=< BS.packCString
-  p <- mkBuilderCallback f2
+setBuilderCallback s callback = do
+  p <- mkBuilderCallback $ \cstr exceptionToThrowPtr ->
+    Control.Exception.catch (BS.unsafePackMallocCString cstr >>= callback) $ \e ->
+      withCString (displayException (e :: SomeException)) $ \renderedException -> do
+        stablePtr <- castStablePtrToPtr <$> newStablePtr e
+        [C.block| void {
+          (*$(exception_ptr *exceptionToThrowPtr)) = std::make_exception_ptr(HaskellException(std::string($(const char* renderedException)), $(void* stablePtr)));
+        }|]
   [C.throwBlock| void {
-      (*$(refHerculesStore* s))->setBuilderCallback($(void (*p)(const char *) ));
+      (*$(refHerculesStore* s))->setBuilderCallback($(void (*p)(const char *, exception_ptr *) ));
     }|]
 
-type BuilderCallback = Foreign.C.CString -> IO ()
+type BuilderCallback = Foreign.C.CString -> Ptr ExceptionPtr -> IO ()
 foreign import ccall "wrapper"
   mkBuilderCallback :: BuilderCallback -> IO (FunPtr BuilderCallback)

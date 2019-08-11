@@ -12,6 +12,7 @@ build-type:     Simple
 extra-source-files:
     CHANGELOG.md
     cbits/aliases.h
+    cbits/hercules-store.hh
     testdata/vm-test-run-agent-test.drv
 
 source-repository head
@@ -53,6 +54,7 @@ library
     , safe-exceptions
     , text
     , transformers-base
+    , unliftio-core
   default-language: Haskell2010
 
 executable hercules-ci-agent
@@ -88,7 +90,7 @@ executable hercules-ci-agent
       Hercules.Agent.SecureDirectory
       Hercules.Agent.Scribe
       Hercules.Agent.Token
-      WorkerProcess
+      Hercules.Agent.WorkerProcess
       Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent
@@ -162,7 +164,6 @@ executable hercules-ci-agent-worker
       hercules-ci-agent-worker
   cxx-sources:
       cbits/hercules-store.cc
-      cbits/hercules-store.hh
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
     -Wall
@@ -193,6 +194,7 @@ executable hercules-ci-agent-worker
     , conduit
     , containers
     , exceptions
+    , hercules-ci-api
     , hercules-ci-agent
     , inline-c
     , inline-c-cpp

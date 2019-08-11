@@ -21,7 +21,7 @@ import           Paths_hercules_ci_agent        ( getBinDir )
 import           System.FilePath
 import           System.Process
 import qualified System.Directory              as Dir
-import           WorkerProcess
+import           Hercules.Agent.WorkerProcess
 import           Hercules.Agent.Batch
 import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Cachix         as Agent.Cachix
@@ -299,9 +299,8 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
         , Eval.extraNixOptions = extraOpts
         }
 
-   -- FIXME: write stderr to service
   let
-    stderrSink = mapC (\ln -> "worker: " <> ln <> "\n") .| stderrC
+    stderrSink = awaitForever $ \ln -> unlift $ withNamedContext "process" ("worker" :: Text) $ logLocM InfoS $ "Evaluator: " <> logStr (toSL ln :: Text)
 
     interaction :: ConduitM i Event.Event IO () -> ConduitT i Command.Command IO ()
     interaction eventStream = do
@@ -374,13 +373,14 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
 
 drvPoller :: Text -> App TaskStatus
 drvPoller drvPath = do
-  let oneSecond = 1000 * 1000
-  liftIO $ threadDelay oneSecond
   resp <- defaultRetry $ runHerculesClient $ pollBuild
     Hercules.Agent.Client.evalClient
     drvPath
   case resp of
-    Nothing -> drvPoller drvPath
+    Nothing -> do
+      let oneSecond = 1000 * 1000
+      liftIO $ threadDelay oneSecond
+      drvPoller drvPath
     Just x -> pure x
 
 fetchSource :: FilePath -> Text -> App FilePath

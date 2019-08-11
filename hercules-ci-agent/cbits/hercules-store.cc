@@ -221,7 +221,11 @@ void HerculesStore::ensurePath(const Path& path) {
 
 void HerculesStore::buildPaths(const PathSet& paths, BuildMode buildMode) {
   for (Path path : paths) {
-    builderCallback(path.c_str());
+    std::exception_ptr exceptionToThrow(nullptr);
+    builderCallback(strdup(path.c_str()), &exceptionToThrow);
+    if (exceptionToThrow != nullptr) {
+      std::rethrow_exception(exceptionToThrow);
+    }
   }
 }
 
@@ -242,6 +246,6 @@ void HerculesStore::printDiagnostics() {
   }
 }
 
-void HerculesStore::setBuilderCallback(void (* newBuilderCallback)(const char *)) {
+void HerculesStore::setBuilderCallback(void (* newBuilderCallback)(const char *, std::exception_ptr *exceptionToThrow)) {
   builderCallback = newBuilderCallback;
 }

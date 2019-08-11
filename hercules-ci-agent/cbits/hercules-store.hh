@@ -9,6 +9,7 @@
 #include <nix/derivations.hh>
 #include <nix/affinity.hh>
 #include <nix/globals.hh>
+#include "HsFFI.h"
 
 using namespace nix;
 
@@ -120,7 +121,7 @@ public:
 class HerculesStore : public WrappingStore {
 public:
   PathSet ensuredPaths;
-  void (* builderCallback)(const char *);
+  void (* builderCallback)(const char *, std::exception_ptr *exceptionToThrow);
 
   HerculesStore(const Params & params, ref<Store> storeToWrap);
 
@@ -137,7 +138,7 @@ public:
 
   void printDiagnostics();
 
-  void setBuilderCallback(void (* newBuilderCallback)(const char *));
+  void setBuilderCallback(void (* newBuilderCallback)(const char *, std::exception_ptr *exceptionToThrow));
 
   void inhibitBuilds();
   void uninhibitBuilds();

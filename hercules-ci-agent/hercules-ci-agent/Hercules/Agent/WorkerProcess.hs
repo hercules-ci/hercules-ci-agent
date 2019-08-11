@@ -1,4 +1,4 @@
-module WorkerProcess
+module Hercules.Agent.WorkerProcess
   ( runWorker
   )
 where
@@ -8,11 +8,19 @@ import           Protolude
 import           System.Process
 import           System.IO.Error
 import           Conduit
+import qualified Control.Exception.Safe        as Safe
 import           Data.Conduit.Serialization.Binary
                                                 ( conduitEncode
                                                 , conduitDecode
                                                 )
 import           Data.Binary                    ( Binary )
+import           System.Timeout                 ( timeout )
+
+data WorkerException = WorkerException
+  { originalException :: SomeException
+  , exitStatus :: Maybe ExitCode
+  } deriving (Show, Typeable)
+instance Exception WorkerException
 
 -- | Control a child process by communicating over stdin and stdout
 -- using a 'Binary' interface.
@@ -29,6 +37,7 @@ runWorker baseProcess stderrSink interaction = do
                                       , std_out = CreatePipe
                                       , std_err = CreatePipe
                                       }
+
 
   withCreateProcess createProcessSpec $ \mIn mOut mErr processHandle -> do
     (inHandle, outHandle, errHandle) <- case (,,) <$> mIn <*> mOut <*> mErr of
@@ -50,6 +59,12 @@ runWorker baseProcess stderrSink interaction = do
     let interactor =
           runConduit $ interaction eventSource `fuseUpstream` commandSink
 
-    r <- runConcurrently (Concurrently stderrPiper *> Concurrently interactor)
-    e <- waitForProcess processHandle
-    pure (e, r)
+    withAsync (waitForProcess processHandle) $ \exitAsync -> do
+      r <-
+       runConcurrently (Concurrently stderrPiper *> Concurrently interactor)
+        `Safe.catch` \e -> do
+          let oneSecond = 1000 * 1000
+          maybeStatus <- timeout (5 * oneSecond) (wait exitAsync)
+          throwIO $ WorkerException e maybeStatus
+      e <- wait exitAsync
+      pure (e, r)

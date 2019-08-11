@@ -19,6 +19,7 @@ data Value'
 data Attr'
 data HerculesStore
 data Derivation
+data ExceptionPtr
 
 context :: C.Context
 context = C.cppCtx <> C.fptrCtx <> C.bsCtx <> C.funCtx
@@ -30,6 +31,7 @@ context = C.cppCtx <> C.fptrCtx <> C.bsCtx <> C.funCtx
                       <> M.singleton (C.TypeName "Strings") [t| Strings |]
                       <> M.singleton (C.TypeName "refHerculesStore") [t| Ref HerculesStore |]
                       <> M.singleton (C.TypeName "Derivation") [t| Derivation |]
+                      <> M.singleton (C.TypeName "exception_ptr") [t| ExceptionPtr |]
   }
 
 unsafeMallocBS :: MonadIO m => IO Foreign.C.String.CString -> m ByteString

@@ -22,7 +22,6 @@ module CNix
 import           Protolude hiding (evalState, throwIO)
 
 import           Conduit
-import qualified Data.ByteString as BS
 import qualified Data.Map as M
 import qualified Foreign.C.String
 import qualified Language.C.Inline.Cpp as C
@@ -76,9 +75,6 @@ setGlobalOption opt value = do
 
 mkBindings :: Ptr Bindings' -> IO Bindings
 mkBindings p = pure $ Bindings p
-
-getBS :: MonadIO m => IO Foreign.C.String.CString -> m ByteString
-getBS m = liftIO (BS.packCString =<< m)
 
 withEvalState
   :: MonadResource m

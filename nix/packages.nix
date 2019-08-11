@@ -88,6 +88,9 @@ let
         self.callPackage ./haskell-hedgehog-1-0.nix {};
       tasty-hedgehog_1_0 =
         self.callPackage ./haskell-tasty-hedgehog-1-0.nix { hedgehog = self.hedgehog_1_0; };
+
+      inline-c = self.callPackage ./haskell-inline-c.nix {};
+      inline-c-cpp = self.callPackage ./haskell-inline-c-cpp.nix {};
     });
 
     hercules-ci-api-swagger = pkgs.callPackage ../hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };

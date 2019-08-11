@@ -41,6 +41,8 @@ import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult
                                                as BuildResult
 import           Hercules.Agent.WorkerProtocol.Event
                                                 ( Event )
+import           Hercules.API.Derivation        ( DerivationStatus )
+import qualified Hercules.API.Derivation       as Derivation
 import qualified Language.C.Inline.Cpp.Exceptions
                                                as C
 
@@ -52,10 +54,19 @@ data HerculesState = HerculesState
   , shortcutChannel :: Chan (Maybe Event)
   }
 
+data BuildException = BuildException
+  { buildExceptionDerivationPath :: Text
+  , buildExceptionDerivationStatus :: DerivationStatus
+  } deriving (Show, Typeable)
+instance Exception BuildException
+
 main :: IO ()
 main = do
   hPutStrLn stderr ("Initializing store..." :: Text)
   CNix.init
+
+  -- Always try because it may have been built in the meanwhile
+  _ <- setGlobalOption "narinfo-cache-negative-ttl" "0"
 
   drvsCompleted_ <- newTVarIO mempty
   drvsInProgress_ <- newIORef mempty
@@ -73,22 +84,25 @@ main = do
               , shortcutChannel = ch
               }
 
-    void $ concurrently
-      (runConduitRes
-        (sourceHandle stdin
-        .| conduitDecode
-        .| printCommands
-        .| runCommands st
-        .| sinkChan ch
-        )
-      )
-      (runConduitRes
-        (sourceChan ch
-        .| conduitEncode
-        .| concatMapC (\x -> [Chunk x, Flush])
-        .| sinkHandleFlush stdout
-        )
-      )
+    let
+      runner =
+        runConduitRes
+          (sourceHandle stdin
+          .| conduitDecode
+          .| printCommands
+          .| runCommands st
+          .| sinkChan ch
+          ) `catch` (\WorkDoneException -> pure ())
+            `finally` writeChan ch Nothing
+      writer =
+        runConduitRes
+          (sourceChan ch
+          .| conduitEncode
+          .| concatMapC (\x -> [Chunk x, Flush])
+          .| sinkHandleFlush stdout
+          )
+
+    void $ concurrently runner writer
 
 printCommands :: ConduitT Command Command (ResourceT IO) ()
 printCommands = mapMC
@@ -98,8 +112,14 @@ printCommands = mapMC
          )
 
 renderException :: SomeException -> Text
-renderException e | Just (C.CppStdException m) <- fromException e = toS m
+renderException e | Just (C.CppStdException msg) <- fromException e = toSL msg
+renderException e | Just (C.CppOtherException maybeType) <- fromException e =
+  "Unexpected C++ exception" <> foldMap (\t -> " of type " <> toSL t) maybeType
 renderException e = toS $ displayException e
+
+
+data WorkDoneException = WorkDoneException deriving (Show, Typeable)
+instance Exception WorkDoneException
 
 runCommands :: HerculesState -> ConduitM Command Event (ResourceT IO) ()
 runCommands herculesState = do
@@ -116,9 +136,9 @@ runCommands herculesState = do
                   (\e -> do
                     hPutStrLn stderr $ "Caught exception: " <> renderException e
                     yield $ Event.Error (renderException e)
-                    liftIO $ throwTo mainThread (ExitFailure 1)
+                    liftIO $ throwTo mainThread e
                   )
-                  (do 
+                  (do
                     runEval herculesState eval
                     liftIO $ throwTo mainThread ExitSuccess
                   )
@@ -153,6 +173,18 @@ withDrvInProgress HerculesState { drvsInProgress = ref } drvPath =
 anyAlternative :: (Foldable l, Alternative f) => l a -> f a
 anyAlternative = getAlt . foldMap (Alt . pure)
 
+yieldAttributeError :: Monad m => [ByteString] -> SomeException -> ConduitT i Event m ()
+yieldAttributeError path e | (Just e') <- fromException e =
+  yield $ Event.AttributeError $ AttributeError.AttributeError
+    { AttributeError.path = path
+    , AttributeError.message = "Could not build derivation " <> buildExceptionDerivationPath e' <> ", which is required during evaluation. Build status was " <> show (buildExceptionDerivationStatus e')
+    }
+yieldAttributeError path e =
+  yield $ Event.AttributeError $ AttributeError.AttributeError
+    { AttributeError.path = path
+    , AttributeError.message = renderException e
+    }
+
 runEval :: HerculesState -> Eval -> ConduitM i Event (ResourceT IO) ()
 runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
 
@@ -178,8 +210,8 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
           anyAlternative $ M.lookup plainDrvText c
 
         case result of
-          BuildResult.Exceptional msg -> throwIO $ FatalError $ "Technical failure in build of " <> plainDrvText <> ": " <> msg
-          BuildResult.Failure -> throwIO $ FatalError $ "Build failed: " <> plainDrvText
+          BuildResult.Exceptional _msg -> throwIO $ BuildException plainDrvText Derivation.BuildFailure
+          BuildResult.Failure -> throwIO $ BuildException plainDrvText Derivation.BuildFailure
           BuildResult.Success -> pass
 
         derivation <- getDerivation store plainDrv
@@ -197,12 +229,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
       args <- liftIO
         $ evalArgs evalState (autoArgArgs (Eval.autoArguments eval))
 
-      Data.Conduit.handleC
-          (\e -> yield $ Event.AttributeError $ AttributeError.AttributeError
-            { AttributeError.path = []
-            , AttributeError.message = renderException e
-            }
-          )
+      Data.Conduit.handleC (yieldAttributeError [])
         $ do
             imprt <- liftIO $ evalFile evalState (toS $ Eval.file eval)
             applied <- liftIO (autoCallFunction evalState imprt args)
@@ -217,12 +244,7 @@ walk :: Ptr EvalState
      -> ConduitT i Event (ResourceT IO) ()
 walk evalState = walk' True [] 10
  where
-  handleErrors path = Data.Conduit.handleC
-    (\e -> yield $ Event.AttributeError $ AttributeError.AttributeError
-      { AttributeError.path = path
-      , AttributeError.message = renderException e
-      }
-    )
+  handleErrors path = Data.Conduit.handleC (yieldAttributeError path)
 
   walk' :: Bool                -- ^ If True, always walk this attribute set. Only True for the root.
         -> [ByteString]        -- ^ Attribute path
@@ -236,10 +258,7 @@ walk evalState = walk' True [] 10
       $ liftIO (match evalState v)
       >>= \case
             Left e ->
-              yield $ Event.AttributeError $ AttributeError.AttributeError
-                { AttributeError.path = path
-                , AttributeError.message = renderException e
-                }
+              yieldAttributeError path e
             Right m -> case m of
               IsAttrs attrValue -> do
                 isDeriv <- liftIO $ isDerivation evalState v

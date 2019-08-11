@@ -8,3 +8,5 @@
 typedef nix::ref<nix::Store> refStore;
 
 typedef nix::ref<HerculesStore> refHerculesStore;
+
+using namespace std;
