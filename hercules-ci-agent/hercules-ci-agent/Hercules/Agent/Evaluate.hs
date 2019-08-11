@@ -84,7 +84,7 @@ runEvaluator :: FilePath
              -> [ EvaluateTask.NixPathElement
                     (EvaluateTask.SubPathOf FilePath)
                 ]
-             -> ConduitM ByteString Void IO ()
+             -> (Int -> ConduitM ByteString Void IO ())
              -> ( forall i
                  . ConduitM i Event.Event IO ()
                 -> ConduitM i Command.Command IO a
@@ -300,7 +300,7 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
         }
 
   let
-    stderrSink = awaitForever $ \ln -> unlift $ withNamedContext "process" ("worker" :: Text) $ logLocM InfoS $ "Evaluator: " <> logStr (toSL ln :: Text)
+    stderrSink pid = awaitForever $ \ln -> unlift $ withNamedContext "worker" (pid :: Int) $ logLocM InfoS $ "Evaluator: " <> logStr (toSL ln :: Text)
 
     interaction :: ConduitM i Event.Event IO () -> ConduitT i Command.Command IO ()
     interaction eventStream = do

@@ -15,7 +15,6 @@ import           Data.Conduit.Serialization.Binary
                                                 )
 import           Data.Binary                    ( Binary )
 import           System.Timeout                 ( timeout )
-import           System.IO.Error
 import           GHC.IO.Exception
 
 data WorkerException = WorkerException
@@ -28,7 +27,7 @@ instance Exception WorkerException
 -- using a 'Binary' interface.
 runWorker :: (Binary command, Binary event)
           => CreateProcess -- ^ Process invocation details. Will ignore std_in, std_out and std_err fields.
-          -> ConduitM ByteString Void IO ()
+          -> (Int -> ConduitM ByteString Void IO ())
           -> ( forall i
               . ConduitM i event IO ()
              -> ConduitM i command IO a
@@ -49,8 +48,11 @@ runWorker baseProcess stderrSink interaction = do
                                      Nothing -- no handle
                                      Nothing -- no path
 
+    pidMaybe <- getPid processHandle
+    let pid = case pidMaybe of Just x -> fromIntegral x; Nothing -> 0
+
     let stderrPiper = runConduit
-          (sourceHandle errHandle .| linesUnboundedAsciiC .| stderrSink)
+          (sourceHandle errHandle .| linesUnboundedAsciiC .| stderrSink pid)
 
     let eventSource = sourceHandle outHandle .| conduitDecode
         handleEPIPE e | ioeGetErrorType e == ResourceVanished = pure ()
