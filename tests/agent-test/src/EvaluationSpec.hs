@@ -298,7 +298,7 @@ spec = describe "Evaluation" $ do
                     , EvaluateTask.primaryInput = "/tarball/too-many-attrs"
                     }
       s `shouldBe` TaskStatus.Exceptional
-        "FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}"
+        "WorkerException {originalException = FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}, exitStatus = Nothing}"
       last r `shouldBe` EvaluateEvent.Message
         (Message.Message
           { index = 0
@@ -318,7 +318,7 @@ spec = describe "Evaluation" $ do
                     , EvaluateTask.primaryInput = "/tarball/too-many-errors"
                     }
       s `shouldBe` TaskStatus.Exceptional
-        "FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}"
+        "WorkerException {originalException = FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}, exitStatus = Nothing}"
       last r `shouldBe` EvaluateEvent.Message
         (Message.Message
           { index = 0 -- This is the interesting part.
