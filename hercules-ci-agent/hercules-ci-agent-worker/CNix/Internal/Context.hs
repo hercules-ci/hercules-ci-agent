@@ -22,7 +22,7 @@ data Derivation
 data ExceptionPtr
 
 context :: C.Context
-context = C.cppCtx <> C.fptrCtx <> C.bsCtx <> C.funCtx
+context = C.cppCtx <> C.fptrCtx <> C.bsCtx
   { C.ctxTypesTable = M.singleton (C.TypeName "refStore") [t| Ref NixStore |]
                       <> M.singleton (C.TypeName "EvalState") [t| EvalState |]
                       <> M.singleton (C.TypeName "Bindings") [t| Bindings' |]
@@ -36,4 +36,3 @@ context = C.cppCtx <> C.fptrCtx <> C.bsCtx <> C.funCtx
 
 unsafeMallocBS :: MonadIO m => IO Foreign.C.String.CString -> m ByteString
 unsafeMallocBS m = liftIO (unsafePackMallocCString =<< m)
-

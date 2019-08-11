@@ -1,4 +1,4 @@
-cabal-version: 2.1
+cabal-version: 2.4
 
 name:           hercules-ci-agent
 version:        0.3.0
@@ -163,7 +163,7 @@ executable hercules-ci-agent-worker
   hs-source-dirs:
       hercules-ci-agent-worker
   cxx-sources:
-      cbits/hercules-store.cc
+     cbits/hercules-store.cc
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
     -Wall
@@ -176,10 +176,12 @@ executable hercules-ci-agent-worker
     -rtsopts
     -with-rtsopts=-maxN8
     -- match what Nix is using
-    -optc=-std=c++14
-  if os(darwin)
-    ghc-options: -pgmc=clang++
+    -optc-std=c++14
   cc-options: -Wall
+  if os(darwin)
+    -- avoid https://gitlab.haskell.org/ghc/ghc/issues/11829
+    ld-options:  -Wl,-keep_dwarf_unwind 
+    ghc-options: -pgmc=clang++
   include-dirs:
       cbits
   extra-libraries:
