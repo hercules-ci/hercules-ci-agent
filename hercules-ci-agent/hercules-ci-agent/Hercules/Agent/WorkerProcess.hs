@@ -15,6 +15,8 @@ import           Data.Conduit.Serialization.Binary
                                                 )
 import           Data.Binary                    ( Binary )
 import           System.Timeout                 ( timeout )
+import           System.IO.Error
+import           GHC.IO.Exception
 
 data WorkerException = WorkerException
   { originalException :: SomeException
@@ -51,10 +53,12 @@ runWorker baseProcess stderrSink interaction = do
           (sourceHandle errHandle .| linesUnboundedAsciiC .| stderrSink)
 
     let eventSource = sourceHandle outHandle .| conduitDecode
+        handleEPIPE e | ioeGetErrorType e == ResourceVanished = pure ()
+        handleEPIPE e = throwIO e
         commandSink =
           conduitEncode
             .| concatMapC (\x -> [Chunk x, Flush])
-            .| sinkHandleFlush inHandle
+            .| handleC handleEPIPE (sinkHandleFlush inHandle)
 
     let interactor =
           runConduit $ interaction eventSource `fuseUpstream` commandSink
