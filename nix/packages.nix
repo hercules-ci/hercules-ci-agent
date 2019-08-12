@@ -9,7 +9,7 @@ let
   haskellPackages_ = haskellPackages;
   inherit (pkgs) recurseIntoAttrs lib;
   inherit (pkgs.lib) cleanSource makeBinPath optionalAttrs;
-  inherit (haskell.lib) overrideSrc addBuildDepends overrideCabal buildFromSdist doJailbreak;
+  inherit (haskell.lib) overrideSrc addBuildDepends overrideCabal buildFromSdist doJailbreak disableLibraryProfiling;
 
   sources = import ./sources.nix;
   inherit (import sources.gitignore { inherit lib; }) gitignoreSource;
@@ -83,6 +83,16 @@ let
           hedgehog = self.hedgehog_1_0;
           tasty-hedgehog = self.tasty-hedgehog_1_0;
         };
+
+      inline-c = self.callPackage ./haskell-inline-c.nix {};
+
+      # avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
+      inline-c-cpp = overrideCabal (haskell.lib.disableLibraryProfiling (self.callPackage ./haskell-inline-c-cpp.nix {}))
+       (o: {
+         preConfigure = ''
+           substituteInPlace inline-c-cpp.cabal --replace " c++ " stdc++ 
+         '';
+       });
 
       hedgehog_1_0 =
         self.callPackage ./haskell-hedgehog-1-0.nix {};
