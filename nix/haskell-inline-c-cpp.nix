@@ -6,8 +6,8 @@ mkDerivation {
   version = "0.4.0.0";
   src = fetchgit {
     url = "https://github.com/hercules-ci/inline-c";
-    sha256 = "080wp413dbdwanh53hcg0h2ni75l3f0zcmdfdpah7dq9rldiqmzg";
-    rev = "18cdcb008d070931748de1b81d7b84eb8a492a8c";
+    sha256 = "135z86c37b9k5v59vnicq6l1af6bdicyc8pnsq4ik2f2p9sqsksc";
+    rev = "7ebf55ea582610fcb30fcbdebe13d5b301818168";
     fetchSubmodules = true;
   };
   postUnpack = "sourceRoot+=/inline-c-cpp; echo source root reset to $sourceRoot";
