@@ -8,7 +8,7 @@ import qualified Language.C.Inline.Context     as C
 import qualified Language.C.Inline.Cpp         as C
 import qualified Language.C.Types              as C
 import           Data.ByteString.Unsafe         ( unsafePackMallocCString )
-
+import           Hercules.Agent.StoreFFI (ExceptionPtr)
 
 data NixStore
 data EvalState
@@ -19,7 +19,6 @@ data Value'
 data Attr'
 data HerculesStore
 data Derivation
-data ExceptionPtr
 
 context :: C.Context
 context = C.cppCtx <> C.fptrCtx <> C.bsCtx
