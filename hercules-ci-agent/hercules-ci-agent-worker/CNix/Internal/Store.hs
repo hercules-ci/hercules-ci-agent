@@ -12,13 +12,13 @@ import           Control.Exception
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import qualified Data.ByteString.Unsafe as BS
-import qualified Foreign.C
 import           Foreign.ForeignPtr
 import           Foreign.C.String (withCString)
 import           Foreign.StablePtr
 import           CNix.Internal.Context
 import           Data.Coerce
 import           System.IO.Unsafe (unsafePerformIO)
+import           Hercules.Agent.StoreFFI
 
 C.context context
 
@@ -128,7 +128,3 @@ setBuilderCallback s callback = do
   [C.throwBlock| void {
       (*$(refHerculesStore* s))->setBuilderCallback($(void (*p)(const char *, exception_ptr *) ));
     }|]
-
-type BuilderCallback = Foreign.C.CString -> Ptr ExceptionPtr -> IO ()
-foreign import ccall "wrapper"
-  mkBuilderCallback :: BuilderCallback -> IO (FunPtr BuilderCallback)
