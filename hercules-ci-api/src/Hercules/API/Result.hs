@@ -8,10 +8,14 @@ module Hercules.API.Result
   )
 where
 
-import           Prelude                 hiding ( either )
+import           Prelude                        ()
+import           Hercules.API.Prelude    hiding ( either )
 import           GHC.Generics                   ( Generic )
-import           Data.Aeson                     ( ToJSON
-                                                , FromJSON
+import           Data.Aeson                     ( ToJSON(..)
+                                                , FromJSON(..)
+                                                , genericParseJSON
+                                                , genericToJSON
+                                                , genericToEncoding
                                                 )
 import           Data.Swagger                   ( ToSchema )
 import           Data.Profunctor                ( Profunctor
@@ -21,9 +25,15 @@ import           Data.Profunctor                ( Profunctor
 data Result e a
   = Ok a
   | Error e
-  deriving (Generic, Show, Read, Eq, Ord, Functor, Foldable, Traversable, ToJSON, FromJSON)
+  deriving (Generic, Show, Read, Eq, Ord, Functor, Foldable, Traversable)
 deriving instance (ToSchema e, ToSchema a) => ToSchema (Result e a)
 -- many more typeclasses can be implemented
+
+instance (FromJSON e, FromJSON a) => FromJSON (Result e a) where
+  parseJSON = genericParseJSON schemaCompatibleOptions
+instance (ToJSON e, ToJSON a) => ToJSON (Result e a) where
+  toJSON = genericToJSON schemaCompatibleOptions
+  toEncoding = genericToEncoding schemaCompatibleOptions
 
 either :: Iso (Result e a) (Result e' a') (Either e a) (Either e' a')
 either = iso toEither fromEither

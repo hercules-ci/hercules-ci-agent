@@ -15,6 +15,7 @@ module Hercules.API.Prelude
   , ToJSON
   , FromJSON
   , ToSchema
+  , schemaCompatibleOptions
   )
 where
 
@@ -23,6 +24,7 @@ import           Prelude
 import           Data.Aeson                     ( ToJSON
                                                 , FromJSON
                                                 )
+import qualified Data.Aeson                    as Aeson
 import           Data.Int                       ( Int64 )
 import           Data.Map                       ( Map )
 import           Data.Set                       ( Set )
@@ -32,3 +34,8 @@ import           Data.Swagger                   ( ToSchema )
 import           GHC.Generics                   ( Generic )
 import           Hercules.API.Id                ( Id )
 import           Hercules.API.Name              ( Name )
+
+schemaCompatibleOptions :: Aeson.Options
+schemaCompatibleOptions = Aeson.defaultOptions
+  { Aeson.sumEncoding = Aeson.ObjectWithSingleField
+  }
