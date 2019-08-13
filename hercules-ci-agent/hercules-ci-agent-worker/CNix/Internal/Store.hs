@@ -55,6 +55,19 @@ ensurePath store path = [C.throwBlock| void {
             (*$(refStore* store))->ensurePath(std::string($bs-ptr:path, $bs-len:path));
            } |]
 
+clearPathInfoCache :: Ptr (Ref NixStore) -> IO ()
+clearPathInfoCache store = [C.throwBlock| void {
+            (*$(refStore* store))->clearPathInfoCache();
+           } |]
+
+clearSubstituterCaches :: IO ()
+clearSubstituterCaches = [C.throwBlock| void {
+    auto subs = nix::getDefaultSubstituters();
+    for (auto sub : subs) {
+      sub->clearPathInfoCache();
+    }
+  } |]
+
 buildPath :: Ptr (Ref NixStore) -> ByteString -> IO ()
 buildPath store path = [C.throwBlock| void {
             PathSet ps({std::string($bs-ptr:path, $bs-len:path)});

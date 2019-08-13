@@ -192,7 +192,7 @@ yieldAttributeError path e =
 
 
 runEval :: HerculesState -> Eval -> ConduitM i Event (ResourceT IO) ()
-runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
+runEval st@HerculesState {herculesStore = hStore, wrappedStore = wStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
 
   -- FIXME
   forM_ (Eval.extraNixOptions eval) $ liftIO . uncurry setGlobalOption
@@ -219,6 +219,11 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
           BuildResult.Failure -> throwIO $ BuildException plainDrvText Derivation.BuildFailure
           BuildResult.DependencyFailure -> throwIO $ BuildException plainDrvText Derivation.DependencyFailure
           BuildResult.Success -> pass
+
+        clearSubstituterCaches
+        clearPathInfoCache wStore
+        -- TODO: add precise invalidation to HerculesStore (or to upstream Store)
+        clearPathInfoCache store
 
         derivation <- getDerivation store plainDrv
         outputPath <- derivationOutputPath derivation outputName
