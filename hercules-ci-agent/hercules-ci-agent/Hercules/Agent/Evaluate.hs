@@ -340,28 +340,26 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                     , Message.message = e
                     }
             Event.Build drv outputName -> do
+              status <- unlift $ withNamedContext "derivation" drv $ do
                 currentIndex <- liftIO $ atomicModifyIORef buildRequiredIndex (\i -> (i + 1, i))
-                liftIO
-                  $ emit
-                  $ EvaluateEvent.BuildRequired BuildRequired.BuildRequired
+                liftIO $ emit $ EvaluateEvent.BuildRequired BuildRequired.BuildRequired
                     { BuildRequired.derivationPath = drv
                     , BuildRequired.index = currentIndex
                     , BuildRequired.outputName = outputName
                     }
-                caches <- unlift $ Agent.Cachix.activePushCaches
-                unlift $ forM_ caches $ \cache -> do
+                caches <- Agent.Cachix.activePushCaches
+                forM_ caches $ \cache -> do
                   withNamedContext "cache" cache $ logLocM DebugS "Pushing ifd drvs to cachix"
                   TraversalQueue.enqueue derivationQueue drv
                   Async.Lifted.concurrently_
                     (Agent.Cachix.push cache [drv])
                     (TraversalQueue.waitUntilDone derivationQueue)
-                liftIO
-                  $ emit
-                  $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest { BuildRequest.derivationPath = drv }
-                unlift flush
-                status <- unlift $ drvPoller drv
-                unlift $ withNamedContext "derivation" drv $ logLocM DebugS $ "Found status " <> show status
-                yield $ Command.BuildResult $ BuildResult.BuildResult drv status
+                liftIO $ emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest { BuildRequest.derivationPath = drv }
+                flush
+                status <- drvPoller drv
+                logLocM DebugS $ "Got derivation status " <> show status
+                return status
+              yield $ Command.BuildResult $ BuildResult.BuildResult drv status
           pure []
         )
 
