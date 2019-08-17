@@ -11,5 +11,6 @@ pkgs.recurseIntoAttrs {
     hercules-ci-agent-packages
     devTools
     toTOML-test
+    pre-commit-check
     ;
 }

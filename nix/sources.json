@@ -1,4 +1,16 @@
 {
+    "nix-pre-commit-hooks": {
+        "homepage": "https://pre-commit.com/",
+        "url": "https://github.com/hercules-ci/nix-pre-commit-hooks/archive/38e932eafb178883cdb37f15abaf3d19bfe28c4a.tar.gz",
+        "owner": "hercules-ci",
+        "branch": "master",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
+        "repo": "nix-pre-commit-hooks",
+        "type": "tarball",
+        "sha256": "0d2qyng5f97h20bc3w0a8j3g5gm4rimcpyxh3amialp6w8lixvy6",
+        "description": "Seamless integration pre-commit hooks with Nix.",
+        "rev": "38e932eafb178883cdb37f15abaf3d19bfe28c4a"
+    },
     "cachix": {
         "homepage": "https://cachix.org",
         "url": "https://github.com/cachix/cachix/archive/f55bc800f941cb8fe78d61ebf9ed99d8f0aa5404.tar.gz",
