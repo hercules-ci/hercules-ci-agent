@@ -347,13 +347,16 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                     , BuildRequired.index = currentIndex
                     , BuildRequired.outputName = outputName
                     }
-                caches <- Agent.Cachix.activePushCaches
-                forM_ caches $ \cache -> do
-                  withNamedContext "cache" cache $ logLocM DebugS "Pushing ifd drvs to cachix"
-                  TraversalQueue.enqueue derivationQueue drv
-                  Async.Lifted.concurrently_
-                    (Agent.Cachix.push cache [drv])
-                    (TraversalQueue.waitUntilDone derivationQueue)
+                let
+                  submitDerivationInfos = do
+                    TraversalQueue.enqueue derivationQueue drv
+                    TraversalQueue.waitUntilDone derivationQueue
+                  pushDerivations = do
+                    caches <- Agent.Cachix.activePushCaches
+                    forM_ caches $ \cache -> do
+                      withNamedContext "cache" cache $ logLocM DebugS "Pushing ifd drvs to cachix"
+                      Agent.Cachix.push cache [drv]
+                Async.Lifted.concurrently_ submitDerivationInfos pushDerivations
                 liftIO $ emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest { BuildRequest.derivationPath = drv }
                 flush
                 status <- drvPoller drv
