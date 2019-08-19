@@ -28,13 +28,13 @@ let
       cachix-api = self.callPackage ./cachix-api.nix {};
 
       hercules-ci-api =
-        buildFromSdist 
-          (overrideSrc 
+        buildFromSdist
+          (overrideSrc
             (self.callPackage ../hercules-ci-api/pkg.nix {})
             { src = gitignoreSource ../hercules-ci-api; });
 
       hercules-ci-agent =
-        let basePkg = overrideSrc 
+        let basePkg = overrideSrc
                         (self.callPackage ../hercules-ci-agent/pkg.nix {
                            nix-store = nix;
                            nix-expr = nix;
@@ -42,7 +42,7 @@ let
                            bdw-gc = pkgs.boehmgc;
                         })
                         { src = gitignoreSource ../hercules-ci-agent; };
-                   
+
         in
           buildFromSdist (overrideCabal (
             addBuildDepends
@@ -73,21 +73,10 @@ let
           }));
 
       hercules-ci-agent-test =
-        buildFromSdist 
-          (overrideSrc 
+        buildFromSdist
+          (overrideSrc
             (self.callPackage ../tests/agent-test/pkg.nix {})
             { src = gitignoreSource ../tests/agent-test; });
-
-      tomland =
-        self.callPackage ./haskell-tomland-1-0-1-0.nix {
-          hedgehog = self.hedgehog_1_0;
-          tasty-hedgehog = self.tasty-hedgehog_1_0;
-        };
-
-      hedgehog_1_0 =
-        self.callPackage ./haskell-hedgehog-1-0.nix {};
-      tasty-hedgehog_1_0 =
-        self.callPackage ./haskell-tasty-hedgehog-1-0.nix { hedgehog = self.hedgehog_1_0; };
     });
 
     hercules-ci-api-swagger = pkgs.callPackage ../hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };

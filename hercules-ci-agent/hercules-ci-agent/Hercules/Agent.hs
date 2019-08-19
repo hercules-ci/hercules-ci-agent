@@ -52,7 +52,6 @@ import           Hercules.Agent.Exception       ( safeLiftedHandle
                                                 , exponential
                                                 , cap
                                                 )
-import           Hercules.Agent.Scribe          ( withHerculesScribe )
 import           Hercules.Agent.EnvironmentInfo ( extractAgentInfo )
 
 import           Hercules.Agent.Log
@@ -72,7 +71,6 @@ main = Init.setupLogging $ \logEnv -> do
   Env.runApp env
     $ katipAddContext (sl "agent-version" (A.String herculesAgentVersion))
     $ withAgentToken
-    $ withHerculesScribe
     $ withLifeCycle
     $ (logLocM InfoS "Agent online." >>)
     $ replicateConcurrently_ (fromIntegral $ Config.concurrentTasks cfg)
@@ -142,7 +140,7 @@ performTask task = contextually $ do
 
   contextually = withNamedContext "task" (Task.id task)
      . withNamedContext "task-type" (Task.typ task)
-  
+
   handleExceptions m = safeLiftedHandle (\e -> do
           logLocM ErrorS $ "Exception in task: " <> show (e :: SomeException)
           retry (cap 60 exponential)

@@ -69,6 +69,7 @@ executable hercules-ci-agent
       Hercules.Agent.Cachix.Info
       Hercules.Agent.Cachix.Init
       Hercules.Agent.Client
+      Hercules.Agent.Compat
       Hercules.Agent.Config
       Hercules.Agent.Env
       Hercules.Agent.EnvironmentInfo
@@ -84,7 +85,6 @@ executable hercules-ci-agent
       Hercules.Agent.NixPath
       Hercules.Agent.Options
       Hercules.Agent.SecureDirectory
-      Hercules.Agent.Scribe
       Hercules.Agent.Token
       WorkerProcess
       Paths_hercules_ci_agent

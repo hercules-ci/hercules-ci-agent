@@ -11,6 +11,7 @@ import qualified Servant.Client
 import qualified Servant.Auth.Client
 import qualified Katip                         as K
 import qualified Hercules.Agent.Token          as Token
+import qualified Hercules.Agent.Compat         as Compat
 import qualified Hercules.Agent.Cachix.Init
 import qualified Hercules.Agent.Nix.Init
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
@@ -18,7 +19,7 @@ import qualified System.Directory
 
 newEnv :: Config.FinalConfig -> K.LogEnv -> IO Env
 newEnv config logEnv = do
-  let 
+  let
     withLogging :: K.KatipContextT IO a -> IO a
     withLogging = K.runKatipContextT logEnv () "Init"
 
@@ -52,7 +53,7 @@ newEnv config logEnv = do
 
 setupLogging :: (K.LogEnv -> IO ()) -> IO ()
 setupLogging f = do
-  handleScribe <- K.mkHandleScribe K.ColorIfTerminal stderr K.DebugS K.V2
+  handleScribe <- K.mkHandleScribe K.ColorIfTerminal stderr (Compat.katipLevel K.DebugS) K.V2
   let mkLogEnv =
         K.registerScribe "stderr" handleScribe K.defaultScribeSettings
           =<< K.initLogEnv emptyNamespace ""
