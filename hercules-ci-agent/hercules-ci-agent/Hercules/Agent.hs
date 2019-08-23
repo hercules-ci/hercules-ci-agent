@@ -14,6 +14,7 @@ import           Control.Concurrent.Async.Lifted
                                                 ( replicateConcurrently_, race )
 import           Control.Concurrent.MVar.Lifted ( withMVar )
 import           Control.Exception.Lifted       ( bracket )
+import           Control.Exception              ( displayException )
 import           Data.Time                      ( getCurrentTime )
 import qualified Data.UUID.V4                 as UUID
 import           Hercules.API                   ( noContent )
@@ -136,23 +137,17 @@ withLifeCycle app = do
 
 performTask :: Task Task.Any -> App ()
 performTask task = contextually $ do
-  happy <- handleExceptions performTaskPerType
-  when happy reportSuccess
+  result <- handleExceptions performTaskPerType
+  logStatus result
+  report result
  where
 
   contextually = withNamedContext "task" (Task.id task)
      . withNamedContext "task-type" (Task.typ task)
   
   handleExceptions m = safeLiftedHandle (\e -> do
-          logLocM ErrorS $ "Exception in task: " <> show (e :: SomeException)
-          retry (cap 60 exponential)
-            $ noContent
-            $ runHerculesClient
-            $ tasksSetStatus tasksClient
-                             (Task.id task)
-                             (TaskStatus.Exceptional $ show e)
-          pure False
-    ) (m >> pure True)
+    pure $ TaskStatus.Exceptional (toSL $ displayException e)
+    ) m
 
   performTaskPerType = do
     logLocM InfoS "Starting task"
@@ -163,6 +158,7 @@ performTask task = contextually $ do
             evalTask = Task.uncheckedCast task
         Cachix.withCaches $
           Evaluate.performEvaluation evalTask
+        pure (TaskStatus.Successful ())
       "build" -> do
         let buildTask :: Task BuildTask.BuildTask
             buildTask = Task.uncheckedCast task
@@ -170,10 +166,11 @@ performTask task = contextually $ do
           Build.performBuild buildTask
       _ -> panicWithLog "Unknown task type"
 
-  reportSuccess = do
-    logLocM InfoS "Completed task successfully"
+  report status = retry (cap 60 exponential)
+              $ noContent
+              $ runHerculesClient
+              $ tasksSetStatus tasksClient (Task.id task) status
 
-    retry (cap 60 exponential)
-      $ noContent
-      $ runHerculesClient
-      $ tasksSetStatus tasksClient (Task.id task) (TaskStatus.Successful ())
+  logStatus (TaskStatus.Terminated _) = logLocM InfoS "Completed failed task"
+  logStatus (TaskStatus.Successful _) = logLocM InfoS "Completed task successfully"
+  logStatus (TaskStatus.Exceptional e) = logLocM ErrorS $ "Exception in task: " <> logStr e
