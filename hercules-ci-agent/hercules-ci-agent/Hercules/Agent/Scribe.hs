@@ -6,6 +6,7 @@ where
 
 import           Protolude
 
+import           Control.Lens
 import           Data.Aeson                     ( Object
                                                 , Value(Object)
                                                 , object
@@ -24,7 +25,7 @@ withHerculesScribe :: App a -> App a
 withHerculesScribe m = withHerculesScribe' V3 $ \scribe -> do
   logEnv0 <- getLogEnv
   logEnv1 <- liftIO
-    $ registerScribe "hercules" scribe defaultScribeSettings logEnv0
+    $ registerScribe "hercules" scribe (defaultScribeSettings & scribeBufferSize .~ 1000000 ) logEnv0
   localLogEnv (const logEnv1) $ m
 
 -- TODO: batcher crash?

@@ -2,6 +2,7 @@ module Hercules.Agent.Init where
 
 import           Protolude
 
+import           Control.Lens
 import qualified Hercules.Agent.BinaryCaches as BC
 import qualified Hercules.Agent.Config         as Config
 import qualified Hercules.Agent.Env            as Env
@@ -54,7 +55,7 @@ setupLogging :: (K.LogEnv -> IO ()) -> IO ()
 setupLogging f = do
   handleScribe <- K.mkHandleScribe K.ColorIfTerminal stderr K.DebugS K.V2
   let mkLogEnv =
-        K.registerScribe "stderr" handleScribe K.defaultScribeSettings
+        K.registerScribe "stderr" handleScribe (K.defaultScribeSettings & K.scribeBufferSize .~ 1000000)
           =<< K.initLogEnv emptyNamespace ""
   bracket mkLogEnv K.closeScribes f
 
