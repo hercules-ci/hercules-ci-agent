@@ -64,10 +64,14 @@ instance Exception BuildException
 main :: IO ()
 main = do
   hPutStrLn stderr ("Initializing store..." :: Text)
+
+  -- setDebug
   CNix.init
+  -- setDebug
 
   -- Always try because it may have been built in the meanwhile
-  _ <- setGlobalOption "narinfo-cache-negative-ttl" "0"
+  setGlobalOption "narinfo-cache-negative-ttl" "0"
+  setOption "narinfo-cache-negative-ttl" "0"
 
   drvsCompleted_ <- newTVarIO mempty
   drvsInProgress_ <- newIORef mempty
@@ -227,7 +231,12 @@ runEval st@HerculesState {herculesStore = hStore, wrappedStore = wStore, shortcu
 
         derivation <- getDerivation store plainDrv
         outputPath <- derivationOutputPath derivation outputName
-        ensurePath (wrappedStore st) outputPath
+        ensurePath (wrappedStore st) outputPath `catch` \e -> do
+          hPutStrLn stderr ("ensurePath (wrapped) failed: " <> show (e :: SomeException) :: Text)
+          -- continue
+        ensurePath store outputPath `catch` \e -> do
+          hPutStrLn stderr ("ensurePath failed: " <> show (e :: SomeException) :: Text)
+          throwIO e
 
       hPutStrLn stderr ("Built " <> show path :: Text)
 

@@ -21,7 +21,7 @@ mkDerivation {
     aeson async base binary binary-conduit bytestring conduit
     containers exceptions katip lifted-async lifted-base monad-control
     optparse-applicative protolude safe-exceptions text
-    transformers-base
+    transformers-base unliftio-core
   ];
   executableHaskellDepends = [
     aeson async attoparsec base base64-bytestring binary binary-conduit
@@ -45,6 +45,7 @@ mkDerivation {
     optparse-applicative protolude safe-exceptions system-filepath text
     transformers-base
   ];
+  doHaddock = false;
   homepage = "https://docs.hercules-ci.com";
   license = stdenv.lib.licenses.asl20;
 }

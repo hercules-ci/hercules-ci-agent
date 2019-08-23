@@ -20,7 +20,7 @@ WrappingStore::WrappingStore(const Params& params, ref<Store> storeToWrap)
 WrappingStore::~WrappingStore() {}
 
 std::string WrappingStore::getUri() {
-  return wrappedStore->getUri();
+  return "wrapped:" + wrappedStore->getUri();
 };
 
 bool WrappingStore::isValidPathUncached(const Path& path) {

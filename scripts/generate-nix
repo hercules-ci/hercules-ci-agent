@@ -17,3 +17,4 @@ cabal2nix tests/agent-test  > tests/agent-test/pkg.nix
 cabal2nix hercules-ci-agent/ > hercules-ci-agent/pkg.nix
 cabal2nix https://github.com/$owner/$repo --revision $rev --subpath cachix > nix/cachix.nix
 cabal2nix https://github.com/$owner/$repo --revision $rev --subpath cachix-api > nix/cachix-api.nix
+cabal2nix cabal://hnix-store-core > nix/haskell-hnix-store-core.nix

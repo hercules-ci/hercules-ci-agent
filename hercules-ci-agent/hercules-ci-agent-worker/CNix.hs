@@ -65,12 +65,26 @@ init =
       nix::initGC();
     } |]
 
-setGlobalOption :: Text -> Text -> IO Bool
+setDebug :: IO ()
+setDebug =
+  [C.throwBlock| void {
+    nix::verbosity = nix::lvlVomit;
+  } |]
+
+setGlobalOption :: Text -> Text -> IO ()
 setGlobalOption opt value = do
   let optionStr = encodeUtf8 opt
       valueStr = encodeUtf8 value
-  (== 0) <$> [C.throwBlock| int {
+  [C.throwBlock| void {
     globalConfig.set($bs-cstr:optionStr, $bs-cstr:valueStr);
+  }|]
+
+setOption :: Text -> Text -> IO ()
+setOption opt value = do
+  let optionStr = encodeUtf8 opt
+      valueStr = encodeUtf8 value
+  [C.throwBlock| void {
+    settings.set($bs-cstr:optionStr, $bs-cstr:valueStr);
   }|]
 
 mkBindings :: Ptr Bindings' -> IO Bindings

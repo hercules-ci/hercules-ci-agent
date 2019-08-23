@@ -98,6 +98,8 @@ let
            substituteInPlace inline-c-cpp.cabal --replace " c++ " stdc++ 
          '';
        });
+
+       hnix-store-core = self.callPackage ./haskell-hnix-store-core.nix {};
     });
 
     hercules-ci-api-swagger = pkgs.callPackage ../hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };
