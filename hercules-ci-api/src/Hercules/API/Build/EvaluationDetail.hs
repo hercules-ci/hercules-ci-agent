@@ -7,11 +7,16 @@ import           Hercules.API.Attribute         ( Attribute )
 import           Hercules.API.Derivation        ( Derivation )
 import           Hercules.API.Evaluation.Evaluation
                                                 ( Evaluation )
+import           Hercules.API.Evaluation.AttributeError
+                                                ( AttributeError )
+import           Hercules.API.Build.EvaluationDependency
+                                                ( EvaluationDependency )
 import           Hercules.API.Message           ( Message )
 
 data EvaluationDetail = EvaluationDetail
   { id :: Id Evaluation
   , messages :: [Message]
-  , attributes :: [Attribute (Result Text Derivation)]
+  , attributes :: [Attribute (Result AttributeError Derivation)]
+  , evaluationDependencies :: [EvaluationDependency]
   }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

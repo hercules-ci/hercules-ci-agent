@@ -7,7 +7,6 @@ let
   '';
 
   testdata = pkgs.runCommand "testdata" {} ''
-    set -x
     mkdir -p $out/testdata
     for p in ${./agent-test/testdata}/*; do
       ln -s $p $out/testdata/$(basename $p);
@@ -38,7 +37,7 @@ in
 
         systemd.services.hercules-ci-agent.serviceConfig.StartLimitBurst = lib.mkForce (agentStartTimeoutSec * 10);
         systemd.services.hercules-ci-agent.serviceConfig.RestartSec = lib.mkForce ("100ms");
-        virtualisation.diskSize = 2048;
+        virtualisation.diskSize = 4096;
       };
     };
     api = { ... }: {

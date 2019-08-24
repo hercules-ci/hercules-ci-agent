@@ -32,6 +32,8 @@ library
       Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
       Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll
+      Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest
+      Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired
       Hercules.API.Agent.Evaluate.EvaluateTask
       Hercules.API.Agent.LifeCycle
       Hercules.API.Agent.LifeCycle.StartInfo
@@ -48,10 +50,12 @@ library
       Hercules.API.Attribute
       Hercules.API.Auth
       Hercules.API.Build
+      Hercules.API.Build.EvaluationDependency
       Hercules.API.Build.EvaluationDetail
       Hercules.API.Build.FailureGraph
       Hercules.API.Derivation
       Hercules.API.Evaluation.Evaluation
+      Hercules.API.Evaluation.AttributeError
       Hercules.API.Health
       Hercules.API.Id
       Hercules.API.Logs

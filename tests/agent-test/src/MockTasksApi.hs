@@ -35,6 +35,7 @@ import           Data.IORef                     ( IORef
                                                 , readIORef
                                                 , atomicModifyIORef
                                                 )
+import qualified Data.UUID.V4                  as UUID
 import qualified Data.List                     as L
 import qualified Data.Map                      as M
 import           Hercules.API
@@ -55,12 +56,16 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateTask
                                                as EvaluateTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent
                                                as EvaluateEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest
+                                               as BuildRequest
 import           Hercules.API.Agent.Tasks       ( TasksAPI(..) )
 import           Hercules.API.Agent.Evaluate    ( EvalAPI(..) )
 import           Hercules.API.Agent.Build       ( BuildAPI(..) )
-import           Hercules.API.Logs              ( LogsAPI(..) )
 import           Hercules.API.Agent.LifeCycle   ( LifeCycleAPI(..) )
 import qualified Hercules.API.Agent.LifeCycle  as LifeCycle
+import           Hercules.API.Derivation        ( DerivationStatus )
+import qualified Hercules.API.Derivation       as Derivation
+import           Hercules.API.Logs              ( LogsAPI(..) )
 import           Control.Concurrent             ( newEmptyMVar )
 import           Control.Concurrent.STM
 import           System.Environment             ( getEnvironment )
@@ -88,6 +93,8 @@ data ServerState = ServerState
                             BuildTask.BuildTask)
   , buildEvents :: IORef (Map (Id (Task BuildTask.BuildTask))
                              [BuildEvent.BuildEvent])
+
+  , drvTasks :: IORef (Map Text (Id (Task BuildTask.BuildTask)))
   }
 
 newtype ServerHandle = ServerHandle ServerState
@@ -100,9 +107,11 @@ enqueue (ServerHandle st) t = do
     AgentTask.Evaluate evalTask ->
       atomicModifyIORef_ (evalTasks st)
         $ M.insert (EvaluateTask.id evalTask) evalTask
-    AgentTask.Build buildTask ->
+    AgentTask.Build buildTask -> do
       atomicModifyIORef_ (buildTasks st)
         $ M.insert (BuildTask.id buildTask) buildTask
+      atomicModifyIORef_ (drvTasks st)
+        $ M.insert (BuildTask.derivationPath buildTask) (BuildTask.id buildTask)
   putMVar (queue st) (toTask t')
 
 toTask :: AgentTask.AgentTask -> Task.Task Task.Any
@@ -159,8 +168,17 @@ withServer doIt = do
   et <- newIORef mempty
   be <- newIORef mempty
   bt <- newIORef mempty
+  dt <- newIORef mempty
   d <- newTVarIO mempty
-  let st = ServerState {queue = q, evalEvents = ee, evalTasks = et, buildEvents = be, buildTasks = bt, done = d}
+  let st = ServerState 
+             { queue = q
+             , evalEvents = ee
+             , evalTasks = et
+             , buildEvents = be
+             , buildTasks = bt
+             , drvTasks = dt
+             , done = d
+             }
       runServer =
         handle
             (\e -> do -- TODO: ignore asynccanceled
@@ -300,6 +318,16 @@ handleTasksUpdate st id body _authResult = do
   liftIO $ atomicModifyIORef_ (evalEvents st) $ \m ->
     M.alter (\prev -> Just $ fromMaybe mempty prev <> body) id m
 
+  for_ body $ \ev -> case ev of
+    EvaluateEvent.BuildRequest (BuildRequest.BuildRequest drvPath) -> do
+      buildId <- liftIO randomId
+      liftIO $ enqueue (ServerHandle st) $ AgentTask.Build $ BuildTask.BuildTask
+        { BuildTask.id = buildId
+        , BuildTask.derivationPath = drvPath
+        , BuildTask.logToken = "eyBlurb="
+        }
+    _ -> pass
+
   pure NoContent
 
 handleTasksGetEvaluation :: ServerState
@@ -316,7 +344,21 @@ evalEndpoints :: ServerState -> EvalAPI Auth' AsServer
 evalEndpoints server = DummyApi.dummyEvalEndpoints
   { tasksGetEvaluation = handleTasksGetEvaluation server
   , tasksUpdateEvaluation = handleTasksUpdate server
+  , getDerivationStatus = handleGetDerivationStatus server
   }
+
+handleGetDerivationStatus :: ServerState -> Text -> AuthResult Session -> Handler (Maybe DerivationStatus)
+handleGetDerivationStatus server drv _auth = do
+  drvPaths <- liftIO $ readIORef (drvTasks server)
+  case M.lookup drv drvPaths of
+    Nothing -> pure $ Just $ Derivation.BuildFailure -- TODO exception failure
+    Just taskId -> do
+      dones <- liftIO $ atomically $ readTVar (done server)
+      pure (translate <$> M.lookup (idText taskId) dones)
+  where
+    translate TaskStatus.Exceptional {} = Derivation.BuildFailure
+    translate TaskStatus.Terminated {} = Derivation.BuildFailure
+    translate TaskStatus.Successful {} = Derivation.BuildSuccess
 
 atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_ r = atomicModifyIORef r . ((, ()) .)
@@ -373,3 +415,6 @@ logsEndpoints _server = LogsAPI
   { writeLog = \_authResult logBytes -> NoContent <$ do
       hPutStrLn stderr $ "Got log: " <> logBytes
   }
+
+randomId :: IO (Id a)
+randomId = Id <$> UUID.nextRandom

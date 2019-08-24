@@ -10,4 +10,10 @@ in {
   hercules-ci-agent = pkgs.haskell.lib.justStaticExecutables self.hercules-ci-agent-packages.hercules-ci-agent;
 
   toTOML-test = pkgs.callPackage ../for-upstream/to-toml/test-run.nix {};
+
+  nix = pkgs.nix.overrideAttrs (a: a // {
+    patches = (a.patches or []) ++ [
+      ./nix-no-negative-caching.patch
+    ];
+  });
 }

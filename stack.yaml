@@ -6,15 +6,19 @@ packages:
   - hercules-ci-agent
   - tests/agent-test
 extra-deps:
-  - inline-c-cpp-0.3.0.1@sha256:916ffd22c097f399a47f6ddb9313e2ce36d8051755dd702c23f8d20a370fee09
-  - katip-0.7.0.0@sha256:a130d70f7165c0a35396bed70f0f21f34fb07724f8b48b5370e30bda26d3e25f
   - nix-derivation-1.0.2@sha256:dc1f13f89d37d4dcc7a46dbac7f6b4e8cd2877f4af99e35b9cb8255d08179bd4
   - tomland-1.0.1.0
   - git: https://github.com/cachix/cachix
-    commit: d4158f70be7f8b9cf01dd885c4adf1c101880f2f
+    commit: f55bc800f941cb8fe78d61ebf9ed99d8f0aa5404
     subdirs:
       - cachix
       - cachix-api
+  - hnix-store-core-0.1.0.0@sha256:719a261870367b3ce2e2e8d11502e7170faa664109a14486b95b555bc3672807
+  - git: https://github.com/hercules-ci/inline-c
+    commit: 18cdcb008d070931748de1b81d7b84eb8a492a8c
+    subdirs:
+      - inline-c
+      - inline-c-cpp
 
 install-ghc: false  # we're using nixpkgs' ghc
 system-ghc: true    # nixpkgs ghc is perceived as 'system ghc'

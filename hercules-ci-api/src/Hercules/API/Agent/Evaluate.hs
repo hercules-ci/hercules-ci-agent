@@ -8,7 +8,7 @@ import           Hercules.API.Agent.Evaluate.EvaluateEvent
 import           Hercules.API.Agent.Evaluate.EvaluateTask
                                                 ( EvaluateTask )
 import           Hercules.API.Attribute         ( Attribute )
-import           Hercules.API.Derivation        ( DerivationPath )
+import           Hercules.API.Derivation        ( DerivationPath, DerivationStatus )
 import           Hercules.API.Message           ( Message )
 import           Hercules.API.Result            ( Result )
 import           Hercules.API.Task              ( Task )
@@ -30,6 +30,13 @@ data EvalAPI auth f = EvalAPI
     ReqBody '[JSON] [EvaluateEvent] :>
     auth :>
     Post '[JSON] NoContent
+
+ , getDerivationStatus :: f :-
+    "agent" :>
+    "build" :>
+    Capture "derivationPath" Text :>
+    auth :>
+    Get '[JSON] (Maybe DerivationStatus)
 
     -- TODO: Remove
  , tasksPreviewAttrs :: f :-

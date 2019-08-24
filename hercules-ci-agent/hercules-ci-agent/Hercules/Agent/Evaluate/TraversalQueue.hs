@@ -9,6 +9,7 @@ module Hercules.Agent.Evaluate.TraversalQueue
   , waitUntilDone
   , enqueue
   , close
+  , Queue()
   )
 where
 
