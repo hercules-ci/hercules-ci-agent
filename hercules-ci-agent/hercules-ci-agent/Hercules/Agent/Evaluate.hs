@@ -5,9 +5,12 @@ module Hercules.Agent.Evaluate
   )
 where
 
-import           Protolude
+import           Protolude hiding (newChan, writeChan, finally)
 
 import           Conduit
+import           Control.Monad.IO.Unlift
+import           Control.Concurrent.Chan.Lifted
+import           Control.Exception.Lifted (finally)
 import qualified Control.Concurrent.Async.Lifted
                                                as Async.Lifted
 import           Data.Conduit.Process           ( sourceProcessWithStreams )
@@ -47,6 +50,7 @@ import qualified Hercules.Agent.WorkerProtocol.Command.Eval
                                                as Eval
 import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult
                                                as BuildResult
+import           Hercules.Agent.Producer
 import           Hercules.API                   ( noContent )
 import           Hercules.API.Agent.Evaluate    ( tasksUpdateEvaluation
                                                 , tasksGetEvaluation
@@ -83,15 +87,13 @@ runEvaluator :: FilePath
              -> [ EvaluateTask.NixPathElement
                     (EvaluateTask.SubPathOf FilePath)
                 ]
-             -> (Int -> ConduitM ByteString Void IO ())
-             -> ( forall i
-                 . ConduitM i Event.Event IO ()
-                -> ConduitM i Command.Command IO a
-                )
-             -> IO (ExitCode, a)
-runEvaluator workingDirectory nixPath stderrConduit interaction = do
-  wps <- workerProcessSpec workingDirectory nixPath
-  runWorker wps stderrConduit interaction
+             -> (Int -> ByteString -> App ())
+             -> Chan (Maybe Command.Command)
+             -> (Event.Event -> App ())
+             -> App ExitCode
+runEvaluator workingDirectory nixPath stderrLineHandler commands eventWriter = do
+  wps <- liftIO $ workerProcessSpec workingDirectory nixPath
+  runWorker wps stderrLineHandler commands eventWriter
 
 eventLimit :: Int
 eventLimit = 50000
@@ -121,24 +123,23 @@ performEvaluation task' = do
   task <- defaultRetry $ runHerculesClient
     (tasksGetEvaluation Hercules.Agent.Client.evalClient (Task.id task'))
 
-  appEnv <- ask
-  let unlift :: forall a . App a -> IO a
-      unlift = runApp appEnv
+  UnliftIO { unliftIO = unlift } <- askUnliftIO
 
-  eventChan <- liftIO $ newChan
-  let submitBatch events =
-        unlift $ noContent $ defaultRetry $ runHerculesClient
+  let processBatch events =
+        noContent $ defaultRetry $ runHerculesClient
           (tasksUpdateEvaluation Hercules.Agent.Client.evalClient
                                  (EvaluateTask.id task)
                                  events
           )
 
   workDir <- asks (Config.workDirectory . config)
-  -- TODO: configurable temp directory
-  liftIO
-    $ boundedDelayBatcher (1000 * 1000) 1000 eventChan submitBatch
-    $ withTempDirectory workDir "eval"
-    $ \tmpdir -> unlift $ do
+
+  let
+    -- TODO: configurable temp directory
+    doProduce writeToBatch = liftIO $ withTempDirectory workDir "eval" $ \tmpdir -> unlift $ do
+        let emitSingle = writeToBatch . Syncable
+            sync = syncer writeToBatch
+
         withNamedContext "tmpdir" tmpdir $ logLocM DebugS "Determined tmpdir"
 
         projectDir <- fetchSource (tmpdir </> "primary")
@@ -210,10 +211,9 @@ performEvaluation task' = do
                     <> show eventLimit
                     <> " attributes or messages, please contact info@hercules-ci.com."
                   }
-                writePayload eventChan truncMsg
-                flushSyncTimeout eventChan
+                emitSingle truncMsg
                 panic "Evaluation limit reached."
-              else writePayload eventChan =<< fixIndex update
+              else emitSingle =<< fixIndex update
 
         liftIO (findNixFile projectDir) >>= \case
           Left e ->
@@ -239,9 +239,9 @@ performEvaluation task' = do
                                file
                                autoArguments
                                nixPath
-                               captureAttrDrvAndEmit
+                               (liftIO . captureAttrDrvAndEmit)
                                derivationQueue
-                               (flushSyncTimeout eventChan)
+                               sync
                 -- process has finished
 
                 TraversalQueue.waitUntilDone derivationQueue
@@ -268,10 +268,15 @@ performEvaluation task' = do
                   liftIO $ atomicModifyIORef allAttrPaths ((,()) . S.insert drvPath)
                   drvInfo <- retrieveDerivationInfo drvPath
                   forM_ (M.keys $ DerivationInfo.inputDerivations drvInfo)
-                        recurse -- asynchronously
+                    recurse -- asynchronously
                   liftIO $ emit $ EvaluateEvent.DerivationInfo drvInfo
             in
               doIt
+
+  withProducer doProduce $ \producer ->
+    withBoundedDelayBatchProducer (1000 * 1000) 1000 producer $ \batchProducer ->
+      fix $ \continue ->
+        joinSTM $ listen batchProducer (\b -> withSync b (processBatch . catMaybes) *> continue) pure
 
 runEvalProcess :: FilePath
                -> FilePath
@@ -279,17 +284,13 @@ runEvalProcess :: FilePath
                -> [ EvaluateTask.NixPathElement
                       (EvaluateTask.SubPathOf FilePath)
                   ]
-               -> (EvaluateEvent.EvaluateEvent -> IO ())
+               -> (EvaluateEvent.EvaluateEvent -> App ())
                -> TraversalQueue.Queue Text
                -> App ()
                -> App ()
 runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush = do
 
   extraOpts <- Nix.askExtraOptions
-
-  appEnv <- ask
-  let unlift :: forall a m. MonadIO m => App a -> m a
-      unlift = liftIO . runApp appEnv
 
   let eval = Eval.Eval
         { Eval.cwd = projectDir
@@ -299,82 +300,74 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
         }
   buildRequiredIndex <- liftIO $ newIORef (0 :: Int)
 
+  commandChan <- newChan
+  writeChan commandChan $ Just $ Command.Eval eval
+
   let
-    stderrSink pid = awaitForever $ \ln -> unlift $ withNamedContext "worker" (pid :: Int) $ logLocM InfoS $ "Evaluator: " <> logStr (toSL ln :: Text)
+    stderrLineHandler pid ln = withNamedContext "worker" (pid :: Int)
+      $ logLocM InfoS $ "Evaluator: " <> logStr (toSL ln :: Text)
 
-    interaction :: ConduitM i Event.Event IO () -> ConduitT i Command.Command IO ()
-    interaction eventStream = do
-      yield $ Command.Eval eval
-      eventStream .| awaitForever
-        (\msg -> do
-          case msg of
-            Event.Attribute a ->
-              liftIO
-                $ emit
-                $ EvaluateEvent.Attribute
-                $ AttributeEvent.AttributeEvent
-                    { AttributeEvent.expressionPath = toSL
-                      <$> WorkerAttribute.path a
-                    , AttributeEvent.derivationPath = toSL
-                      $ WorkerAttribute.drv a
-                    }
-            Event.AttributeError e ->
-              liftIO
-                $ emit
-                $ EvaluateEvent.AttributeError
-                $ AttributeErrorEvent.AttributeErrorEvent
-                    { AttributeErrorEvent.expressionPath = toSL
-                      <$> WorkerAttributeError.path e
-                    , AttributeErrorEvent.errorMessage = toSL
-                      $ WorkerAttributeError.message e
-                    , AttributeErrorEvent.errorType = toSL <$> WorkerAttributeError.errorType e
-                    , AttributeErrorEvent.errorDerivation = toSL <$> WorkerAttributeError.errorDerivation e
-                    }
-            Event.EvaluationDone -> pass -- FIXME
-            Event.Error e ->
-              liftIO
-                $ emit
-                $ EvaluateEvent.Message Message.Message
-                    { Message.index = -1 -- will be set by emit
-                    , Message.typ = Message.Error
-                    , Message.message = e
-                    }
-            Event.Build drv outputName -> do
-              status <- unlift $ withNamedContext "derivation" drv $ do
-                currentIndex <- liftIO $ atomicModifyIORef buildRequiredIndex (\i -> (i + 1, i))
-                liftIO $ emit $ EvaluateEvent.BuildRequired BuildRequired.BuildRequired
-                    { BuildRequired.derivationPath = drv
-                    , BuildRequired.index = currentIndex
-                    , BuildRequired.outputName = outputName
-                    }
-                let
-                  submitDerivationInfos = do
-                    TraversalQueue.enqueue derivationQueue drv
-                    TraversalQueue.waitUntilDone derivationQueue
-                  pushDerivations = do
-                    caches <- Agent.Cachix.activePushCaches
-                    forM_ caches $ \cache -> do
-                      withNamedContext "cache" cache $ logLocM DebugS "Pushing ifd drvs to cachix"
-                      Agent.Cachix.push cache [drv]
-                Async.Lifted.concurrently_ submitDerivationInfos pushDerivations
-                liftIO $ emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest { BuildRequest.derivationPath = drv }
-                flush
-                status <- drvPoller drv
-                logLocM DebugS $ "Got derivation status " <> show status
-                return status
-              yield $ Command.BuildResult $ BuildResult.BuildResult drv status
-          pure []
-        )
+    produceEvalEvents = runEvaluator (Eval.cwd eval) nixPath stderrLineHandler commandChan
 
-  (exitStatus, _) <- liftIO
-    $ runEvaluator (Eval.cwd eval) nixPath stderrSink interaction
+  withProducer produceEvalEvents
+   $ \evalEventsP -> fix $ \continue ->
 
-  case exitStatus of
-    ExitSuccess -> logLocM DebugS "Clean worker exit"
-    ExitFailure e -> do
-      withNamedContext "exitStatus" e $ logLocM ErrorS "Worker failed"
-      panic "worker failure"
-            -- FIXME: handle failure
+    joinSTM $ listen evalEventsP
+      (\case
+        Event.Attribute a -> do
+          emit $ EvaluateEvent.Attribute $ AttributeEvent.AttributeEvent
+            { AttributeEvent.expressionPath = toSL <$> WorkerAttribute.path a
+            , AttributeEvent.derivationPath = toSL $ WorkerAttribute.drv a
+            }
+          continue
+        Event.AttributeError e -> do
+          emit $ EvaluateEvent.AttributeError $ AttributeErrorEvent.AttributeErrorEvent
+            { AttributeErrorEvent.expressionPath = toSL <$> WorkerAttributeError.path e
+            , AttributeErrorEvent.errorMessage = toSL $ WorkerAttributeError.message e
+            , AttributeErrorEvent.errorType = toSL <$> WorkerAttributeError.errorType e
+            , AttributeErrorEvent.errorDerivation = toSL <$> WorkerAttributeError.errorDerivation e
+            }
+          continue
+        Event.EvaluationDone ->
+          writeChan commandChan Nothing
+        Event.Error e -> do
+          emit $ EvaluateEvent.Message Message.Message
+            { Message.index = -1 -- will be set by emit
+            , Message.typ = Message.Error
+            , Message.message = e
+            }
+          continue
+        Event.Build drv outputName -> do
+          status <- withNamedContext "derivation" drv $ do
+            currentIndex <- liftIO $ atomicModifyIORef buildRequiredIndex (\i -> (i + 1, i))
+            emit $ EvaluateEvent.BuildRequired BuildRequired.BuildRequired
+              { BuildRequired.derivationPath = drv
+              , BuildRequired.index = currentIndex
+              , BuildRequired.outputName = outputName
+              }
+            let
+              submitDerivationInfos = do
+                TraversalQueue.enqueue derivationQueue drv
+                TraversalQueue.waitUntilDone derivationQueue
+              pushDerivations = do
+                caches <- Agent.Cachix.activePushCaches
+                forM_ caches $ \cache -> do
+                  withNamedContext "cache" cache $ logLocM DebugS "Pushing ifd drvs to cachix"
+                  Agent.Cachix.push cache [drv]
+            Async.Lifted.concurrently_ submitDerivationInfos pushDerivations
+            emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest { BuildRequest.derivationPath = drv }
+            flush
+            status <- drvPoller drv
+            logLocM DebugS $ "Got derivation status " <> show status
+            return status
+          writeChan commandChan $ Just $ Command.BuildResult $ BuildResult.BuildResult drv status
+          continue
+      ) (\case
+          ExitSuccess -> logLocM DebugS "Clean worker exit"
+          ExitFailure e -> do
+            withNamedContext "exitStatus" e $ logLocM ErrorS "Worker failed"
+            panic $ "Worker failed with exit status: " <> show e
+      )
 
 drvPoller :: Text -> App BuildResult.BuildStatus
 drvPoller drvPath = do
@@ -399,7 +392,7 @@ fetchSource targetDir url = do
 
   liftIO $ Dir.createDirectoryIfMissing True targetDir
 
-  request <- HTTP.Simple.parseRequest $ toS $ url
+  request <- HTTP.Simple.parseRequest $ toS url
 
   -- TODO: report stderr to service
   -- TODO: discard stdout

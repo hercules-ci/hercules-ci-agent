@@ -15,7 +15,7 @@ let
       {
         code = "pkgs: pkgs.figlet";
       }
-      ''echo I'm sorry Dave, I'm afraid I can't do that. 1>&2
+      ''echo "This is a build failure for testing purposes." 1>&2
         exit 1
       '';
 in

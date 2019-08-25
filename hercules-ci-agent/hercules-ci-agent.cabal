@@ -21,6 +21,7 @@ source-repository head
 
 library
   exposed-modules:
+      Hercules.Agent.Producer
       Hercules.Agent.WorkerProtocol.Command
       Hercules.Agent.WorkerProtocol.Command.BuildResult
       Hercules.Agent.WorkerProtocol.Command.Eval
@@ -49,12 +50,16 @@ library
     , lifted-async
     , lifted-base
     , monad-control
+    , mtl
     , optparse-applicative
     , protolude
+    , process
     , safe-exceptions
+    , stm
     , text
     , transformers-base
     , unliftio-core
+    , unliftio
   default-language: Haskell2010
 
 -- ugly hack to avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
@@ -154,6 +159,7 @@ executable hercules-ci-agent
     , transformers-base
     , unix
     , unliftio-core
+    , unliftio
     , unordered-containers
     , uuid
   default-language: Haskell2010
