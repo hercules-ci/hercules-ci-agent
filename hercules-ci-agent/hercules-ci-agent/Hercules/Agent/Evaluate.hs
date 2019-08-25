@@ -10,7 +10,6 @@ import           Protolude hiding (newChan, writeChan, finally)
 import           Conduit
 import           Control.Monad.IO.Unlift
 import           Control.Concurrent.Chan.Lifted
-import           Control.Exception.Lifted (finally)
 import qualified Control.Concurrent.Async.Lifted
                                                as Async.Lifted
 import           Data.Conduit.Process           ( sourceProcessWithStreams )
@@ -25,7 +24,6 @@ import           System.FilePath
 import           System.Process
 import qualified System.Directory              as Dir
 import           Hercules.Agent.WorkerProcess
-import           Hercules.Agent.Batch
 import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Cachix         as Agent.Cachix
 import qualified Hercules.Agent.Config         as Config

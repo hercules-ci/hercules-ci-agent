@@ -77,7 +77,6 @@ executable hercules-ci-agent
       Data.Map.Extras.Hercules
       Hercules.Agent
       Hercules.Agent.Bag
-      Hercules.Agent.Batch
       Hercules.Agent.BinaryCaches
       Hercules.Agent.Build
       Hercules.Agent.CabalInfo
@@ -101,7 +100,6 @@ executable hercules-ci-agent
       Hercules.Agent.NixPath
       Hercules.Agent.Options
       Hercules.Agent.SecureDirectory
-      Hercules.Agent.Scribe
       Hercules.Agent.Token
       Hercules.Agent.WorkerProcess
       Paths_hercules_ci_agent
