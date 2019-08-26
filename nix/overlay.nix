@@ -11,9 +11,17 @@ in {
 
   toTOML-test = pkgs.callPackage ../for-upstream/to-toml/test-run.nix {};
 
-  nix = pkgs.nix.overrideAttrs (a: a // {
-    patches = (a.patches or []) ++ [
-      ./nix-no-negative-caching.patch
-    ];
-  });
+  boehmgc-hercules = (pkgs.boehmgc.override {
+        enableLargeConfig = true;
+      }).overrideAttrs (attrs: attrs // {
+        CFLAGS = (attrs.CFLAGS or "") + " -DMAX_HEAP_SECTS=655360";
+      });
+
+  nix = (pkgs.nix.override (args: args // {
+      boehmgc = self.boehmgc-hercules;
+    })).overrideAttrs (attrs: attrs // {
+      patches = (attrs.patches or []) ++ [
+        ./nix-no-negative-caching.patch
+      ];
+    });
 }
