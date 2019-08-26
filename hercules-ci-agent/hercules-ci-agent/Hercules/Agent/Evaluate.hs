@@ -81,200 +81,157 @@ import qualified Network.HTTP.Simple           as HTTP.Simple
 import qualified Servant.Client
 import           System.IO.Temp                 ( withTempDirectory )
 
-runEvaluator :: FilePath
-             -> [ EvaluateTask.NixPathElement
-                    (EvaluateTask.SubPathOf FilePath)
-                ]
-             -> (Int -> ByteString -> App ())
-             -> Chan (Maybe Command.Command)
-             -> (Event.Event -> App ())
-             -> App ExitCode
-runEvaluator workingDirectory nixPath stderrLineHandler commands eventWriter = do
-  wps <- liftIO $ workerProcessSpec workingDirectory nixPath
-  runWorker wps stderrLineHandler commands eventWriter
-
 eventLimit :: Int
 eventLimit = 50000
 
-workerProcessSpec :: FilePath
-                  -> [ EvaluateTask.NixPathElement
-                         (EvaluateTask.SubPathOf FilePath)
-                     ]
-                  -> IO CreateProcess
-workerProcessSpec workingDirectory nixPath = do
-  workerBinDir <- getBinDir
-
-  -- NiceToHave: replace renderNixPath by something structured like -I
-  -- to support = and : in paths
-  pure (System.Process.proc (workerBinDir </> "hercules-ci-agent-worker") [])
-    { env = Just [("NIX_PATH", toS $ renderNixPath nixPath)]
-    , close_fds = True -- Disable on Windows?
-    , cwd = Just workingDirectory
-    }
-
-data SubprocessFailure = SubprocessFailure { message :: Text }
-  deriving (Typeable, Exception, Show)
-
 performEvaluation :: Task EvaluateTask.EvaluateTask -> App ()
-performEvaluation task' = do
+performEvaluation task' =
+  withProducer (produceEvaluationTaskEvents task') $ \producer ->
+    withBoundedDelayBatchProducer (1000 * 1000) 1000 producer $ \batchProducer ->
+      fix $ \continue ->
+        joinSTM $ listen batchProducer (\b -> withSync b (postBatch task' . catMaybes) *> continue) pure
+
+produceEvaluationTaskEvents
+  :: Task EvaluateTask.EvaluateTask
+  -> (Syncing EvaluateEvent.EvaluateEvent -> App ())
+  -> App ()
+produceEvaluationTaskEvents task' writeToBatch = withWorkDir $ \tmpdir -> do
   logLocM DebugS "Retrieving evaluation task"
   task <- defaultRetry $ runHerculesClient
     (tasksGetEvaluation Hercules.Agent.Client.evalClient (Task.id task'))
 
-  UnliftIO { unliftIO = unlift } <- askUnliftIO
+  let emitSingle = writeToBatch . Syncable
+      sync = syncer writeToBatch
 
-  let processBatch events =
-        noContent $ defaultRetry $ runHerculesClient
-          (tasksUpdateEvaluation Hercules.Agent.Client.evalClient
-                                 (EvaluateTask.id task)
-                                 events
-          )
+  projectDir <- fetchSource (tmpdir </> "primary")
+                            (EvaluateTask.primaryInput task)
+  withNamedContext "projectDir" projectDir
+    $ logLocM DebugS "Determined projectDir"
 
-  workDir <- asks (Config.workDirectory . config)
+  inputLocations <- flip M.traverseWithKey (EvaluateTask.otherInputs task)
+    $ \k src -> fetchSource (tmpdir </> ("arg-" <> toS k)) src
+
+  nixPath <-
+    EvaluateTask.nixPath task
+      & (traverse
+        . traverse
+        . traverse
+        $ \identifier -> case M.lookup identifier inputLocations of
+            Just x -> pure x
+            Nothing ->
+              throwIO
+                $ FatalError
+                $ "Nix path references undefined input "
+                <> identifier
+        )
+
+  autoArguments' <-
+    EvaluateTask.autoArguments task & (traverse . traverse)
+      (\identifier -> case M.lookup identifier inputLocations of
+        Just x | "/" `isPrefixOf` x -> pure x
+        Just x ->
+          throwIO
+            $ FatalError
+            $ "input "
+            <> identifier
+            <> " was not resolved to an absolute path: "
+            <> toS x
+        Nothing ->
+          throwIO
+            $ FatalError
+            $ "auto argument references undefined input "
+            <> identifier
+      )
+  let autoArguments = autoArguments'
+        <&> \sp -> Eval.ExprArg $ toS $ renderSubPath $ toS <$> sp
+
+  msgCounter <- liftIO $ newIORef 0
+  let fixIndex :: MonadIO m
+                => EvaluateEvent.EvaluateEvent
+                -> m EvaluateEvent.EvaluateEvent
+      fixIndex (EvaluateEvent.Message m) = do
+        i <- liftIO $ atomicModifyIORef msgCounter (\i0 -> (i0 + 1, i0))
+        pure $ EvaluateEvent.Message m { Message.index = i }
+      fixIndex other = pure other
+
+  eventCounter <- liftIO $ newIORef 0
+
+  allAttrPaths <- liftIO $ newIORef mempty
 
   let
-    -- TODO: configurable temp directory
-    doProduce writeToBatch = liftIO $ withTempDirectory workDir "eval" $ \tmpdir -> unlift $ do
-        let emitSingle = writeToBatch . Syncable
-            sync = syncer writeToBatch
+    emit :: EvaluateEvent.EvaluateEvent -> App ()
+    emit update = do
+      n <- liftIO $ atomicModifyIORef eventCounter $ \n -> dup (n + 1)
 
-        withNamedContext "tmpdir" tmpdir $ logLocM DebugS "Determined tmpdir"
+      if n > eventLimit
+        then do
+          truncMsg <- fixIndex $ EvaluateEvent.Message Message.Message
+            { index = -1
+            , typ = Message.Error
+            , message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than "
+              <> show eventLimit
+              <> " attributes or messages, please contact info@hercules-ci.com."
+            }
+          emitSingle truncMsg
+          panic "Evaluation limit reached."
+        else emitSingle =<< fixIndex update
 
-        projectDir <- fetchSource (tmpdir </> "primary")
-                                  (EvaluateTask.primaryInput task)
-        withNamedContext "projectDir" projectDir
-          $ logLocM DebugS "Determined projectDir"
+  liftIO (findNixFile projectDir) >>= \case
+    Left e ->
+      emit
+        $ EvaluateEvent.Message Message.Message
+            { Message.index = -1 -- will be set by emit
+            , Message.typ = Message.Error
+            , Message.message = e
+            }
+    Right file -> TraversalQueue.with $ \derivationQueue ->
+      let
+        doIt = do
+          Async.Lifted.concurrently_ evaluation emitDrvs
 
-        inputLocations <- flip M.traverseWithKey (EvaluateTask.otherInputs task)
-          $ \k src -> fetchSource (tmpdir </> ("arg-" <> toS k)) src
+          -- derivationInfo upload has finished
+          -- allAttrPaths :: IORef has been populated
 
-        nixPath <-
-          EvaluateTask.nixPath task
-            & (traverse
-              . traverse
-              . traverse
-              $ \identifier -> case M.lookup identifier inputLocations of
-                  Just x -> pure x
-                  Nothing ->
-                    throwIO
-                      $ FatalError
-                      $ "Nix path references undefined input "
-                      <> identifier
-              )
+          pushDrvs
 
-        autoArguments' <-
-          EvaluateTask.autoArguments task & (traverse . traverse)
-            (\identifier -> case M.lookup identifier inputLocations of
-              Just x | "/" `isPrefixOf` x -> pure x
-              Just x ->
-                throwIO
-                  $ FatalError
-                  $ "input "
-                  <> identifier
-                  <> " was not resolved to an absolute path: "
-                  <> toS x
-              Nothing ->
-                throwIO
-                  $ FatalError
-                  $ "auto argument references undefined input "
-                  <> identifier
-            )
-        let autoArguments = autoArguments'
-              <&> \sp -> Eval.ExprArg $ toS $ renderSubPath $ toS <$> sp
+        evaluation = do
+          runEvalProcess projectDir
+                          file
+                          autoArguments
+                          nixPath
+                          captureAttrDrvAndEmit
+                          derivationQueue
+                          sync
+          -- process has finished
 
-        msgCounter <- liftIO $ newIORef 0
-        let fixIndex :: MonadIO m
-                     => EvaluateEvent.EvaluateEvent
-                     -> m EvaluateEvent.EvaluateEvent
-            fixIndex (EvaluateEvent.Message m) = do
-              i <- liftIO $ atomicModifyIORef msgCounter (\i0 -> (i0 + 1, i0))
-              pure $ EvaluateEvent.Message m { Message.index = i }
-            fixIndex other = pure other
+          TraversalQueue.waitUntilDone derivationQueue
+          TraversalQueue.close derivationQueue
 
-        eventCounter <- liftIO $ newIORef 0
+        pushDrvs = do
+          caches <- Agent.Cachix.activePushCaches
+          paths <- liftIO $ readIORef allAttrPaths
+          forM_ caches $ \cache -> do
+            withNamedContext "cache" cache $ logLocM DebugS "Pushing drvs to cachix"
+            Agent.Cachix.push cache (toList paths)
+            emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll { cache = cache }
 
-        allAttrPaths <- liftIO $ newIORef mempty
+        captureAttrDrvAndEmit msg = do
+          case msg of
+            EvaluateEvent.Attribute ae -> TraversalQueue.enqueue
+              derivationQueue
+              (AttributeEvent.derivationPath ae)
+            _ -> pass
+          emit msg
 
-        let
-          emit :: EvaluateEvent.EvaluateEvent -> IO ()
-          emit update = unlift $ do
-            n <- liftIO $ atomicModifyIORef eventCounter $ \n -> dup (n + 1)
-
-            if n > eventLimit
-              then do
-                truncMsg <- fixIndex $ EvaluateEvent.Message Message.Message
-                  { index = -1
-                  , typ = Message.Error
-                  , message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than "
-                    <> show eventLimit
-                    <> " attributes or messages, please contact info@hercules-ci.com."
-                  }
-                emitSingle truncMsg
-                panic "Evaluation limit reached."
-              else emitSingle =<< fixIndex update
-
-        liftIO (findNixFile projectDir) >>= \case
-          Left e ->
-            liftIO
-              $ emit
-              $ EvaluateEvent.Message Message.Message
-                  { Message.index = -1 -- will be set by emit
-                  , Message.typ = Message.Error
-                  , Message.message = e
-                  }
-          Right file -> TraversalQueue.with $ \derivationQueue ->
-            let
-              doIt = do
-                Async.Lifted.concurrently_ evaluation emitDrvs
-
-                -- derivationInfo upload has finished
-                -- allAttrPaths :: IORef has been populated
-
-                pushDrvs
-
-              evaluation = do
-                runEvalProcess projectDir
-                               file
-                               autoArguments
-                               nixPath
-                               (liftIO . captureAttrDrvAndEmit)
-                               derivationQueue
-                               sync
-                -- process has finished
-
-                TraversalQueue.waitUntilDone derivationQueue
-                TraversalQueue.close derivationQueue
-
-              pushDrvs = do
-                caches <- Agent.Cachix.activePushCaches
-                paths <- liftIO $ readIORef allAttrPaths
-                forM_ caches $ \cache -> do
-                  withNamedContext "cache" cache $ logLocM DebugS "Pushing drvs to cachix"
-                  Agent.Cachix.push cache (toList paths)
-                  liftIO $ emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll { cache = cache }
-
-              captureAttrDrvAndEmit msg = do
-                case msg of
-                  EvaluateEvent.Attribute ae -> TraversalQueue.enqueue
-                    derivationQueue
-                    (AttributeEvent.derivationPath ae)
-                  _ -> pass
-                emit msg
-
-              emitDrvs =
-                TraversalQueue.work derivationQueue $ \recurse drvPath -> do
-                  liftIO $ atomicModifyIORef allAttrPaths ((,()) . S.insert drvPath)
-                  drvInfo <- retrieveDerivationInfo drvPath
-                  forM_ (M.keys $ DerivationInfo.inputDerivations drvInfo)
-                    recurse -- asynchronously
-                  liftIO $ emit $ EvaluateEvent.DerivationInfo drvInfo
-            in
-              doIt
-
-  withProducer doProduce $ \producer ->
-    withBoundedDelayBatchProducer (1000 * 1000) 1000 producer $ \batchProducer ->
-      fix $ \continue ->
-        joinSTM $ listen batchProducer (\b -> withSync b (processBatch . catMaybes) *> continue) pure
+        emitDrvs =
+          TraversalQueue.work derivationQueue $ \recurse drvPath -> do
+            liftIO $ atomicModifyIORef allAttrPaths ((,()) . S.insert drvPath)
+            drvInfo <- retrieveDerivationInfo drvPath
+            forM_ (M.keys $ DerivationInfo.inputDerivations drvInfo)
+              recurse -- asynchronously
+            emit $ EvaluateEvent.DerivationInfo drvInfo
+      in
+        doIt
 
 runEvalProcess :: FilePath
                -> FilePath
@@ -301,16 +258,10 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
   commandChan <- newChan
   writeChan commandChan $ Just $ Command.Eval eval
 
-  let
-    stderrLineHandler pid ln = withNamedContext "worker" (pid :: Int)
-      $ logLocM InfoS $ "Evaluator: " <> logStr (toSL ln :: Text)
+  withProducer (produceWorkerEvents eval nixPath commandChan)
+   $ \workerEventsP -> fix $ \continue ->
 
-    produceEvalEvents = runEvaluator (Eval.cwd eval) nixPath stderrLineHandler commandChan
-
-  withProducer produceEvalEvents
-   $ \evalEventsP -> fix $ \continue ->
-
-    joinSTM $ listen evalEventsP
+    joinSTM $ listen workerEventsP
       (\case
         Event.Attribute a -> do
           emit $ EvaluateEvent.Attribute $ AttributeEvent.AttributeEvent
@@ -367,6 +318,26 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
             panic $ "Worker failed with exit status: " <> show e
       )
 
+produceWorkerEvents
+  :: Eval.Eval
+  -> [EvaluateTask.NixPathElement (EvaluateTask.SubPathOf FilePath)]
+  -> Chan (Maybe Command.Command)
+  -> (Event.Event -> App ())
+  -> App ExitCode
+produceWorkerEvents eval nixPath commandChan writeEvent = do
+
+  workerBinDir <- liftIO getBinDir
+
+  -- NiceToHave: replace renderNixPath by something structured like -I
+  -- to support = and : in paths
+  wps <- pure (System.Process.proc (workerBinDir </> "hercules-ci-agent-worker") [])
+    { env = Just [("NIX_PATH", toS $ renderNixPath nixPath)]
+    , close_fds = True -- Disable on Windows?
+    , cwd = Just (Eval.cwd eval)
+    }
+
+  runWorker wps stderrLineHandler commandChan writeEvent
+
 drvPoller :: Text -> App BuildResult.BuildStatus
 drvPoller drvPath = do
   resp <- defaultRetry $ runHerculesClient $ getDerivationStatus
@@ -383,6 +354,9 @@ drvPoller drvPath = do
     Just Derivation.BuildFailure -> pure BuildResult.Failure
     Just Derivation.DependencyFailure -> pure BuildResult.DependencyFailure
     Just Derivation.BuildSuccess -> pure BuildResult.Success
+
+newtype SubprocessFailure = SubprocessFailure { message :: Text }
+  deriving (Typeable, Exception, Show)
 
 fetchSource :: FilePath -> Text -> App FilePath
 fetchSource targetDir url = do
@@ -458,3 +432,22 @@ englishConjunction connective [a1, a2] =
   show a1 <> " " <> connective <> " " <> show a2
 englishConjunction connective (a : as) =
   show a <> ", " <> englishConjunction connective as
+
+stderrLineHandler :: Int -> ByteString -> App ()
+stderrLineHandler pid ln = withNamedContext "worker" (pid :: Int)
+    $ logLocM InfoS $ "Evaluator: " <> logStr (toSL ln :: Text)
+
+postBatch :: Task EvaluateTask.EvaluateTask -> [EvaluateEvent.EvaluateEvent] -> App ()
+postBatch task events = noContent $ defaultRetry $ runHerculesClient
+          (tasksUpdateEvaluation Hercules.Agent.Client.evalClient
+                                 (Task.id task)
+                                 events
+          )
+
+-- TODO: configurable temp directory
+withWorkDir :: (FilePath -> App b) -> App b
+withWorkDir f = do
+  UnliftIO { unliftIO = unlift } <- askUnliftIO
+  workDir <- asks (Config.workDirectory . config)
+  liftIO $ withTempDirectory workDir "eval" $ unlift . f
+
