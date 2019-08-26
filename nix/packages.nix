@@ -39,7 +39,7 @@ let
                            nix-store = nix;
                            nix-expr = nix;
                            nix-main = nix;
-                           bdw-gc = pkgs.boehmgc;
+                           bdw-gc = pkgs.boehmgc-hercules;
                         })
                         { src = gitignoreSource ../hercules-ci-agent; };
                    
