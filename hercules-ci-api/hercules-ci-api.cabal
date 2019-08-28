@@ -150,6 +150,7 @@ test-suite hercules-api-test
   other-modules:
       Spec
       AesonSupport
+      Hercules.API.Agent.AgentInfoSpec
       Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfoSpec
       Hercules.Formats.CachixCacheSpec
   hs-source-dirs:

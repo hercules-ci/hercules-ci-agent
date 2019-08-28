@@ -4,6 +4,7 @@ import Prelude
 import Data.Conduit
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
+import Control.Monad.Trans
 import Control.Concurrent.Chan
 import Control.Exception
 
@@ -24,3 +25,7 @@ sourceChan ch = do
   case mmsg of
     Nothing -> liftIO $ writeChan ch Nothing
     Just msg -> yield msg >> sourceChan ch
+
+conduitToCallbacks :: (MonadUnliftIO m, MonadIO m) => ConduitT () o m a -> (o -> m ()) -> m a
+conduitToCallbacks c w = do
+  runConduit (c `fuseUpstream` awaitForever (lift . w))

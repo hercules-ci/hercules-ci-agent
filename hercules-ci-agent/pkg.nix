@@ -8,7 +8,7 @@
 , optparse-applicative, process, protolude, safe-exceptions
 , servant, servant-auth-client, servant-client, servant-client-core
 , stdenv, stm, system-filepath, temporary, text, time, tomland
-, transformers, transformers-base, unix, unliftio-core
+, transformers, transformers-base, unix, unliftio, unliftio-core
 , unordered-containers, uuid
 }:
 mkDerivation {
@@ -20,8 +20,8 @@ mkDerivation {
   libraryHaskellDepends = [
     aeson async base binary binary-conduit bytestring conduit
     containers exceptions katip lifted-async lifted-base monad-control
-    optparse-applicative protolude safe-exceptions text
-    transformers-base unliftio-core
+    mtl optparse-applicative process protolude safe-exceptions stm text
+    transformers-base unliftio unliftio-core
   ];
   executableHaskellDepends = [
     aeson async attoparsec base base64-bytestring binary binary-conduit
@@ -32,7 +32,7 @@ mkDerivation {
     nix-derivation optparse-applicative process protolude
     safe-exceptions servant servant-auth-client servant-client
     servant-client-core stm system-filepath temporary text time tomland
-    transformers transformers-base unix unliftio-core
+    transformers transformers-base unix unliftio unliftio-core
     unordered-containers uuid
   ];
   executablePkgconfigDepends = [

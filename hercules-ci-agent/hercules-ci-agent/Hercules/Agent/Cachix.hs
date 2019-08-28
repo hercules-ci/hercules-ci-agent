@@ -16,6 +16,7 @@ import           Hercules.Agent.Log
 import qualified Hercules.Agent.Cachix.Env     as Agent.Cachix
 import           Hercules.Agent.Cachix.Info     ( activePushCaches )
 import           Hercules.Agent.Env            as Agent.Env
+import qualified Hercules.Agent.EnvironmentInfo as EnvInfo
 import qualified Hercules.Agent.Nix            as Nix
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 import qualified Servant.Client                as Servant
@@ -63,8 +64,12 @@ getSubstituters :: App [Text]
 getSubstituters = do
   cks <- asks (Agent.Cachix.cacheKeys . Agent.Env.cachixEnv)
 
-  -- TODO: merge with system config instead
-  pure $ ["https://cache.nixos.org/"] ++ map (\c -> "https://" <> c <> ".cachix.org") (M.keys cks)
+  nixInfo <- liftIO EnvInfo.getNixInfo
+
+  pure (
+    EnvInfo.nixSubstituters nixInfo
+    ++ map (\c -> "https://" <> c <> ".cachix.org") (M.keys cks)
+    )
 
 withCaches :: App a -> App a
 withCaches m = do

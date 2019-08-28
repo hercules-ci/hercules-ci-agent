@@ -1,0 +1,12 @@
+diff -r -U3 a/include/private/gc_priv.h b/include/private/gc_priv.h
+--- a/include/private/gc_priv.h	2018-12-23 22:28:41.000000000 +0100
++++ b/include/private/gc_priv.h	2019-08-26 14:07:08.574102347 +0200
+@@ -373,7 +373,7 @@
+                          /* Must be multiple of largest page size.         */
+ #   define MAXHINCR 2048 /* Maximum heap increment, in blocks              */
+ # else
+-#   define MINHINCR 64
++#   define MINHINCR 256
+ #   define MAXHINCR 4096
+ # endif
+ 

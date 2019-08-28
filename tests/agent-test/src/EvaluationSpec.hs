@@ -301,7 +301,7 @@ spec = describe "Evaluation" $ do
                     , EvaluateTask.primaryInput = "/tarball/too-many-attrs"
                     }
       s `shouldBe` TaskStatus.Exceptional
-        "WorkerException {originalException = FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}, exitStatus = Nothing}"
+        "FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}"
       last r `shouldBe` EvaluateEvent.Message
         (Message.Message
           { index = 0
@@ -513,10 +513,10 @@ spec = describe "Evaluation" $ do
               toS (AttributeEvent.derivationPath ae2) `shouldContain` "/nix/store"
               toS (AttributeEvent.derivationPath ae2) `shouldContain` "-hello"
 
-          _ -> failWith $ "Events should be a two attributes, not: " <> show r
+          bad -> failWith $ "Events should be a two attributes, not: " <> show bad
 
     it "can request a build" $ ifdTest
-    it "can request a build again" $ ifdTest
+    it "can request a build again" $ \srv -> (ifdTest srv >> ifdTest srv)
 
     it "can handle a failed build" $ \srv -> do
         id <- randomId
@@ -563,3 +563,5 @@ spec = describe "Evaluation" $ do
               AttributeEvent.expressionPath ae2 `shouldBe` ["helloIfd"]
               toS (AttributeEvent.derivationPath ae2) `shouldContain` "/nix/store"
               toS (AttributeEvent.derivationPath ae2) `shouldContain` "-hello"
+
+          bad -> failWith $ "Events should be a two attributes, not: " <> show bad

@@ -6,14 +6,17 @@ where
 import           Prelude                        ( )
 import           Protolude
 import           System.Process
+import           System.IO                      ( hClose )
 import           System.IO.Error
-import           Conduit
+import           Conduit                 hiding ( Producer )
 import qualified Control.Exception.Safe        as Safe
+import           Control.Monad.IO.Unlift
 import           Data.Conduit.Serialization.Binary
                                                 ( conduitEncode
                                                 , conduitDecode
                                                 )
 import           Data.Binary                    ( Binary )
+import           Data.Conduit.Extras            ( sourceChan, conduitToCallbacks )
 import           System.Timeout                 ( timeout )
 import           GHC.IO.Exception
 
@@ -25,22 +28,22 @@ instance Exception WorkerException
 
 -- | Control a child process by communicating over stdin and stdout
 -- using a 'Binary' interface.
-runWorker :: (Binary command, Binary event)
+runWorker :: (Binary command, Binary event, MonadUnliftIO m, MonadThrow m)
           => CreateProcess -- ^ Process invocation details. Will ignore std_in, std_out and std_err fields.
-          -> (Int -> ConduitM ByteString Void IO ())
-          -> ( forall i
-              . ConduitM i event IO ()
-             -> ConduitM i command IO a
-             )
-          -> IO (ExitCode, a)
-runWorker baseProcess stderrSink interaction = do
+          -> (Int -> ByteString -> m ())
+          -> Chan (Maybe command)
+          -> (event -> m ())
+          -> m ExitCode
+runWorker baseProcess stderrLineHandler commandChan eventHandler = do
+  UnliftIO { unliftIO = unlift } <- askUnliftIO
+
   let createProcessSpec = baseProcess { std_in = CreatePipe
                                       , std_out = CreatePipe
                                       , std_err = CreatePipe
                                       }
 
 
-  withCreateProcess createProcessSpec $ \mIn mOut mErr processHandle -> do
+  liftIO $ withCreateProcess createProcessSpec $ \mIn mOut mErr processHandle -> do
     (inHandle, outHandle, errHandle) <- case (,,) <$> mIn <*> mOut <*> mErr of
       Just x -> pure x
       Nothing -> throwIO $ mkIOError illegalOperationErrorType
@@ -48,29 +51,33 @@ runWorker baseProcess stderrSink interaction = do
                                      Nothing -- no handle
                                      Nothing -- no path
 
-    pidMaybe <- getPid processHandle
+    pidMaybe <- liftIO $ getPid processHandle
     let pid = case pidMaybe of Just x -> fromIntegral x; Nothing -> 0
 
-    let stderrPiper = runConduit
-          (sourceHandle errHandle .| linesUnboundedAsciiC .| stderrSink pid)
+    let stderrPiper = liftIO $ runConduit
+          (sourceHandle errHandle .| linesUnboundedAsciiC .| awaitForever (liftIO . unlift . stderrLineHandler pid))
 
-    let eventSource = sourceHandle outHandle .| conduitDecode
-        handleEPIPE e | ioeGetErrorType e == ResourceVanished = pure ()
-        handleEPIPE e = throwIO e
-        commandSink =
-          conduitEncode
+    let eventConduit = sourceHandle outHandle .| conduitDecode
+
+        commandConduit =
+          sourceChan commandChan
+            .| conduitEncode
             .| concatMapC (\x -> [Chunk x, Flush])
             .| handleC handleEPIPE (sinkHandleFlush inHandle)
+        handleEPIPE e | ioeGetErrorType e == ResourceVanished = pure ()
+        handleEPIPE e = throwIO e
 
-    let interactor =
-          runConduit $ interaction eventSource `fuseUpstream` commandSink
+    let cmdThread = runConduit commandConduit `finally` hClose outHandle
+        eventThread = unlift $ conduitToCallbacks eventConduit eventHandler
+
+    -- plain forkIO so it can process all of stderr in case of an exception
+    void $ forkIO stderrPiper
 
     withAsync (waitForProcess processHandle) $ \exitAsync -> do
-      r <-
-       runConcurrently (Concurrently stderrPiper *> Concurrently interactor)
-        `Safe.catch` \e -> do
-          let oneSecond = 1000 * 1000
-          maybeStatus <- timeout (5 * oneSecond) (wait exitAsync)
-          throwIO $ WorkerException e maybeStatus
-      e <- wait exitAsync
-      pure (e, r)
+      withAsync cmdThread $ \_ -> do
+        eventThread
+          `Safe.catch` \e -> do
+            let oneSecond = 1000 * 1000
+            maybeStatus <- timeout (5 * oneSecond) (wait exitAsync)
+            throwIO $ WorkerException e maybeStatus
+        wait exitAsync

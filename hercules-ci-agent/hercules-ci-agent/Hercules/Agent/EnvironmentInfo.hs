@@ -18,6 +18,7 @@ import           Hercules.Agent.Env            as Env
 import           Hercules.Agent.Cachix.Info    as Cachix.Info
 import           Hercules.Agent.CabalInfo      as CabalInfo
 import           Hercules.Agent.Log
+import qualified Hercules.Agent.Config         as Config
 import           Network.HostName               ( getHostName )
 import qualified System.Process                as Process
 
@@ -30,6 +31,8 @@ extractAgentInfo = do
 
   pushCaches <- Cachix.Info.activePushCaches
 
+  concurrentTasks <- asks (Config.concurrentTasks . Env.config)
+
   let s = AgentInfo.AgentInfo
         { hostname = toS hostname
         , agentVersion = CabalInfo.herculesAgentVersion -- TODO: Add git revision
@@ -38,6 +41,7 @@ extractAgentInfo = do
         , cachixPushCaches = pushCaches
         , systemFeatures = nixSystemFeatures nix
         , substituters = nixSubstituters nix -- TODO: Add cachix substituters
+        , concurrentTasks = fromIntegral concurrentTasks
         }
   logLocM DebugS $ "Determined environment info: " <> show s
   pure s

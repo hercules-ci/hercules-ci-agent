@@ -21,6 +21,7 @@ source-repository head
 
 library
   exposed-modules:
+      Hercules.Agent.Producer
       Hercules.Agent.WorkerProtocol.Command
       Hercules.Agent.WorkerProtocol.Command.BuildResult
       Hercules.Agent.WorkerProtocol.Command.Eval
@@ -49,12 +50,16 @@ library
     , lifted-async
     , lifted-base
     , monad-control
+    , mtl
     , optparse-applicative
     , protolude
+    , process
     , safe-exceptions
+    , stm
     , text
     , transformers-base
     , unliftio-core
+    , unliftio
   default-language: Haskell2010
 
 -- ugly hack to avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
@@ -72,7 +77,6 @@ executable hercules-ci-agent
       Data.Map.Extras.Hercules
       Hercules.Agent
       Hercules.Agent.Bag
-      Hercules.Agent.Batch
       Hercules.Agent.BinaryCaches
       Hercules.Agent.Build
       Hercules.Agent.CabalInfo
@@ -96,14 +100,13 @@ executable hercules-ci-agent
       Hercules.Agent.NixPath
       Hercules.Agent.Options
       Hercules.Agent.SecureDirectory
-      Hercules.Agent.Scribe
       Hercules.Agent.Token
       Hercules.Agent.WorkerProcess
       Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
-  ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts "-with-rtsopts=-maxN8 -qg"
+  ghc-options: -Werror=incomplete-patterns -Werror=missing-fields -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts "-with-rtsopts=-maxN8 -qg"
   build-depends:
       aeson
     , async
@@ -154,6 +157,7 @@ executable hercules-ci-agent
     , transformers-base
     , unix
     , unliftio-core
+    , unliftio
     , unordered-containers
     , uuid
   default-language: Haskell2010
@@ -174,6 +178,7 @@ executable hercules-ci-agent-worker
      cbits/hercules-store.cc
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
+    -Werror=incomplete-patterns -Werror=missing-fields
     -Wall
     -fwarn-tabs
     -fwarn-unused-imports
@@ -240,7 +245,7 @@ test-suite hercules-test
       test
       hercules-ci-agent
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
-  ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Werror=incomplete-patterns -Werror=missing-fields -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
     , async
