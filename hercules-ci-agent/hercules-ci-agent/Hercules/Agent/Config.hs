@@ -106,11 +106,16 @@ finalizeConfig loc input = do
 
   dabu <- determineDefaultApiBaseUrl
 
+  let rawConcurrentTasks = fromMaybe defaultConcurrentTasks $ concurrentTasks input
+  validConcurrentTasks <- case rawConcurrentTasks of
+    x | not (x >= 1) -> throwIO $ FatalError "concurrentTasks must be at least 1"
+    x -> pure x
+
   pure Config
     { herculesApiBaseURL = fromMaybe dabu $ herculesApiBaseURL input
     , binaryCachesPath = binaryCachesPath input
     , clusterJoinTokenPath = clusterJoinTokenP
-    , concurrentTasks = fromMaybe defaultConcurrentTasks $ concurrentTasks input
+    , concurrentTasks = validConcurrentTasks
     , baseDirectory = baseDir
     , staticSecretsDirectory = staticSecretsDir
     , workDirectory = workDir
