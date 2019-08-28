@@ -18,6 +18,8 @@ import           Hercules.Agent.Nix.RetrieveDerivationInfo
 import           Hercules.API                   ( noContent )
 import           Hercules.API.Task              ( Task )
 import qualified Hercules.API.Task             as Task
+import           Hercules.API.TaskStatus        ( TaskStatus )
+import qualified Hercules.API.TaskStatus       as TaskStatus
 import qualified Hercules.API.Agent.Build.BuildEvent
                                                as BuildEvent
 import qualified Hercules.API.Agent.Build.BuildEvent.OutputInfo
@@ -37,24 +39,27 @@ import qualified Hercules.API.Logs             as API.Logs
 import           Servant.Auth.Client
 import           System.Process
 
-performBuild :: Task BuildTask.BuildTask -> App ()
+performBuild :: Task BuildTask.BuildTask -> App TaskStatus
 performBuild task = do
 
   buildTask <- defaultRetry $ runHerculesClient
     (API.Build.getBuild Hercules.Agent.Client.buildClient (Task.id task))
 
-  realise buildTask
+  result <- realise buildTask
 
-  outs <- getOutputPathInfos buildTask
+  case result of
+    s@TaskStatus.Successful {} -> s <$ do
+      outs <- getOutputPathInfos buildTask
 
-  reportOutputInfos buildTask outs
+      reportOutputInfos buildTask outs
 
-  push buildTask outs
+      push buildTask outs
 
-  reportSuccess buildTask
+      reportSuccess buildTask
 
+    x -> pure x
 
-realise :: BuildTask.BuildTask -> App ()
+realise :: BuildTask.BuildTask -> App TaskStatus
 realise buildTask = do
   let stdinc = pass
       stdoutc = pass -- FIXME: use
@@ -93,10 +98,9 @@ realise buildTask = do
 
       emitEvents buildTask [BuildEvent.Done False]
 
-      panic "Build failure" -- FIXME: this error is expected and should be handled normally
-                            -- nonetheless it passes on to the tasks system
+      pure $ TaskStatus.Terminated ()
 
-    ExitSuccess -> logLocM DebugS "Clean nix-store exit"
+    ExitSuccess -> TaskStatus.Successful () <$ logLocM DebugS "Clean nix-store exit"
 
 
 getOutputPathInfos :: BuildTask -> App (Map Text OutputInfo)

@@ -14,7 +14,9 @@ in {
   boehmgc-hercules = (pkgs.boehmgc.override {
         enableLargeConfig = true;
       }).overrideAttrs (attrs: attrs // {
-        CFLAGS = (attrs.CFLAGS or "") + " -DMAX_HEAP_SECTS=655360";
+        patches = (attrs.patches or []) ++ [
+          ./boehmgc-8.0.2-min-heap-incr-1mb.patch
+        ];
       });
 
   nix = (pkgs.nix.override (args: args // {
