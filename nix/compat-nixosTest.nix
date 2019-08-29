@@ -14,13 +14,18 @@ let
 
   #  - Overrides pkgs argument to NixOS test and
   #  - configures nixpkgs.pkgs in all test nodes
-  overridePkgs = f: args@{...}:
-    let network = f (args // { inherit pkgs; });
-    in network // {
-      nodes = mapAttrs (name: module: {
-                   imports = [ module defaultModule ];
-                }) network.nodes;
-    };
+  overridePkgs = f: args@{ ... }:
+    let
+      network = f (args // { inherit pkgs; });
+    in
+      network
+      // {
+           nodes = mapAttrs (
+             name: module: {
+               imports = [ module defaultModule ];
+             }
+           ) network.nodes;
+         };
 
   defaultModule = { lib, ... }: {
     nixpkgs.pkgs = lib.mkForce pkgs;
@@ -48,4 +53,4 @@ let
   vmTest = vmTestSpec: makeTest (overridePkgs vmTestSpec);
 
 in
-  vmTest
+vmTest

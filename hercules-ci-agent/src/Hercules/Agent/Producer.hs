@@ -1,31 +1,33 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Hercules.Agent.Producer where
 
 import Control.Applicative
+import Control.Concurrent hiding (throwTo)
 import Control.Concurrent.Async hiding (cancel)
 import Control.Concurrent.STM
-import Control.Concurrent hiding (throwTo)
 import Control.Monad
 import Control.Monad.IO.Unlift
 import Control.Monad.State
-import Data.Monoid
 import Data.Foldable
+import Data.Monoid
 import Data.Traversable
-import Prelude
-import UnliftIO.Exception
 import Katip
+import UnliftIO.Exception
+import Prelude
 
 -- | A thread producing zero or more payloads and a final value.
 -- Handles exception propagation.
-data Producer p r = Producer
-  { producerQueueRead :: STM (Msg p r)
-  , producerThread :: ThreadId
-  }
+data Producer p r
+  = Producer
+      { producerQueueRead :: STM (Msg p r),
+        producerThread :: ThreadId
+        }
   deriving (Functor)
+
 data ProducerCancelled = ProducerCancelled
   deriving (Show, Exception, Typeable)
 
@@ -33,7 +35,7 @@ data Msg p r
   = Payload p -- ^ One of possibly many payloads from the producer
   | Exception SomeException -- ^ The producer stopped due to an exception
   | Close r -- ^ The producer was done and produced a final value
-  deriving Functor
+  deriving (Functor)
 
 -- | @forkProducer f@ produces a computation that forks a thread for @f@, which
 -- receives a function for returning payloads @p@.
@@ -42,18 +44,14 @@ data Msg p r
 forkProducer :: forall m p r. (MonadIO m, MonadUnliftIO m) => ((p -> m ()) -> m r) -> m (Producer p r)
 forkProducer f = do
   q <- liftIO newTQueueIO
-
-  let
-    write :: MonadIO m' => Msg p r -> m' ()
-    write = liftIO . atomically . writeTQueue q
-
+  let write :: MonadIO  m' => Msg p r ->  m' ()
+      write = liftIO . atomically . writeTQueue q
   f' <- toIO (f (write . Payload))
   t <- liftIO $ forkFinally f' (write . toResult)
-
-  pure $ Producer { producerQueueRead = readTQueue q, producerThread = t }
- where
-  toResult (Left e) = Exception e
-  toResult (Right r) = Close r
+  pure $ Producer {producerQueueRead = readTQueue q, producerThread = t}
+  where
+    toResult (Left e) = Exception e
+    toResult (Right r) = Close r
 
 -- | Throws 'ProducerCancelled' as an async exception to the producer thread.
 -- Blocks until exception is raised. See 'throwTo'.
@@ -65,17 +63,23 @@ cancel p = liftIO $ throwTo (producerThread p) ProducerCancelled
 -- @withProducer (\write -> write "a" >> write "b") $ \producer -> consume producer@
 withProducer
   :: (MonadIO m, MonadUnliftIO m)
-  => ((p -> m ()) -> m r) -> (Producer p r -> m a) -> m a
+  => ((p -> m ()) -> m r)
+  -> (Producer p r -> m a)
+  -> m a
 withProducer f = bracket (forkProducer f) cancel
 
 listen
   :: MonadIO m
-  => Producer p r -> (p -> m a) -> (r -> m a) -> STM (m a)
+  => Producer p r
+  -> (p -> m a)
+  -> (r -> m a)
+  -> STM (m a)
 listen p fPayload fResult =
   fmap f (producerQueueRead p)
-  where f (Payload payload) = fPayload payload
-        f (Exception e) = throwIO e
-        f (Close r) = fResult r
+  where
+    f (Payload payload) = fPayload payload
+    f (Exception e) = throwIO e
+    f (Close r) = fResult r
 
 joinSTM :: MonadIO m => STM (m a) -> m a
 joinSTM = join . liftIO . atomically
@@ -90,17 +94,18 @@ withSync
   -> (t (Maybe a) -> m b)
   -> m b
 withSync t f = do
-  let (t', syncs) = runState
-                      (for t $ \case
-                          Syncable a -> pure (Just a)
-                          Syncer s -> Nothing <$ modify (*> s)
-                      )
-                      (\_ -> pure ())
+  let (t', syncs) =
+        runState
+          ( for t $ \case
+              Syncable a -> pure (Just a)
+              Syncer s -> Nothing <$ modify (*> s)
+            )
+          (\_ -> pure ())
   b <- f t' `withException` (liftIO . atomically . syncs . Just)
   liftIO $ atomically $ syncs Nothing
   pure b
 
---  where trav = 
+--  where trav =
 --  deriving (Functor)
 --instance Applicative Syncing where
 --  pure = Synced Nothing
@@ -123,48 +128,45 @@ withBoundedDelayBatchProducer
   -> (Producer [p] r -> m a)
   -> m a
 withBoundedDelayBatchProducer maxDelay maxItems sourceP f = do
-  UnliftIO { unliftIO = unlift } <- askUnliftIO
-
+  UnliftIO {unliftIO = unlift} <- askUnliftIO
   flushes <- liftIO $ newTQueueIO
-
-  let
-    producer writeBatch =
-      let
-        beginReading = readItems (max 1 maxItems) []
-
-        doPerformBatch [] = pure ()
-        doPerformBatch buf = writeBatch (reverse buf)
-
-        readItems 0 buf = do
-          --logLocM DebugS "batch on full"
-          doPerformBatch buf
-          beginReading
-        readItems bufferRemaining buf =
-          joinSTM (onQueueRead <$> producerQueueRead sourceP
-                  <|> onFlush <$ readTQueue flushes)
-          where
-            onQueueRead (Payload a) =
-              readItems (bufferRemaining - 1) (a : buf)
-            onQueueRead (Close r) = do
-              --logLocM DebugS $ "batch on close: " <> logStr (show (length buf))
-              doPerformBatch buf
-              pure r
-            onQueueRead (Exception e) = do
-              --logLocM DebugS $ "batch on exception: " <> logStr (show (length buf))
-              doPerformBatch buf
-              liftIO $ throwIO e
-            onFlush = do
-              --logLocM DebugS $ "batch on flush: " <> logStr (show (length buf))
+  let producer writeBatch =
+        let beginReading = readItems (max 1 maxItems) []
+            doPerformBatch [] = pure ()
+            doPerformBatch buf = writeBatch (reverse buf)
+            readItems 0 buf = do
+              --logLocM DebugS "batch on full"
               doPerformBatch buf
               beginReading
-        in
-          beginReading
-
-  liftIO $ withAsync
-    (forever $ do
-      threadDelay maxDelay
-      atomically $ writeTQueue flushes ()
-    ) $ \_flusher -> unlift $ withProducer producer f
+            readItems bufferRemaining buf =
+              joinSTM
+                ( onQueueRead <$> producerQueueRead sourceP
+                    <|> onFlush
+                    <$ readTQueue flushes
+                  )
+              where
+                onQueueRead (Payload a) =
+                  readItems (bufferRemaining - 1) (a : buf)
+                onQueueRead (Close r) = do
+                  --logLocM DebugS $ "batch on close: " <> logStr (show (length buf))
+                  doPerformBatch buf
+                  pure r
+                onQueueRead (Exception e) = do
+                  --logLocM DebugS $ "batch on exception: " <> logStr (show (length buf))
+                  doPerformBatch buf
+                  liftIO $ throwIO e
+                onFlush = do
+                  --logLocM DebugS $ "batch on flush: " <> logStr (show (length buf))
+                  doPerformBatch buf
+                  beginReading
+         in beginReading
+  liftIO
+    $ withAsync
+        ( forever $ do
+            threadDelay maxDelay
+            atomically $ writeTQueue flushes ()
+          )
+    $ \_flusher -> unlift $ withProducer producer f
 
 syncer :: MonadIO m => (Syncing a -> m ()) -> m ()
 syncer writer = do

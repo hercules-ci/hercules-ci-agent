@@ -1,12 +1,11 @@
 module Main
   ( main
-  )
+    )
 where
 
-import           Protolude
 import qualified Hercules.Agent
-import           System.Posix.Signals
-
+import Protolude
+import System.Posix.Signals
 
 main :: IO ()
 main = do

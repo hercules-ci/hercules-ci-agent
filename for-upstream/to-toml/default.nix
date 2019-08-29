@@ -28,9 +28,9 @@ in
         concatStrings (
           mapAttrsToList (
             k: v:
-              if typeOf v == "string" 
+              if typeOf v == "string"
               then "${quoteKey k} = ${quoteString v}\n"
-              else if typeOf v == "bool" 
+              else if typeOf v == "bool"
               then "${quoteKey k} = ${toJSON v}\n"
               else if typeOf v == "int"
               then "${quoteKey k} = ${toJSON v}\n"

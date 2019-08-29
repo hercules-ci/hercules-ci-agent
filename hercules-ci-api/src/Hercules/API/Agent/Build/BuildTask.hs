@@ -1,19 +1,22 @@
 {-# LANGUAGE DeriveAnyClass #-}
+
 module Hercules.API.Agent.Build.BuildTask where
 
-import           Prelude
-import           Data.Text                      ( Text )
-import           GHC.Generics                   ( Generic )
-import           Data.Aeson                     ( ToJSON
-                                                , FromJSON
-                                                )
-import           Data.Swagger                   ( ToSchema )
-import           Hercules.API.Id
-import           Hercules.API.Task              ( Task )
+import Data.Aeson
+  ( FromJSON,
+    ToJSON
+    )
+import Data.Swagger (ToSchema)
+import Data.Text (Text)
+import GHC.Generics (Generic)
+import Hercules.API.Id
+import Hercules.API.Task (Task)
+import Prelude
 
-data BuildTask = BuildTask
-  { id :: Id (Task BuildTask)
-  , derivationPath :: Text
-  , logToken :: Text
-  }
+data BuildTask
+  = BuildTask
+      { id :: Id (Task BuildTask),
+        derivationPath :: Text,
+        logToken :: Text
+        }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

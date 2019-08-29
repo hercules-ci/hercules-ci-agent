@@ -1,9 +1,8 @@
 module Hercules.Agent.StoreFFI where
 
-import Protolude
 import qualified Foreign.C
-import           Foreign.ForeignPtr
-
+import Foreign.ForeignPtr
+import Protolude
 
 type BuilderCallback = Foreign.C.CString -> Ptr ExceptionPtr -> IO ()
 

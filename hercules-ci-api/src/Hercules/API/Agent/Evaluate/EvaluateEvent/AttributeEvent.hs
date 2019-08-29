@@ -1,12 +1,14 @@
-{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
+
 module Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent where
 
-import           Hercules.API.Prelude
+import Hercules.API.Prelude
 
-data AttributeEvent = AttributeEvent
-  { expressionPath :: [Text]
-  , derivationPath :: Text
-  -- TODO: meta attributes
-  }
+data AttributeEvent
+  = AttributeEvent
+      { expressionPath :: [Text],
+        derivationPath :: Text
+        -- TODO: meta attributes
+        }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

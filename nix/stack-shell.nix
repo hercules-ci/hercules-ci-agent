@@ -1,6 +1,8 @@
 { ghc }:
-let pkgs = (import ../. {}).devTools.pkgs;
-in pkgs.haskell.lib.buildStackProject {
+let
+  pkgs = (import ../. {}).devTools.pkgs;
+in
+pkgs.haskell.lib.buildStackProject {
   inherit ghc;
   name = "hercules-ci-stack-shell";
   buildInputs = [

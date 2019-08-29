@@ -1,11 +1,10 @@
 module Hercules.Agent.SecureDirectory where
 
+import Hercules.Agent.Config (FinalConfig, workDirectory)
+import Hercules.Agent.Env
 import Protolude
-
-import           Hercules.Agent.Config (FinalConfig, workDirectory)
-import           Hercules.Agent.Env
-import           System.FilePath ((</>))
 import qualified System.Directory
+import System.FilePath ((</>))
 import qualified System.IO.Temp
 import qualified System.Posix.Files as Posix
 

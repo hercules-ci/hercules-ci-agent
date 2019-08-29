@@ -9,25 +9,33 @@
 }:
 
 let
-  dev-and-test-overlay = self: pkgs: {
-    inherit testSuitePkgs;
-    devTools = {
-      inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
-        ghc
-        ghcid
-        stack
-        ;
-      inherit (pkgs)
-        shellcheck
-        jq
-        cabal2nix
-        nix-prefetch-git
-        ;
-      inherit (import sources.niv {})
-        niv
-        ;
-      inherit pkgs;
+  dev-and-test-overlay =
+    self: pkgs:
+      {
+        inherit testSuitePkgs;
+        devTools =
+          {
+            inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
+              ghc
+              ghcid
+              stack
+              ;
+            inherit (pkgs)
+              jq
+              cabal2nix
+              nix-prefetch-git
+              ;
+            inherit (import sources.niv {})
+              niv
+              ;
+            inherit pkgs;
+          };
+      };
+  pkgs =
+    import nixpkgs {
+      overlays = [ (import ./overlay.nix) dev-and-test-overlay ];
+      config = {};
+      inherit system;
     };
-  };
-  pkgs = import nixpkgs { overlays = [ (import ./overlay.nix) dev-and-test-overlay ] ; config = {}; inherit system; };
-in pkgs
+in
+pkgs

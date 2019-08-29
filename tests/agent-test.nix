@@ -1,4 +1,4 @@
-{ pkgs, ...}:
+{ pkgs, ... }:
 let
   tarball = x: pkgs.runCommand "${x.name or "tarball"}.tar.gz" {
     inherit x;
@@ -41,7 +41,7 @@ in
       };
     };
     api = { ... }: {
-      networking.firewall.allowedTCPPorts = [80];
+      networking.firewall.allowedTCPPorts = [ 80 ];
       environment.systemPackages = [ pkgs.testSuitePkgs.hercules-ci-agent-packages.internal.haskellPackages.hercules-ci-agent-test ];
     };
   };

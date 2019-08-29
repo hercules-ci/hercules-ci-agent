@@ -1,24 +1,26 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Hercules.Agent.Log
-  ( module Katip
-  , logLocM
-  , module Hercules.Agent.Log
-  , getLoc
-  )
+  ( module Katip,
+    logLocM,
+    module Hercules.Agent.Log,
+    getLoc
+    )
 where
 
-import           Protolude
-
-import           Data.Aeson
-import           Katip                   hiding ( logLocM )
-import           Katip.Core
-import           Katip.Monadic                  ( logLocM )
+import Data.Aeson
+import Katip hiding (logLocM)
+import Katip.Core
+import Katip.Monadic (logLocM)
+import Protolude
 
 instance StringConv [Char] LogStr where
+
   strConv l = logStr . (strConv l :: [Char] -> Text)
 
 instance StringConv Text LogStr where
+
   strConv _ = logStr
 
 withNamedContext :: (ToJSON a, KatipContext m) => Text -> a -> m b -> m b

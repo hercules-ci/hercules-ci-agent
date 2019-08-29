@@ -1,11 +1,11 @@
 module Spec
   ( spec
-  )
+    )
 where
 
-import           Test.Hspec
-import qualified Hercules.Agent.NixPathSpec
 import qualified Hercules.Agent.Nix.RetrieveDerivationInfoSpec
+import qualified Hercules.Agent.NixPathSpec
+import Test.Hspec
 
 spec :: Spec
 spec = do

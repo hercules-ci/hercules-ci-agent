@@ -1,23 +1,27 @@
 {-# LANGUAGE DeriveAnyClass #-}
+
 module Hercules.API.Derivation where
 
-import           Prelude                 hiding ( either )
-import           Data.Aeson                     ( ToJSON
-                                                , FromJSON
-                                                )
-import           Data.Swagger                   ( ToSchema )
-import           Data.Text                      ( Text )
-import           GHC.Generics                   ( Generic )
+import Data.Aeson
+  ( FromJSON,
+    ToJSON
+    )
+import Data.Swagger (ToSchema)
+import Data.Text (Text)
+import GHC.Generics (Generic)
+import Prelude hiding (either)
 
-data DerivationPath = DerivationPath
-  { drvPath :: Text
-  }
+data DerivationPath
+  = DerivationPath
+      { drvPath :: Text
+        }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
 
-data Derivation = Derivation
-  { status :: DerivationStatus
-  , derivationPath :: Text
-  }
+data Derivation
+  = Derivation
+      { status :: DerivationStatus,
+        derivationPath :: Text
+        }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
 
 data DerivationStatus

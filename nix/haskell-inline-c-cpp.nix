@@ -1,5 +1,11 @@
-{ mkDerivation, base, fetchgit, hspec, inline-c, safe-exceptions
-, stdenv, template-haskell
+{ mkDerivation
+, base
+, fetchgit
+, hspec
+, inline-c
+, safe-exceptions
+, stdenv
+, template-haskell
 }:
 mkDerivation {
   pname = "inline-c-cpp";
@@ -12,7 +18,10 @@ mkDerivation {
   };
   postUnpack = "sourceRoot+=/inline-c-cpp; echo source root reset to $sourceRoot";
   libraryHaskellDepends = [
-    base inline-c safe-exceptions template-haskell
+    base
+    inline-c
+    safe-exceptions
+    template-haskell
   ];
   testHaskellDepends = [ base hspec inline-c safe-exceptions ];
   description = "Lets you embed C++ code into Haskell";
