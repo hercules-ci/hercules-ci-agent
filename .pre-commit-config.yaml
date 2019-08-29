@@ -6,3 +6,5 @@ repos:
    -   id: shellcheck
    #-   id: hlint
    -   id: nixpkgs-fmt
+       exclude: (tests/agent-test/testdata)
+

@@ -50,9 +50,9 @@ withStore =
   bracket
     ( liftIO
         $ [C.block| refStore* {
-      refStore s = openStore();
-      return new refStore(s);
-    } |]
+            refStore s = openStore();
+            return new refStore(s);
+          } |]
       )
     (\x -> liftIO $ [C.exp| void { delete $(refStore* x) } |])
 
@@ -60,21 +60,21 @@ storeUri :: MonadIO m => Ptr (Ref NixStore) -> m ByteString
 storeUri store =
   unsafeMallocBS
     [C.block| const char* {
-             std::string uri = (*$(refStore* store))->getUri();
-             return strdup(uri.c_str());
-           } |]
+       std::string uri = (*$(refStore* store))->getUri();
+       return strdup(uri.c_str());
+     } |]
 
 ensurePath :: Ptr (Ref NixStore) -> ByteString -> IO ()
 ensurePath store path =
   [C.throwBlock| void {
-            (*$(refStore* store))->ensurePath(std::string($bs-ptr:path, $bs-len:path));
-           } |]
+    (*$(refStore* store))->ensurePath(std::string($bs-ptr:path, $bs-len:path));
+  } |]
 
 clearPathInfoCache :: Ptr (Ref NixStore) -> IO ()
 clearPathInfoCache store =
   [C.throwBlock| void {
-            (*$(refStore* store))->clearPathInfoCache();
-           } |]
+    (*$(refStore* store))->clearPathInfoCache();
+  } |]
 
 clearSubstituterCaches :: IO ()
 clearSubstituterCaches =
@@ -88,18 +88,18 @@ clearSubstituterCaches =
 buildPath :: Ptr (Ref NixStore) -> ByteString -> IO ()
 buildPath store path =
   [C.throwBlock| void {
-            PathSet ps({std::string($bs-ptr:path, $bs-len:path)});
-            (*$(refStore* store))->buildPaths(ps);
-           } |]
+    PathSet ps({std::string($bs-ptr:path, $bs-len:path)});
+    (*$(refStore* store))->buildPaths(ps);
+   } |]
 
 getDerivation :: Ptr (Ref NixStore) -> ByteString -> IO (ForeignPtr Derivation)
 getDerivation store path = do
   ptr <-
     [C.throwBlock| Derivation *{
-            return new Derivation(
-                (*$(refStore* store))->derivationFromPath(std::string($bs-ptr:path, $bs-len:path))
-              );
-           } |]
+      return new Derivation(
+          (*$(refStore* store))->derivationFromPath(std::string($bs-ptr:path, $bs-len:path))
+        );
+    } |]
   newForeignPtr finalizeDerivation ptr
 
 finalizeDerivation :: FinalizerPtr Derivation
@@ -135,10 +135,10 @@ withHerculesStore wrappedStore =
   bracket
     ( liftIO
         $ [C.block| refHerculesStore* {
-      refStore &s = *$(refStore *wrappedStore);
-      refHerculesStore hs(new HerculesStore({}, s));
-      return new refHerculesStore(hs);
-    } |]
+          refStore &s = *$(refStore *wrappedStore);
+          refHerculesStore hs(new HerculesStore({}, s));
+          return new refHerculesStore(hs);
+        } |]
       )
     (\x -> liftIO $ [C.exp| void { delete $(refHerculesStore* x) } |])
 
@@ -160,8 +160,8 @@ setBuilderCallback s callback = do
         withCString (displayException (e :: SomeException)) $ \renderedException -> do
           stablePtr <- castStablePtrToPtr <$> newStablePtr e
           [C.block| void {
-          (*$(exception_ptr *exceptionToThrowPtr)) = std::make_exception_ptr(HaskellException(std::string($(const char* renderedException)), $(void* stablePtr)));
-        }|]
+            (*$(exception_ptr *exceptionToThrowPtr)) = std::make_exception_ptr(HaskellException(std::string($(const char* renderedException)), $(void* stablePtr)));
+          }|]
   [C.throwBlock| void {
-      (*$(refHerculesStore* s))->setBuilderCallback($(void (*p)(const char *, exception_ptr *) ));
-    }|]
+    (*$(refHerculesStore* s))->setBuilderCallback($(void (*p)(const char *, exception_ptr *) ));
+  }|]

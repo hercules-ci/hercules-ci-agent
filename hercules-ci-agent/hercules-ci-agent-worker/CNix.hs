@@ -111,9 +111,9 @@ withEvalState store =
   bracketP
     ( liftIO
         $ [C.throwBlock| EvalState* {
-      Strings searchPaths;
-      return new EvalState(searchPaths, *$(refStore* store));
-    } |]
+          Strings searchPaths;
+          return new EvalState(searchPaths, *$(refStore* store));
+        } |]
       )
     (\x -> liftIO $ [C.throwBlock| void { delete $(EvalState* x); } |])
 
@@ -122,10 +122,10 @@ evalFile evalState filename = do
   filename' <- Foreign.C.String.newCString filename
   mkRawValue
     =<< [C.throwBlock| Value* {
-    Value value;
-    $(EvalState *evalState)->evalFile($(const char *filename'), value);
-    return new (NoGC) Value(value);
-  }|]
+      Value value;
+      $(EvalState *evalState)->evalFile($(const char *filename'), value);
+      return new (NoGC) Value(value);
+    }|]
 
 -- leaks
 newStrings :: IO (Ptr Strings)
@@ -143,74 +143,74 @@ evalArgs evalState args = do
   forM_ args $ appendString argsStrings
   mkBindings
     =<< [C.throwBlock| Bindings * {
-    Strings *args = $(Strings *argsStrings);
-    struct MixEvalArgs evalArgs;
-    Bindings *autoArgs;
-    EvalState &state = *$(EvalState *evalState);
+      Strings *args = $(Strings *argsStrings);
+      struct MixEvalArgs evalArgs;
+      Bindings *autoArgs;
+      EvalState &state = *$(EvalState *evalState);
 
-    evalArgs.parseCmdline(*args);
-    autoArgs = evalArgs.getAutoArgs(state);
-    if (autoArgs == NULL) {
-      //cerr << "Could not evaluate automatic arguments" << endl;
-      abort(); // FIXME
-    }
-    return autoArgs;
+      evalArgs.parseCmdline(*args);
+      autoArgs = evalArgs.getAutoArgs(state);
+      if (autoArgs == NULL) {
+        //cerr << "Could not evaluate automatic arguments" << endl;
+        abort(); // FIXME
+      }
+      return autoArgs;
 
-    // catch (EvalError & e) {
-    // catch (Error & e) {
-    // catch (std::exception & e) {
+      // catch (EvalError & e) {
+      // catch (Error & e) {
+      // catch (std::exception & e) {
 
-  }|]
+    }|]
 
 autoCallFunction :: Ptr EvalState -> RawValue -> Bindings -> IO RawValue
 autoCallFunction evalState (RawValue fun) (Bindings autoArgs) =
   mkRawValue
     =<< [C.throwBlock| Value* {
-    Value result;
-    $(EvalState *evalState)->autoCallFunction(
-            *$(Bindings *autoArgs),
-            *$(Value *fun),
-            result);
-    return new (NoGC) Value (result);
-  }|]
+          Value result;
+          $(EvalState *evalState)->autoCallFunction(
+                  *$(Bindings *autoArgs),
+                  *$(Value *fun),
+                  result);
+          return new (NoGC) Value (result);
+        }|]
 
 isDerivation :: Ptr EvalState -> RawValue -> IO Bool
 isDerivation evalState (RawValue v) =
   (0 /=)
     <$> [C.throwBlock| int {
-    if ($(Value *v) == NULL) { throw std::invalid_argument("forceValue value must be non-null"); }
-    return $(EvalState *evalState)->isDerivation(*$(Value *v));
-  }|]
+          if ($(Value *v) == NULL) { throw std::invalid_argument("forceValue value must be non-null"); }
+          return $(EvalState *evalState)->isDerivation(*$(Value *v));
+        }|]
 
 isFunctor :: Ptr EvalState -> RawValue -> IO Bool
 isFunctor evalState (RawValue v) =
   (0 /=)
     <$> [C.throwBlock| int {
-    if ($(Value *v) == NULL) { throw std::invalid_argument("forceValue value must be non-null"); }
-    return $(EvalState *evalState)->isFunctor(*$(Value *v));
-  }|]
+          if ($(Value *v) == NULL) { throw std::invalid_argument("forceValue value must be non-null"); }
+          return $(EvalState *evalState)->isFunctor(*$(Value *v));
+        }|]
 
 getRecurseForDerivations :: Ptr EvalState -> Value NixAttrs -> IO Bool
 getRecurseForDerivations evalState (Value (RawValue v)) =
   (0 /=)
     <$> [C.throwBlock| int {
-    Value *v = $(Value *v);
-    EvalState *evalState = $(EvalState *evalState);
-    Symbol rfd = evalState->symbols.create("recurseForDerivations");
-    Bindings::iterator iter = v->attrs->find(rfd);
-    if (iter == v->attrs->end()) {
-      return 0;
-    } else {
-      evalState->forceValue(*iter->value);
-      if (iter->value->type == ValueType::tBool) {
-        return iter->value->boolean ? 1 : 0;
-      } else {
-        // They can be empty attrsets???
-        // Observed in nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
-        return 1;
-      }
-    }
-  } |]
+          Value *v = $(Value *v);
+          EvalState *evalState = $(EvalState *evalState);
+          Symbol rfd = evalState->symbols.create("recurseForDerivations");
+          Bindings::iterator iter = v->attrs->find(rfd);
+          if (iter == v->attrs->end()) {
+            return 0;
+          } else {
+            evalState->forceValue(*iter->value);
+            if (iter->value->type == ValueType::tBool) {
+              return iter->value->boolean ? 1 : 0;
+            } else {
+              // They can be empty attrsets???
+              // Observed in nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
+              return 1;
+            }
+          }
+        } |]
 
 getAttrBindings :: Value NixAttrs -> IO Bindings
 getAttrBindings (Value (RawValue v)) = mkBindings =<< [C.exp| Bindings *{ $(Value *v)->attrs } |]
@@ -235,15 +235,15 @@ getDrvFile :: MonadIO m => Ptr EvalState -> RawValue -> m ByteString
 getDrvFile evalState (RawValue v) =
   unsafeMallocBS
     [C.throwBlock| const char *{
-    EvalState &state = *$(EvalState *evalState);
-    auto drvInfo = getDerivation(state, *$(Value *v), false);
-    if (!drvInfo)
-      throw EvalError("Not a valid derivation");
+      EvalState &state = *$(EvalState *evalState);
+      auto drvInfo = getDerivation(state, *$(Value *v), false);
+      if (!drvInfo)
+        throw EvalError("Not a valid derivation");
 
-    std::string drvPath = drvInfo->queryDrvPath();
+      std::string drvPath = drvInfo->queryDrvPath();
 
-    // write it (?)
-    auto drv = state.store->derivationFromPath(drvPath);
+      // write it (?)
+      auto drv = state.store->derivationFromPath(drvPath);
 
-    return strdup(drvPath.c_str());
-  }|]
+      return strdup(drvPath.c_str());
+    }|]
