@@ -1,5 +1,6 @@
 module Main
   ( main
-  )
+    )
 where
-import           Hercules.Agent.Worker          ( main )
+
+import Hercules.Agent.Worker (main)

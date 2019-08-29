@@ -1,27 +1,35 @@
-
 module CNix.Internal.Typed where
 
-import           Prelude                        ( userError )
-import           Protolude               hiding ( evalState
-                                                , throwIO
-                                                )
-
-import           CNix.Internal.Context
-import           CNix.Internal.Raw
+import CNix.Internal.Context
+import CNix.Internal.Raw
+import Protolude hiding
+  ( evalState,
+    throwIO
+    )
+import Prelude (userError)
 
 -- | Runtime-Typed Value. This implies that it has been forced,
 -- because otherwise the type would not be known.
-newtype Value a = Value { rtValue :: RawValue }
+newtype Value a = Value {rtValue :: RawValue}
 
 data NixInt
+
 data NixFloat
+
 data NixString
+
 data NixPath
+
 data NixAttrs
+
 data NixFunction
+
 data NixList
+
 data NixPrimOp
+
 data NixPrimOpApp
+
 data NixExternal
 
 -- TODO: actually encapsulate the constructor

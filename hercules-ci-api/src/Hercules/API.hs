@@ -2,84 +2,92 @@
 {-# LANGUAGE PolyKinds #-}
 
 module Hercules.API
-  ( api
-  , servantApi
-  , swagger
-  , useApi
-  , API
-  , ClientAuth
-  , HerculesAPI(..)
-  , HerculesServantAPI
-  , AddAPIVersion
-  , Id
-  , Name
-  , Result(..)
-
+  ( api,
+    servantApi,
+    swagger,
+    useApi,
+    API,
+    ClientAuth,
+    HerculesAPI (..),
+    HerculesServantAPI,
+    AddAPIVersion,
+    Id,
+    Name,
+    Result (..),
     -- * Reexports
-  , NoContent(..)
-
+    NoContent (..),
     -- * Utilities
-  , noContent
-  )
+    noContent
+    )
 where
 
-import           Prelude
+import Control.Lens
+import Control.Monad
+import Data.Proxy (Proxy (..))
+import Data.Swagger hiding (Header)
+import GHC.Generics (Generic)
+import Hercules.API.Accounts (AccountsAPI)
+import Hercules.API.Agent.Build as Agent
+  ( BuildAPI
+    )
+import Hercules.API.Agent.Evaluate as Agent
+  ( EvalAPI
+    )
+import Hercules.API.Agent.LifeCycle as Agent
+  ( LifeCycleAPI
+    )
+import Hercules.API.Agent.Tasks as Agent
+  ( TasksAPI
+    )
+import Hercules.API.Agents (AgentsAPI)
+import Hercules.API.Build as Client
+  ( BuildAPI
+    )
+import Hercules.API.Health (HealthAPI)
+import Hercules.API.Id (Id)
+import Hercules.API.Name (Name)
+import Hercules.API.Projects (ProjectsAPI)
+import Hercules.API.Repos (ReposAPI)
+import Hercules.API.Result (Result (..))
+import Servant.API
+import Servant.API.Generic
+import Servant.Auth
+import Servant.Auth.Swagger ()
+import Servant.Swagger
+import Servant.Swagger.UI.Core (SwaggerSchemaUI)
+import Prelude
 
-import           Control.Lens
-import           Control.Monad
-import           Data.Proxy                     ( Proxy(..) )
-import           Data.Swagger            hiding ( Header )
-import           GHC.Generics                   ( Generic )
-import           Hercules.API.Accounts          ( AccountsAPI )
-import           Hercules.API.Agents            ( AgentsAPI )
-import           Hercules.API.Id                ( Id )
-import           Hercules.API.Name              ( Name )
-import           Hercules.API.Projects          ( ProjectsAPI )
-import           Hercules.API.Repos             ( ReposAPI )
-import           Servant.API
-import           Servant.API.Generic
-import           Servant.Auth
-import           Servant.Auth.Swagger           ( )
-import           Servant.Swagger
-import           Servant.Swagger.UI.Core        ( SwaggerSchemaUI )
-import           Hercules.API.Agent.Build      as Agent
-                                                ( BuildAPI )
-import           Hercules.API.Agent.Evaluate   as Agent
-                                                ( EvalAPI )
-import           Hercules.API.Agent.LifeCycle  as Agent
-                                                ( LifeCycleAPI )
-import           Hercules.API.Agent.Tasks      as Agent
-                                                ( TasksAPI )
-import           Hercules.API.Build            as Client
-                                                ( BuildAPI )
-import           Hercules.API.Result            ( Result(..) )
-import           Hercules.API.Health            ( HealthAPI )
+data HerculesAPI auth f
+  = HerculesAPI
+      { accounts :: f :- ToServantApi (AccountsAPI auth),
+        repos :: f :- ToServantApi (ReposAPI auth),
+        projects :: f :- ToServantApi (ProjectsAPI auth),
+        agents :: f :- ToServantApi (AgentsAPI auth),
+        tasks :: f :- ToServantApi (TasksAPI auth),
+        eval :: f :- ToServantApi (Agent.EvalAPI auth),
+        agentBuild :: f :- ToServantApi (Agent.BuildAPI auth),
+        agentLifeCycle :: f :- ToServantApi (Agent.LifeCycleAPI auth),
+        build :: f :- ToServantApi (Client.BuildAPI auth),
+        health :: f :- ToServantApi (HealthAPI auth)
+        }
+  deriving (Generic)
 
-data HerculesAPI auth f = HerculesAPI
-   { accounts :: f :- ToServantApi (AccountsAPI auth)
-   , repos :: f :- ToServantApi (ReposAPI auth)
-   , projects :: f :- ToServantApi (ProjectsAPI auth)
-   , agents :: f :- ToServantApi (AgentsAPI auth)
-   , tasks :: f :- ToServantApi (TasksAPI auth)
-   , eval :: f :- ToServantApi (Agent.EvalAPI auth)
-   , agentBuild :: f :- ToServantApi (Agent.BuildAPI auth)
-   , agentLifeCycle :: f :- ToServantApi (Agent.LifeCycleAPI auth)
-   , build :: f :- ToServantApi (Client.BuildAPI auth)
-   , health :: f :- ToServantApi (HealthAPI auth)
-   } deriving Generic
-
-data ClientAPI auth f = ClientAPI
-   { clientAccounts :: f :- ToServantApi (AccountsAPI auth)
-   , clientRepos :: f :- ToServantApi (ReposAPI auth)
-   , clientProjects :: f :- ToServantApi (ProjectsAPI auth)
-   , clientAgents :: f :- ToServantApi (AgentsAPI auth)
-   , clientBuild :: f :- ToServantApi (Client.BuildAPI auth)
-   } deriving Generic
+data ClientAPI auth f
+  = ClientAPI
+      { clientAccounts :: f :- ToServantApi (AccountsAPI auth),
+        clientRepos :: f :- ToServantApi (ReposAPI auth),
+        clientProjects :: f :- ToServantApi (ProjectsAPI auth),
+        clientAgents :: f :- ToServantApi (AgentsAPI auth),
+        clientBuild :: f :- ToServantApi (Client.BuildAPI auth)
+        }
+  deriving (Generic)
 
 type ClientAuth = Auth '[JWT, Cookie] ()
 
 type HerculesServantAPI auth = AddAPIVersion (ToServantApi (HerculesAPI auth))
+
 type ClientServantAPI auth = AddAPIVersion (ToServantApi (ClientAPI auth))
+
 type AddAPIVersion api = "api" :> "v1" :> api
 
 servantApi :: Proxy (HerculesServantAPI auth)
@@ -88,8 +96,10 @@ servantApi = Proxy
 servantClientApi :: Proxy (ClientServantAPI auth)
 servantClientApi = Proxy
 
-type API auth = (HerculesServantAPI auth)
-   :<|> "api" :> SwaggerSchemaUI "v1" "swagger.json"
+type API auth
+  = (HerculesServantAPI auth)
+      :<|> "api"
+      :> SwaggerSchemaUI "v1" "swagger.json"
 
 api :: Proxy (API auth)
 api = Proxy
@@ -112,10 +122,11 @@ swagger =
 -- can not be inferred.
 --
 -- Ideally, this functionality would be built into a new combinator.
-useApi :: (GenericServant f mode, GenericServant g mode)
-       => (f mode -> ToServant g mode)
-       -> f mode
-       -> g mode
+useApi
+  :: (GenericServant f mode, GenericServant g mode)
+  => (f mode -> ToServant g mode)
+  -> f mode
+  -> g mode
 useApi = (Servant.API.Generic.fromServant .)
 
 -- | 'Control.Monad.void' specialised to 'NoContent' to soothe the

@@ -18,7 +18,7 @@ let
 in
 {
   imports = [
-    ./common.nix 
+    ./common.nix
     ./system-caches.nixos.nix
     ./deploy-keys.nix
   ];

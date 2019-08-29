@@ -1,22 +1,23 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Hercules.Agent.Config
-  ( Config(..)
-  , FinalConfig
-  , ConfigPath(..)
-  , Purpose(..)
-  , readConfig
-  , finalizeConfig
-  )
+  ( Config (..),
+    FinalConfig,
+    ConfigPath (..),
+    Purpose (..),
+    readConfig,
+    finalizeConfig
+    )
 where
 
-import           Protolude               hiding ( to )
+import Protolude hiding (to)
 import qualified System.Environment
-import           Toml
-import           System.FilePath ((</>))
+import System.FilePath ((</>))
+import Toml
 
 data ConfigPath = TomlPath FilePath
 
@@ -27,27 +28,27 @@ data Purpose = Input | Final
 
 -- | Whether the 'Final' value is optional.
 data Sort = Required | Optional
+
 type family Item purpose sort a where
   Item 'Input _sort a = Maybe a
   Item 'Final 'Required a = a
   Item 'Final 'Optional a = Maybe a
 
 type FinalConfig = Config 'Final
-data Config purpose = Config
-  { herculesApiBaseURL :: Item purpose 'Required Text
-  , concurrentTasks :: Item purpose 'Required Integer
 
-  , baseDirectory :: Item purpose 'Required FilePath
+data Config purpose
+  = Config
+      { herculesApiBaseURL :: Item purpose 'Required Text,
+        concurrentTasks :: Item purpose 'Required Integer,
+        baseDirectory :: Item purpose 'Required FilePath,
+        staticSecretsDirectory :: Item purpose 'Required FilePath,
+        -- ^ Read-only
+        workDirectory :: Item purpose 'Required FilePath,
+        clusterJoinTokenPath :: Item purpose 'Required FilePath,
+        binaryCachesPath :: Item purpose 'Optional FilePath
+        }
+  deriving (Generic)
 
-  , staticSecretsDirectory :: Item purpose 'Required FilePath
-    -- ^ Read-only
-
-  , workDirectory :: Item purpose 'Required FilePath
-
-  , clusterJoinTokenPath :: Item purpose 'Required FilePath
-  , binaryCachesPath :: Item purpose 'Optional FilePath
-
-  } deriving (Generic)
 deriving instance Show (Config 'Final)
 
 tomlCodec :: TomlCodec (Config 'Input)
@@ -91,32 +92,29 @@ readConfig loc = case loc of
 
 finalizeConfig :: ConfigPath -> Config 'Input -> IO (Config 'Final)
 finalizeConfig loc input = do
-
-  baseDir <- case baseDirectory input of
-    Just x -> pure x
-    Nothing -> throwIO $ FatalError $ "You need to specify " <> show keyBaseDirectory <> " in " <> nounPhrase loc
-
+  baseDir <-
+    case baseDirectory input of
+      Just x -> pure x
+      Nothing -> throwIO $ FatalError $ "You need to specify " <> show keyBaseDirectory <> " in " <> nounPhrase loc
   let staticSecretsDir =
         fromMaybe (baseDir </> "secrets") (staticSecretsDirectory input)
-      clusterJoinTokenP = fromMaybe
-        (staticSecretsDir </> "cluster-join-token.key")
-        (clusterJoinTokenPath input)
-      
+      clusterJoinTokenP =
+        fromMaybe
+          (staticSecretsDir </> "cluster-join-token.key")
+          (clusterJoinTokenPath input)
       workDir = fromMaybe (baseDir </> "work") (workDirectory input)
-
   dabu <- determineDefaultApiBaseUrl
-
   let rawConcurrentTasks = fromMaybe defaultConcurrentTasks $ concurrentTasks input
-  validConcurrentTasks <- case rawConcurrentTasks of
-    x | not (x >= 1) -> throwIO $ FatalError "concurrentTasks must be at least 1"
-    x -> pure x
-
+  validConcurrentTasks <-
+    case rawConcurrentTasks of
+      x | not (x >= 1) -> throwIO $ FatalError "concurrentTasks must be at least 1"
+      x -> pure x
   pure Config
-    { herculesApiBaseURL = fromMaybe dabu $ herculesApiBaseURL input
-    , binaryCachesPath = binaryCachesPath input
-    , clusterJoinTokenPath = clusterJoinTokenP
-    , concurrentTasks = validConcurrentTasks
-    , baseDirectory = baseDir
-    , staticSecretsDirectory = staticSecretsDir
-    , workDirectory = workDir
-    }
+    { herculesApiBaseURL = fromMaybe dabu $ herculesApiBaseURL input,
+      binaryCachesPath = binaryCachesPath input,
+      clusterJoinTokenPath = clusterJoinTokenP,
+      concurrentTasks = validConcurrentTasks,
+      baseDirectory = baseDir,
+      staticSecretsDirectory = staticSecretsDir,
+      workDirectory = workDir
+      }

@@ -1,9 +1,9 @@
 module Spec where
 
-import           Test.Hspec
-import qualified EvaluationSpec
 import qualified BuildSpec
-import           MockTasksApi                   ( ServerHandle )
+import qualified EvaluationSpec
+import MockTasksApi (ServerHandle)
+import Test.Hspec
 
 spec :: SpecWith ServerHandle
 spec = do

@@ -1,8 +1,9 @@
 {-# LANGUAGE DeriveAnyClass #-}
+
 module Hercules.Agent.WorkerProtocol.Command.BuildResult where
 
-import           Protolude
-import           Data.Binary
+import Data.Binary
+import Protolude
 
 data BuildResult = BuildResult Text BuildStatus
   deriving (Generic, Binary, Show, Eq)

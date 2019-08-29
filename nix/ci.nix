@@ -23,11 +23,12 @@ let
   recurseIntoAttrs = as: as // { recurseForDerivations = true; };
 
   targets = builtins.mapAttrs packagesFor targetConfigs;
-  
+
   packagesFor = _targetName: targetConfig:
-    import ../default.nix { 
+    import ../default.nix {
       inherit (targetConfig) nixpkgsSource system;
       allTargets = targets;
     };
 
-in recurseIntoAttrs targets 
+in
+recurseIntoAttrs targets

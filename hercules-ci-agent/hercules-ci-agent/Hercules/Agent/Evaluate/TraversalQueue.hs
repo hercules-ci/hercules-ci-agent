@@ -4,37 +4,38 @@
 --  * keeps track of how many items are being processed (size)
 --  * and does things only once.
 module Hercules.Agent.Evaluate.TraversalQueue
-  ( with
-  , work
-  , waitUntilDone
-  , enqueue
-  , close
-  , Queue()
-  )
+  ( with,
+    work,
+    waitUntilDone,
+    enqueue,
+    close,
+    Queue ()
+    )
 where
 
-import           Protolude               hiding ( readChan
-                                                , writeChan
-                                                , newChan
-                                                , newQSem
-                                                , newQSemN
-                                                , bracket
-                                                )
-import           Data.IORef.Lifted
-import qualified Data.Set                      as Set
-import           Control.Concurrent.Chan.Lifted
-import           Control.Concurrent.STM
-import           Control.Monad.Base
-import           Control.Monad.Trans.Control
-import           Control.Exception.Lifted       ( bracket )
+import Control.Concurrent.Chan.Lifted
+import Control.Concurrent.STM
+import Control.Exception.Lifted (bracket)
+import Control.Monad.Base
+import Control.Monad.Trans.Control
+import Data.IORef.Lifted
+import qualified Data.Set as Set
+import Protolude hiding
+  ( bracket,
+    newChan,
+    newQSem,
+    newQSemN,
+    readChan,
+    writeChan
+    )
 
-data Queue a = Queue
-  { chan :: Chan (Maybe a)
-  , visitedSet :: IORef (Set a)
-
-  , size :: TVar Int
-    -- ^ Increased on enqueue, decreased when processed
-  }
+data Queue a
+  = Queue
+      { chan :: Chan (Maybe a),
+        visitedSet :: IORef (Set a),
+        size :: TVar Int
+        -- ^ Increased on enqueue, decreased when processed
+        }
 
 with :: MonadBaseControl IO m => (Queue a -> m ()) -> m ()
 with = Control.Exception.Lifted.bracket new close
@@ -57,34 +58,37 @@ waitUntilDone env = liftBase $ atomically $ do
   n <- readTVar (size env)
   check (n == 0)
 
-readJust_ :: (MonadBase IO m, MonadIO m)
-          => Chan (Maybe a)
-          -> (a -> m ())
-          -> m ()
+readJust_
+  :: (MonadBase IO m, MonadIO m)
+  => Chan (Maybe a)
+  -> (a -> m ())
+  -> m ()
 readJust_ ch f = do
   mmsg <- readChan ch
   case mmsg of
     Nothing -> writeChan ch Nothing
     Just msg -> f msg
 
-work :: (MonadBase IO m, MonadIO m, Ord a)
-     => Queue a
-     -> ((a -> m ()) -> a -> m ())
-     -> m ()
+work
+  :: (MonadBase IO m, MonadIO m, Ord a)
+  => Queue a
+  -> ((a -> m ()) -> a -> m ())
+  -> m ()
 work env f = work' env $ \snapshot ->
   let enqueue' item = unless (item `Set.member` snapshot) $ enqueue env item
-  in  f enqueue'
+   in f enqueue'
 
-work' :: (MonadBase IO m, MonadIO m, Ord a)
-      => Queue a
-      -> (Set a -> a -> m ())
-      -> m ()
+work'
+  :: (MonadBase IO m, MonadIO m, Ord a)
+  => Queue a
+  -> (Set a -> a -> m ())
+  -> m ()
 work' env f = readJust_ (chan env) $ \msg -> do
   snapshotWhenInserted <-
-    atomicModifyIORef (visitedSet env) $ \st -> if Set.member msg st
-      then (st, Nothing)
-      else let st' = Set.insert msg st in (st', Just st')
-
+    atomicModifyIORef (visitedSet env) $ \st ->
+      if Set.member msg st
+        then (st, Nothing)
+        else let st' = Set.insert msg st in (st', Just st')
   forM_ snapshotWhenInserted $ \snapshot -> f snapshot msg
   liftBase $ atomically $ modifyTVar (size env) (subtract 1)
   work' env f

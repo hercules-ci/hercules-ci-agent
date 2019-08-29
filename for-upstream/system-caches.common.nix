@@ -3,7 +3,7 @@
   A module that configures an agent machine to use caches for reading and/or
   writing.
  */
-{ pkgs, lib, config, ...}:
+{ pkgs, lib, config, ... }:
 let
   cfg = config.services.hercules-ci-agent;
   inherit (cfg.finalConfig) binaryCachesPath;
@@ -22,7 +22,7 @@ let
 
   cachixVersionWarnings =
     mapAttrsToList (k: v: "In file ${toString cfg.binaryCachesFile}, entry ${k}, unsupported CachixCache version ${(v.apiVersion or null)}")
-    (filterAttrs (k: v: (v.apiVersion or null) != null) cachixCaches);
+      (filterAttrs (k: v: (v.apiVersion or null) != null) cachixCaches);
 
   otherCaches =
     filterAttrs (k: v: (v.kind or null) != "CachixCache") allBinaryCaches;
@@ -35,7 +35,7 @@ in
 
     warnings = otherCachesWarnings ++ cachixVersionWarnings;
 
-    nix.trustedBinaryCaches = ["https://cache.nixos.org/"] ++ mapAttrsToList (name: keys: "https://${name}.cachix.org") cachixCaches;
+    nix.trustedBinaryCaches = [ "https://cache.nixos.org/" ] ++ mapAttrsToList (name: keys: "https://${name}.cachix.org") cachixCaches;
     nix.binaryCachePublicKeys = concatLists (mapAttrsToList (name: keys: keys.publicKeys) cachixCaches);
 
     # This netrc file needs to be installed by system-caches.PLATFORM.nix

@@ -1,7 +1,7 @@
 module Hercules.Error where
 
-import           Prelude
-import           Control.Monad.Catch
+import Control.Monad.Catch
+import Prelude
 
 escalate :: (Exception exc, MonadThrow m) => Either exc a -> m a
 escalate = escalateAs id

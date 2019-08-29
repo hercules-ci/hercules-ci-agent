@@ -1,8 +1,30 @@
-{ mkDerivation, aeson, base, bytestring, containers, deepseq, gauge
-, hashable, hedgehog, hspec-megaparsec, htoml, htoml-megaparsec
-, markdown-unlit, megaparsec, mtl, parsec, parser-combinators
-, stdenv, tasty, tasty-discover, tasty-hedgehog, tasty-hspec
-, tasty-silver, text, time, toml-parser, transformers
+{ mkDerivation
+, aeson
+, base
+, bytestring
+, containers
+, deepseq
+, gauge
+, hashable
+, hedgehog
+, hspec-megaparsec
+, htoml
+, htoml-megaparsec
+, markdown-unlit
+, megaparsec
+, mtl
+, parsec
+, parser-combinators
+, stdenv
+, tasty
+, tasty-discover
+, tasty-hedgehog
+, tasty-hspec
+, tasty-silver
+, text
+, time
+, toml-parser
+, transformers
 , unordered-containers
 }:
 mkDerivation {
@@ -12,19 +34,48 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    base bytestring containers deepseq hashable megaparsec mtl
-    parser-combinators text time transformers unordered-containers
+    base
+    bytestring
+    containers
+    deepseq
+    hashable
+    megaparsec
+    mtl
+    parser-combinators
+    text
+    time
+    transformers
+    unordered-containers
   ];
   executableHaskellDepends = [ base text time unordered-containers ];
   executableToolDepends = [ markdown-unlit ];
   testHaskellDepends = [
-    base bytestring containers hashable hedgehog hspec-megaparsec
-    megaparsec tasty tasty-hedgehog tasty-hspec tasty-silver text time
+    base
+    bytestring
+    containers
+    hashable
+    hedgehog
+    hspec-megaparsec
+    megaparsec
+    tasty
+    tasty-hedgehog
+    tasty-hspec
+    tasty-silver
+    text
+    time
     unordered-containers
   ];
   testToolDepends = [ tasty-discover ];
   benchmarkHaskellDepends = [
-    aeson base deepseq gauge htoml htoml-megaparsec parsec text time
+    aeson
+    base
+    deepseq
+    gauge
+    htoml
+    htoml-megaparsec
+    parsec
+    text
+    time
     toml-parser
   ];
   homepage = "https://github.com/kowainik/tomland";

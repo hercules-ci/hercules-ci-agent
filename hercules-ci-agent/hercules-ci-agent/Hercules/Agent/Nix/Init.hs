@@ -1,8 +1,7 @@
 module Hercules.Agent.Nix.Init where
 
-import Protolude
-
 import Hercules.Agent.Nix.Env
+import Protolude
 
 newEnv :: IO Env
 newEnv = do
@@ -10,4 +9,4 @@ newEnv = do
   -- extraOptions here.
   pure Env
     { extraOptions = []
-    }
+      }

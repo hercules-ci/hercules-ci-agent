@@ -1,8 +1,30 @@
-{ mkDerivation, ansi-terminal, async, base, bytestring
-, concurrent-output, containers, directory, exceptions, fail
-, lifted-async, mmorph, monad-control, mtl, pretty-show, primitive
-, random, resourcet, semigroups, stdenv, stm, template-haskell
-, text, time, transformers, transformers-base, wl-pprint-annotated
+{ mkDerivation
+, ansi-terminal
+, async
+, base
+, bytestring
+, concurrent-output
+, containers
+, directory
+, exceptions
+, fail
+, lifted-async
+, mmorph
+, monad-control
+, mtl
+, pretty-show
+, primitive
+, random
+, resourcet
+, semigroups
+, stdenv
+, stm
+, template-haskell
+, text
+, time
+, transformers
+, transformers-base
+, wl-pprint-annotated
 }:
 mkDerivation {
   pname = "hedgehog";
@@ -11,14 +33,41 @@ mkDerivation {
   revision = "1";
   editedCabalFile = "1b2hvd3z5mnwfdp5xwdwrh2f1l0wshnnz6ggak2dqqm57wyifdql";
   libraryHaskellDepends = [
-    ansi-terminal async base bytestring concurrent-output containers
-    directory exceptions fail lifted-async mmorph monad-control mtl
-    pretty-show primitive random resourcet semigroups stm
-    template-haskell text time transformers transformers-base
+    ansi-terminal
+    async
+    base
+    bytestring
+    concurrent-output
+    containers
+    directory
+    exceptions
+    fail
+    lifted-async
+    mmorph
+    monad-control
+    mtl
+    pretty-show
+    primitive
+    random
+    resourcet
+    semigroups
+    stm
+    template-haskell
+    text
+    time
+    transformers
+    transformers-base
     wl-pprint-annotated
   ];
   testHaskellDepends = [
-    base containers mmorph mtl pretty-show semigroups text transformers
+    base
+    containers
+    mmorph
+    mtl
+    pretty-show
+    semigroups
+    text
+    transformers
   ];
   homepage = "https://hedgehog.qa";
   description = "Release with confidence";

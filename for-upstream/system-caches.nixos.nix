@@ -1,4 +1,4 @@
-{ pkgs, lib, config, ...}:
+{ pkgs, lib, config, ... }:
 let
   cfg = config.services.hercules-ci-agent;
   inherit (cfg) finalConfig;

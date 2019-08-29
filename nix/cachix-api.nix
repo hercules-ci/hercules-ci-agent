@@ -1,9 +1,33 @@
-{ mkDerivation, aeson, base, base16-bytestring, bytestring, conduit
-, cookie, cryptonite, deepseq, exceptions, fetchgit, hspec
-, hspec-discover, http-api-data, http-media, lens, memory
-, protolude, resourcet, servant, servant-auth, servant-auth-server
-, servant-auth-swagger, servant-client, servant-swagger
-, servant-swagger-ui-core, stdenv, string-conv, swagger2, text
+{ mkDerivation
+, aeson
+, base
+, base16-bytestring
+, bytestring
+, conduit
+, cookie
+, cryptonite
+, deepseq
+, exceptions
+, fetchgit
+, hspec
+, hspec-discover
+, http-api-data
+, http-media
+, lens
+, memory
+, protolude
+, resourcet
+, servant
+, servant-auth
+, servant-auth-server
+, servant-auth-swagger
+, servant-client
+, servant-swagger
+, servant-swagger-ui-core
+, stdenv
+, string-conv
+, swagger2
+, text
 , transformers
 }:
 mkDerivation {
@@ -19,18 +43,55 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
-    aeson base base16-bytestring bytestring conduit cookie cryptonite
-    deepseq exceptions http-api-data http-media lens memory resourcet
-    servant servant-auth servant-auth-server servant-auth-swagger
-    servant-client servant-swagger string-conv swagger2 text
+    aeson
+    base
+    base16-bytestring
+    bytestring
+    conduit
+    cookie
+    cryptonite
+    deepseq
+    exceptions
+    http-api-data
+    http-media
+    lens
+    memory
+    resourcet
+    servant
+    servant-auth
+    servant-auth-server
+    servant-auth-swagger
+    servant-client
+    servant-swagger
+    string-conv
+    swagger2
+    text
     transformers
   ];
   executableHaskellDepends = [ aeson base ];
   testHaskellDepends = [
-    aeson base base16-bytestring bytestring conduit cookie cryptonite
-    hspec http-api-data http-media lens memory protolude servant
-    servant-auth servant-auth-server servant-auth-swagger
-    servant-swagger servant-swagger-ui-core string-conv swagger2 text
+    aeson
+    base
+    base16-bytestring
+    bytestring
+    conduit
+    cookie
+    cryptonite
+    hspec
+    http-api-data
+    http-media
+    lens
+    memory
+    protolude
+    servant
+    servant-auth
+    servant-auth-server
+    servant-auth-swagger
+    servant-swagger
+    servant-swagger-ui-core
+    string-conv
+    swagger2
+    text
     transformers
   ];
   testToolDepends = [ hspec-discover ];

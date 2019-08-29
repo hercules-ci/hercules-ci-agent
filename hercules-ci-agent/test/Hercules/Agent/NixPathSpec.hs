@@ -1,10 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module Hercules.Agent.NixPathSpec where
 
-import           Protolude
-import           Test.Hspec
-import           Hercules.Agent.NixPath
-import           Hercules.API.Agent.Evaluate.EvaluateTask
+import Hercules.API.Agent.Evaluate.EvaluateTask
+import Hercules.Agent.NixPath
+import Protolude
+import Test.Hspec
 
 spec :: Spec
 spec = do
@@ -23,7 +24,7 @@ spec = do
         `shouldBe` "/b/c"
     it "renders a=/b:d=/e" $ \() -> do
       renderNixPath
-          [ NixPathElement (Just "a") $ SubPathOf "/b" Nothing
-          , NixPathElement (Just "d") $ SubPathOf "/e" Nothing
+        [ NixPathElement (Just "a") $ SubPathOf "/b" Nothing,
+          NixPathElement (Just "d") $ SubPathOf "/e" Nothing
           ]
         `shouldBe` "a=/b:d=/e"

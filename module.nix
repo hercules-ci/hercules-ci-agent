@@ -5,8 +5,9 @@
 { pkgs, ... }:
 
 let
- agentpkgs = import ./. { system = pkgs.system; };
-in {
+  agentpkgs = import ./. { system = pkgs.system; };
+in
+{
   imports = [ ./for-upstream/default.nixos.nix ];
 
   services.hercules-ci-agent.package = agentpkgs.hercules-ci-agent;

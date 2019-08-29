@@ -29,13 +29,14 @@ in
       type = types.string;
     };
     package = let
-        version = "0.3.2";
-      in mkOption {
-      description = "Package containing the bin/hercules-ci-agent program";
-      type = types.package;
-      default = (import (builtins.fetchTarball "https://github.com/hercules-ci/hercules-ci-agent/archive/hercules-ci-agent-${version}.tar.gz") {}).hercules-ci-agent;
-      defaultText = "hercules-ci-agent-${version}";
-    };
+      version = "0.3.2";
+    in
+      mkOption {
+        description = "Package containing the bin/hercules-ci-agent program";
+        type = types.package;
+        default = (import (builtins.fetchTarball "https://github.com/hercules-ci/hercules-ci-agent/archive/hercules-ci-agent-${version}.tar.gz") {}).hercules-ci-agent;
+        defaultText = "hercules-ci-agent-${version}";
+      };
     extraOptions = mkOption {
       description = ''
         This lets you can add extra options to the agent's config file, in case
@@ -46,7 +47,7 @@ in
         We recommend that you use the other options where possible, because
         extraOptions can not provide a merge function for the contents of the
         fields.
-        '';
+      '';
       type = types.attrsOf types.unspecified;
       default = {};
     };
@@ -102,12 +103,13 @@ in
     services.hercules-ci-agent = {
       secretsDirectory = cfg.baseDirectory + "/secrets";
       tomlFile = pkgs.writeText "hercules-ci-agent.toml"
-                                (toTOML cfg.finalConfig);
+        (toTOML cfg.finalConfig);
 
       finalConfig = filterAttrs (k: v: k == "binaryCachesPath" -> v != null) (
         {
           inherit (cfg) concurrentTasks baseDirectory;
-        } // cfg.extraOptions
+        }
+        // cfg.extraOptions
       );
 
       # TODO: expose only the (future) main directory as an option and derive

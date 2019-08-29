@@ -1,15 +1,17 @@
 {-# LANGUAGE DeriveAnyClass #-}
+
 module Hercules.Agent.WorkerProtocol.Event where
 
-import           Prelude                        ( )
-import           Protolude
-import           Data.Binary
-import           Hercules.Agent.WorkerProtocol.Event.Attribute
-import           Hercules.Agent.WorkerProtocol.Event.AttributeError
+import Data.Binary
+import Hercules.Agent.WorkerProtocol.Event.Attribute
+import Hercules.Agent.WorkerProtocol.Event.AttributeError
+import Protolude
+import Prelude ()
 
-data Event = Attribute Attribute
-           | AttributeError AttributeError
-           | EvaluationDone
-           | Error Text
-           | Build Text Text
-             deriving (Generic, Binary, Show, Eq)
+data Event
+  = Attribute Attribute
+  | AttributeError AttributeError
+  | EvaluationDone
+  | Error Text
+  | Build Text Text
+  deriving (Generic, Binary, Show, Eq)

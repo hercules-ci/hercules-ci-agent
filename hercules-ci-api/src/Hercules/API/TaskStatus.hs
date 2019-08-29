@@ -1,13 +1,15 @@
 {-# LANGUAGE DeriveAnyClass #-}
+
 module Hercules.API.TaskStatus where
 
-import           Prelude
-import           Data.Aeson                     ( ToJSON
-                                                , FromJSON
-                                                )
-import           Data.Swagger                   ( ToSchema )
-import           Data.Text                      ( Text )
-import           GHC.Generics                   ( Generic )
+import Data.Aeson
+  ( FromJSON,
+    ToJSON
+    )
+import Data.Swagger (ToSchema)
+import Data.Text (Text)
+import GHC.Generics (Generic)
+import Prelude
 
 -- | Similar to a process exit code.
 --

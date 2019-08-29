@@ -1,28 +1,30 @@
 { lib, src }:
 let
 
-  inherit (import src {inherit lib;}) toTOML;
+  inherit (import src { inherit lib; }) toTOML;
 
   testCase =
-    name: {input, expected}:
-      let actual = toTOML input;
+    name: { input, expected }:
+      let
+        actual = toTOML input;
       in
-      if builtins.fromTOML expected != input
-      then builtins.abort "Error in test suite or fromTOML in case ${name}: ${builtins.toJSON (builtins.fromTOML expected)}"
-      else
-        if actual == expected
-        then null
-        else { inherit input expected actual; };
+        if builtins.fromTOML expected != input
+        then builtins.abort "Error in test suite or fromTOML in case ${name}: ${builtins.toJSON (builtins.fromTOML expected)}"
+        else
+          if actual == expected
+          then null
+          else { inherit input expected actual; };
 
   run = tcs: { failures = lib.filterAttrs (k: v: v != null) (lib.mapAttrs testCase tcs); };
 
-in run {
+in
+run {
   empty.input = {};
   empty.expected = "";
 
   keyStringValue.input = { hello = "world"; };
   keyStringValue.expected =
-  ''hello = "world"
+    ''hello = "world"
   '';
 
   keyBoolValue.input = { a = true; b = false; };

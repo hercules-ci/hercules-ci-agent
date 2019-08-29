@@ -16,26 +16,26 @@ let
         devTools =
           {
             inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
-        ghc
-        ghcid
-        stack
-        ;
+              ghc
+              ghcid
+              stack
+              ;
             inherit (pkgs)
-        jq
-        cabal2nix
-        nix-prefetch-git
-        ;
+              jq
+              cabal2nix
+              nix-prefetch-git
+              ;
             inherit (import sources.niv {})
-        niv
-        ;
+              niv
+              ;
             inherit pkgs;
           };
       };
   pkgs =
     import nixpkgs {
-      overlays = [ ( import ./overlay.nix ) dev-and-test-overlay ];
+      overlays = [ (import ./overlay.nix) dev-and-test-overlay ];
       config = {};
       inherit system;
     };
 in
-  pkgs
+pkgs
