@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0.0] - 2019-08-30
+
+### Fixed
+
+- Swagger schema was wrong for a Result
+- Swagger schema is now written using UTF-8 encoding
+
+### Changed
+
+- /jobs endpoint changed to be hierarchical
+
+### Added
+
+- Submit number of concurrent tasks to the backend for better scheduling of evaluations (to avoid IFD deadlocks)
+
+- New endpoint to return evaluation build dependencies for IFD
+
+
 ## [0.3.0.0] - 2019-07-05
 
 ### Added
