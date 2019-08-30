@@ -15,7 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Modern BoehmGC initial settings for Nix memory limits
 
 - Report build failures and technical errors (misconfigurations, etc) separately
 
@@ -28,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Disable parallel GHC GC to improve runtime performance
 
 - Bump Cachix to fix a few bugs (errors with too many derivations, performance fixes, etc.)
+
+ - Modern BoehmGC initial settings for Nix memory limits 
 
 ## [0.3.2] - 2019-08-11
 
