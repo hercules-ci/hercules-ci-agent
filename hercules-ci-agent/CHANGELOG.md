@@ -7,12 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2019-08-30
+
+### Added
+
+- Support for import-from-derivation. See https://blog.hercules-ci.com/2019/08/30/native-support-for-import-for-derivation/ for details.
+
+### Changed
+
+
+- Report build failures and technical errors (misconfigurations, etc) separately
+
+- Remove HerculesScribe
+
+- Worker now uses structured logging (including worker pid, etc)
+
+### Fixed
+
+- Disable parallel GHC GC to improve runtime performance
+
+- Bump Cachix to fix a few bugs (errors with too many derivations, performance fixes, etc.)
+
+ - Modern BoehmGC initial settings for Nix memory limits 
+
 ## [0.3.2] - 2019-08-11
 
 ### Fixed
 
 - Deploying the agent from different system (darwin to linux) resulted into
-  using the wrong executable 
+  using the wrong executable
 
 
 ## [0.3.1] - 2019-08-07
@@ -94,6 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
+[0.4.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.3.2...hercules-ci-agent-0.4.0
+[0.3.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.3.1...hercules-ci-agent-0.3.2
 [0.3.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.3.0...hercules-ci-agent-0.3.1
 [0.3.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.2...hercules-ci-agent-0.3.0
 [0.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.1.1...hercules-ci-agent-0.2

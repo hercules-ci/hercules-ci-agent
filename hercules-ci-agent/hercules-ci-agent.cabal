@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           hercules-ci-agent
-version:        0.3.2
+version:        0.4.0
 homepage:       https://docs.hercules-ci.com
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
 author:         Hercules Labs
@@ -125,7 +125,7 @@ executable hercules-ci-agent
     , exceptions
     , filepath
     , hercules-ci-agent
-    , hercules-ci-api == 0.3.*
+    , hercules-ci-api == 0.4.*
     , hostname
     , http-client
     , http-client-tls
