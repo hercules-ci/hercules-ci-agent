@@ -1,0 +1,27 @@
+
+= Deployment Requirements
+
+== Internet Connectivity
+
+The agent does not require any port forwarding to be set up. It can run behind firewalls. Connections are opened to
+
+ * any services where build inputs will be fetched via Nix
+ * hercules-ci.com:443
+ * cachix.org:443
+ * github.com:443
+
+The amount of network traffic depends on your workload. Unless you deploy a single host for assessment purposes, all outputs will be uploaded, including intermediate derivations.
+
+== System Requirements
+
+We recommend to use large machines over many machines, to decrease the need to download dependencies, speeding up your jobs.
+
+Officially supported platforms:
+
+ * `x86_64-linux`
+ * `i686-linux` on `x86_64-linux` hosts
+ * `x86_64-darwin` also known as macOS
+
+The agent may run on any platform that is supported by Nix and GHC Haskell, but we can't provide guarantees beyond the officially supported platforms.
+
+The hardware requirements depend on your workload. `hercules-ci-agent` memory and CPU consumption is typically insignificant compared to the evaluation and build processes. The minimum memory requirement for Nix workloads is 4GB.

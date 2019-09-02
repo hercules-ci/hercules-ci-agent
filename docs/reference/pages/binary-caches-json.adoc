@@ -1,0 +1,80 @@
+[[binary-caches-json]]
+= The `binary-caches.json` format
+
+The `binary-caches.json` file configures the agent to use a binary cache.
+
+A `binary-caches.json` with a single pushable cache looks like:
+
+[[binary-caches-json-cachix-example]]
+[source,json,reftext="the example"]
+----
+{ "mycache": <1>
+    { "kind": "CachixCache" <2>
+    , "publicKeys": ... <3>
+    , ...
+    }
+}
+----
+<1> The name of the (Cachix) cache; for example the `mycache` part from `mycache.cachix.org`.
+<2> A `kind` field to distinguish between cache types.
+<3> Further details about the cache.
+
+== Top-level dictionary
+
+The top-level object represents a dictionary from cache names to objects with the cache's details and secrets.
+
+Multiple caches can be specified this way. Currently the cache name in the dictionary is also used
+directly as the Cachix cache name.
+
+[source,json]
+----
+{ "mycache": ...
+, "some-other-cache": ...
+}
+----
+
+== `CachixCache`
+
+This is currently the only supported cache kind.
+
+The name for a cache is taken from the key in the top-level dictionary, such as `mycache` in <<binary-caches-json-cachix-example>>.
+
+The details of a cachix cache can be specified with the following fields:
+
+[[CachixCache-kind]]
+`kind`::
+A field of type string with the value `CachixCache`.
+
+[[CachixCache-authToken]]
+`authToken`::
+An optional field of type string.
++
+Omit this field entirely when configuring a publicly readable Cachix cache.
++
+This is a secret token to authenticate the agent to `cachix.org`. A personal token can be retrieved from the https://cachix.org/[the cachix.org Getting started instructions, step 3]. If you have set up the `cachix` CLI, it is also present in `~/.config/cachix/cachix.dhall`.
++
+Cachix.org will provide tokens with restricted authorization in the near future.
++
+When present, its value starts with `eyJ`.
+
+[[CachixCache-publicKeys]]
+`publicKeys`::
+A list of strings.
++
+These are required to verify the integrity of cached store paths and to accept them into the Nix store. They are the public counterpart to the `signingKeys`.
++
+You may look up the public keys by going to `https://<cache-name>.cachix.org`.
++
+A public key looks like `mycache.cachix.org-1:WsUIffActpYsfyxIZrfm6OXRHdNHkHk+X/lUsDTGtJS=`
+
+[[CachixCache-signingKeys]]
+`signingKeys`::
+A list of strings.
++
+This is a cache-specific secret key to sign store paths.
++
+You can find it in `~/.config/cachix/cachix.dhall` or your key backup after following the setup instructions on cachix.org.
++
+The keys are in Base64 format.
++
+Currently only a single signing key is supported.
