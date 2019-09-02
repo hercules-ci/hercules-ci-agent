@@ -41,7 +41,7 @@ in
     };
 
     systemd.paths.hercules-ci-agent = {
-      wantedBy = [ "herucles-ci-agent.service" ];
+      wantedBy = [ "hercules-ci-agent.service" ];
       pathConfig = {
         PathChanged = [ cfg.secretsDirectory ];
       };
