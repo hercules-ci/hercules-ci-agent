@@ -1,0 +1,6 @@
+name: hercules-ci-agent
+title: Hercules CI Agent Documentation
+version: 'master'
+nav:
+- modules/ROOT/nav.adoc
+- modules/reference/nav.adoc
