@@ -46,7 +46,8 @@ data NixInfo
       { nixExeVersion :: Text,
         nixPlatforms :: [Text],
         nixSystemFeatures :: [Text],
-        nixSubstituters :: [Text]
+        nixSubstituters :: [Text],
+        nixTrustedPublicKeys :: [Text]
         }
 
 getNixInfo :: IO NixInfo
@@ -79,6 +80,14 @@ getNixInfo = do
       nixSubstituters =
         cfg
           ^.. key "substituters"
+          . key "value"
+          . _Array
+          . traverse
+          . _String
+          . to cleanUrl,
+      nixTrustedPublicKeys =
+        cfg
+          ^.. key "trusted-public-keys"
           . key "value"
           . _Array
           . traverse

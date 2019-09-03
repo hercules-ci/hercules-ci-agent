@@ -10,7 +10,6 @@ in
 {
   imports = [
     ./gc.nix
-    ./system-caches.common.nix
   ];
 
   options.services.hercules-ci-agent = {
@@ -55,7 +54,7 @@ in
       type = types.nullOr types.path;
       default = null;
       description = ''
-        A file path to be read at evaluation time, to configure the system's
+        A file path to be read at evaluation time, to configure the
         cache settings.
 
         For the format, see https://docs.hercules-ci.com/#binaryCachesPath

@@ -304,11 +304,12 @@ produceWorkerEvents
   -> App ExitCode
 produceWorkerEvents eval nixPath commandChan writeEvent = do
   workerBinDir <- liftIO getBinDir
+  let opts = [show $ Eval.extraNixOptions eval]
   -- NiceToHave: replace renderNixPath by something structured like -I
   -- to support = and : in paths
   wps <-
     pure
-      (System.Process.proc (workerBinDir </> "hercules-ci-agent-worker") [])
+      (System.Process.proc (workerBinDir </> "hercules-ci-agent-worker") opts)
         { env = Just [("NIX_PATH", toS $ renderNixPath nixPath)],
           close_fds = True, -- Disable on Windows?
           cwd = Just (Eval.cwd eval)
