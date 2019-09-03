@@ -69,7 +69,7 @@ main = do
   CNix.init
   -- setDebug
   [options] <- Environment.getArgs
-  -- narinfo-cache-negative-ttl: Always try because it may have been built in the meanwhile
+  -- narinfo-cache-negative-ttl: Always try requesting narinfos because it may have been built in the meanwhile
   let allOptions = Prelude.read options ++ [("narinfo-cache-negative-ttl", "0")]
   for_ allOptions $ \(k, v) -> do
     setGlobalOption k v
