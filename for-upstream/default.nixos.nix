@@ -44,10 +44,7 @@ in
       wantedBy = [ "hercules-ci-agent.service" ];
       pathConfig = {
         Unit = "hercules-ci-agent-restarter.service";
-        PathChanged = [
-          cfg.finalConfig.clusterJoinTokenPath
-          cfg.finalConfig.binaryCachesPath
-        ];
+        PathChanged = [ cfg.finalConfig.clusterJoinTokenPath ] ++ lib.optional (cfg.finalConfig ? binaryCachesPath) cfg.finalConfig.binaryCachesPath;
       };
     };
 
