@@ -40,11 +40,19 @@ in
       };
     };
 
-    systemd.paths.hercules-ci-agent = {
-      wantedBy = [ "herucles-ci-agent.service" ];
+    systemd.paths.hercules-ci-agent-restart-files = {
+      wantedBy = [ "hercules-ci-agent.service" ];
       pathConfig = {
-        PathChanged = [ cfg.secretsDirectory ];
+        Unit = "hercules-ci-agent-restarter.service";
+        PathChanged = [ cfg.finalConfig.clusterJoinTokenPath ] ++ lib.optional (cfg.finalConfig ? binaryCachesPath) cfg.finalConfig.binaryCachesPath;
       };
+    };
+
+    systemd.services.hercules-ci-agent-restarter = {
+      serviceConfig.Type = "oneshot";
+      script = ''
+        systemctl restart hercules-ci-agent.service
+      '';
     };
 
     users = mkIf (cfg.user == defaultUser) {
