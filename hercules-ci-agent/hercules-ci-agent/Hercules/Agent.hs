@@ -7,9 +7,9 @@ import Control.Concurrent.Async.Lifted
   ( race,
     replicateConcurrently_
     )
-import Control.Concurrent.MVar.Lifted (withMVar)
+import Control.Concurrent.QSem.Lifted (signalQSem, waitQSem)
 import Control.Exception (displayException)
-import Control.Exception.Lifted (bracket)
+import Control.Exception.Lifted (bracket, bracket_)
 import qualified Data.Aeson as A
 import Data.Time (getCurrentTime)
 import qualified Data.UUID.V4 as UUID
@@ -53,9 +53,12 @@ import qualified Hercules.Agent.Options as Options
 import Hercules.Agent.Token (withAgentToken)
 import Protolude hiding
   ( bracket,
+    bracket_,
     handle,
     race,
     retry,
+    signalQSem,
+    waitQSem,
     withMVar
     )
 
@@ -65,7 +68,7 @@ main = Init.setupLogging $ \logEnv -> do
   let cfgPath = Options.configFile opts
   cfg <- Config.finalizeConfig cfgPath =<< Config.readConfig cfgPath
   env <- Init.newEnv cfg logEnv
-  fetchTaskMutex <- newMVar ()
+  fetchTaskQSem <- newQSem 1
   Env.runApp env
     $ katipAddContext (sl "agent-version" (A.String herculesAgentVersion))
     $ withAgentToken
@@ -75,8 +78,7 @@ main = Init.setupLogging $ \logEnv -> do
     $ forever
     $ do
       taskMaybe <-
-        withMVar fetchTaskMutex
-          $ const
+        bracket_ (waitQSem fetchTaskQSem) (signalQSem fetchTaskQSem)
           $ safeLiftedHandle
               ( \e -> do
                   logLocM WarningS $ "Exception fetching task, retrying: "
