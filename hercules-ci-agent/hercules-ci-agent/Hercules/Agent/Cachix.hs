@@ -18,6 +18,7 @@ import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 import Hercules.Error
+import qualified Hercules.Formats.CachixCache as CachixCache
 import Protolude
 import qualified Servant.Client as Servant
 import System.IO (hClose)
@@ -67,12 +68,24 @@ getSubstituters = do
         ++ map (\c -> "https://" <> c <> ".cachix.org") (M.keys cks)
       )
 
+getTrustedPublicKeys :: App [Text]
+getTrustedPublicKeys = do
+  cks <- asks (Agent.Cachix.cacheKeys . Agent.Env.cachixEnv)
+  nixInfo <- liftIO EnvInfo.getNixInfo
+  pure (EnvInfo.nixTrustedPublicKeys nixInfo ++ concatMap CachixCache.publicKeys cks)
+
 withCaches :: App a -> App a
 withCaches m = do
   netrcLns <- getNetrcLines
   substs <- getSubstituters
+  pubkeys <- getTrustedPublicKeys
   SecureDirectory.withSecureTempFile "tmp-netrc.key" $ \netrcPath netrcHandle -> do
     liftIO $ do
       Text.hPutStrLn netrcHandle (Text.unlines netrcLns)
       hClose netrcHandle
-    Nix.withExtraOptions [("netrc-file", toSL netrcPath), ("substituters", Text.intercalate " " substs)] m
+    Nix.withExtraOptions
+      [ ("netrc-file", toSL netrcPath),
+        ("substituters", Text.intercalate " " substs),
+        ("trusted-public-keys", Text.intercalate " " pubkeys)
+        ]
+      m

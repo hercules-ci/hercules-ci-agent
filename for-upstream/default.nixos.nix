@@ -19,7 +19,6 @@ in
 {
   imports = [
     ./common.nix
-    ./system-caches.nixos.nix
     ./deploy-keys.nix
   ];
 
@@ -54,6 +53,8 @@ in
         systemctl restart hercules-ci-agent.service
       '';
     };
+
+    nix.trustedUsers = [ cfg.user ];
 
     users = mkIf (cfg.user == defaultUser) {
       users.hercules-ci-agent =
