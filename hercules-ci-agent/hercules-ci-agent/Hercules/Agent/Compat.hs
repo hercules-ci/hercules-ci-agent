@@ -10,5 +10,5 @@ katipLevel =
   K.permitItem
 #else
 katipLevel =
-  id
+  identity
 #endif
