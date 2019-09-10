@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+die() {
+  echo "$@" 1>&2
+  exit 1
+}
+
+src_dir="$(dirname "${BASH_SOURCE[0]}")"
+nix_darwin_dir="${1:-$(die 'First argument must be the location of nix-darwin sources e.g. ~/nix-darwin')}"
+
+dst_dir="${nix_darwin_dir}/modules/services/hercules-ci-agent"
+
+
+cp "$src_dir/default.nix-darwin.nix" \
+   "$dst_dir/default.nix"
+
+cp "$src_dir/common.nix" "$src_dir/gc.nix" \
+   "$dst_dir/"
+
+mkdir -p "$dst_dir/to-toml"
+cp "$src_dir/to-toml/default.nix" "$dst_dir/to-toml/"
+
+
+(
+  cd "$dst_dir";
+  git status . -u all --short --no-ahead-behind \
+    | grep '' || echo Looks up to date.
+)
+
+cat 1>&2 <<EOF
+Sources copied.
+
+Next steps:
+  - review upstream history
+  - make sure you're not overwriting upstream changes
+  - delete upstream files that were deleted locally
+EOF
