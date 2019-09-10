@@ -6,7 +6,8 @@ let
   cfg = config.services.hercules-ci-agent;
   user = config.users.users.hercules-ci-agent;
   binaryCachesPathDeployed = cfg.secretsDirectory + "/binary-caches.json";
-in {
+in
+{
   imports = [ ./common.nix ];
 
   options.services.hercules-ci-agent = {
