@@ -26,7 +26,7 @@ in
     };
     user = mkOption {
       description = "Unix system user that runs the agent service";
-      type = types.string;
+      type = types.str;
     };
     package = let
       version = "0.4.0";
