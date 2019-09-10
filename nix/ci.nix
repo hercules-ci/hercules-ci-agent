@@ -5,11 +5,10 @@ let
       nixpkgsSource = "nixos-unstable";
       system = "x86_64-linux";
     };
-    # TODO: fix inline-c-cpp mess
-    #"nixos-unstable-darwin" = {
-    #  nixpkgsSource = "nixos-unstable";
-    #  system = "x86_64-darwin";
-    #};
+    "nixos-unstable-darwin" = {
+      nixpkgsSource = "nixos-unstable";
+      system = "x86_64-darwin";
+    };
     "nixos-19_03" = {
       nixpkgsSource = "nixos-19.03";
       system = "x86_64-linux";

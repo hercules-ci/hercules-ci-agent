@@ -32,11 +32,11 @@
 }:
 mkDerivation {
   pname = "cachix-api";
-  version = "0.2.1";
+  version = "0.3.0";
   src = fetchgit {
     url = "https://github.com/cachix/cachix";
-    sha256 = "1jixbikikw39ykplb9l7ak1qv00x477cgiswh6c9mb6xwj5pgnkj";
-    rev = "f55bc800f941cb8fe78d61ebf9ed99d8f0aa5404";
+    sha256 = "1k9h6iaz1185r17safrncnlljg1qlaf71fpfzzz093g5073407j0";
+    rev = "5c7272351c4e87adabfb8a31e5b9c1db2980abf3";
     fetchSubmodules = true;
   };
   postUnpack = "sourceRoot+=/cachix-api; echo source root reset to $sourceRoot";

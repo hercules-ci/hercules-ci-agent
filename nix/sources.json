@@ -13,15 +13,15 @@
     },
     "cachix": {
         "homepage": "https://cachix.org",
-        "url": "https://github.com/cachix/cachix/archive/f55bc800f941cb8fe78d61ebf9ed99d8f0aa5404.tar.gz",
+        "url": "https://github.com/cachix/cachix/archive/5c7272351c4e87adabfb8a31e5b9c1db2980abf3.tar.gz",
         "owner": "cachix",
         "branch": "master",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "repo": "cachix",
         "type": "tarball",
-        "sha256": "1jixbikikw39ykplb9l7ak1qv00x477cgiswh6c9mb6xwj5pgnkj",
+        "sha256": "1k9h6iaz1185r17safrncnlljg1qlaf71fpfzzz093g5073407j0",
         "description": "Command line client for Nix binary cache hosting:",
-        "rev": "f55bc800f941cb8fe78d61ebf9ed99d8f0aa5404"
+        "rev": "5c7272351c4e87adabfb8a31e5b9c1db2980abf3"
     },
     "nixos-19.03": {
         "url": "https://github.com/NixOS/nixpkgs-channels/archive/7b36963e7a7363f1b40ac0a829c4644923dda909.tar.gz",
@@ -46,15 +46,16 @@
         "rev": "4064e436313191f11969986e66b81cb6bb61bae6"
     },
     "nixos-unstable": {
-        "url": "https://github.com/NixOS/nixpkgs-channels/archive/73392e79aa62e406683d6a732eb4f4101f4732be.tar.gz",
+        "homepage": "https://github.com/NixOS/nixpkgs",
+        "url": "https://github.com/NixOS/nixpkgs-channels/archive/e19054ab3cd5b7cc9a01d0efc71c8fe310541065.tar.gz",
         "owner": "NixOS",
         "branch": "nixos-unstable",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "repo": "nixpkgs-channels",
         "type": "tarball",
-        "sha256": "049fq37sxdn5iis7ni407j2jsfrxbb41pgv5zawi02qj47f74az9",
+        "sha256": "0b92yhkj3pq58svyrx7jp0njhaykwr29079izqn6qs638v8zvhl2",
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
-        "rev": "73392e79aa62e406683d6a732eb4f4101f4732be"
+        "rev": "e19054ab3cd5b7cc9a01d0efc71c8fe310541065"
     },
     "niv": {
         "homepage": "https://github.com/nmattia/niv",

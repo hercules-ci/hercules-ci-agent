@@ -3,6 +3,7 @@ repos:
   rev: master
   hooks:
    -   id: ormolu
+       exclude: Hercules/Agent/Compat.hs$
    -   id: shellcheck
    #-   id: hlint
    -   id: nixpkgs-fmt

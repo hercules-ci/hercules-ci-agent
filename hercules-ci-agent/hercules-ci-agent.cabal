@@ -86,6 +86,7 @@ executable hercules-ci-agent
       Hercules.Agent.Cachix.Init
       Hercules.Agent.Client
       Hercules.Agent.Config
+      Hercules.Agent.Compat
       Hercules.Agent.Env
       Hercules.Agent.EnvironmentInfo
       Hercules.Agent.Evaluate
@@ -189,8 +190,8 @@ executable hercules-ci-agent-worker
     -rtsopts
     -with-rtsopts=-maxN8
     -- match what Nix is using
-    -optc-std=c++14
-  cxx-options: -Wall -std=c++14
+    -optc-std=c++17
+  cxx-options: -Wall -std=c++17
   if os(darwin)
     -- avoid https://gitlab.haskell.org/ghc/ghc/issues/11829
     ld-options:  -Wl,-keep_dwarf_unwind
@@ -199,6 +200,7 @@ executable hercules-ci-agent-worker
       cbits
   extra-libraries:
       stdc++
+      boost_context
   build-depends:
       aeson
     , async
