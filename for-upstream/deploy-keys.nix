@@ -28,10 +28,11 @@ in
     binaryCachesFile = mkOption {
       type = types.nullOr types.path;
       default = null;
+      visible = false;
       description = ''
-        NOTE: This option works with NixOps only.
-
-        A binary-caches.json to deploy.
+        The option services.hercules-ci-agent.binaryCachesFile has been removed.
+        binary-caches.json can now be deployed like an other secrets file.
+        It does not require special treatment during deployment.
 
         For the format, see https://docs.hercules-ci.com/hercules-ci/reference/agent-config/#binaryCachesPath
       '';
@@ -46,6 +47,22 @@ in
     if options ? deployment.keys
     then mkIf (cfg.enable && cfg.enableKeyDeployment) {
       assertions = [
+        {
+          assertion = cfg.binaryCachesFile == null;
+          message = ''
+            The option services.hercules-ci-agent.binaryCachesFile has been removed,
+              because the binary-caches.json does not need special treatment during
+              deployment anymore. You're using the builtin key deployment.
+
+              Please rename your definition of:
+                services.hercules-ci-agent.binaryCachesFile = ...;
+              to:
+                deployment.keys."binary-caches.json".keyFile = ...;
+
+          '';
+        }
+
+
         {
           assertion = (binaryCachesPath != null) -> binaryCachesCorrect;
           message = ''
@@ -73,18 +90,10 @@ in
         destDir = clusterJoinTokenDir;
       };
 
-      deployment.keys."binary-caches.json" =
-        mkIf (cfg.binaryCachesFile != null) {
-          user = config.services.hercules-ci-agent.user;
-          destDir = binaryCachesDir;
-          keyFile = cfg.binaryCachesFile;
-        };
-
-      # Add explicit default => binaryCachesPath will be set => missing file will be an error.
-      services.hercules-ci-agent.extraOptions.binaryCachesPath =
-        mkIf (cfg.binaryCachesFile != null) (
-          lib.mkDefault (cfg.secretsDirectory + "/binary-caches.json")
-        );
+      deployment.keys."binary-caches.json" = {
+        user = config.services.hercules-ci-agent.user;
+        destDir = binaryCachesDir;
+      };
 
     }
     else {
@@ -92,8 +101,15 @@ in
         {
           assertion = cfg.binaryCachesFile == null;
           message = ''
-            The option services.hercules-ci-agent.binaryCachesFile only works in NixOps.
-            Please deploy your binary-caches.json file with some other means.
+            The option services.hercules-ci-agent.binaryCachesFile has been removed,
+              because the binary-caches.json can now be deployed like any other secrets file.
+
+              Please
+                - remove the services.hercules-ci-agent.binaryCachesFile value
+                - make sure you deploy a binary-caches.json file to your agent's
+                    ${cfg.finalConfig.binaryCachesPath or cfg.secretsDirectory}
+
+              For the format, see https://docs.hercules-ci.com/hercules-ci/reference/agent-config/#binaryCachesPath
           '';
         }
       ];
