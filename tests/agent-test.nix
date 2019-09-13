@@ -32,6 +32,7 @@ in
         nix.binaryCaches = lib.mkForce [];
         services.hercules-ci-agent.enable = true;
         services.hercules-ci-agent.extraOptions.apiBaseUrl = "http://api";
+        services.hercules-ci-agent.extraOptions.binaryCachesPath = (pkgs.writeText "binary-caches.json" (builtins.toJSON {})).outPath;
         services.hercules-ci-agent.extraOptions.clusterJoinTokenPath = (pkgs.writeText "pretend-agent-token" "").outPath;
         services.hercules-ci-agent.concurrentTasks = 4; # Decrease on itest memory problems
 
