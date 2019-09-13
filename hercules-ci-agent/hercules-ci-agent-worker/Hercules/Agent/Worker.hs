@@ -40,7 +40,9 @@ import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude hiding (evalState)
+import qualified System.Environment as Environment
 import Prelude ()
+import qualified Prelude
 
 data HerculesState
   = HerculesState
@@ -66,10 +68,12 @@ main = do
   -- setDebug
   CNix.init
   -- setDebug
-
-  -- Always try because it may have been built in the meanwhile
-  setGlobalOption "narinfo-cache-negative-ttl" "0"
-  setOption "narinfo-cache-negative-ttl" "0"
+  [options] <- Environment.getArgs
+  -- narinfo-cache-negative-ttl: Always try requesting narinfos because it may have been built in the meanwhile
+  let allOptions = Prelude.read options ++ [("narinfo-cache-negative-ttl", "0")]
+  for_ allOptions $ \(k, v) -> do
+    setGlobalOption k v
+    setOption k v
   drvsCompleted_ <- newTVarIO mempty
   drvsInProgress_ <- newIORef mempty
   withStore $ \wrappedStore_ -> withHerculesStore wrappedStore_ $ \herculesStore_ -> do
@@ -191,8 +195,8 @@ yieldAttributeError path e =
 
 runEval :: HerculesState -> Eval -> ConduitM i Event (ResourceT IO) ()
 runEval st@HerculesState {herculesStore = hStore, wrappedStore = wStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
-  -- FIXME
-  forM_ (Eval.extraNixOptions eval) $ liftIO . uncurry setGlobalOption
+  for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setGlobalOption
+  for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setOption
   do
     let store = nixStore hStore
     s <- storeUri store

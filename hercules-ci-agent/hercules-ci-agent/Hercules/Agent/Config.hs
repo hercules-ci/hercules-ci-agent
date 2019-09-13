@@ -45,7 +45,7 @@ data Config purpose
         -- ^ Read-only
         workDirectory :: Item purpose 'Required FilePath,
         clusterJoinTokenPath :: Item purpose 'Required FilePath,
-        binaryCachesPath :: Item purpose 'Optional FilePath
+        binaryCachesPath :: Item purpose 'Required FilePath
         }
   deriving (Generic)
 
@@ -102,6 +102,10 @@ finalizeConfig loc input = do
         fromMaybe
           (staticSecretsDir </> "cluster-join-token.key")
           (clusterJoinTokenPath input)
+      binaryCachesP =
+        fromMaybe
+          (staticSecretsDir </> "binary-caches.json")
+          (binaryCachesPath input)
       workDir = fromMaybe (baseDir </> "work") (workDirectory input)
   dabu <- determineDefaultApiBaseUrl
   let rawConcurrentTasks = fromMaybe defaultConcurrentTasks $ concurrentTasks input
@@ -111,7 +115,7 @@ finalizeConfig loc input = do
       x -> pure x
   pure Config
     { herculesApiBaseURL = fromMaybe dabu $ herculesApiBaseURL input,
-      binaryCachesPath = binaryCachesPath input,
+      binaryCachesPath = binaryCachesP,
       clusterJoinTokenPath = clusterJoinTokenP,
       concurrentTasks = validConcurrentTasks,
       baseDirectory = baseDir,

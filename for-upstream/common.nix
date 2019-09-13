@@ -10,7 +10,6 @@ in
 {
   imports = [
     ./gc.nix
-    ./system-caches.common.nix
   ];
 
   options.services.hercules-ci-agent = {
@@ -50,16 +49,6 @@ in
       '';
       type = types.attrsOf types.unspecified;
       default = {};
-    };
-    binaryCachesFile = mkOption {
-      type = types.nullOr types.path;
-      default = null;
-      description = ''
-        A file path to be read at evaluation time, to configure the system's
-        cache settings.
-
-        For the format, see https://docs.hercules-ci.com/#binaryCachesPath
-      '';
     };
 
     concurrentTasks = mkOption {
@@ -115,7 +104,6 @@ in
       # TODO: expose only the (future) main directory as an option and derive
       # all locations from finalConfig.
       extraOptions.clusterJoinTokenPath = lib.mkDefault (cfg.secretsDirectory + "/cluster-join-token.key");
-      extraOptions.binaryCachesPath = lib.mkDefault (lib.mapNullable (_f: cfg.secretsDirectory + "/binary-caches.json") cfg.binaryCachesFile);
     };
   };
 }
