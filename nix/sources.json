@@ -1,71 +1,71 @@
 {
-    "nix-pre-commit-hooks": {
-        "homepage": "https://pre-commit.com/",
-        "url": "https://github.com/hercules-ci/nix-pre-commit-hooks/archive/bab8d9deb552edea512e4b8d140361a66b13b919.tar.gz",
-        "owner": "hercules-ci",
-        "branch": "master",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "repo": "nix-pre-commit-hooks",
-        "type": "tarball",
-        "sha256": "113ihdg20h1n1w6z36zn2wldvi0cz532akr3vcz4ndr1gr11hcnh",
-        "description": "Seamless integration pre-commit hooks with Nix.",
-        "rev": "bab8d9deb552edea512e4b8d140361a66b13b919"
-    },
     "cachix": {
-        "homepage": "https://cachix.org",
-        "url": "https://github.com/cachix/cachix/archive/f55bc800f941cb8fe78d61ebf9ed99d8f0aa5404.tar.gz",
-        "owner": "cachix",
         "branch": "master",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "repo": "cachix",
-        "type": "tarball",
-        "sha256": "1jixbikikw39ykplb9l7ak1qv00x477cgiswh6c9mb6xwj5pgnkj",
         "description": "Command line client for Nix binary cache hosting:",
-        "rev": "f55bc800f941cb8fe78d61ebf9ed99d8f0aa5404"
-    },
-    "nixos-19.03": {
-        "url": "https://github.com/NixOS/nixpkgs-channels/archive/7b36963e7a7363f1b40ac0a829c4644923dda909.tar.gz",
-        "owner": "NixOS",
-        "branch": "nixos-19.03",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "repo": "nixpkgs-channels",
+        "homepage": "https://cachix.org",
+        "owner": "cachix",
+        "repo": "cachix",
+        "rev": "f55bc800f941cb8fe78d61ebf9ed99d8f0aa5404",
+        "sha256": "1jixbikikw39ykplb9l7ak1qv00x477cgiswh6c9mb6xwj5pgnkj",
         "type": "tarball",
-        "sha256": "00ni9yca0pyy8xc949sck5ppgprzcl8bbhl15l09wp03pxr90va5",
-        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
-        "rev": "7b36963e7a7363f1b40ac0a829c4644923dda909"
+        "url": "https://github.com/cachix/cachix/archive/f55bc800f941cb8fe78d61ebf9ed99d8f0aa5404.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "gitignore": {
-        "url": "https://github.com/hercules-ci/gitignore/archive/4064e436313191f11969986e66b81cb6bb61bae6.tar.gz",
-        "owner": "hercules-ci",
         "branch": "master",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "repo": "gitignore",
-        "type": "tarball",
-        "sha256": "0358wcmgmc5mx4xfr08fxra4k05zvl2qyaix4gdlm7iwcscz609a",
         "description": "Nix source function for gitignore that just works",
-        "rev": "4064e436313191f11969986e66b81cb6bb61bae6"
-    },
-    "nixos-unstable": {
-        "url": "https://github.com/NixOS/nixpkgs-channels/archive/73392e79aa62e406683d6a732eb4f4101f4732be.tar.gz",
-        "owner": "NixOS",
-        "branch": "nixos-unstable",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "repo": "nixpkgs-channels",
+        "owner": "hercules-ci",
+        "repo": "gitignore",
+        "rev": "4064e436313191f11969986e66b81cb6bb61bae6",
+        "sha256": "0358wcmgmc5mx4xfr08fxra4k05zvl2qyaix4gdlm7iwcscz609a",
         "type": "tarball",
-        "sha256": "049fq37sxdn5iis7ni407j2jsfrxbb41pgv5zawi02qj47f74az9",
-        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
-        "rev": "73392e79aa62e406683d6a732eb4f4101f4732be"
+        "url": "https://github.com/hercules-ci/gitignore/archive/4064e436313191f11969986e66b81cb6bb61bae6.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "niv": {
-        "homepage": "https://github.com/nmattia/niv",
-        "url": "https://github.com/nmattia/niv/archive/a489b65a5c3a29983701069d1ce395b23d9bde64.tar.gz",
-        "owner": "nmattia",
         "branch": "master",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "repo": "niv",
-        "type": "tarball",
-        "sha256": "0mvh2x4l4f3nbgzzygk317nkzbyj3xgnczivgdra4q82dg8x77ka",
         "description": "Easy dependency management for Nix projects",
-        "rev": "a489b65a5c3a29983701069d1ce395b23d9bde64"
+        "homepage": "https://github.com/nmattia/niv",
+        "owner": "nmattia",
+        "repo": "niv",
+        "rev": "efce82e4ba77a84835f9febefe3b2fe52a8c7ede",
+        "sha256": "19ah2il98hjb2c8d4p1ph3nxrkzi4hl9vbw21snza5w7x4jhx4jk",
+        "type": "tarball",
+        "url": "https://github.com/nmattia/niv/archive/efce82e4ba77a84835f9febefe3b2fe52a8c7ede.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nix-pre-commit-hooks": {
+        "branch": "master",
+        "description": "Seamless integration pre-commit hooks with Nix.",
+        "homepage": "https://pre-commit.com/",
+        "owner": "hercules-ci",
+        "repo": "nix-pre-commit-hooks",
+        "rev": "e3661fe899c999fa6c77b5fcc3f4689657fb8f09",
+        "sha256": "09ns5s0b9918wlj9jximz49pjphsivysmfqcyn696wnjrq607b5q",
+        "type": "tarball",
+        "url": "https://github.com/hercules-ci/nix-pre-commit-hooks/archive/e3661fe899c999fa6c77b5fcc3f4689657fb8f09.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixos-19.03": {
+        "branch": "nixos-19.03",
+        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
+        "owner": "NixOS",
+        "repo": "nixpkgs-channels",
+        "rev": "7b36963e7a7363f1b40ac0a829c4644923dda909",
+        "sha256": "00ni9yca0pyy8xc949sck5ppgprzcl8bbhl15l09wp03pxr90va5",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs-channels/archive/7b36963e7a7363f1b40ac0a829c4644923dda909.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixos-unstable": {
+        "branch": "nixos-unstable",
+        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
+        "owner": "NixOS",
+        "repo": "nixpkgs-channels",
+        "rev": "73392e79aa62e406683d6a732eb4f4101f4732be",
+        "sha256": "049fq37sxdn5iis7ni407j2jsfrxbb41pgv5zawi02qj47f74az9",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs-channels/archive/73392e79aa62e406683d6a732eb4f4101f4732be.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
