@@ -18,6 +18,14 @@ let
       nixpkgsSource = "nixos-19.03";
       system = "x86_64-darwin";
     };
+    "nixos-19_09" = {
+      nixpkgsSource = "nixos-19.09";
+      system = "x86_64-linux";
+    };
+    "nixos-19_09-darwin" = {
+      nixpkgsSource = "nixos-19.09";
+      system = "x86_64-darwin";
+    };
   };
 
   recurseIntoAttrs = as: as // { recurseForDerivations = true; };
