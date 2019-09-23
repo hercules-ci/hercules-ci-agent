@@ -26,9 +26,7 @@ let
               cachix =
                 # avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
                 haskell.lib.disableLibraryProfiling (
-                  addBuildDepends (
-                    self.callPackage ./cachix.nix { nix-main = nix; nix-store = nix; }
-                  ) [ pkgs.boost ]
+                  self.callPackage ./cachix.nix { nix-main = nix; nix-store = nix; boost_context = pkgs.boost; }
                 );
               cachix-api = self.callPackage ./cachix-api.nix {};
 
