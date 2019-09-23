@@ -2,6 +2,7 @@
 , async
 , base
 , base64-bytestring
+, boost_context
 , bytestring
 , cachix-api
 , conduit
@@ -53,11 +54,11 @@
 }:
 mkDerivation {
   pname = "cachix";
-  version = "0.2.1";
+  version = "0.3.2";
   src = fetchgit {
     url = "https://github.com/cachix/cachix";
-    sha256 = "1jixbikikw39ykplb9l7ak1qv00x477cgiswh6c9mb6xwj5pgnkj";
-    rev = "f55bc800f941cb8fe78d61ebf9ed99d8f0aa5404";
+    sha256 = "10f0flva960n3y0pa2dap0r2bgj97dpm9j1093qs4anj3s0a1gxp";
+    rev = "1d1a64e72a165e3744dc909a1807158fb9adb4a4";
     fetchSubmodules = true;
   };
   postUnpack = "sourceRoot+=/cachix; echo source root reset to $sourceRoot";
@@ -109,6 +110,7 @@ mkDerivation {
     uri-bytestring
     versions
   ];
+  librarySystemDepends = [ boost_context ];
   libraryPkgconfigDepends = [ nix-main nix-store ];
   executableHaskellDepends = [ base cachix-api ];
   executableToolDepends = [ hspec-discover ];
