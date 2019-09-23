@@ -32,11 +32,11 @@
 }:
 mkDerivation {
   pname = "cachix-api";
-  version = "0.2.1";
+  version = "0.3.0";
   src = fetchgit {
     url = "https://github.com/cachix/cachix";
-    sha256 = "1jixbikikw39ykplb9l7ak1qv00x477cgiswh6c9mb6xwj5pgnkj";
-    rev = "f55bc800f941cb8fe78d61ebf9ed99d8f0aa5404";
+    sha256 = "10f0flva960n3y0pa2dap0r2bgj97dpm9j1093qs4anj3s0a1gxp";
+    rev = "1d1a64e72a165e3744dc909a1807158fb9adb4a4";
     fetchSubmodules = true;
   };
   postUnpack = "sourceRoot+=/cachix-api; echo source root reset to $sourceRoot";
@@ -56,6 +56,7 @@ mkDerivation {
     http-media
     lens
     memory
+    protolude
     resourcet
     servant
     servant-auth
@@ -68,7 +69,7 @@ mkDerivation {
     text
     transformers
   ];
-  executableHaskellDepends = [ aeson base ];
+  executableHaskellDepends = [ aeson base protolude ];
   testHaskellDepends = [
     aeson
     base
