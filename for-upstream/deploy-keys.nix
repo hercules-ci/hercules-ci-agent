@@ -3,11 +3,11 @@ let
   cfg = config.services.hercules-ci-agent;
   inherit (lib) mkIf mkOption types;
 
-  binaryCachesPath = cfg.finalConfig.binaryCachesPath or null;
+  binaryCachesPath = cfg.effectiveConfig.binaryCachesPath;
   binaryCachesDir = lib.removeSuffix "binary-caches.json" binaryCachesPath;
   binaryCachesCorrect = lib.hasSuffix "binary-caches.json" binaryCachesPath;
 
-  clusterJoinTokenPath = cfg.finalConfig.clusterJoinTokenPath or null;
+  clusterJoinTokenPath = cfg.effectiveConfig.clusterJoinTokenPath;
   clusterJoinTokenDir = lib.removeSuffix "cluster-join-token.key" clusterJoinTokenPath;
   clusterJoinTokenCorrect = lib.hasSuffix "cluster-join-token.key" clusterJoinTokenPath;
 
@@ -107,7 +107,7 @@ in
               Please
                 - remove the services.hercules-ci-agent.binaryCachesFile value
                 - make sure you deploy a binary-caches.json file to your agent's
-                    ${cfg.finalConfig.binaryCachesPath or cfg.secretsDirectory}
+                    ${cfg.effectiveConfig.binaryCachesPath}
 
               For the format, see https://docs.hercules-ci.com/hercules-ci/reference/agent-config/#binaryCachesPath
           '';

@@ -60,13 +60,21 @@ in
     /*
       Internal and/or computed values
      */
-    finalConfig = mkOption {
+    fileConfig = mkOption {
       type = types.attrsOf types.unspecified;
       readOnly = true;
       internal = true;
       description = ''
         The fully assembled config file as an attribute set, right before it's
         written to file.
+      '';
+    };
+    effectiveConfig = mkOption {
+      type = types.attrsOf types.unspecified;
+      readOnly = true;
+      internal = true;
+      description = ''
+        The fully assembled config file as an attribute set plus some derived defaults.
       '';
     };
     tomlFile = mkOption {
@@ -92,18 +100,26 @@ in
     services.hercules-ci-agent = {
       secretsDirectory = cfg.baseDirectory + "/secrets";
       tomlFile = pkgs.writeText "hercules-ci-agent.toml"
-        (toTOML cfg.finalConfig);
+        (toTOML cfg.fileConfig);
 
-      finalConfig = filterAttrs (k: v: k == "binaryCachesPath" -> v != null) (
+      fileConfig = filterAttrs (k: v: k == "binaryCachesPath" -> v != null) (
         {
           inherit (cfg) concurrentTasks baseDirectory;
         }
         // cfg.extraOptions
       );
-
-      # TODO: expose only the (future) main directory as an option and derive
-      # all locations from finalConfig.
-      extraOptions.clusterJoinTokenPath = lib.mkDefault (cfg.secretsDirectory + "/cluster-join-token.key");
+      effectiveConfig =
+        let
+          # recursively compute the effective configuration
+          effectiveConfig = defaults // cfg.fileConfig;
+          defaults = {
+            workDirectory = effectiveConfig.baseDirectory + "/work";
+            staticSecretsDirectory = effectiveConfig.baseDirectory + "/secrets";
+            clusterJoinTokenPath = effectiveConfig.staticSecretsDirectory + "/cluster-join-token.key";
+            binaryCachesPath = effectiveConfig.staticSecretsDirectory + "/binary-caches.json";
+          };
+        in
+          effectiveConfig;
     };
   };
 }
