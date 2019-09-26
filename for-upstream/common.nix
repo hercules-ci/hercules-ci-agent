@@ -110,6 +110,7 @@ in
       );
       effectiveConfig =
         let
+          # recursively compute the effective configuration
           effectiveConfig = defaults // cfg.fileConfig;
           defaults = {
             workDirectory = effectiveConfig.baseDirectory + "/work";
