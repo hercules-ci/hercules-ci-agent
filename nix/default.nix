@@ -1,10 +1,10 @@
 { sources ? import ./sources.nix
 , nixpkgsSource ? "nixos-19.03"
-, nixpkgs ? sources."${nixpkgsSource}"
+, nixpkgs ? sources.${nixpkgsSource}
   # Sharing the test suite
 , allTargets ? import ./ci.nix
 , testSuiteTarget ? "nixos-19_03"
-, testSuitePkgs ? allTargets."${testSuiteTarget}"
+, testSuitePkgs ? allTargets.${testSuiteTarget}.${system}
 , system ? builtins.currentSystem
 }:
 

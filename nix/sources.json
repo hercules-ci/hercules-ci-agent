@@ -70,5 +70,17 @@
         "type": "tarball",
         "url": "https://github.com/NixOS/nixpkgs-channels/archive/73392e79aa62e406683d6a732eb4f4101f4732be.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "project.nix": {
+        "branch": "master",
+        "description": "A configuration manager for your projects",
+        "homepage": null,
+        "owner": "hercules-ci",
+        "repo": "project.nix",
+        "rev": "33e5f3cb25feff4ccd00f8c60a05976e2ee01802",
+        "sha256": "0c3q3il5h6q3ms8m6da51knvjsfvpz12sh3a3av4d2a5ikm5ncl1",
+        "type": "tarball",
+        "url": "https://github.com/hercules-ci/project.nix/archive/33e5f3cb25feff4ccd00f8c60a05976e2ee01802.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     }
 }
