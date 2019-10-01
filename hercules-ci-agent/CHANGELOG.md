@@ -7,17 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Now deployable with [terraform-hercules-ci](https://github.com/hercules-ci/terraform-hercules-ci)
+
 ### Changed
 
-- The `binary-caches.json` file is now required. The empty object `{}` makes a
-  valid file, but we highly recommend to configure a cache.
+- The `binary-caches.json` file can now be deployed like any other confidential file. Its contents are not required at module evaluation time any more.
 
-- The `services.hercules-ci-agent.binaryCachesFile` option has been removed.
-  `binary-caches.json` can now be deployed like any other secrets file.
+- The `services.hercules-ci-agent.binaryCachesFile` option has been removed,
 
   **NixOps users**: rename to `deployment.keys."binary-caches.json".file`
 
   **Others**: remove your `binaryCachesFile` value. Make sure `binary-caches.json` is deployed.
+
+- The `binary-caches.json` file is now required. The empty object `{}` is a
+  valid file, but we highly recommend to configure a cache.
+
+
+### Fixed
+
+ - The agent will now actually auto-restart when the secrets files change.
 
 
 ## [0.4.0] - 2019-08-30
