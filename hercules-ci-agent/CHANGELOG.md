@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The `binary-caches.json` file can now be deployed like any other confidential file. Its contents are not required at module evaluation time any more.
 
-- The `services.hercules-ci-agent.binaryCachesFile` option has been removed,
+- The `services.hercules-ci-agent.binaryCachesFile` option has been removed.
 
   **NixOps users**: rename to `deployment.keys."binary-caches.json".file`
 
