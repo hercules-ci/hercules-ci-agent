@@ -1,5 +1,7 @@
 Example releasing hercules-ci-agent and optionally hercules-ci-api:
 
+### 1. Prepare API
+
 - git checkout -B vX.X.X (new agent version)
 - update hercules-ci-api/CHANGELOG.md
    - git log PREVIOUS..HEAD -- ./hercules-ci-api
@@ -10,6 +12,9 @@ Example releasing hercules-ci-agent and optionally hercules-ci-api:
 - scripts/generate-nix
 - git add --patch
 - git commit -m "hercules-ci-api-Y.Y.Y.Y"
+
+### 2. Prepare Agent
+
 - update hercules-ci-agent/CHANGELOG.md
    - git log PREVIOUS..HEAD -- ./for-upstream ./hercules-ci-agent
 - bump agent version
@@ -21,11 +26,34 @@ Example releasing hercules-ci-agent and optionally hercules-ci-api:
 - git add --patch
 - git commit -m "hercules-ci-agent-X.X.X"
 - wait for CI to succeed
+- open a PR against master
+
+### 3. Preliminary tag and verification
+
 - git log -2
 - copy the contents of the api changelog for this release to: git tag -s -a hercules-ci-api-Y.Y.Y.Y API_COMMIT
 - copy the contents of the agent changelog for this release to: git tag -s -a hercules-ci-agent-X.X.X AGENT_COMMIT
 - git push --tags
-- open a PR against master
-- open a PR against stable using the tag as a base
-- update `for-upstream` (bump version, etc) and sync with nix-darwin
-- make sure to verify default pacakge url is accesible
+- update nix-darwin
+   - prepare branch on nix-darwin clone
+   - for-upstream/copy-to-nix-darwin <path-to-nix-darwin-clone>
+- update agent-deployments
+- deploy agent-deployments (staging, PR, merge, prod)
+- test
+   - push dummy change in hercules-ci-agent/hercules-ci-agent/Main.hs to ci-trigger for testing
+   - check https://hercules-ci.com/github/hercules-ci/hercules-ci-agent/
+
+- update terraform-hercules-ci
+   - niv update hercules-ci-agent -b hercules-ci-agent-<VERSION>
+   - ./update
+- update example-deploy-agent-terraform-aws
+   - (after merge of terraform-hercules-ci master)
+   - ./update
+
+### 4. Finalize the release
+
+- merge hercules-ci-agent release into master
+- open a PR against stable using the release branch as a base
+- open a PR on nix-darwin (from previous step's branch)
+- make sure to verify default package url is accessible
+   - update agent-deployments to stable
