@@ -41,10 +41,10 @@
         "homepage": "https://pre-commit.com/",
         "owner": "hercules-ci",
         "repo": "nix-pre-commit-hooks",
-        "rev": "e3661fe899c999fa6c77b5fcc3f4689657fb8f09",
-        "sha256": "09ns5s0b9918wlj9jximz49pjphsivysmfqcyn696wnjrq607b5q",
+        "rev": "1f5b70278150e17783c67ea8648d4295f29fb1b9",
+        "sha256": "1my4sz698iq7i0m68n3xz3vkynvq6crw17annj7hgngvhpq4ysrb",
         "type": "tarball",
-        "url": "https://github.com/hercules-ci/nix-pre-commit-hooks/archive/e3661fe899c999fa6c77b5fcc3f4689657fb8f09.tar.gz",
+        "url": "https://github.com/hercules-ci/nix-pre-commit-hooks/archive/1f5b70278150e17783c67ea8648d4295f29fb1b9.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixos-19.03": {
