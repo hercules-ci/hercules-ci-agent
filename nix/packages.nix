@@ -135,7 +135,16 @@ recurseIntoAttrs {
   inherit (internal) hercules-ci-api-swagger;
   tests = if pkgs.stdenv.isLinux then internal.tests else null;
   pre-commit-check =
-    (import sources.nix-pre-commit-hooks).run { src = gitignoreSource ../.; };
+    (import sources.nix-pre-commit-hooks).run {
+      src = ../.;
+      hooks = {
+        # TODO: hlint.enable = true;
+        ormolu.enable = true;
+        shellcheck.enable = true;
+        nixpkgs-fmt.enable = true;
+        nixpkgs-fmt.excludes = [ "tests/agent-test/testdata/" ];
+      };
+    };
 
   # Not traversed for derivations:
   inherit internal;
