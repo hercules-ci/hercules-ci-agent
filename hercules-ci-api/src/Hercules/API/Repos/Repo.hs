@@ -6,6 +6,7 @@ import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Prelude
 import Prelude
 
+-- | Information about a repository on a connected repository site such as github.
 data Repo
   = Repo
       { id :: Id Repo,
@@ -14,6 +15,7 @@ data Repo
         slug :: Text,
         displayName :: Text,
         imageURL :: Maybe Text,
+        isPublic :: Bool,
         isInstalled :: Bool,
         -- ^ An installed repo is one that Hercules has permission to.
         --
