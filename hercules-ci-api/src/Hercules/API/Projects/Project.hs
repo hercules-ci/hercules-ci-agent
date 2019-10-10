@@ -19,6 +19,10 @@ data Project
         siteSlug :: Name SourceHostingSite,
         slug :: Name Project,
         displayName :: Text,
-        imageURL :: Maybe Text
+        imageURL :: Maybe Text,
+        isPublic :: Bool
+        -- ^ True if no authorization is required for retrieving basic
+        --   information about a project, such as its existence, name,
+        --   job statuses etc.
         }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
