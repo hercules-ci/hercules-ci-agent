@@ -2,6 +2,7 @@
 
 module Hercules.API.Accounts.Account where
 
+import qualified Hercules.API.BillingStatus as BillingStatus
 import Hercules.API.Prelude
 import Prelude
 
@@ -16,6 +17,7 @@ data Account
         typ :: AccountType,
         displayName :: Text,
         imageURL :: Text,
+        billingStatus :: Maybe BillingStatus.BillingStatus,
         isInstalled :: Bool,
         -- ^ Whether Hercules CI is installed on this account as an App.
         --

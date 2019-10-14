@@ -49,6 +49,7 @@ library
       Hercules.API.Agents.FullClusterJoinToken
       Hercules.API.Attribute
       Hercules.API.Auth
+      Hercules.API.BillingStatus
       Hercules.API.Build
       Hercules.API.Build.EvaluationDependency
       Hercules.API.Build.EvaluationDetail
