@@ -4,7 +4,6 @@ module Hercules.API.Repos.Repo where
 
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Prelude
-import Prelude
 
 -- | Information about a repository on a connected repository site such as github.
 data Repo

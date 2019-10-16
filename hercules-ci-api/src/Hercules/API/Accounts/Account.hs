@@ -4,7 +4,6 @@ module Hercules.API.Accounts.Account where
 
 import qualified Hercules.API.BillingStatus as BillingStatus
 import Hercules.API.Prelude
-import Prelude
 
 data AccountType = User | Organization
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
