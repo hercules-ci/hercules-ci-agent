@@ -8,7 +8,6 @@ import Hercules.API.Repos.Repo (Repo)
 import Hercules.API.SourceHostingSite.SourceHostingSite
   ( SourceHostingSite
     )
-import Prelude
 
 data Project
   = Project

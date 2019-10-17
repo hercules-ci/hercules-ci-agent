@@ -15,6 +15,9 @@ import Hercules.API.Projects.Job
   ( Job,
     ProjectAndJobs
     )
+import Hercules.API.Projects.PatchProject
+  ( PatchProject
+    )
 import Hercules.API.Projects.Project (Project)
 import Hercules.API.SourceHostingSite.SourceHostingSite
   ( SourceHostingSite
@@ -48,6 +51,14 @@ data ProjectsAPI auth f
                :> auth
                :> ReqBody '[JSON] CreateProject
                :> Post '[JSON] (Id Project),
+        patchProject
+          :: f
+               :- Summary "Modify a project"
+               :> "projects"
+               :> Capture' '[Required, Strict] "projectId" (Id Project)
+               :> ReqBody '[JSON] PatchProject
+               :> auth
+               :> Patch '[JSON] Project,
         projectJobs
           :: f
                :- Summary "List all jobs in a project"

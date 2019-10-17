@@ -4,7 +4,6 @@ module Hercules.API.Projects.CreateProject where
 
 import Hercules.API.Prelude
 import Hercules.API.Repos.Repo (Repo)
-import Prelude
 
 data CreateProject
   = CreateProject

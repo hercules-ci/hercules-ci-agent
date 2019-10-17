@@ -67,6 +67,7 @@ library
       Hercules.API.Projects
       Hercules.API.Projects.CreateProject
       Hercules.API.Projects.Job
+      Hercules.API.Projects.PatchProject
       Hercules.API.Projects.Project
       Hercules.API.Repos
       Hercules.API.Repos.Repo
