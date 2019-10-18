@@ -62,6 +62,9 @@ library
       Hercules.API.Logs
       Hercules.API.Message
       Hercules.API.Name
+      Hercules.API.Organizations
+      Hercules.API.Organizations.Organization
+      Hercules.API.Organizations.CreateOrganization
       Hercules.API.Orphans
       Hercules.API.Prelude
       Hercules.API.Projects
