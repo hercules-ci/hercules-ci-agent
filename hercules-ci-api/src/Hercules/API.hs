@@ -46,6 +46,7 @@ import Hercules.API.Build as Client
 import Hercules.API.Health (HealthAPI)
 import Hercules.API.Id (Id)
 import Hercules.API.Name (Name)
+import Hercules.API.Organizations (OrganizationsAPI)
 import Hercules.API.Projects (ProjectsAPI)
 import Hercules.API.Repos (ReposAPI)
 import Hercules.API.Result (Result (..))
@@ -68,7 +69,8 @@ data HerculesAPI auth f
         agentBuild :: f :- ToServantApi (Agent.BuildAPI auth),
         agentLifeCycle :: f :- ToServantApi (Agent.LifeCycleAPI auth),
         build :: f :- ToServantApi (Client.BuildAPI auth),
-        health :: f :- ToServantApi (HealthAPI auth)
+        health :: f :- ToServantApi (HealthAPI auth),
+        organizations :: f :- ToServantApi (OrganizationsAPI auth)
         }
   deriving (Generic)
 
@@ -78,7 +80,8 @@ data ClientAPI auth f
         clientRepos :: f :- ToServantApi (ReposAPI auth),
         clientProjects :: f :- ToServantApi (ProjectsAPI auth),
         clientAgents :: f :- ToServantApi (AgentsAPI auth),
-        clientBuild :: f :- ToServantApi (Client.BuildAPI auth)
+        clientBuild :: f :- ToServantApi (Client.BuildAPI auth),
+        clientOrganizations :: f :- ToServantApi (OrganizationsAPI auth)
         }
   deriving (Generic)
 
