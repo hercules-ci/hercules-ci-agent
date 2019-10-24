@@ -134,6 +134,13 @@ public:
   virtual BuildResult buildDerivation(const Path & drvPath, const BasicDerivation & drv,
         BuildMode buildMode = bmNormal) override;
 
+  virtual void queryMissing(const PathSet& targets,
+                            PathSet& willBuild,
+                            PathSet& willSubstitute,
+                            PathSet& unknown,
+                            unsigned long long& downloadSize,
+                            unsigned long long& narSize) override;
+
   // Additions
 
   void printDiagnostics();
