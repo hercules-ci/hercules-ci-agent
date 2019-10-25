@@ -179,6 +179,21 @@ spec = describe "Evaluation" $ do
           toS (AttributeEvent.derivationPath ae)
             `shouldContain` "-myPackage.drv"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
+  context "when the nix expression is a list of derivations"
+    $ it "returns no events but succeed"
+    $ \srv -> do
+      id <- randomId
+      (s, r) <-
+        runEval
+          srv
+          defaultTask
+            { EvaluateTask.id = id,
+              EvaluateTask.primaryInput = "/tarball/list"
+              }
+      s `shouldBe` TaskStatus.Successful ()
+      case r of
+        [] -> pass
+        _ -> failWith $ "Events should be empty, not: " <> show r
   context "when the nix expression is an empty attrset"
     $ it "returns no events but succeed"
     $ \srv -> do
