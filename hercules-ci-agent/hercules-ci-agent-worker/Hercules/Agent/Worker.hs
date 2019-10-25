@@ -17,7 +17,6 @@ import Data.Conduit.Serialization.Binary
     conduitEncode
     )
 import Data.IORef
-import Data.List (last)
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Data.Typeable (typeOf)
@@ -309,8 +308,8 @@ walk evalState = walk' True [] 10
             _any -> liftIO $ do
               vt <- rawValueType v
               unless
-                ( last path
-                    == "recurseForDerivations"
+                ( lastMay path
+                    == Just "recurseForDerivations"
                     && vt
                     == CNix.Internal.Raw.Bool
                   )
