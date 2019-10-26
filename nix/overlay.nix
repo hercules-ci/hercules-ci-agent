@@ -30,21 +30,11 @@ in
        }
   );
 
-  nix = (
-    pkgs.nix.override (
-      args: args
+  nix = pkgs.nix.override (
+    args:
+      args
       // {
            boehmgc = self.boehmgc-hercules;
          }
-    )
-  ).overrideAttrs (
-    attrs: attrs
-    // {
-         patches = (attrs.patches or [])
-           ++ [
-                ./nix-no-negative-caching.patch
-              ]
-           ;
-       }
   );
 }

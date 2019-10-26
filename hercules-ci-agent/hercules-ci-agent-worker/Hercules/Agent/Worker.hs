@@ -217,17 +217,11 @@ runEval st@HerculesState {herculesStore = hStore, wrappedStore = wStore, shortcu
           BuildResult.DependencyFailure -> throwIO $ BuildException plainDrvText Derivation.DependencyFailure
           BuildResult.Success -> pass
         clearSubstituterCaches
-        clearPathInfoCache wStore
-        -- TODO: add precise invalidation to HerculesStore (or to upstream Store)
         clearPathInfoCache store
         derivation <- getDerivation store plainDrv
         outputPath <- derivationOutputPath derivation outputName
         ensurePath (wrappedStore st) outputPath `catch` \e -> do
           hPutStrLn stderr ("ensurePath (wrapped) failed: " <> show (e :: SomeException) :: Text)
-        -- continue
-        ensurePath store outputPath `catch` \e -> do
-          hPutStrLn stderr ("ensurePath failed: " <> show (e :: SomeException) :: Text)
-          throwIO e
       hPutStrLn stderr ("Built " <> show path :: Text)
     hPutStrLn stderr ("Store uri: " <> s)
     withEvalState store $ \evalState -> do

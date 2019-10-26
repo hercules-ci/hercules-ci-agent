@@ -215,8 +215,32 @@ HerculesStore::HerculesStore(const Params& params, ref<Store> storeToWrap)
     : WrappingStore(params, storeToWrap) {}
 
 void HerculesStore::ensurePath(const Path& path) {
-  wrappedStore->ensurePath(path);
+  /* We avoid asking substituters for paths, since
+     those would yield negative pathInfo caches on remote store.
+
+     Instead, we only assert if path exists in the store.
+
+     Once IFD build is performed, we ask for substitution
+     via ensurePath.
+  */
+  if (!wrappedStore->isValidPath(path)) {
+    std::exception_ptr exceptionToThrow(nullptr);
+    builderCallback(strdup(path.c_str()), &exceptionToThrow);
+    if (exceptionToThrow != nullptr) {
+      std::rethrow_exception(exceptionToThrow);
+    }
+    wrappedStore->ensurePath(path);
+  }
   ensuredPaths.insert(path);
+};
+
+// Avoid substituting in evaluator, see `ensurePath` for more details
+void HerculesStore::queryMissing(const PathSet& targets,
+                                 PathSet& willBuild,
+                                 PathSet& willSubstitute,
+                                 PathSet& unknown,
+                                 unsigned long long& downloadSize,
+                                 unsigned long long& narSize) {
 };
 
 void HerculesStore::buildPaths(const PathSet& paths, BuildMode buildMode) {
