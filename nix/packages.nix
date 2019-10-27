@@ -57,7 +57,9 @@ let
                           postInstall =
                             o.postInstall or ""
                             + ''
-                              wrapProgram $out/bin/hercules-ci-agent --prefix PATH : ${makeBinPath [ pkgs.gnutar pkgs.gzip nix ]}
+                              wrapProgram $out/bin/hercules-ci-agent --prefix PATH : ${makeBinPath [ pkgs.gnutar pkgs.gzip pkgs.git nix ]}
+                              # TODO: worker should inherit from the agent, but can't find git without this
+                              wrapProgram $out/bin/hercules-ci-agent-worker --prefix PATH : ${makeBinPath [ pkgs.gnutar pkgs.gzip pkgs.git nix ]}
                             ''
                             ;
                           passthru =
