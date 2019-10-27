@@ -193,7 +193,7 @@ yieldAttributeError path e =
       }
 
 runEval :: HerculesState -> Eval -> ConduitM i Event (ResourceT IO) ()
-runEval st@HerculesState {herculesStore = hStore, wrappedStore = wStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
+runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setGlobalOption
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setOption
   do

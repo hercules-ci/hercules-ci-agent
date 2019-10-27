@@ -47,16 +47,16 @@
         "url": "https://github.com/hercules-ci/nix-pre-commit-hooks/archive/1f5b70278150e17783c67ea8648d4295f29fb1b9.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
-    "nixos-19.03": {
-        "branch": "nixos-19.03",
-        "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
+    "nixos-19.09": {
+        "branch": "nixos-19.09",
+        "description": "A read-only mirror of NixOS/nixpkgs tracking the released channels. Send issues and PRs to",
         "homepage": "https://github.com/NixOS/nixpkgs",
         "owner": "NixOS",
         "repo": "nixpkgs-channels",
-        "rev": "021d733ea3f87b8c9232020b4e606d08eaca160b",
-        "sha256": "13600nzrakvg2hsfg5yr7x0jp9m762nvjyddf07q60d3m7vx9jxy",
+        "rev": "27a5ddcf747fb2bb81ea9c63f63f2eb3eec7a2ec",
+        "sha256": "1bp11q2marsqj3g2prdrghkhmv483ab5pi078d83xkhkk2jh3h81",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs-channels/archive/021d733ea3f87b8c9232020b4e606d08eaca160b.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs-channels/archive/27a5ddcf747fb2bb81ea9c63f63f2eb3eec7a2ec.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixos-unstable": {

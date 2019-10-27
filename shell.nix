@@ -1,5 +1,5 @@
 { sources ? import ./nix/sources.nix
-, nixpkgsSource ? "nixos-19.03"
+, nixpkgsSource ? "nixos-19.09"
 , nixpkgs ? sources."${nixpkgsSource}"
 }:
 
