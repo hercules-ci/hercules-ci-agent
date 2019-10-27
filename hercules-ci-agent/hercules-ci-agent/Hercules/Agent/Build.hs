@@ -118,7 +118,7 @@ push buildTask outs = do
   let paths = OutputInfo.path <$> toList outs
   caches <- Agent.Cachix.activePushCaches
   forM_ caches $ \cache -> do
-    Agent.Cachix.push cache paths
+    Agent.Cachix.push cache paths 4
     emitEvents buildTask [BuildEvent.Pushed $ Pushed.Pushed {cache = cache}]
 
 reportSuccess :: BuildTask -> App ()
