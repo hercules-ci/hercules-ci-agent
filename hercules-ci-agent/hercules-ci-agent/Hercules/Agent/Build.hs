@@ -56,30 +56,26 @@ realise buildTask = do
   let stdinc = pass
       stdoutc = pass -- FIXME: use
       stderrc = Conduit.fold
-  procSpec <-
-    ( \procSpec ->
-        procSpec
+  nixStoreProc <-
+    Nix.nixProc
+      "nix-store"
+      [ "--realise",
+        "--timeout",
+        "36000", -- 10h TODO: make configurable via meta.timeout and decrease default to 3600s or so
+        "--max-silent-time",
+        "1800" -- 0.5h TODO: make configurable via (?) and decrease default to 600s
+        ]
+      [ BuildTask.derivationPath buildTask
+        ]
+  let procSpec =
+        nixStoreProc
           { close_fds = True, -- Disable on Windows?
             cwd = Just "/"
             }
-      )
-      <$> Nix.nixProc
-            "nix-store"
-            [ "--realise",
-              "--timeout",
-              "36000", -- 10h TODO: make configurable via meta.timeout and decrease default to 3600s or so
-              "--max-silent-time",
-              "1800" -- 0.5h TODO: make configurable via (?) and decrease default to 600s
-              ]
-            [ BuildTask.derivationPath buildTask
-              ]
-  logLocM DebugS $ "Invoking nix-store: " <> show procSpec
+  logLocM DebugS $ "Building: " <> show (System.Process.cmdspec procSpec)
   (status, _out, errBytes) <-
     liftIO
       $ sourceProcessWithStreams procSpec stdinc stdoutc stderrc
-  withNamedContext "exitStatus" (show status :: Text)
-    $ logLocM DebugS
-    $ "Returned from nix-store"
   noContent $ defaultRetry $ runHerculesClient'
     $ API.Logs.writeLog
         Hercules.Agent.Client.logsClient
@@ -87,10 +83,10 @@ realise buildTask = do
         errBytes
   case status of
     ExitFailure e -> do
-      withNamedContext "exitStatus" e $ logLocM ErrorS "Worker failed"
+      withNamedContext "exitStatus" e $ logLocM ErrorS "Building failed"
       emitEvents buildTask [BuildEvent.Done False]
       pure $ TaskStatus.Terminated ()
-    ExitSuccess -> TaskStatus.Successful () <$ logLocM DebugS "Clean nix-store exit"
+    ExitSuccess -> TaskStatus.Successful () <$ logLocM DebugS "Building succeeded"
 
 getOutputPathInfos :: BuildTask -> App (Map Text OutputInfo)
 getOutputPathInfos buildTask = do
