@@ -23,8 +23,8 @@ import Protolude
 import qualified Servant.Client as Servant
 import System.IO (hClose)
 
-push :: Text -> [Text] -> App ()
-push cache paths = withNamedContext "cache" cache $ do
+push :: Text -> [Text] -> Int -> App ()
+push cache paths workers = withNamedContext "cache" cache $ do
   Agent.Cachix.Env {pushCaches = pushCaches, nixStore = nixStore} <-
     asks $ Agent.Cachix.getEnv
   httpManager <- asks $ manager
@@ -38,7 +38,7 @@ push cache paths = withNamedContext "cache" cache $ do
   void
     $ Cachix.Push.pushClosure
         ( \f l ->
-            liftIO $ Cachix.Push.mapConcurrentlyBounded 4 (fmap (unliftIO ul) f) l
+            liftIO $ Cachix.Push.mapConcurrentlyBounded workers (fmap (unliftIO ul) f) l
           )
         clientEnv
         nixStore

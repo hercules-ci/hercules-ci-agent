@@ -72,6 +72,9 @@ import System.Process
 eventLimit :: Int
 eventLimit = 50000
 
+pushEvalWorkers :: Int
+pushEvalWorkers = 16
+
 performEvaluation :: Task EvaluateTask.EvaluateTask -> App ()
 performEvaluation task' =
   withProducer (produceEvaluationTaskEvents task') $ \producer ->
@@ -192,7 +195,7 @@ produceEvaluationTaskEvents task' writeToBatch = withWorkDir $ \tmpdir -> do
             paths <- liftIO $ readIORef allAttrPaths
             forM_ caches $ \cache -> do
               withNamedContext "cache" cache $ logLocM DebugS "Pushing drvs to cachix"
-              Agent.Cachix.push cache (toList paths)
+              Agent.Cachix.push cache (toList paths) pushEvalWorkers
               emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll {cache = cache}
           captureAttrDrvAndEmit msg = do
             case msg of
@@ -279,7 +282,7 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                             caches <- Agent.Cachix.activePushCaches
                             forM_ caches $ \cache -> do
                               withNamedContext "cache" cache $ logLocM DebugS "Pushing ifd drvs to cachix"
-                              Agent.Cachix.push cache [drv]
+                              Agent.Cachix.push cache [drv] pushEvalWorkers
                       Async.Lifted.concurrently_ submitDerivationInfos pushDerivations
                       emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest {BuildRequest.derivationPath = drv}
                       flush
