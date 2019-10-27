@@ -36,7 +36,7 @@ public:
 
 protected:
   virtual void queryPathInfoUncached(const Path & path,
-        Callback<std::shared_ptr<ValidPathInfo>> callback) override;
+        Callback<std::shared_ptr<ValidPathInfo>> callback) noexcept override;
 
 public:
 
@@ -87,8 +87,6 @@ public:
   virtual void addIndirectRoot(const Path & path) override;
 
   virtual void syncWithGC() override;
-
-  virtual Roots findRoots() override;
 
   virtual void collectGarbage(const GCOptions & options, GCResults & results) override;
 
