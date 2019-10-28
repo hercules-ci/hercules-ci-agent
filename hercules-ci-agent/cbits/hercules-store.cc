@@ -38,8 +38,8 @@ PathSet WrappingStore::queryAllValidPaths() {
 // protected:
 void WrappingStore::queryPathInfoUncached(
     const Path& path,
-    Callback<std::shared_ptr<ValidPathInfo>> callback) {
-  unsupported();
+    Callback<std::shared_ptr<ValidPathInfo>> callback) noexcept {
+  unsupported("queryPathInfoUncached");
   /*
       Callback<ref<ValidPathInfo>>
      callback2([&callback](std::future<ref<ValidPathInfo>> vpi){
@@ -148,10 +148,6 @@ void WrappingStore::syncWithGC() {
   wrappedStore->syncWithGC();
 }
 
-Roots WrappingStore::findRoots() {
-  return wrappedStore->findRoots();
-}
-
 void WrappingStore::collectGarbage(const GCOptions& options,
                                    GCResults& results) {
   wrappedStore->collectGarbage(options, results);
@@ -256,7 +252,7 @@ void HerculesStore::buildPaths(const PathSet& paths, BuildMode buildMode) {
 BuildResult HerculesStore::buildDerivation(const Path& drvPath,
                                            const BasicDerivation& drv,
                                            BuildMode buildMode) {
-  unsupported();
+  unsupported("buildDerivation");
 
   std::cerr << "building derivation " << drvPath << std::endl;
   auto r = wrappedStore->buildDerivation(drvPath, drv, buildMode);

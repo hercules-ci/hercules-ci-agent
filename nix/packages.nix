@@ -44,6 +44,7 @@ let
                         nix-expr = nix;
                         nix-main = nix;
                         bdw-gc = pkgs.boehmgc-hercules;
+                        boost_context = pkgs.boost;
                       }
                     ) { src = gitignoreSource ../hercules-ci-agent; };
 
@@ -142,6 +143,7 @@ recurseIntoAttrs {
       hooks = {
         # TODO: hlint.enable = true;
         ormolu.enable = true;
+        ormolu.excludes = [ "Hercules/Agent/Compat.hs" ];
         shellcheck.enable = true;
         nixpkgs-fmt.enable = true;
         nixpkgs-fmt.excludes = [ "tests/agent-test/testdata/" ];

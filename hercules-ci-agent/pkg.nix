@@ -7,6 +7,7 @@
 , bdw-gc
 , binary
 , binary-conduit
+, boost_context
 , bytestring
 , cachix
 , cachix-api
@@ -145,6 +146,7 @@ mkDerivation {
     unordered-containers
     uuid
   ];
+  executableSystemDepends = [ boost_context ];
   executablePkgconfigDepends = [
     bdw-gc
     nix-expr

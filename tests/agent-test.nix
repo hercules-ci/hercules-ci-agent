@@ -38,7 +38,7 @@ in
 
         systemd.services.hercules-ci-agent.serviceConfig.StartLimitBurst = lib.mkForce (agentStartTimeoutSec * 10);
         systemd.services.hercules-ci-agent.serviceConfig.RestartSec = lib.mkForce ("100ms");
-        virtualisation.diskSize = 4096;
+        virtualisation.diskSize = 6 * 1024;
       };
     };
     api = { ... }: {
