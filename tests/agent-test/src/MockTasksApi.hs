@@ -19,6 +19,7 @@ import Conduit
     )
 import Control.Concurrent (newEmptyMVar)
 import Control.Concurrent.STM
+import qualified Control.Exception.Safe
 import Data.Aeson
   ( FromJSON,
     ToJSON,
@@ -193,9 +194,8 @@ withServer doIt = do
           done = d
           }
       runServer =
-        handle
+        Control.Exception.Safe.handleAny
           ( \e -> do
-              -- TODO: ignore asynccanceled
               putText
                 $ "Exception in mock server at port "
                 <> show port
