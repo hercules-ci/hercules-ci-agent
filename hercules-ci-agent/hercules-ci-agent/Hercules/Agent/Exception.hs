@@ -43,6 +43,10 @@ retry delaysSeconds io = loop delaysSeconds
             (floor $ delay * 1000 * 1000)
       loop delays
 
--- | 5 minute exponential backoff
+-- | ~5 minute exponential backoff
 defaultRetry :: (KatipContext m, MonadBaseControl IO m) => m a -> m a
-defaultRetry = retry (take 11 $ cap 60 exponential)
+defaultRetry = retry (take 10 $ cap 60 exponential)
+
+-- | ~1 minute exponential backoff
+quickRetry :: (KatipContext m, MonadBaseControl IO m) => m a -> m a
+quickRetry = retry (take 4 $ cap 60 exponential)

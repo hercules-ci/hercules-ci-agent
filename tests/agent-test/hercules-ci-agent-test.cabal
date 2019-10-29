@@ -51,6 +51,7 @@ executable hercules-ci-agent-test
     , mmorph
     , protolude
     , random
+    , safe-exceptions
     , servant >=0.14.1
     , servant-auth-server
     , servant-conduit
