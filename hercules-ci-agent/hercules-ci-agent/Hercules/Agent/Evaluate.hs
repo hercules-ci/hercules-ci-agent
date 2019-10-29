@@ -348,6 +348,7 @@ fetchSource targetDir url = do
   request <- HTTP.Simple.parseRequest $ toS url
   -- TODO: report stderr to service
   -- TODO: discard stdout
+  -- Fewer retries in order to speed up the tests.
   quickRetry $ do
     (x, _, _) <-
       liftIO
