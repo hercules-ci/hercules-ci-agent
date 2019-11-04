@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+ - Switch to Nix 2.3 and NixOS 19.09. *You should update your deployment to reflect the NixOS upgrade*, unless you're using terraform or nix-darwin, where it's automatic.
+ - Increased parallellism during push to cachix
+ - Switch to NixOS 19.09
+
+### Fixed
+
+ - Transient errors during source code fetching are now retried
+ - Fixed a bug related to narinfo caching in the context of IFD
+ - Fixed an exception when the root of ci.nix is a list, although lists are unsupported
 
 ## [0.5.0] - 2019-10-01
 
