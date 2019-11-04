@@ -7,6 +7,7 @@
 , exceptions
 , hashable
 , hercules-ci-api-core
+, hspec
 , http-api-data
 , http-media
 , lens
@@ -14,6 +15,7 @@
 , memory
 , network-uri
 , profunctors
+, QuickCheck
 , servant
 , servant-auth
 , servant-auth-swagger
@@ -27,11 +29,9 @@
 , uuid
 }:
 mkDerivation {
-  pname = "hercules-ci-api";
-  version = "0.4.0.0";
-  src = ./hercules-ci-api;
-  isLibrary = true;
-  isExecutable = true;
+  pname = "hercules-ci-api-agent";
+  version = "0.1.0.0";
+  src = ./hercules-ci-api-agent;
   libraryHaskellDepends = [
     aeson
     base
@@ -46,8 +46,6 @@ mkDerivation {
     lens
     lens-aeson
     memory
-    network-uri
-    profunctors
     servant
     servant-auth
     servant-auth-swagger
@@ -59,7 +57,7 @@ mkDerivation {
     time
     uuid
   ];
-  executableHaskellDepends = [
+  testHaskellDepends = [
     aeson
     base
     bytestring
@@ -67,12 +65,14 @@ mkDerivation {
     cookie
     exceptions
     hashable
+    hspec
     http-api-data
     http-media
     lens
     memory
     network-uri
     profunctors
+    QuickCheck
     servant
     servant-auth
     servant-auth-swagger

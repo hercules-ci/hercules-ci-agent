@@ -7,7 +7,7 @@ import qualified Data.ByteString.Base64.Lazy as B64L
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import qualified Hercules.API.Agent.LifeCycle
-import qualified Hercules.API.Agents.CreateAgentSession_V2 as CreateAgentSession
+import qualified Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 as CreateAgentSession
 import Hercules.Agent.Client (lifeCycleClient)
 import Hercules.Agent.Config (baseDirectory)
 import Hercules.Agent.Env as Env

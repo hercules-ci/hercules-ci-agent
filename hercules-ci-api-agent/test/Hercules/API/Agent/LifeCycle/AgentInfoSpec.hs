@@ -1,8 +1,8 @@
-module Hercules.API.Agent.AgentInfoSpec where
+module Hercules.API.Agent.LifeCycle.AgentInfoSpec where
 
 import Data.Aeson (eitherDecode, encode)
 import qualified Data.ByteString.Lazy as BL
-import Hercules.API.Agents.AgentInfo
+import Hercules.API.Agent.LifeCycle.AgentInfo
 import Test.Hspec
 import Prelude
 

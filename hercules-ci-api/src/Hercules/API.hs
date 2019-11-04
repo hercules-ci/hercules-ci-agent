@@ -27,18 +27,6 @@ import Data.Proxy (Proxy (..))
 import Data.Swagger hiding (Header)
 import GHC.Generics (Generic)
 import Hercules.API.Accounts (AccountsAPI)
-import Hercules.API.Agent.Build as Agent
-  ( BuildAPI
-    )
-import Hercules.API.Agent.Evaluate as Agent
-  ( EvalAPI
-    )
-import Hercules.API.Agent.LifeCycle as Agent
-  ( LifeCycleAPI
-    )
-import Hercules.API.Agent.Tasks as Agent
-  ( TasksAPI
-    )
 import Hercules.API.Agents (AgentsAPI)
 import Hercules.API.Build as Client
   ( BuildAPI
@@ -58,16 +46,13 @@ import Servant.Swagger
 import Servant.Swagger.UI.Core (SwaggerSchemaUI)
 import Prelude
 
+-- TODO remove health so we get clientapi
 data HerculesAPI auth f
   = HerculesAPI
       { accounts :: f :- ToServantApi (AccountsAPI auth),
         repos :: f :- ToServantApi (ReposAPI auth),
         projects :: f :- ToServantApi (ProjectsAPI auth),
         agents :: f :- ToServantApi (AgentsAPI auth),
-        tasks :: f :- ToServantApi (TasksAPI auth),
-        eval :: f :- ToServantApi (Agent.EvalAPI auth),
-        agentBuild :: f :- ToServantApi (Agent.BuildAPI auth),
-        agentLifeCycle :: f :- ToServantApi (Agent.LifeCycleAPI auth),
         build :: f :- ToServantApi (Client.BuildAPI auth),
         health :: f :- ToServantApi (HealthAPI auth),
         organizations :: f :- ToServantApi (OrganizationsAPI auth)

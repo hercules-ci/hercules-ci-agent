@@ -1,3 +1,5 @@
+{-# LANGUAGE PolyKinds #-}
+
 module Hercules.API.Name
   ( Name (..),
     uncheckedCast
@@ -17,7 +19,7 @@ import Web.HttpApiData
 import Prelude
 
 -- | A slug. Display names are simply 'Text'.
-newtype Name a = Name {nameText :: Text}
+newtype Name (a :: k) = Name {nameText :: Text}
   deriving (Generic, Eq, Ord)
 
 instance Hashable (Name a)

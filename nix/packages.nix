@@ -11,6 +11,7 @@ let
   inherit (pkgs.lib) cleanSource makeBinPath optionalAttrs;
   inherit (haskell.lib) overrideSrc addBuildDepends overrideCabal buildFromSdist doJailbreak disableLibraryProfiling addBuildTool;
   inherit (import sources.gitignore { inherit lib; }) gitignoreSource;
+  callPkg = super: name: srcPath: args: overrideSrc (super.callPackage (srcPath + "/pkg.nix") args) { src = gitignoreSource srcPath; };
 
   sources = import ./sources.nix;
 
@@ -30,23 +31,20 @@ let
                 );
               cachix-api = self.callPackage ./cachix-api.nix {};
 
-              hercules-ci-api =
-                buildFromSdist (
-                  overrideSrc (self.callPackage ../hercules-ci-api/pkg.nix {}) { src = gitignoreSource ../hercules-ci-api; }
-                );
+              hercules-ci-api = callPkg super "hercules-ci-api" ../hercules-ci-api {};
+              hercules-ci-api-agent = callPkg super "hercules-ci-api-agent" ../hercules-ci-api-agent {};
+              hercules-ci-api-core = callPkg super "hercules-ci-api-core" ../hercules-ci-api-core {};
 
               hercules-ci-agent =
                 let
                   basePkg =
-                    overrideSrc (
-                      self.callPackage ../hercules-ci-agent/pkg.nix {
-                        nix-store = nix;
-                        nix-expr = nix;
-                        nix-main = nix;
-                        bdw-gc = pkgs.boehmgc-hercules;
-                        boost_context = pkgs.boost;
-                      }
-                    ) { src = gitignoreSource ../hercules-ci-agent; };
+                    callPkg super "hercules-ci-agent" ../hercules-ci-agent {
+                      nix-store = nix;
+                      nix-expr = nix;
+                      nix-main = nix;
+                      bdw-gc = pkgs.boehmgc-hercules;
+                      boost_context = pkgs.boost;
+                    };
 
                 in
                   buildFromSdist (
@@ -90,9 +88,7 @@ let
                   );
 
               hercules-ci-agent-test =
-                buildFromSdist (
-                  overrideSrc (self.callPackage ../tests/agent-test/pkg.nix {}) { src = gitignoreSource ../tests/agent-test; }
-                );
+                callPkg super "hercules-ci-agent-test" ../tests/agent-test {};
 
               tomland =
                 self.callPackage ./haskell-tomland-1-0-1-0.nix {

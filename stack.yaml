@@ -3,6 +3,8 @@ resolver: lts-14.11
 # paths to local packages
 packages:
   - hercules-ci-api
+  - hercules-ci-api-core
+  - hercules-ci-api-agent
   - hercules-ci-agent
   - tests/agent-test
 extra-deps:

@@ -126,7 +126,8 @@ executable hercules-ci-agent
     , exceptions
     , filepath
     , hercules-ci-agent
-    , hercules-ci-api == 0.4.*
+    , hercules-ci-api-core == 0.1.*
+    , hercules-ci-api-agent == 0.1.*
     , hostname
     , http-client
     , http-client-tls
@@ -211,8 +212,8 @@ executable hercules-ci-agent-worker
     , conduit
     , containers
     , exceptions
-    , hercules-ci-api
     , hercules-ci-agent
+    , hercules-ci-api-agent
     , internal-ffi
     , inline-c
     , inline-c-cpp
@@ -259,7 +260,8 @@ test-suite hercules-test
     , conduit
     , containers
     , exceptions
-    , hercules-ci-api
+    , hercules-ci-api-agent
+    , hercules-ci-api-core
     , hspec
     , katip
     , lifted-async

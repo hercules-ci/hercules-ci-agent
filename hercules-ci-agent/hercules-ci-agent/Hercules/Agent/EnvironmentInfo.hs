@@ -12,7 +12,7 @@ import Data.Aeson.Lens
     )
 import Data.Char (isSpace)
 import qualified Data.Text as T
-import qualified Hercules.API.Agents.AgentInfo as AgentInfo
+import qualified Hercules.API.Agent.LifeCycle.AgentInfo as AgentInfo
 import Hercules.Agent.CabalInfo as CabalInfo
 import Hercules.Agent.Cachix.Info as Cachix.Info
 import qualified Hercules.Agent.Config as Config

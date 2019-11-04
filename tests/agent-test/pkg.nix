@@ -9,12 +9,14 @@
 , cookie
 , directory
 , filepath
-, hercules-ci-api
+, hercules-ci-api-agent
+, hercules-ci-api-core
 , hspec
 , http-api-data
 , mmorph
 , protolude
 , random
+, safe-exceptions
 , servant
 , servant-auth-server
 , servant-conduit
@@ -43,12 +45,14 @@ mkDerivation {
     cookie
     directory
     filepath
-    hercules-ci-api
+    hercules-ci-api-agent
+    hercules-ci-api-core
     hspec
     http-api-data
     mmorph
     protolude
     random
+    safe-exceptions
     servant
     servant-auth-server
     servant-conduit
