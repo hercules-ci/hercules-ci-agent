@@ -23,6 +23,7 @@ Example releasing hercules-ci-agent and optionally hercules-ci-api:
    - for-upstream/common.nix package option
 - add a markdown link in CHANGELOG.md markdown link for the added version tag (header and link map at the bottom)
 - scripts/generate-nix
+- pre-commit run -a
 - git add --patch
 - git commit -m "hercules-ci-agent-X.X.X"
 - wait for CI to succeed
