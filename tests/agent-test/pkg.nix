@@ -15,6 +15,7 @@
 , mmorph
 , protolude
 , random
+, safe-exceptions
 , servant
 , servant-auth-server
 , servant-conduit
@@ -49,6 +50,7 @@ mkDerivation {
     mmorph
     protolude
     random
+    safe-exceptions
     servant
     servant-auth-server
     servant-conduit
