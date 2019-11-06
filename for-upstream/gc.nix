@@ -15,7 +15,7 @@ in
       '';
     };
     freespaceMinimumGB = mkOption {
-      type = types.int;
+      type = types.nullOr types.int;
       default = 10;
       description = ''
         Amount of free space (GB) Nix will allow /nix/store to drop to before GC-ing.
