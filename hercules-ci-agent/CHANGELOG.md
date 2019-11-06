@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
- - Fix token leak to log caused by a library upgrade.
+ - Fix token leak to system log when reporting an HTTP exception. This was introduced by a library upgrade.
    This was discovered after tagging 0.6.0 but before the release was
    announced and before moving of the `stable` branch.
    Only users of the `hercules-ci-agent` `master` branch and the unannounced
