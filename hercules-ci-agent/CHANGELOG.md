@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+ - Fix token leak to log caused by a library upgrade.
+   This was discovered after tagging 0.6.0 but before the release was
+   announced and before moving of the `stable` branch.
+   Only users of the `hercules-ci-agent` `master` branch and the unannounced
+   tag were exposed to this leak.
+   We recommend to follow the `stable` branch.
+
+ - Temporarily revert a Nix GC configuration change that might cause problems
+   until agent gc root behavior is improved.
+
 ### [0.6.0] - 2019-11-04
 
 ### Changed
@@ -14,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Switch to Nix 2.3 and NixOS 19.09. *You should update your deployment to reflect the NixOS upgrade*, unless you're using terraform or nix-darwin, where it's automatic.
  - Increased parallellism during push to cachix
  - Switch to NixOS 19.09
+ - Enable min-free/max-free Nix GC
 
 ### Fixed
 
