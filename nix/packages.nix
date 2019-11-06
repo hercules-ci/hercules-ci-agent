@@ -118,6 +118,11 @@ let
                 );
 
               hnix-store-core = self.callPackage ./haskell-hnix-store-core.nix {};
+
+              servant-client-core =
+                if super.servant-client-core.version == "0.16"
+                then haskell.lib.appendPatch super.servant-client-core [ ./servant-client-core-0.16-redact-authorization-header.patch ]
+                else super.servant;
             }
         );
 
