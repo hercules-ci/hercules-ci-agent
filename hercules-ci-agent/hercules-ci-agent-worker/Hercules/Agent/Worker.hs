@@ -20,8 +20,8 @@ import Data.IORef
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Data.Typeable (typeOf)
-import Hercules.API.Derivation (DerivationStatus)
-import qualified Hercules.API.Derivation as Derivation
+import Hercules.API.Agent.Evaluate.DerivationStatus (DerivationStatus)
+import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatus
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import Hercules.Agent.WorkerProtocol.Command
   ( Command
@@ -213,8 +213,8 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
             c <- readTVar drvsCompl
             anyAlternative $ M.lookup plainDrvText c
         case result of
-          BuildResult.Failure -> throwIO $ BuildException plainDrvText Derivation.BuildFailure
-          BuildResult.DependencyFailure -> throwIO $ BuildException plainDrvText Derivation.DependencyFailure
+          BuildResult.Failure -> throwIO $ BuildException plainDrvText DerivationStatus.BuildFailure
+          BuildResult.DependencyFailure -> throwIO $ BuildException plainDrvText DerivationStatus.DependencyFailure
           BuildResult.Success -> pass
         clearSubstituterCaches
         clearPathInfoCache store

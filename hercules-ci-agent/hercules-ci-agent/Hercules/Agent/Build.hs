@@ -5,7 +5,6 @@ import qualified Data.Conduit.Combinators as Conduit
 import Data.Conduit.Process (sourceProcessWithStreams)
 import qualified Data.Map as M
 import qualified Data.Text as T
-import Hercules.API (noContent)
 import qualified Hercules.API.Agent.Build as API.Build
 import qualified Hercules.API.Agent.Build.BuildEvent as BuildEvent
 import qualified Hercules.API.Agent.Build.BuildEvent.OutputInfo as OutputInfo
@@ -19,6 +18,7 @@ import Hercules.API.Agent.Build.BuildTask
     )
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
 import qualified Hercules.API.Logs as API.Logs
+import Hercules.API.Servant (noContent)
 import Hercules.API.Task (Task)
 import qualified Hercules.API.Task as Task
 import Hercules.API.TaskStatus (TaskStatus)

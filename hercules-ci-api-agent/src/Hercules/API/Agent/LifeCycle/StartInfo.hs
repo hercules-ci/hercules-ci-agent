@@ -2,7 +2,7 @@
 
 module Hercules.API.Agent.LifeCycle.StartInfo where
 
-import Hercules.API.Agents.AgentInfo (AgentInfo)
+import Hercules.API.Agent.LifeCycle.AgentInfo (AgentInfo)
 import Hercules.API.Prelude
 
 data Hello

@@ -3,12 +3,12 @@
 
 module Hercules.API.Agent.LifeCycle where
 
+import Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 as CreateAgentSession_V2
+  ( CreateAgentSession
+    )
 import Hercules.API.Agent.LifeCycle.StartInfo
   ( Hello,
     StartInfo
-    )
-import Hercules.API.Agents.CreateAgentSession_V2 as CreateAgentSession_V2
-  ( CreateAgentSession
     )
 import Hercules.API.Prelude
 import Servant.API

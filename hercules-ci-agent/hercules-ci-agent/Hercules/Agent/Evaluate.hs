@@ -18,22 +18,22 @@ import Data.IORef
     )
 import qualified Data.Map as M
 import qualified Data.Set as S
-import Hercules.API (noContent)
 import Hercules.API.Agent.Evaluate
   ( getDerivationStatus,
     tasksGetEvaluation,
     tasksUpdateEvaluation
     )
+import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatus
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent as AttributeErrorEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest as BuildRequest
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as BuildRequired
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll as PushedAll
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
-import qualified Hercules.API.Derivation as Derivation
-import qualified Hercules.API.Message as Message
+import Hercules.API.Servant (noContent)
 import Hercules.API.Task (Task)
 import qualified Hercules.API.Task as Task
 import qualified Hercules.Agent.Cachix as Agent.Cachix
@@ -332,11 +332,11 @@ drvPoller drvPath = do
         drvPoller drvPath
   case resp of
     Nothing -> again
-    Just Derivation.Waiting -> again
-    Just Derivation.Building -> again
-    Just Derivation.BuildFailure -> pure BuildResult.Failure
-    Just Derivation.DependencyFailure -> pure BuildResult.DependencyFailure
-    Just Derivation.BuildSuccess -> pure BuildResult.Success
+    Just DerivationStatus.Waiting -> again
+    Just DerivationStatus.Building -> again
+    Just DerivationStatus.BuildFailure -> pure BuildResult.Failure
+    Just DerivationStatus.DependencyFailure -> pure BuildResult.DependencyFailure
+    Just DerivationStatus.BuildSuccess -> pure BuildResult.Success
 
 newtype SubprocessFailure = SubprocessFailure {message :: Text}
   deriving (Typeable, Exception, Show)

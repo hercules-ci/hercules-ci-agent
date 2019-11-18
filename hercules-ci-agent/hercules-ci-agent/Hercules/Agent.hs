@@ -13,7 +13,6 @@ import Control.Exception.Lifted (bracket)
 import qualified Data.Aeson as A
 import Data.Time (getCurrentTime)
 import qualified Data.UUID.V4 as UUID
-import Hercules.API (noContent)
 import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import qualified Hercules.API.Agent.LifeCycle as LifeCycle
@@ -23,6 +22,7 @@ import Hercules.API.Agent.Tasks
     tasksSetStatus
     )
 import Hercules.API.Id (Id (Id))
+import Hercules.API.Servant (noContent)
 import Hercules.API.Task (Task)
 import qualified Hercules.API.Task as Task
 import qualified Hercules.API.TaskStatus as TaskStatus

@@ -1,3 +1,5 @@
+{-# LANGUAGE PolyKinds #-}
+
 module Hercules.API.Id
   ( Id (..),
     idText,
@@ -19,7 +21,7 @@ import GHC.Generics (Generic)
 import Web.HttpApiData
 import Prelude
 
-newtype Id a = Id {idUUID :: UUID}
+newtype Id (a :: k) = Id {idUUID :: UUID}
   deriving (Generic, Eq, Ord)
 
 instance Hashable (Id a) where

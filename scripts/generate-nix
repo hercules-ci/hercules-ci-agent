@@ -13,6 +13,8 @@ repo="$(jq -r '.cachix.repo' nix/sources.json)"
 rev="$(jq -r '.cachix.rev' nix/sources.json)"
 
 cabal2nix hercules-ci-api/ > hercules-ci-api/pkg.nix
+cabal2nix hercules-ci-api-core/ > hercules-ci-api-core/pkg.nix
+cabal2nix hercules-ci-api-agent/ > hercules-ci-api-agent/pkg.nix
 cabal2nix tests/agent-test  > tests/agent-test/pkg.nix
 cabal2nix hercules-ci-agent/ > hercules-ci-agent/pkg.nix
 cabal2nix https://github.com/$owner/$repo --revision $rev --subpath cachix > nix/cachix.nix

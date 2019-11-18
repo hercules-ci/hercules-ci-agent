@@ -42,23 +42,20 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.UUID.V4 as UUID
 import qualified DummyApi
-import Hercules.API
+import Hercules.API.Agent
 import Hercules.API.Agent.Build (BuildAPI (..))
 import qualified Hercules.API.Agent.Build.BuildEvent as BuildEvent
 import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import Hercules.API.Agent.Evaluate (EvalAPI (..))
+import Hercules.API.Agent.Evaluate.DerivationStatus (DerivationStatus)
+import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatus
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest as BuildRequest
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Agent.LifeCycle (LifeCycleAPI (..))
 import qualified Hercules.API.Agent.LifeCycle as LifeCycle
+import qualified Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 as CreateAgentSession
 import Hercules.API.Agent.Tasks (TasksAPI (..))
-import Hercules.API.Agents.AgentSession
-  ( AgentSession
-    )
-import qualified Hercules.API.Agents.CreateAgentSession_V2 as CreateAgentSession
-import Hercules.API.Derivation (DerivationStatus)
-import qualified Hercules.API.Derivation as Derivation
 import Hercules.API.Id
 import Hercules.API.Logs (LogsAPI (..))
 import Hercules.API.Task (Task)
@@ -379,19 +376,19 @@ handleGetDerivationStatus :: ServerState -> Text -> AuthResult Session -> Handle
 handleGetDerivationStatus server drv _auth = do
   drvPaths <- liftIO $ readIORef (drvTasks server)
   case M.lookup drv drvPaths of
-    Nothing -> pure $ Just $ Derivation.BuildFailure -- TODO exception failure
+    Nothing -> pure $ Just $ DerivationStatus.BuildFailure -- TODO exception failure
     Just taskId -> do
       dones <- liftIO $ atomically $ readTVar (done server)
       pure (translate <$> M.lookup (idText taskId) dones)
   where
-    translate TaskStatus.Exceptional {} = Derivation.BuildFailure
-    translate TaskStatus.Terminated {} = Derivation.BuildFailure
-    translate TaskStatus.Successful {} = Derivation.BuildSuccess
+    translate TaskStatus.Exceptional {} = DerivationStatus.BuildFailure
+    translate TaskStatus.Terminated {} = DerivationStatus.BuildFailure
+    translate TaskStatus.Successful {} = DerivationStatus.BuildSuccess
 
 atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_ r = atomicModifyIORef r . ((,()) .)
 
-data Session = Session (Id AgentSession)
+data Session = Session (Id "AgentSession")
   deriving (Generic, ToJSON, FromJSON)
 
 instance FromJWT Session

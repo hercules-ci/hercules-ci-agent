@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 
-module Hercules.API.Agents.CreateAgentSession where
+module Hercules.API.Agent.LifeCycle.CreateAgentSession where
 
 import Hercules.API.Prelude
 

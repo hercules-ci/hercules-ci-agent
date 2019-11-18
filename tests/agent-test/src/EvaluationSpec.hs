@@ -11,9 +11,9 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent a
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as BuildRequired
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Id (Id (Id))
-import qualified Hercules.API.Message as Message
 import qualified Hercules.API.TaskStatus as TaskStatus
 import MockTasksApi
 import Protolude

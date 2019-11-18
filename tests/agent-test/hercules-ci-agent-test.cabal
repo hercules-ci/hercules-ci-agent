@@ -45,7 +45,8 @@ executable hercules-ci-agent-test
     , cookie
     , directory
     , filepath
-    , hercules-ci-api
+    , hercules-ci-api-agent
+    , hercules-ci-api-core
     , hspec
     , http-api-data
     , mmorph

@@ -9,7 +9,8 @@
 , cookie
 , directory
 , filepath
-, hercules-ci-api
+, hercules-ci-api-agent
+, hercules-ci-api-core
 , hspec
 , http-api-data
 , mmorph
@@ -44,7 +45,8 @@ mkDerivation {
     cookie
     directory
     filepath
-    hercules-ci-api
+    hercules-ci-api-agent
+    hercules-ci-api-core
     hspec
     http-api-data
     mmorph
