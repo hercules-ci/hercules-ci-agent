@@ -139,7 +139,7 @@ recurseIntoAttrs {
   inherit (internal) hercules-ci-api-swagger;
   tests = if pkgs.stdenv.isLinux then internal.tests else null;
   pre-commit-check =
-    (import sources.nix-pre-commit-hooks).run {
+    (import sources."pre-commit-hooks.nix").run {
       src = ../.;
       hooks = {
         # TODO: hlint.enable = true;

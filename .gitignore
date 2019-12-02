@@ -20,4 +20,4 @@
 *~
 
 # nix-pre-commit-hooks
-.pre-commit-hooks
+/.pre-commit-config.yaml
