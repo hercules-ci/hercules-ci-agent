@@ -2,8 +2,8 @@
 
 module Hercules.API.BillingStatus
   ( BillingStatus (..),
-    fromText
-    )
+    fromText,
+  )
 where
 
 import Hercules.API.Prelude

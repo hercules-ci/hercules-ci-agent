@@ -5,8 +5,8 @@ import qualified Data.Map as M
 import qualified Data.UUID.V4 as UUID
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
 import Hercules.API.Agent.Evaluate.EvaluateEvent
-  ( EvaluateEvent
-    )
+  ( EvaluateEvent,
+  )
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent as AttributeErrorEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as BuildRequired
@@ -20,8 +20,8 @@ import Protolude
 import Test.Hspec
 import Prelude
   ( error,
-    userError
-    )
+    userError,
+  )
 
 randomId :: IO (Id a)
 randomId = Id <$> UUID.nextRandom
@@ -46,7 +46,7 @@ defaultTask = EvaluateTask.EvaluateTask
     otherInputs = mempty,
     autoArguments = mempty,
     nixPath = mempty
-    }
+  }
 
 spec :: SpecWith ServerHandle
 spec = describe "Evaluation" $ do
@@ -64,7 +64,7 @@ spec = describe "Evaluation" $ do
               -- want from assigned to reserved in 2017 and is therefore
               -- very very rarely used.
               EvaluateTask.primaryInput = "http://localhost:61/problem.tar.gz"
-              }
+            }
       let TaskStatus.Exceptional msg = s
       toS msg `shouldContain` "HttpExceptionRequest"
       toS msg `shouldContain` "Connection refused"
@@ -79,10 +79,10 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput = "/tarball/broken-tarball"
-              }
+            }
       s
         `shouldBe` TaskStatus.Exceptional
-                     "SubprocessFailure {message = \"Extracting tarball\"}"
+          "SubprocessFailure {message = \"Extracting tarball\"}"
       r `shouldBe` []
   context "when the source download doesn't have a nix expression"
     $ it "yields an error message"
@@ -94,14 +94,14 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput = "/tarball/no-nix-file"
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case r of
         [EvaluateEvent.Message msg] -> msg `shouldBe` Message.Message
           { index = 0,
             typ = Message.Error,
             message = "Please provide a Nix expression to build. Could not find any of \"nix/ci.nix\", \"ci.nix\" or \"default.nix\" in your source"
-            }
+          }
         _ -> failWith $ "Events should be a single message, not: " <> show r
   context "when a ci.nix is provided"
     $ it "it is preferred over default.nix"
@@ -113,7 +113,7 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput = "/tarball/ci-dot-nix"
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
@@ -132,14 +132,14 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput = "/tarball/ambiguous-nix-file"
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case r of
         [EvaluateEvent.Message msg] -> msg `shouldBe` Message.Message
           { index = 0,
             typ = Message.Error,
             message = "Don't know what to do, expecting only one of \"nix/ci.nix\" or \"ci.nix\""
-            }
+          }
         _ -> failWith $ "Events should be a single message, not: " <> show r
   context "when the nix expression is one derivation in an attrset"
     $ it "returns that attribute"
@@ -151,7 +151,7 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput = "/tarball/simple"
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
@@ -170,7 +170,7 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput = "/tarball/naked-derivation"
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
@@ -189,7 +189,7 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput = "/tarball/list"
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case r of
         [] -> pass
@@ -204,7 +204,7 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput = "/tarball/empty-attrset"
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case r of
         [] -> pass
@@ -221,7 +221,7 @@ spec = describe "Evaluation" $ do
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput =
                 "/tarball/naked-derivation-default-args"
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
@@ -243,7 +243,7 @@ spec = describe "Evaluation" $ do
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput =
                 "/tarball/naked-derivation-default-args-twice"
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
@@ -264,7 +264,7 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput = "/tarball/abort-at-root"
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case r of
         [EvaluateEvent.AttributeError ae] -> do
@@ -282,7 +282,7 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput = "/tarball/abort-in-attribute"
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.AttributeError ae, EvaluateEvent.Attribute a] -> do
@@ -305,18 +305,18 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput = "/tarball/too-many-attrs"
-              }
+            }
       s
         `shouldBe` TaskStatus.Exceptional
-                     "FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}"
+          "FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}"
       last r
         `shouldBe` EvaluateEvent.Message
-                     ( Message.Message
-                         { index = 0,
-                           typ = Message.Error,
-                           message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than 50000 attributes or messages, please contact info@hercules-ci.com."
-                           }
-                       )
+          ( Message.Message
+              { index = 0,
+                typ = Message.Error,
+                message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than 50000 attributes or messages, please contact info@hercules-ci.com."
+              }
+          )
   context "when the source produces too many messages"
     $ it "yields an error message"
     $ \srv -> do
@@ -329,18 +329,18 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.primaryInput = "/tarball/too-many-errors"
-              }
+            }
       s
         `shouldBe` TaskStatus.Exceptional
-                     "WorkerException {originalException = FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}, exitStatus = Nothing}"
+          "WorkerException {originalException = FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}, exitStatus = Nothing}"
       last r
         `shouldBe` EvaluateEvent.Message
-                     ( Message.Message
-                         { index = 0, -- This is the interesting part.
-                           typ = Message.Error,
-                           message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than 50000 attributes or messages, please contact info@hercules-ci.com."
-                           }
-                       )
+          ( Message.Message
+              { index = 0, -- This is the interesting part.
+                typ = Message.Error,
+                message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than 50000 attributes or messages, please contact info@hercules-ci.com."
+              }
+          )
   context "when multiple messages are emitted"
     $ it "assigns distinct index numbers to the messages"
     $ \_env ->
@@ -359,8 +359,8 @@ spec = describe "Evaluation" $ do
                 [ EvaluateTask.NixPathElement
                     (Just "simple")
                     (EvaluateTask.SubPathOf "oi1" Nothing)
-                  ]
-              }
+                ]
+            }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
@@ -380,7 +380,7 @@ spec = describe "Evaluation" $ do
               EvaluateTask.otherInputs = M.singleton "oi1" "/tarball/simple",
               EvaluateTask.autoArguments =
                 M.singleton "simple" (EvaluateTask.SubPathOf "oi1" Nothing)
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
@@ -402,7 +402,7 @@ spec = describe "Evaluation" $ do
                 M.singleton
                   "nixpkgs"
                   (EvaluateTask.SubPathOf "n" Nothing)
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
@@ -425,7 +425,7 @@ spec = describe "Evaluation" $ do
                 M.singleton
                   "nixpkgs"
                   (EvaluateTask.SubPathOf "n" Nothing)
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
@@ -446,12 +446,12 @@ spec = describe "Evaluation" $ do
               EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs",
               EvaluateTask.autoArguments =
                 M.singleton "nixpkgs" (EvaluateTask.SubPathOf "n" Nothing)
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
-      let drvMap
-            :: Map
-                 DerivationInfo.DerivationPathText
-                 DerivationInfo.DerivationInfo
+      let drvMap ::
+            Map
+              DerivationInfo.DerivationPathText
+              DerivationInfo.DerivationInfo
           drvMap = flip foldMap r $ \case
             EvaluateEvent.DerivationInfo drvInfo ->
               M.singleton (DerivationInfo.derivationPath drvInfo) drvInfo
@@ -461,9 +461,9 @@ spec = describe "Evaluation" $ do
           unless (isJust (M.lookup d drvMap))
             $ panic
             $ "In drv info for "
-            <> DerivationInfo.derivationPath drvInfo
-            <> ": unknown inputDrv "
-            <> d
+              <> DerivationInfo.derivationPath drvInfo
+              <> ": unknown inputDrv "
+              <> d
       case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
           AttributeEvent.expressionPath ae `shouldBe` ["hello"]
@@ -487,7 +487,7 @@ spec = describe "Evaluation" $ do
                     M.singleton
                       "nixpkgs"
                       (EvaluateTask.SubPathOf "n" Nothing)
-                  }
+                }
           s `shouldBe` TaskStatus.Successful ()
           case attrLike r of
             [ EvaluateEvent.BuildRequired br1,
@@ -525,7 +525,7 @@ spec = describe "Evaluation" $ do
                 M.singleton
                   "nixpkgs"
                   (EvaluateTask.SubPathOf "n" Nothing)
-              }
+            }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [ EvaluateEvent.BuildRequired br1,

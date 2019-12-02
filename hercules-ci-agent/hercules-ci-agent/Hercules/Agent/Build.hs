@@ -9,13 +9,13 @@ import qualified Hercules.API.Agent.Build as API.Build
 import qualified Hercules.API.Agent.Build.BuildEvent as BuildEvent
 import qualified Hercules.API.Agent.Build.BuildEvent.OutputInfo as OutputInfo
 import Hercules.API.Agent.Build.BuildEvent.OutputInfo
-  ( OutputInfo
-    )
+  ( OutputInfo,
+  )
 import qualified Hercules.API.Agent.Build.BuildEvent.Pushed as Pushed
 import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import Hercules.API.Agent.Build.BuildTask
-  ( BuildTask
-    )
+  ( BuildTask,
+  )
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
 import qualified Hercules.API.Logs as API.Logs
 import Hercules.API.Servant (noContent)
@@ -30,8 +30,8 @@ import Hercules.Agent.Exception (defaultRetry)
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
 import Hercules.Agent.Nix.RetrieveDerivationInfo
-  ( retrieveDerivationInfo
-    )
+  ( retrieveDerivationInfo,
+  )
 import Protolude
 import Servant.Auth.Client
 import System.Process
@@ -39,9 +39,9 @@ import System.Process
 performBuild :: Task BuildTask.BuildTask -> App TaskStatus
 performBuild task = do
   buildTask <-
-    defaultRetry
-      $ runHerculesClient
-          (API.Build.getBuild Hercules.Agent.Client.buildClient (Task.id task))
+    defaultRetry $
+      runHerculesClient
+        (API.Build.getBuild Hercules.Agent.Client.buildClient (Task.id task))
   result <- realise buildTask
   case result of
     s@TaskStatus.Successful {} -> s <$ do
@@ -64,23 +64,23 @@ realise buildTask = do
         "36000", -- 10h TODO: make configurable via meta.timeout and decrease default to 3600s or so
         "--max-silent-time",
         "1800" -- 0.5h TODO: make configurable via (?) and decrease default to 600s
-        ]
+      ]
       [ BuildTask.derivationPath buildTask
-        ]
+      ]
   let procSpec =
         nixStoreProc
           { close_fds = True, -- Disable on Windows?
             cwd = Just "/"
-            }
+          }
   logLocM DebugS $ "Building: " <> show (System.Process.cmdspec procSpec)
   (status, _out, errBytes) <-
-    liftIO
-      $ sourceProcessWithStreams procSpec stdinc stdoutc stderrc
-  noContent $ defaultRetry $ runHerculesClient'
-    $ API.Logs.writeLog
-        Hercules.Agent.Client.logsClient
-        (Token $ toSL $ BuildTask.logToken buildTask)
-        errBytes
+    liftIO $
+      sourceProcessWithStreams procSpec stdinc stdoutc stderrc
+  noContent $ defaultRetry $ runHerculesClient' $
+    API.Logs.writeLog
+      Hercules.Agent.Client.logsClient
+      (Token $ toSL $ BuildTask.logToken buildTask)
+      errBytes
   case status of
     ExitFailure e -> do
       withNamedContext "exitStatus" e $ logLocM ErrorS "Building failed"
@@ -102,7 +102,7 @@ getOutputPathInfos buildTask = do
           throwIO
             $ FatalError
             $ "nix-store returned invalid size "
-            <> show sizeStr
+              <> show sizeStr
     hashStr <- Nix.readNixProcess "nix-store" ["--query", "--hash"] [toS outputPath] ""
     let h = T.dropAround isSpace (toS hashStr)
     pure OutputInfo.OutputInfo
@@ -111,7 +111,7 @@ getOutputPathInfos buildTask = do
         path = outputPath,
         size = size,
         hash = h
-        }
+      }
 
 push :: BuildTask -> Map Text OutputInfo -> App ()
 push buildTask outs = do
@@ -132,5 +132,5 @@ emitEvents :: BuildTask -> [BuildEvent.BuildEvent] -> App ()
 emitEvents buildTask =
   noContent . defaultRetry . runHerculesClient
     . API.Build.updateBuild
-        Hercules.Agent.Client.buildClient
-        (BuildTask.id buildTask)
+      Hercules.Agent.Client.buildClient
+      (BuildTask.id buildTask)

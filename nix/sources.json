@@ -35,18 +35,6 @@
         "url": "https://github.com/nmattia/niv/archive/efce82e4ba77a84835f9febefe3b2fe52a8c7ede.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
-    "nix-pre-commit-hooks": {
-        "branch": "master",
-        "description": "Seamless integration pre-commit hooks with Nix.",
-        "homepage": "https://pre-commit.com/",
-        "owner": "hercules-ci",
-        "repo": "nix-pre-commit-hooks",
-        "rev": "1f5b70278150e17783c67ea8648d4295f29fb1b9",
-        "sha256": "1my4sz698iq7i0m68n3xz3vkynvq6crw17annj7hgngvhpq4ysrb",
-        "type": "tarball",
-        "url": "https://github.com/hercules-ci/nix-pre-commit-hooks/archive/1f5b70278150e17783c67ea8648d4295f29fb1b9.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
     "nixos-19.09": {
         "branch": "nixos-19.09",
         "description": "A read-only mirror of NixOS/nixpkgs tracking the released channels. Send issues and PRs to",
@@ -69,6 +57,30 @@
         "sha256": "1d6rmq67kdg5gmk94wx2774qw89nvbhy6g1f2lms3c9ph37hways",
         "type": "tarball",
         "url": "https://github.com/NixOS/nixpkgs-channels/archive/4cd2cb43fb3a87f48c1e10bb65aee99d8f24cb9d.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ormolu": {
+        "branch": "0.0.2.0",
+        "description": "A formatter for Haskell source code",
+        "homepage": null,
+        "owner": "tweag",
+        "repo": "ormolu",
+        "rev": "46ede8aa35c28f0ecb0fa8fc935c5edf888b2bdf",
+        "sha256": "1v2a1qf0wjw2rz1wsmrlf956m9c684ynqq3h25la06y1l4s54q87",
+        "type": "tarball",
+        "url": "https://github.com/tweag/ormolu/archive/46ede8aa35c28f0ecb0fa8fc935c5edf888b2bdf.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "pre-commit-hooks.nix": {
+        "branch": "master",
+        "description": "Seamless integration pre-commit hooks with Nix.",
+        "homepage": "https://pre-commit.com/",
+        "owner": "hercules-ci",
+        "repo": "pre-commit-hooks.nix",
+        "rev": "5c3078ad58856ce22f883b5518879d27bfc59dd5",
+        "sha256": "1rwmzzifn5gg7d10v4iia58m5zrx3f60zsddil9via31rfb6f7wy",
+        "type": "tarball",
+        "url": "https://github.com/hercules-ci/pre-commit-hooks.nix/archive/5c3078ad58856ce22f883b5518879d27bfc59dd5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "project.nix": {

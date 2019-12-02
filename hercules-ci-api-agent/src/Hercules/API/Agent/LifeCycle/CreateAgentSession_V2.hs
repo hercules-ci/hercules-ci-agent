@@ -8,5 +8,5 @@ import Hercules.API.Prelude
 data CreateAgentSession
   = CreateAgentSession
       { agentInfo :: AgentInfo
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

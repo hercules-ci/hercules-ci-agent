@@ -5,8 +5,8 @@ module DummyApi
   ( dummyBuildEndpoints,
     dummyEvalEndpoints,
     dummyTasksEndpoints,
-    dummyLifeCycleEndpoints
-    )
+    dummyLifeCycleEndpoints,
+  )
 where
 
 import Hercules.API.Agent.Build

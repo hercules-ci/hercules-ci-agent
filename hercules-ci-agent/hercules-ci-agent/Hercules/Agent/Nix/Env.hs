@@ -5,4 +5,4 @@ import Protolude
 data Env
   = Env
       { extraOptions :: [(Text, Text)]
-        }
+      }

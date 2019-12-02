@@ -12,5 +12,5 @@ data ClusterJoinToken
         creationTime :: UTCTime,
         -- TODO lastAccessTime :: Maybe UTCTime
         description :: Text
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

@@ -9,8 +9,8 @@ module Hercules.Agent.Evaluate.TraversalQueue
     waitUntilDone,
     enqueue,
     close,
-    Queue ()
-    )
+    Queue (),
+  )
 where
 
 import Control.Concurrent.Chan.Lifted
@@ -26,16 +26,16 @@ import Protolude hiding
     newQSem,
     newQSemN,
     readChan,
-    writeChan
-    )
+    writeChan,
+  )
 
 data Queue a
   = Queue
       { chan :: Chan (Maybe a),
         visitedSet :: IORef (Set a),
+        -- | Increased on enqueue, decreased when processed
         size :: TVar Int
-        -- ^ Increased on enqueue, decreased when processed
-        }
+      }
 
 with :: MonadBaseControl IO m => (Queue a -> m ()) -> m ()
 with = Control.Exception.Lifted.bracket new close
@@ -58,31 +58,31 @@ waitUntilDone env = liftBase $ atomically $ do
   n <- readTVar (size env)
   check (n == 0)
 
-readJust_
-  :: (MonadBase IO m, MonadIO m)
-  => Chan (Maybe a)
-  -> (a -> m ())
-  -> m ()
+readJust_ ::
+  (MonadBase IO m, MonadIO m) =>
+  Chan (Maybe a) ->
+  (a -> m ()) ->
+  m ()
 readJust_ ch f = do
   mmsg <- readChan ch
   case mmsg of
     Nothing -> writeChan ch Nothing
     Just msg -> f msg
 
-work
-  :: (MonadBase IO m, MonadIO m, Ord a)
-  => Queue a
-  -> ((a -> m ()) -> a -> m ())
-  -> m ()
+work ::
+  (MonadBase IO m, MonadIO m, Ord a) =>
+  Queue a ->
+  ((a -> m ()) -> a -> m ()) ->
+  m ()
 work env f = work' env $ \snapshot ->
   let enqueue' item = unless (item `Set.member` snapshot) $ enqueue env item
    in f enqueue'
 
-work'
-  :: (MonadBase IO m, MonadIO m, Ord a)
-  => Queue a
-  -> (Set a -> a -> m ())
-  -> m ()
+work' ::
+  (MonadBase IO m, MonadIO m, Ord a) =>
+  Queue a ->
+  (Set a -> a -> m ()) ->
+  m ()
 work' env f = readJust_ (chan env) $ \msg -> do
   snapshotWhenInserted <-
     atomicModifyIORef (visitedSet env) $ \st ->

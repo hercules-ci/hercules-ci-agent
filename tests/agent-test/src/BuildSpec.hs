@@ -7,8 +7,8 @@ import qualified Hercules.API.Agent.Build.BuildEvent.OutputInfo as OutputInfo
 import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
 import Hercules.API.Agent.Evaluate.EvaluateEvent
-  ( EvaluateEvent
-    )
+  ( EvaluateEvent,
+  )
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Id (Id (Id))
@@ -18,8 +18,8 @@ import Protolude
 import Test.Hspec
 import Prelude
   ( error,
-    userError
-    )
+    userError,
+  )
 
 randomId :: IO (Id a)
 randomId = Id <$> UUID.nextRandom
@@ -34,7 +34,7 @@ defaultEvalTask = EvaluateTask.EvaluateTask
     otherInputs = mempty,
     autoArguments = mempty,
     nixPath = mempty
-    }
+  }
 
 attrLike :: [EvaluateEvent] -> [EvaluateEvent]
 attrLike = filter isAttrLike
@@ -60,7 +60,7 @@ spec = describe "Build" $ it "works" $ \srv -> do
             M.singleton
               "nixpkgs"
               (EvaluateTask.SubPathOf "n" Nothing)
-          }
+        }
   s `shouldBe` TaskStatus.Successful ()
   drvPath <-
     case attrLike r of
@@ -81,8 +81,8 @@ spec = describe "Build" $ it "works" $ \srv -> do
           { id = id2,
             derivationPath = drvPath,
             logToken = "pretend-jwt-for-log"
-            }
-        )
+          }
+      )
   s2 `shouldBe` TaskStatus.Successful ()
   case be of
     [BuildEvent.OutputInfo OutputInfo.OutputInfo {deriver = drvp, name = n, path = p, hash = h, size = sz}, BuildEvent.Done True] ->

@@ -1,7 +1,7 @@
 module Hercules.Agent.Options
   ( Options (..),
-    parse
-    )
+    parse,
+  )
 where
 
 import Hercules.Agent.CabalInfo (herculesAgentVersion)
@@ -12,7 +12,7 @@ import Protolude hiding (option)
 data Options
   = Options
       { configFile :: ConfigPath
-        }
+      }
 
 parseOptions :: Parser Options
 parseOptions = Options <$> parseConfigPath
@@ -21,10 +21,10 @@ parseConfigPath :: Parser ConfigPath
 parseConfigPath =
   TomlPath
     <$> strOption
-          ( long "config" <> metavar "FILE"
-              <> help
-                   "File path to the configuration file (TOML)"
-            )
+      ( long "config" <> metavar "FILE"
+          <> help
+            "File path to the configuration file (TOML)"
+      )
 
 parserInfo :: ParserInfo Options
 parserInfo =
@@ -32,8 +32,8 @@ parserInfo =
     (parseOptions <**> helper)
     ( fullDesc <> progDesc "Accepts tasks from Hercules CI and run them"
         <> header
-             ("hercules-ci-agent " <> toSL herculesAgentVersion)
-      )
+          ("hercules-ci-agent " <> toSL herculesAgentVersion)
+    )
 
 parse :: IO Options
 parse = execParser parserInfo

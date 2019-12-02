@@ -10,5 +10,5 @@ data AttributeEvent
       { expressionPath :: [Text],
         derivationPath :: Text
         -- TODO: meta attributes
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

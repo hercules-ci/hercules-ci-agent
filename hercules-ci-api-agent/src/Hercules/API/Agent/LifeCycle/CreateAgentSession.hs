@@ -12,5 +12,5 @@ data CreateAgentSession
         agentVersion :: Text,
         nixVersion :: Text,
         architectures :: [Text]
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

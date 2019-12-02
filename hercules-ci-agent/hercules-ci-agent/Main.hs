@@ -1,6 +1,6 @@
 module Main
-  ( main
-    )
+  ( main,
+  )
 where
 
 import qualified Hercules.Agent

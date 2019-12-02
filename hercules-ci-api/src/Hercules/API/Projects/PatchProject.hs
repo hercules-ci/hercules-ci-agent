@@ -8,5 +8,5 @@ import Hercules.API.Prelude
 data PatchProject
   = PatchProject
       { enabled :: Maybe Bool
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

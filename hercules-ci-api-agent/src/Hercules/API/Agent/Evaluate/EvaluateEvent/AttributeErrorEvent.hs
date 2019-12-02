@@ -11,7 +11,7 @@ data AttributeErrorEvent
         errorMessage :: Text,
         errorDerivation :: Maybe Text,
         errorType :: Maybe Text
-        }
+      }
   deriving (Generic, Show, Eq, ToSchema)
 
 instance ToJSON AttributeErrorEvent where
@@ -21,11 +21,10 @@ instance ToJSON AttributeErrorEvent where
   toEncoding = genericToEncoding aesonOptions
 
 instance FromJSON AttributeErrorEvent where
-
   parseJSON = genericParseJSON aesonOptions
 
 aesonOptions :: Options
 aesonOptions =
   defaultOptions
     { omitNothingFields = True
-      }
+    }

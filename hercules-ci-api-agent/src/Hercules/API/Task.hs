@@ -4,8 +4,8 @@ module Hercules.API.Task where
 
 import Data.Aeson
   ( FromJSON,
-    ToJSON
-    )
+    ToJSON,
+  )
 import Data.Swagger (ToSchema)
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -20,7 +20,7 @@ data Task a
   = Task
       { typ :: Text,
         id :: Id (Task a)
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
 
 -- | @'Task' 'Any' represents tasks whose type has not yet been

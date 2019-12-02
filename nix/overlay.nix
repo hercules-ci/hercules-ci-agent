@@ -22,19 +22,22 @@ in
   ).overrideAttrs (
     attrs: attrs
     // {
-         patches = (attrs.patches or [])
-           ++ [
-                ./boehmgc-8.0.2-min-heap-incr-1mb.patch
-              ]
-           ;
-       }
+      patches = (attrs.patches or [])
+      ++ [
+        ./boehmgc-8.0.2-min-heap-incr-1mb.patch
+      ]
+      ;
+    }
   );
 
   nix = pkgs.nix.override (
     args:
       args
       // {
-           boehmgc = self.boehmgc-hercules;
-         }
+        boehmgc = self.boehmgc-hercules;
+      }
   );
+
+  inherit (import sources.ormolu {}) ormolu;
+
 }

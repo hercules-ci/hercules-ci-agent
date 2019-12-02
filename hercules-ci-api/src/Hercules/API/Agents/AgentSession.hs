@@ -3,8 +3,8 @@
 module Hercules.API.Agents.AgentSession where
 
 import Hercules.API.Agents.ClusterJoinToken
-  ( ClusterJoinToken
-    )
+  ( ClusterJoinToken,
+  )
 import Hercules.API.Prelude
 
 data AgentSession
@@ -22,5 +22,5 @@ data AgentSession
         creation :: UTCTime,
         lastSeen :: Maybe UTCTime,
         available :: Bool
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

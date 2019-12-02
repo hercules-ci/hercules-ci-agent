@@ -12,5 +12,5 @@ data AttributeError
         message :: Text,
         errorType :: Maybe Text,
         errorDerivation :: Maybe Text
-        }
+      }
   deriving (Generic, Binary, Show, Eq)

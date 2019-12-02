@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -O0 #-}
 
 -- TODO https://github.com/haskell-servant/servant/issues/986
@@ -7,8 +8,8 @@ module Hercules.Agent.Client
     evalClient,
     lifeCycleClient,
     buildClient,
-    logsClient
-    )
+    logsClient,
+  )
 where
 
 import Hercules.API.Agent (AddAPIVersion, AgentAPI, ClientAuth, build, eval, lifeCycle, servantApi, tasks)
@@ -42,5 +43,5 @@ lifeCycleClient = useApi lifeCycle $ Hercules.Agent.Client.client
 
 logsClient :: LogsAPI () (AsClientT ClientM)
 logsClient =
-  fromServant $ Servant.Client.client
-    $ (Proxy @(AddAPIVersion (ToServantApi (LogsAPI ()))))
+  fromServant $ Servant.Client.client $
+    (Proxy @(AddAPIVersion (ToServantApi (LogsAPI ()))))

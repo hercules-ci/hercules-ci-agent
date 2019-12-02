@@ -1,6 +1,6 @@
 module Spec
-  ( spec
-    )
+  ( spec,
+  )
 where
 
 import qualified Hercules.Agent.Nix.RetrieveDerivationInfoSpec

@@ -4,16 +4,16 @@ module Hercules.Agent.Bag
   ( ParseBag (..),
     parseBag,
     part,
-    whenKind
-    )
+    whenKind,
+  )
 where
 
 import Data.Aeson
 import Data.Aeson.Types
 import Data.Functor.Compose
 import Data.Functor.Partitioner hiding
-  ( part
-    )
+  ( part,
+  )
 import qualified Data.HashMap.Strict as HashMap
 import Protolude
 
@@ -39,6 +39,6 @@ whenKind expectedKind f v@(Object o) =
   ( do
       x <- HashMap.lookup "kind" o
       guard (x == String expectedKind)
-    )
+  )
     *> f v
 whenKind _ _ _ = Nothing

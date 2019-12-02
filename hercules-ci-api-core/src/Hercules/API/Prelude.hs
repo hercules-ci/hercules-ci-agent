@@ -2,6 +2,7 @@
 module Hercules.API.Prelude
   ( -- * Re-exports
     module Prelude,
+
     -- * Types
     Id,
     Name,
@@ -10,19 +11,20 @@ module Hercules.API.Prelude
     Set,
     Text,
     UTCTime,
+
     -- * Type classes
     Generic,
     ToJSON,
     FromJSON,
     ToSchema,
-    schemaCompatibleOptions
-    )
+    schemaCompatibleOptions,
+  )
 where
 
 import Data.Aeson
   ( FromJSON,
-    ToJSON
-    )
+    ToJSON,
+  )
 import qualified Data.Aeson as Aeson
 import Data.Int (Int64)
 import Data.Map (Map)
@@ -39,4 +41,4 @@ schemaCompatibleOptions :: Aeson.Options
 schemaCompatibleOptions =
   Aeson.defaultOptions
     { Aeson.sumEncoding = Aeson.ObjectWithSingleField
-      }
+    }

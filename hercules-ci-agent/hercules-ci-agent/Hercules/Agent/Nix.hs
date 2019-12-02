@@ -12,8 +12,8 @@ withExtraOptions extraOpts = local $ \env ->
     { nixEnv =
         (nixEnv env)
           { extraOptions = extraOptions (nixEnv env) <> extraOpts
-            }
-      }
+          }
+    }
 
 askExtraOptions :: MonadReader Agent.Env.Env m => m [(Text, Text)]
 askExtraOptions = asks (extraOptions . nixEnv)
@@ -24,12 +24,16 @@ getExtraOptionArguments = do
   where
     f = concatMap $ \(opt, val) -> ["--option", opt, val]
 
-readNixProcess
-  :: Text -- ^ Command
-  -> [Text] -- ^ Options
-  -> [Text] -- ^ Paths
-  -> Text -- ^ Stdin
-  -> App Text
+readNixProcess ::
+  -- | Command
+  Text ->
+  -- | Options
+  [Text] ->
+  -- | Paths
+  [Text] ->
+  -- | Stdin
+  Text ->
+  App Text
 readNixProcess cmd opts paths stdinText = do
   extraOpts <- getExtraOptionArguments
   toSL <$> liftIO (readProcess (toSL cmd) (map toSL (opts <> extraOpts <> ["--"] <> paths)) (toSL stdinText))

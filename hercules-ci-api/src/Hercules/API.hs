@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Hercules.API
   ( api,
@@ -14,11 +15,13 @@ module Hercules.API
     Id,
     Name,
     Result (..),
+
     -- * Reexports
     NoContent (..),
+
     -- * Utilities
-    noContent
-    )
+    noContent,
+  )
 where
 
 import Control.Lens
@@ -29,8 +32,8 @@ import GHC.Generics (Generic)
 import Hercules.API.Accounts (AccountsAPI)
 import Hercules.API.Agents (AgentsAPI)
 import Hercules.API.Build as Client
-  ( BuildAPI
-    )
+  ( BuildAPI,
+  )
 import Hercules.API.Health (HealthAPI)
 import Hercules.API.Id (Id)
 import Hercules.API.Name (Name)
@@ -56,7 +59,7 @@ data HerculesAPI auth f
         build :: f :- ToServantApi (Client.BuildAPI auth),
         health :: f :- ToServantApi (HealthAPI auth),
         organizations :: f :- ToServantApi (OrganizationsAPI auth)
-        }
+      }
   deriving (Generic)
 
 data ClientAPI auth f
@@ -67,7 +70,7 @@ data ClientAPI auth f
         clientAgents :: f :- ToServantApi (AgentsAPI auth),
         clientBuild :: f :- ToServantApi (Client.BuildAPI auth),
         clientOrganizations :: f :- ToServantApi (OrganizationsAPI auth)
-        }
+      }
   deriving (Generic)
 
 type ClientAuth = Auth '[JWT, Cookie] ()
@@ -84,10 +87,10 @@ servantApi = Proxy
 servantClientApi :: Proxy (ClientServantAPI auth)
 servantClientApi = Proxy
 
-type API auth
-  = (HerculesServantAPI auth)
-      :<|> "api"
-      :> SwaggerSchemaUI "v1" "swagger.json"
+type API auth =
+  (HerculesServantAPI auth)
+    :<|> "api"
+    :> SwaggerSchemaUI "v1" "swagger.json"
 
 api :: Proxy (API auth)
 api = Proxy
@@ -110,11 +113,11 @@ swagger =
 -- can not be inferred.
 --
 -- Ideally, this functionality would be built into a new combinator.
-useApi
-  :: (GenericServant f mode, GenericServant g mode)
-  => (f mode -> ToServant g mode)
-  -> f mode
-  -> g mode
+useApi ::
+  (GenericServant f mode, GenericServant g mode) =>
+  (f mode -> ToServant g mode) ->
+  f mode ->
+  g mode
 useApi = (Servant.API.Generic.fromServant .)
 
 -- | 'Control.Monad.void' specialised to 'NoContent' to soothe the

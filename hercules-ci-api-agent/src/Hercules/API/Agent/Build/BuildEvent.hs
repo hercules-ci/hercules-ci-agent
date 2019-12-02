@@ -3,15 +3,16 @@
 module Hercules.API.Agent.Build.BuildEvent where
 
 import Hercules.API.Agent.Build.BuildEvent.OutputInfo
-  ( OutputInfo
-    )
+  ( OutputInfo,
+  )
 import Hercules.API.Agent.Build.BuildEvent.Pushed
-  ( Pushed
-    )
+  ( Pushed,
+  )
 import Hercules.API.Prelude
 
 data BuildEvent
   = OutputInfo OutputInfo
   | Pushed Pushed
-  | Done Bool -- ^ True: successful
+  | -- | True: successful
+    Done Bool
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

@@ -18,11 +18,10 @@ data AgentInfo
         cachixPushCaches :: [Text],
         substituters :: [Text],
         concurrentTasks :: Int
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, ToSchema)
 
 instance FromJSON AgentInfo where
-
   parseJSON = A.genericParseJSON A.defaultOptions . fixup
     where
       fixup :: A.Value -> A.Value

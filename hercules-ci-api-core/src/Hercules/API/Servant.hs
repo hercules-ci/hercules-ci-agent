@@ -11,11 +11,11 @@ import Prelude
 -- can not be inferred.
 --
 -- Ideally, this functionality would be built into a new combinator.
-useApi
-  :: (GenericServant f mode, GenericServant g mode)
-  => (f mode -> ToServant g mode)
-  -> f mode
-  -> g mode
+useApi ::
+  (GenericServant f mode, GenericServant g mode) =>
+  (f mode -> ToServant g mode) ->
+  f mode ->
+  g mode
 useApi = (Servant.API.Generic.fromServant .)
 
 -- | 'Control.Monad.void' specialised to 'NoContent' to soothe the

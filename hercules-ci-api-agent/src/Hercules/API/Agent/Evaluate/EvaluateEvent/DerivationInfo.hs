@@ -23,11 +23,10 @@ data DerivationInfo
         inputDerivations :: Map DerivationPathText [OutputNameText],
         inputSources :: [DerivationPathText],
         outputs :: Map OutputNameText OutputInfo
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, ToSchema)
 
 instance FromJSON DerivationInfo where
-
   parseJSON = A.genericParseJSON A.defaultOptions . fixup
     where
       fixup :: A.Value -> A.Value
@@ -37,5 +36,5 @@ data OutputInfo
   = OutputInfo
       { path :: Text,
         isFixed :: Bool
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

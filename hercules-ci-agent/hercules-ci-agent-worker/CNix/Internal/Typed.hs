@@ -4,8 +4,8 @@ import CNix.Internal.Context
 import CNix.Internal.Raw
 import Protolude hiding
   ( evalState,
-    throwIO
-    )
+    throwIO,
+  )
 import Prelude (userError)
 
 -- | Runtime-Typed Value. This implies that it has been forced,

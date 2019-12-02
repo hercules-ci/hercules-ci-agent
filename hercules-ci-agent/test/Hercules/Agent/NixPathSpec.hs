@@ -26,5 +26,5 @@ spec = do
       renderNixPath
         [ NixPathElement (Just "a") $ SubPathOf "/b" Nothing,
           NixPathElement (Just "d") $ SubPathOf "/e" Nothing
-          ]
+        ]
         `shouldBe` "a=/b:d=/e"

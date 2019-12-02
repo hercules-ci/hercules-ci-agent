@@ -8,5 +8,5 @@ import Hercules.API.Prelude
 data CreateClusterJoinToken
   = CreateClusterJoinToken
       { description :: Text
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

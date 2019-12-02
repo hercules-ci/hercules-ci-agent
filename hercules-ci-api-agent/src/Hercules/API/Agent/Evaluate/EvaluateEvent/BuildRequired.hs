@@ -10,5 +10,5 @@ data BuildRequired
       { index :: Int,
         derivationPath :: Text,
         outputName :: Text
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

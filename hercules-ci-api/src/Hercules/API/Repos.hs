@@ -10,13 +10,13 @@ import Servant.API.Generic
 
 data ReposAPI auth f
   = ReposAPI
-      { reposByOwner
-          :: f
-               :- Summary "Repositories that the account owns or has explicit access to."
-               :> "accounts"
-               :> Capture' '[Required, Strict] "accountId" (Id Account)
-               :> "repos"
-               :> auth
-               :> Get '[JSON] [Repo]
-        }
+      { reposByOwner ::
+          f
+            :- Summary "Repositories that the account owns or has explicit access to."
+            :> "accounts"
+            :> Capture' '[Required, Strict] "accountId" (Id Account)
+            :> "repos"
+            :> auth
+            :> Get '[JSON] [Repo]
+      }
   deriving (Generic)

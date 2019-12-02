@@ -3,26 +3,26 @@
 module Hercules.API.Agent.Evaluate.EvaluateEvent where
 
 import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
-  ( AttributeErrorEvent
-    )
+  ( AttributeErrorEvent,
+  )
 import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
-  ( AttributeEvent
-    )
+  ( AttributeEvent,
+  )
 import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest
-  ( BuildRequest
-    )
+  ( BuildRequest,
+  )
 import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired
-  ( BuildRequired
-    )
+  ( BuildRequired,
+  )
 import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
-  ( DerivationInfo
-    )
+  ( DerivationInfo,
+  )
 import Hercules.API.Agent.Evaluate.EvaluateEvent.Message
-  ( Message
-    )
+  ( Message,
+  )
 import Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll
-  ( PushedAll
-    )
+  ( PushedAll,
+  )
 import Hercules.API.Prelude
 
 data EvaluateEvent

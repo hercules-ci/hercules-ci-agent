@@ -1,12 +1,12 @@
 module Hercules.Agent
-  ( main
-    )
+  ( main,
+  )
 where
 
 import Control.Concurrent.Async.Lifted
   ( race,
-    replicateConcurrently_
-    )
+    replicateConcurrently_,
+  )
 import Control.Concurrent.MVar.Lifted (withMVar)
 import Control.Exception (displayException)
 import Control.Exception.Lifted (bracket)
@@ -19,8 +19,8 @@ import qualified Hercules.API.Agent.LifeCycle as LifeCycle
 import qualified Hercules.API.Agent.LifeCycle.StartInfo as StartInfo
 import Hercules.API.Agent.Tasks
   ( tasksReady,
-    tasksSetStatus
-    )
+    tasksSetStatus,
+  )
 import Hercules.API.Id (Id (Id))
 import Hercules.API.Servant (noContent)
 import Hercules.API.Task (Task)
@@ -31,22 +31,22 @@ import Hercules.Agent.CabalInfo (herculesAgentVersion)
 import qualified Hercules.Agent.Cachix as Cachix
 import Hercules.Agent.Client
   ( lifeCycleClient,
-    tasksClient
-    )
+    tasksClient,
+  )
 import qualified Hercules.Agent.Config as Config
 import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Env
   ( App,
-    runHerculesClient
-    )
+    runHerculesClient,
+  )
 import Hercules.Agent.EnvironmentInfo (extractAgentInfo)
 import qualified Hercules.Agent.Evaluate as Evaluate
 import Hercules.Agent.Exception
   ( cap,
     exponential,
     retry,
-    safeLiftedHandle
-    )
+    safeLiftedHandle,
+  )
 import qualified Hercules.Agent.Init as Init
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Options as Options
@@ -56,8 +56,8 @@ import Protolude hiding
     handle,
     race,
     retry,
-    withMVar
-    )
+    withMVar,
+  )
 
 main :: IO ()
 main = Init.setupLogging $ \logEnv -> do
@@ -78,20 +78,21 @@ main = Init.setupLogging $ \logEnv -> do
         withMVar fetchTaskMutex
           $ const
           $ safeLiftedHandle
-              ( \e -> do
-                  logLocM WarningS $ "Exception fetching task, retrying: "
+            ( \e -> do
+                logLocM WarningS $
+                  "Exception fetching task, retrying: "
                     <> show
-                         (e :: SomeException)
-                  liftIO $ threadDelay (60 * 1000 * 1000)
-                  pure Nothing
-                )
+                      (e :: SomeException)
+                liftIO $ threadDelay (60 * 1000 * 1000)
+                pure Nothing
+            )
           $ ( >>=
                 \case
                   Nothing -> do
                     liftIO $ threadDelay (1000 * 1000)
                     pure Nothing
                   x -> pure x
-              )
+            )
           $ Env.runHerculesClient
           $ tasksReady tasksClient
       forM_ taskMaybe $ performTask
@@ -105,7 +106,7 @@ withLifeCycle app = do
       hello = StartInfo.Hello
         { agentInfo = agentInfo,
           startInfo = startInfo
-          }
+        }
       req r =
         retry (cap 60 exponential)
           $ noContent
@@ -135,7 +136,7 @@ performTask task = contextually $ do
       safeLiftedHandle
         ( \e -> do
             pure $ TaskStatus.Exceptional (toSL $ displayException e)
-          )
+        )
         m
     performTaskPerType = do
       logLocM InfoS "Starting task"
@@ -143,14 +144,14 @@ performTask task = contextually $ do
         "eval" -> do
           let evalTask :: Task EvaluateTask.EvaluateTask
               evalTask = Task.uncheckedCast task
-          Cachix.withCaches
-            $ Evaluate.performEvaluation evalTask
+          Cachix.withCaches $
+            Evaluate.performEvaluation evalTask
           pure (TaskStatus.Successful ())
         "build" -> do
           let buildTask :: Task BuildTask.BuildTask
               buildTask = Task.uncheckedCast task
-          Cachix.withCaches
-            $ Build.performBuild buildTask
+          Cachix.withCaches $
+            Build.performBuild buildTask
         _ -> panicWithLog "Unknown task type"
     report status =
       retry (cap 60 exponential)
