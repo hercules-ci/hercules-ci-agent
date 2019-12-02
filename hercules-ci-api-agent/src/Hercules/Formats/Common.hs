@@ -7,14 +7,14 @@ module Hercules.Formats.Common where
 import Control.Monad
 import Data.Aeson
   ( (.:),
-    (.:?)
-    )
+    (.:?),
+  )
 import Data.Aeson.Types
   ( Object,
     Parser,
     Value,
-    withObject
-    )
+    withObject,
+  )
 import Data.Coerce (coerce)
 import qualified Data.List
 import Data.Text (Text)
@@ -30,7 +30,7 @@ withKind k f = withObject (T.unpack k) $ \o -> do
 newtype VersionParser a
   = VersionParser
       { fromVersionParser :: (Maybe Text, Object -> Parser a)
-        }
+      }
   deriving (Functor)
 
 noVersion :: (Object -> Parser a) -> VersionParser a
@@ -50,9 +50,10 @@ withVersions vps' o = do
        in case vs of
             [Nothing] -> fail "Unexpected apiVersion field. "
             _ ->
-              fail $ "Expected apiVersion to be one of "
-                <> unwords
-                     (map showVersion vs)
+              fail $
+                "Expected apiVersion to be one of "
+                  <> unwords
+                    (map showVersion vs)
               where
                 showVersion Nothing = "<no version field>"
                 showVersion (Just t) = show t

@@ -1,6 +1,6 @@
 module Hercules.Agent.WorkerProcess
-  ( runWorker
-    )
+  ( runWorker,
+  )
 where
 
 import Conduit hiding (Producer)
@@ -10,8 +10,8 @@ import Data.Binary (Binary)
 import Data.Conduit.Extras (conduitToCallbacks, sourceChan)
 import Data.Conduit.Serialization.Binary
   ( conduitDecode,
-    conduitEncode
-    )
+    conduitEncode,
+  )
 import GHC.IO.Exception
 import Protolude
 import System.IO (hClose)
@@ -24,20 +24,21 @@ data WorkerException
   = WorkerException
       { originalException :: SomeException,
         exitStatus :: Maybe ExitCode
-        }
+      }
   deriving (Show, Typeable)
 
 instance Exception WorkerException
 
 -- | Control a child process by communicating over stdin and stdout
 -- using a 'Binary' interface.
-runWorker
-  :: (Binary command, Binary event, MonadUnliftIO m, MonadThrow m)
-  => CreateProcess -- ^ Process invocation details. Will ignore std_in, std_out and std_err fields.
-  -> (Int -> ByteString -> m ())
-  -> Chan (Maybe command)
-  -> (event -> m ())
-  -> m ExitCode
+runWorker ::
+  (Binary command, Binary event, MonadUnliftIO m, MonadThrow m) =>
+  -- | Process invocation details. Will ignore std_in, std_out and std_err fields.
+  CreateProcess ->
+  (Int -> ByteString -> m ()) ->
+  Chan (Maybe command) ->
+  (event -> m ()) ->
+  m ExitCode
 runWorker baseProcess stderrLineHandler commandChan eventHandler = do
   UnliftIO {unliftIO = unlift} <- askUnliftIO
   let createProcessSpec =
@@ -45,23 +46,24 @@ runWorker baseProcess stderrLineHandler commandChan eventHandler = do
           { std_in = CreatePipe,
             std_out = CreatePipe,
             std_err = CreatePipe
-            }
+          }
   liftIO $ withCreateProcess createProcessSpec $ \mIn mOut mErr processHandle -> do
     (inHandle, outHandle, errHandle) <-
       case (,,) <$> mIn <*> mOut <*> mErr of
         Just x -> pure x
         Nothing ->
-          throwIO
-            $ mkIOError illegalOperationErrorType
-                "Process did not return all handles"
-                Nothing -- no handle
-                Nothing -- no path
+          throwIO $
+            mkIOError
+              illegalOperationErrorType
+              "Process did not return all handles"
+              Nothing -- no handle
+              Nothing -- no path
     pidMaybe <- liftIO $ getPid processHandle
-    let pid = case pidMaybe of { Just x -> fromIntegral x; Nothing -> 0 }
+    let pid = case pidMaybe of Just x -> fromIntegral x; Nothing -> 0
     let stderrPiper =
-          liftIO
-            $ runConduit
-                (sourceHandle errHandle .| linesUnboundedAsciiC .| awaitForever (liftIO . unlift . stderrLineHandler pid))
+          liftIO $
+            runConduit
+              (sourceHandle errHandle .| linesUnboundedAsciiC .| awaitForever (liftIO . unlift . stderrLineHandler pid))
     let eventConduit = sourceHandle outHandle .| conduitDecode
         commandConduit =
           sourceChan commandChan

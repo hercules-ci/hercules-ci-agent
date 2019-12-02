@@ -9,5 +9,5 @@ data CreateProject
   = CreateProject
       { primaryRepoId :: Id Repo,
         enabled :: Bool
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

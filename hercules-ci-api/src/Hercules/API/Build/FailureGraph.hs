@@ -11,15 +11,15 @@ import Hercules.API.Prelude
 data Graph
   = Graph
       { nodes :: [Node]
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
 
 -- | A derivation and any dependencies that caused it to fail, if applicable.
 data Node
   = Node
       { derivation :: Derivation,
-        failedDependencies :: [Text]
-        -- ^ Dependency paths to failed dependencies that, if present, have caused a
+        -- | Dependency paths to failed dependencies that, if present, have caused a
         --   DependencyFailure for this derivation.
-        }
+        failedDependencies :: [Text]
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

@@ -1,7 +1,7 @@
 module Hercules.Agent.Cachix
   ( module Hercules.Agent.Cachix,
-    activePushCaches
-    )
+    activePushCaches,
+  )
 where
 
 import qualified Cachix.Client.Push as Cachix.Push
@@ -35,26 +35,26 @@ push cache paths workers = withNamedContext "cache" cache $ do
   let clientEnv =
         Servant.mkClientEnv httpManager Cachix.URI.defaultCachixBaseUrl
   ul <- askUnliftIO
-  void
-    $ Cachix.Push.pushClosure
-        ( \f l ->
-            liftIO $ Cachix.Push.mapConcurrentlyBounded workers (fmap (unliftIO ul) f) l
-          )
-        clientEnv
-        nixStore
-        pushCache
-        ( \storePath ->
-            let ctx = withNamedContext "path" storePath
-             in Cachix.Push.PushStrategy
-                  { onAlreadyPresent = pass,
-                    onAttempt = \_retry -> ctx $ logLocM DebugS "pushing",
-                    on401 = throwIO $ FatalError $ "Cachix push is unauthorized",
-                    onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
-                    onDone = ctx $ logLocM DebugS "push done",
-                    withXzipCompressor = Cachix.Push.defaultWithXzipCompressor
-                    }
-          )
-        paths
+  void $
+    Cachix.Push.pushClosure
+      ( \f l ->
+          liftIO $ Cachix.Push.mapConcurrentlyBounded workers (fmap (unliftIO ul) f) l
+      )
+      clientEnv
+      nixStore
+      pushCache
+      ( \storePath ->
+          let ctx = withNamedContext "path" storePath
+           in Cachix.Push.PushStrategy
+                { onAlreadyPresent = pass,
+                  onAttempt = \_retry -> ctx $ logLocM DebugS "pushing",
+                  on401 = throwIO $ FatalError $ "Cachix push is unauthorized",
+                  onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
+                  onDone = ctx $ logLocM DebugS "push done",
+                  withXzipCompressor = Cachix.Push.defaultWithXzipCompressor
+                }
+      )
+      paths
 
 getNetrcLines :: App [Text]
 getNetrcLines = asks (Agent.Cachix.netrcLines . Agent.Env.cachixEnv)
@@ -66,7 +66,7 @@ getSubstituters = do
   pure
     ( EnvInfo.nixSubstituters nixInfo
         ++ map (\c -> "https://" <> c <> ".cachix.org") (M.keys cks)
-      )
+    )
 
 getTrustedPublicKeys :: App [Text]
 getTrustedPublicKeys = do
@@ -87,5 +87,5 @@ withCaches m = do
       [ ("netrc-file", toSL netrcPath),
         ("substituters", Text.intercalate " " substs),
         ("trusted-public-keys", Text.intercalate " " pubkeys)
-        ]
+      ]
       m

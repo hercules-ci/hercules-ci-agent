@@ -15,7 +15,7 @@ sinkChan ch =
     ( \e -> liftIO $ do
         writeChan ch Nothing
         throwIO (e :: SomeException)
-      )
+    )
     $ do
       awaitForever $ \msg -> liftIO $ writeChan ch (Just msg)
       liftIO $ writeChan ch Nothing

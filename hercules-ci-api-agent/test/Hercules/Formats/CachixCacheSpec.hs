@@ -20,32 +20,32 @@ deriving instance Show CachixCache
 spec :: Spec
 spec = describe "CachixCache" $ do
   Aeson.checkLaws genKeys
-  it "Decodes example 'full'"
-    $ eitherDecode
-        "{\"kind\":\"CachixCache\",\"publicKeys\":[\"hello:world\"],\"signingKeys\":[\"DEADBEEF==\"],\"authToken\":\"eyHowdyadoin\"}"
-    `shouldBe` Right
-                 ( CachixCache
-                     { signingKeys = ["DEADBEEF=="],
-                       authToken = Just "eyHowdyadoin",
-                       publicKeys = ["hello:world"]
-                       }
-                   )
-  it "Decodes example 'no authToken'"
-    $ eitherDecode
-        "{\"kind\":\"CachixCache\",\"publicKeys\":[\"hello:world\"],\"signingKeys\":[\"DEADBEEF==\"]}"
-    `shouldBe` Right
-                 ( CachixCache
-                     { signingKeys = ["DEADBEEF=="],
-                       authToken = Nothing,
-                       publicKeys = ["hello:world"]
-                       }
-                   )
-  it "Does not decode unknown versions"
-    $ let r :: Either [Char] CachixCache
-          r =
-            eitherDecode
-              "{\"kind\":\"CachixCache\",\"apiVersion\":\"0.99\",\"publicKeys\":[\"hello:world\"],\"signingKeys\":[\"DEADBEEF==\"]}"
-          Left e = r
+  it "Decodes example 'full'" $
+    eitherDecode
+      "{\"kind\":\"CachixCache\",\"publicKeys\":[\"hello:world\"],\"signingKeys\":[\"DEADBEEF==\"],\"authToken\":\"eyHowdyadoin\"}"
+      `shouldBe` Right
+        ( CachixCache
+            { signingKeys = ["DEADBEEF=="],
+              authToken = Just "eyHowdyadoin",
+              publicKeys = ["hello:world"]
+            }
+        )
+  it "Decodes example 'no authToken'" $
+    eitherDecode
+      "{\"kind\":\"CachixCache\",\"publicKeys\":[\"hello:world\"],\"signingKeys\":[\"DEADBEEF==\"]}"
+      `shouldBe` Right
+        ( CachixCache
+            { signingKeys = ["DEADBEEF=="],
+              authToken = Nothing,
+              publicKeys = ["hello:world"]
+            }
+        )
+  it "Does not decode unknown versions" $
+    let r :: Either [Char] CachixCache
+        r =
+          eitherDecode
+            "{\"kind\":\"CachixCache\",\"apiVersion\":\"0.99\",\"publicKeys\":[\"hello:world\"],\"signingKeys\":[\"DEADBEEF==\"]}"
+        Left e = r
      in do
           isLeft r `shouldBe` True
           e `shouldContain` "Unexpected apiVersion field."

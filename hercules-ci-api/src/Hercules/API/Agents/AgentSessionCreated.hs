@@ -3,11 +3,11 @@
 module Hercules.API.Agents.AgentSessionCreated where
 
 import Hercules.API.Agents.AgentSession
-  ( AgentSession
-    )
+  ( AgentSession,
+  )
 import Hercules.API.Agents.ClusterJoinToken
-  ( ClusterJoinToken
-    )
+  ( ClusterJoinToken,
+  )
 import Hercules.API.Prelude
 
 data AgentSessionCreated
@@ -20,5 +20,5 @@ data AgentSessionCreated
         nixVersion :: Text,
         architectures :: [Text],
         creation :: UTCTime
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

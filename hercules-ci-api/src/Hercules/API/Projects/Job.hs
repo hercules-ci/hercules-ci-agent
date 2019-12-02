@@ -4,8 +4,8 @@ module Hercules.API.Projects.Job where
 
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Evaluation.Evaluation
-  ( Evaluation
-    )
+  ( Evaluation,
+  )
 import Hercules.API.Prelude
 import Hercules.API.Projects.Project (Project)
 import Hercules.API.Repos.Repo (Repo)
@@ -24,7 +24,7 @@ data Job
         derivationStatus :: JobStatus,
         evaluationId :: Id Evaluation,
         source :: GitCommitSource
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
 
 data GitCommitSource
@@ -34,7 +34,7 @@ data GitCommitSource
         message :: Text,
         gitCommitterName :: Text,
         committerSlug :: Maybe (Name Account)
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
 
 data JobPhase
@@ -52,7 +52,6 @@ data JobStatus
 
 -- | Whichever is "worse": 'Failure' wins out, otherwise 'Pending' wins out, otherwise all are 'Success'.
 instance Semigroup JobStatus where
-
   Failure <> _ = Failure
   _ <> Failure = Failure
   Pending <> _ = Pending
@@ -72,5 +71,5 @@ data ProjectAndJobs
   = ProjectAndJobs
       { project :: Project,
         jobs :: [Job]
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

@@ -9,5 +9,5 @@ data Organization
       { id :: Id Organization,
         displayName :: Text,
         trialStartedOn :: Maybe UTCTime
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

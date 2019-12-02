@@ -9,4 +9,4 @@ newEnv = do
   -- extraOptions here.
   pure Env
     { extraOptions = []
-      }
+    }

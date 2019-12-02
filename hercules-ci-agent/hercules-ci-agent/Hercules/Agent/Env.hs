@@ -9,12 +9,12 @@ import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control (MonadBaseControl)
 import qualified Hercules.Agent.Cachix.Env as Cachix
   ( Env,
-    HasEnv (..)
-    )
+    HasEnv (..),
+  )
 import Hercules.Agent.Config (FinalConfig)
 import qualified Hercules.Agent.Nix.Env as Nix
-  ( Env
-    )
+  ( Env,
+  )
 import Hercules.Error
 import qualified Katip as K
 import qualified Network.HTTP.Client
@@ -39,10 +39,9 @@ data Env
         kNamespace :: K.Namespace,
         kContext :: K.LogContexts,
         kLogEnv :: K.LogEnv
-        }
+      }
 
 instance Cachix.HasEnv Env where
-
   getEnv = cachixEnv
 
 newtype App a = App {fromApp :: ReaderT Env IO a}
@@ -51,9 +50,9 @@ newtype App a = App {fromApp :: ReaderT Env IO a}
 runApp :: Env -> App a -> IO a
 runApp env (App m) = runReaderT m env
 
-runHerculesClient
-  :: (Servant.Auth.Client.Token -> Servant.Client.ClientM a)
-  -> App a
+runHerculesClient ::
+  (Servant.Auth.Client.Token -> Servant.Client.ClientM a) ->
+  App a
 runHerculesClient f = do
   tok <- asks currentToken
   runHerculesClient' (f tok)

@@ -8,5 +8,5 @@ import Hercules.API.Prelude
 data BuildRequest
   = BuildRequest
       { derivationPath :: Text
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

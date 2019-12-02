@@ -3,8 +3,8 @@
 
 module Hercules.Agent.BinaryCaches
   ( BinaryCaches (..),
-    parseFile
-    )
+    parseFile,
+  )
 where
 
 import Control.Exception.Lifted (catchJust)
@@ -23,20 +23,19 @@ data BinaryCaches
   = BinaryCaches
       { cachixCaches :: Map Text CachixCache,
         unknownKinds :: Map Text UnknownKind
-        }
+      }
 
 data UnknownKind = UnknownKind {kind :: Text}
   deriving (Generic, FromJSON)
 
 instance FromJSON BinaryCaches where
-
   -- note that parseBag already preserves object names.
   parseJSON =
     parseBag
       ( BinaryCaches
           <$> part (\_name -> whenKind "CachixCache" $ \v -> Just $ (parseJSON v))
           <*> part (\_name v -> Just $ parseJSON v)
-        )
+      )
 
 parseFile :: Config 'Final -> KatipContextT IO BinaryCaches
 parseFile cfg = do
@@ -46,35 +45,35 @@ parseFile cfg = do
       (mfilter isDoesNotExistError . Just)
       (liftIO (BL.readFile (toS fname)))
       ( \_e ->
-          liftIO $ throwIO $ FatalError
-            $ "The binary-caches.json file does not exist.\
-              \\nAccording to the configuration, it should be in\
-              \\n  "
-            <> toS fname
-            <> "\
-              \\n\
-              \\nFor more information about binary-caches.json, see\n\
-              \\nhttps://docs.hercules-ci.com/hercules-ci/reference/binary-caches-json/"
-        )
+          liftIO $ throwIO $ FatalError $
+            "The binary-caches.json file does not exist.\
+            \\nAccording to the configuration, it should be in\
+            \\n  "
+              <> toS fname
+              <> "\
+                 \\n\
+                 \\nFor more information about binary-caches.json, see\n\
+                 \\nhttps://docs.hercules-ci.com/hercules-ci/reference/binary-caches-json/"
+      )
   bcs <- escalateAs (FatalError . toS) $ eitherDecode bytes
   validate (toS fname) bcs
   pure bcs
 
 validate :: FilePath -> BinaryCaches -> KatipContextT IO ()
 validate fname bcs = do
-  when (null $ cachixCaches bcs)
-    $ logLocM
-        WarningS
-        "You did not configure any caches. This is ok for evaluation purposes,\
-        \ but a cache is required for multi-agent operation and\
-        \ to work well across garbage collection.\
-        \ For more information about binary-caches.json, see\
-        \ https://docs.hercules-ci.com/hercules-ci/reference/binary-caches-json/"
+  when (null $ cachixCaches bcs) $
+    logLocM
+      WarningS
+      "You did not configure any caches. This is ok for evaluation purposes,\
+      \ but a cache is required for multi-agent operation and\
+      \ to work well across garbage collection.\
+      \ For more information about binary-caches.json, see\
+      \ https://docs.hercules-ci.com/hercules-ci/reference/binary-caches-json/"
   forM_ (M.toList (unknownKinds bcs)) $ \(k, v) ->
-    logLocM WarningS
-      $ "In file "
-      <> show fname
-      <> " in entry "
-      <> show k
-      <> ": unknown kind "
-      <> show (kind v)
+    logLocM WarningS $
+      "In file "
+        <> show fname
+        <> " in entry "
+        <> show k
+        <> ": unknown kind "
+        <> show (kind v)

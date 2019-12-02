@@ -25,16 +25,19 @@ data Producer p r
   = Producer
       { producerQueueRead :: STM (Msg p r),
         producerThread :: ThreadId
-        }
+      }
   deriving (Functor)
 
 data ProducerCancelled = ProducerCancelled
   deriving (Show, Exception, Typeable)
 
 data Msg p r
-  = Payload p -- ^ One of possibly many payloads from the producer
-  | Exception SomeException -- ^ The producer stopped due to an exception
-  | Close r -- ^ The producer was done and produced a final value
+  = -- | One of possibly many payloads from the producer
+    Payload p
+  | -- | The producer stopped due to an exception
+    Exception SomeException
+  | -- | The producer was done and produced a final value
+    Close r
   deriving (Functor)
 
 -- | @forkProducer f@ produces a computation that forks a thread for @f@, which
@@ -44,7 +47,7 @@ data Msg p r
 forkProducer :: forall m p r. (MonadIO m, MonadUnliftIO m) => ((p -> m ()) -> m r) -> m (Producer p r)
 forkProducer f = do
   q <- liftIO newTQueueIO
-  let write :: MonadIO  m' => Msg p r ->  m' ()
+  let write :: MonadIO m' => Msg p r -> m' ()
       write = liftIO . atomically . writeTQueue q
   f' <- toIO (f (write . Payload))
   t <- liftIO $ forkFinally f' (write . toResult)
@@ -61,19 +64,19 @@ cancel p = liftIO $ throwTo (producerThread p) ProducerCancelled
 -- | Perform an computation while @withProducer@ takes care of forking and cleaning up.
 --
 -- @withProducer (\write -> write "a" >> write "b") $ \producer -> consume producer@
-withProducer
-  :: (MonadIO m, MonadUnliftIO m)
-  => ((p -> m ()) -> m r)
-  -> (Producer p r -> m a)
-  -> m a
+withProducer ::
+  (MonadIO m, MonadUnliftIO m) =>
+  ((p -> m ()) -> m r) ->
+  (Producer p r -> m a) ->
+  m a
 withProducer f = bracket (forkProducer f) cancel
 
-listen
-  :: MonadIO m
-  => Producer p r
-  -> (p -> m a)
-  -> (r -> m a)
-  -> STM (m a)
+listen ::
+  MonadIO m =>
+  Producer p r ->
+  (p -> m a) ->
+  (r -> m a) ->
+  STM (m a)
 listen p fPayload fResult =
   fmap f (producerQueueRead p)
   where
@@ -88,18 +91,18 @@ data Syncing a = Syncable a | Syncer (Maybe SomeException -> STM ())
 
 -- | Sends sync notifications after the whole computation succeeds (or fails)
 -- Note: not exception safe in the presence of pure exceptions.
-withSync
-  :: (MonadIO m, MonadUnliftIO m, Traversable t)
-  => t (Syncing a)
-  -> (t (Maybe a) -> m b)
-  -> m b
+withSync ::
+  (MonadIO m, MonadUnliftIO m, Traversable t) =>
+  t (Syncing a) ->
+  (t (Maybe a) -> m b) ->
+  m b
 withSync t f = do
   let (t', syncs) =
         runState
           ( for t $ \case
               Syncable a -> pure (Just a)
               Syncer s -> Nothing <$ modify (*> s)
-            )
+          )
           (\_ -> pure ())
   b <- f t' `withException` (liftIO . atomically . syncs . Just)
   liftIO $ atomically $ syncs Nothing
@@ -120,13 +123,15 @@ withSync t f = do
 --     - Make sure it is not woken up after the queue has become non-empty
 --     - Alternatively, maybe use stm-delay (which uses GHC.Event for efficiency)
 --       https://hackage.haskell.org/package/stm-delay-0.1.1.1/docs/Control-Concurrent-STM-Delay.html
-withBoundedDelayBatchProducer
-  :: (MonadIO m, MonadUnliftIO m, KatipContext m)
-  => Int -- ^ Max time before flushing in microseconds
-  -> Int -- ^ Max number of items in batch
-  -> Producer p r
-  -> (Producer [p] r -> m a)
-  -> m a
+withBoundedDelayBatchProducer ::
+  (MonadIO m, MonadUnliftIO m, KatipContext m) =>
+  -- | Max time before flushing in microseconds
+  Int ->
+  -- | Max number of items in batch
+  Int ->
+  Producer p r ->
+  (Producer [p] r -> m a) ->
+  m a
 withBoundedDelayBatchProducer maxDelay maxItems sourceP f = do
   UnliftIO {unliftIO = unlift} <- askUnliftIO
   flushes <- liftIO $ newTQueueIO
@@ -143,7 +148,7 @@ withBoundedDelayBatchProducer maxDelay maxItems sourceP f = do
                 ( onQueueRead <$> producerQueueRead sourceP
                     <|> onFlush
                     <$ readTQueue flushes
-                  )
+                )
               where
                 onQueueRead (Payload a) =
                   readItems (bufferRemaining - 1) (a : buf)
@@ -162,10 +167,10 @@ withBoundedDelayBatchProducer maxDelay maxItems sourceP f = do
          in beginReading
   liftIO
     $ withAsync
-        ( forever $ do
-            threadDelay maxDelay
-            atomically $ writeTQueue flushes ()
-          )
+      ( forever $ do
+          threadDelay maxDelay
+          atomically $ writeTQueue flushes ()
+      )
     $ \_flusher -> unlift $ withProducer producer f
 
 syncer :: MonadIO m => (Syncing a -> m ()) -> m ()

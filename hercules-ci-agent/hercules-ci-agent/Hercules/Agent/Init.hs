@@ -42,7 +42,7 @@ newEnv config logEnv = do
       kContext = mempty,
       kLogEnv = logEnv,
       nixEnv = nix
-      }
+    }
 
 setupLogging :: (K.LogEnv -> IO ()) -> IO ()
 setupLogging f = do

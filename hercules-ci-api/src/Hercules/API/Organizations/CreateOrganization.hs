@@ -9,5 +9,5 @@ data CreateOrganization
   = CreateOrganization
       { displayName :: Text,
         primaryAccountId :: Id Account
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

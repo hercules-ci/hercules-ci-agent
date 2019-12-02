@@ -44,7 +44,7 @@ context =
             <> M.singleton (C.TypeName "refHerculesStore") [t|Ref HerculesStore|]
             <> M.singleton (C.TypeName "Derivation") [t|Derivation|]
             <> M.singleton (C.TypeName "exception_ptr") [t|ExceptionPtr|]
-        }
+      }
 
 unsafeMallocBS :: MonadIO m => IO Foreign.C.String.CString -> m ByteString
 unsafeMallocBS m = liftIO (unsafePackMallocCString =<< m)

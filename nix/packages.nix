@@ -60,13 +60,13 @@ let
                               # TODO: worker should inherit from the agent, but can't find git without this
                               wrapProgram $out/bin/hercules-ci-agent-worker --prefix PATH : ${makeBinPath [ pkgs.gnutar pkgs.gzip pkgs.git nix ]}
                             ''
-                            ;
+                          ;
                           passthru =
                             (o.passthru or {})
                             // {
-                                 inherit nix;
-                               }
-                            ;
+                              inherit nix;
+                            }
+                          ;
 
                           # TODO: We had an issue where any overrideCabal would have
                           #       no effect on the package, so we inline the

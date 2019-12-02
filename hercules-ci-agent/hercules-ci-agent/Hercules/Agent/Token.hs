@@ -64,10 +64,9 @@ ensureAgentSession = readAgentSessionKey >>= \case
       logLocM DebugS $ "Found sessionClusterJoinTokenId " <> show scjt
       if cjt == scjt
         then pure sessKey
-        else
-          do
-            logLocM DebugS "Getting new session key to match cluster join token..."
-            updateAgentSession
+        else do
+          logLocM DebugS "Getting new session key to match cluster join token..."
+          updateAgentSession
   Nothing -> do
     writeAgentSessionKey "x" -- Sanity check
     logLocM DebugS "Creating agent session"
@@ -94,11 +93,11 @@ createAgentSession = do
   let createAgentBody =
         CreateAgentSession.CreateAgentSession {agentInfo = agentInfo}
   token <- asks Env.currentToken
-  runHerculesClient'
-    $ Hercules.API.Agent.LifeCycle.agentSessionCreate
-        lifeCycleClient
-        createAgentBody
-        token
+  runHerculesClient' $
+    Hercules.API.Agent.LifeCycle.agentSessionCreate
+      lifeCycleClient
+      createAgentBody
+      token
 
 -- TODO: Although this looks nice, the implicit limitation here is that we can
 --       only have one token at a time. I wouldn't be surprised if this becomes

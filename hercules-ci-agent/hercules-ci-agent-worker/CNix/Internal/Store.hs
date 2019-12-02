@@ -3,8 +3,8 @@
 
 module CNix.Internal.Store
   ( module CNix.Internal.Store,
-    HerculesStore
-    )
+    HerculesStore,
+  )
 where
 
 import CNix.Internal.Context
@@ -43,17 +43,17 @@ C.include "aliases.h"
 
 C.using "namespace nix"
 
-withStore
-  :: (Ptr (Ref NixStore) -> IO r)
-  -> IO r
+withStore ::
+  (Ptr (Ref NixStore) -> IO r) ->
+  IO r
 withStore =
   bracket
-    ( liftIO
-        $ [C.block| refStore* {
+    ( liftIO $
+        [C.block| refStore* {
             refStore s = openStore();
             return new refStore(s);
           } |]
-      )
+    )
     (\x -> liftIO $ [C.exp| void { delete $(refStore* x) } |])
 
 storeUri :: MonadIO m => Ptr (Ref NixStore) -> m ByteString
@@ -103,7 +103,6 @@ getDerivation store path = do
   newForeignPtr finalizeDerivation ptr
 
 finalizeDerivation :: FinalizerPtr Derivation
-
 {-# NOINLINE finalizeDerivation #-}
 finalizeDerivation =
   unsafePerformIO
@@ -127,19 +126,19 @@ derivationOutputPath fd outputName = withForeignPtr fd $ \d ->
     >>= BS.unsafePackMallocCString
 
 ----- Hercules -----
-withHerculesStore
-  :: Ptr (Ref NixStore)
-  -> (Ptr (Ref HerculesStore) -> IO a)
-  -> IO a
+withHerculesStore ::
+  Ptr (Ref NixStore) ->
+  (Ptr (Ref HerculesStore) -> IO a) ->
+  IO a
 withHerculesStore wrappedStore =
   bracket
-    ( liftIO
-        $ [C.block| refHerculesStore* {
+    ( liftIO $
+        [C.block| refHerculesStore* {
           refStore &s = *$(refStore *wrappedStore);
           refHerculesStore hs(new HerculesStore({}, s));
           return new refHerculesStore(hs);
         } |]
-      )
+    )
     (\x -> liftIO $ [C.exp| void { delete $(refHerculesStore* x) } |])
 
 nixStore :: Ptr (Ref HerculesStore) -> Ptr (Ref NixStore)

@@ -11,12 +11,10 @@ data Env
         cacheKeys :: Map Text CachixCache,
         netrcLines :: [Text],
         nixStore :: Store
-        }
+      }
 
 class HasEnv env where
-
   getEnv :: env -> Env
 
 instance HasEnv Env where
-
   getEnv = identity

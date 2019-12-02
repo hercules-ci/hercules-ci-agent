@@ -20,7 +20,7 @@ objectV1 = AgentInfo
     cachixPushCaches = ["c1", "c2"],
     substituters = ["s1", "s2"],
     concurrentTasks = 2 -- the hardcoded default
-    }
+  }
 
 jsonV2 = "{\"platforms\":[\"riscv-sel4\"],\"hostname\":\"a\",\"nixVersion\":\"nv\",\"agentVersion\":\"v\",\"cachixPushCaches\":[\"c1\",\"c2\"],\"systemFeatures\":[\"f1\",\"f2\"],\"substituters\":[\"s1\",\"s2\"], \"concurrentTasks\": 19}"
 
@@ -33,7 +33,7 @@ objectV2 = AgentInfo
     cachixPushCaches = ["c1", "c2"],
     substituters = ["s1", "s2"],
     concurrentTasks = 19 -- something else
-    }
+  }
 
 spec :: Spec
 spec = describe "AgentInfo" $ do
@@ -43,4 +43,4 @@ spec = describe "AgentInfo" $ do
   describe "ToJSON"
     $ it "encodes v2 correctly"
     $ eitherDecode (encode objectV2)
-    `shouldBe` Right objectV2
+      `shouldBe` Right objectV2

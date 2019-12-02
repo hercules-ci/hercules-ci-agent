@@ -18,10 +18,11 @@ init cfg = do
 getSecureDirectory :: FinalConfig -> IO FilePath
 getSecureDirectory cfg = pure $ workDirectory cfg </> "secure"
 
-withSecureTempFile
-  :: [Char] -- ^ file name template
-  -> (FilePath -> Handle -> App a)
-  -> App a
+withSecureTempFile ::
+  -- | file name template
+  [Char] ->
+  (FilePath -> Handle -> App a) ->
+  App a
 withSecureTempFile tpl m = do
   cfg <- asks config
   d <- liftIO (getSecureDirectory cfg)

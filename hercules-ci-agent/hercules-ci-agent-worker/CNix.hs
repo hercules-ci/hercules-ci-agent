@@ -9,8 +9,8 @@ module CNix
     module CNix.Internal.Typed,
     type NixStore,
     type EvalState,
-    type Ref
-    )
+    type Ref,
+  )
 where
 
 -- TODO: No more Ptr EvalState
@@ -102,19 +102,19 @@ setOption opt value = do
 mkBindings :: Ptr Bindings' -> IO Bindings
 mkBindings p = pure $ Bindings p
 
-withEvalState
-  :: MonadResource m
-  => Ptr (Ref NixStore)
-  -> (Ptr EvalState -> ConduitT i o m r)
-  -> ConduitT i o m r
+withEvalState ::
+  MonadResource m =>
+  Ptr (Ref NixStore) ->
+  (Ptr EvalState -> ConduitT i o m r) ->
+  ConduitT i o m r
 withEvalState store =
   bracketP
-    ( liftIO
-        $ [C.throwBlock| EvalState* {
+    ( liftIO $
+        [C.throwBlock| EvalState* {
           Strings searchPaths;
           return new EvalState(searchPaths, *$(refStore* store));
         } |]
-      )
+    )
     (\x -> liftIO $ [C.throwBlock| void { delete $(EvalState* x); } |])
 
 evalFile :: Ptr EvalState -> FilePath -> IO RawValue

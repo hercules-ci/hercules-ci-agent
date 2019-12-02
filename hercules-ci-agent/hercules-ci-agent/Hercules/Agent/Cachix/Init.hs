@@ -17,8 +17,8 @@ import qualified Servant.Auth.Client
 newEnv :: Config.FinalConfig -> Map Text CachixCache.CachixCache -> K.KatipContextT IO Env.Env
 newEnv _config cks = do
   -- FIXME: sl doesn't work??
-  K.katipAddContext (K.sl "caches" (M.keys cks))
-    $ K.logLocM K.DebugS ("Cachix init " <> K.logStr (show (M.keys cks) :: Text))
+  K.katipAddContext (K.sl "caches" (M.keys cks)) $
+    K.logLocM K.DebugS ("Cachix init " <> K.logStr (show (M.keys cks) :: Text))
   pcs <- liftIO $ toPushCaches cks
   store <- liftIO Cachix.Store.openStore
   pure Env.Env
@@ -26,7 +26,7 @@ newEnv _config cks = do
       netrcLines = toNetrcLines cks,
       cacheKeys = cks,
       nixStore = store
-      }
+    }
 
 toNetrcLines :: Map Text CachixCache.CachixCache -> [Text]
 toNetrcLines = concatMap toNetrcLine . M.toList
@@ -39,7 +39,7 @@ toPushCaches :: Map Text CachixCache.CachixCache -> IO (Map Text Cachix.Push.Pus
 toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'
   where
     toPushCaches' name keys =
-      let { t = fromMaybe "" (CachixCache.authToken keys) }
+      let t = fromMaybe "" (CachixCache.authToken keys)
        in do
             sk <- head $ CachixCache.signingKeys keys
             Just $ escalateAs FatalError $ do
@@ -48,4 +48,4 @@ toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'
                 { pushCacheName = name,
                   pushCacheSigningKey = k',
                   pushCacheToken = Servant.Auth.Client.Token $ toSL t
-                  }
+                }

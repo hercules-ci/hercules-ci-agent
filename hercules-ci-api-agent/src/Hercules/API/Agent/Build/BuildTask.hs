@@ -4,8 +4,8 @@ module Hercules.API.Agent.Build.BuildTask where
 
 import Data.Aeson
   ( FromJSON,
-    ToJSON
-    )
+    ToJSON,
+  )
 import Data.Swagger (ToSchema)
 import Data.Text (Text)
 import GHC.Generics (Generic)
@@ -18,5 +18,5 @@ data BuildTask
       { id :: Id (Task BuildTask),
         derivationPath :: Text,
         logToken :: Text
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

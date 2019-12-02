@@ -9,12 +9,12 @@ data Hello
   = Hello
       { agentInfo :: AgentInfo,
         startInfo :: StartInfo
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
 
 data StartInfo
   = StartInfo
       { id :: Id StartInfo,
         startTime :: UTCTime
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

@@ -6,8 +6,8 @@ import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Prelude
 import Hercules.API.Repos.Repo (Repo)
 import Hercules.API.SourceHostingSite.SourceHostingSite
-  ( SourceHostingSite
-    )
+  ( SourceHostingSite,
+  )
 
 data Project
   = Project
@@ -19,9 +19,9 @@ data Project
         slug :: Name Project,
         displayName :: Text,
         imageURL :: Maybe Text,
-        isPublic :: Bool
-        -- ^ True if no authorization is required for retrieving basic
+        -- | True if no authorization is required for retrieving basic
         --   information about a project, such as its existence, name,
         --   job statuses etc.
-        }
+        isPublic :: Bool
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

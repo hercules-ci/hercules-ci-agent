@@ -5,8 +5,8 @@ module Hercules.Agent.Log
   ( module Katip,
     logLocM,
     module Hercules.Agent.Log,
-    getLoc
-    )
+    getLoc,
+  )
 where
 
 import Data.Aeson
@@ -16,11 +16,9 @@ import Katip.Monadic (logLocM)
 import Protolude
 
 instance StringConv [Char] LogStr where
-
   strConv l = logStr . (strConv l :: [Char] -> Text)
 
 instance StringConv Text LogStr where
-
   strConv _ = logStr
 
 withNamedContext :: (ToJSON a, KatipContext m) => Text -> a -> m b -> m b

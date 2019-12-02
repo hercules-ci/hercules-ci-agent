@@ -8,5 +8,5 @@ import Hercules.API.Prelude
 data PushedAll
   = PushedAll
       { cache :: Text
-        }
+      }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

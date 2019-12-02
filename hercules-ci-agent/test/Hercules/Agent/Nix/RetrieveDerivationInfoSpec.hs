@@ -24,5 +24,5 @@ spec = do
 readDrv :: Text -> IO DerivationInfo
 readDrv p = do
   le <- initLogEnv mempty (Environment "test")
-  runKatipContextT le () mempty
-    $ retrieveDerivationInfo p
+  runKatipContextT le () mempty $
+    retrieveDerivationInfo p

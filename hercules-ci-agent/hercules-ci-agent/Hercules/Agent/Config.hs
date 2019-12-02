@@ -10,8 +10,8 @@ module Hercules.Agent.Config
     ConfigPath (..),
     Purpose (..),
     readConfig,
-    finalizeConfig
-    )
+    finalizeConfig,
+  )
 where
 
 import Protolude hiding (to)
@@ -41,12 +41,12 @@ data Config purpose
       { herculesApiBaseURL :: Item purpose 'Required Text,
         concurrentTasks :: Item purpose 'Required Integer,
         baseDirectory :: Item purpose 'Required FilePath,
+        -- | Read-only
         staticSecretsDirectory :: Item purpose 'Required FilePath,
-        -- ^ Read-only
         workDirectory :: Item purpose 'Required FilePath,
         clusterJoinTokenPath :: Item purpose 'Required FilePath,
         binaryCachesPath :: Item purpose 'Required FilePath
-        }
+      }
   deriving (Generic)
 
 deriving instance Show (Config 'Final)
@@ -121,4 +121,4 @@ finalizeConfig loc input = do
       baseDirectory = baseDir,
       staticSecretsDirectory = staticSecretsDir,
       workDirectory = workDir
-      }
+    }

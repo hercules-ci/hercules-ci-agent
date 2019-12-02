@@ -1,8 +1,8 @@
 {-# LANGUAGE DataKinds #-}
 
 module Hercules.Agent.Worker
-  ( main
-    )
+  ( main,
+  )
 where
 
 import CNix
@@ -14,8 +14,8 @@ import qualified Data.Conduit
 import Data.Conduit.Extras (sinkChan, sourceChan)
 import Data.Conduit.Serialization.Binary
   ( conduitDecode,
-    conduitEncode
-    )
+    conduitEncode,
+  )
 import Data.IORef
 import qualified Data.Map as M
 import qualified Data.Set as S
@@ -24,17 +24,17 @@ import Hercules.API.Agent.Evaluate.DerivationStatus (DerivationStatus)
 import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatus
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import Hercules.Agent.WorkerProtocol.Command
-  ( Command
-    )
+  ( Command,
+  )
 import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
 import Hercules.Agent.WorkerProtocol.Command.Eval
-  ( Eval
-    )
+  ( Eval,
+  )
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import Hercules.Agent.WorkerProtocol.Event
-  ( Event
-    )
+  ( Event,
+  )
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
 import qualified Language.C.Inline.Cpp.Exceptions as C
@@ -50,13 +50,13 @@ data HerculesState
         herculesStore :: Ptr (Ref HerculesStore),
         wrappedStore :: Ptr (Ref NixStore),
         shortcutChannel :: Chan (Maybe Event)
-        }
+      }
 
 data BuildException
   = BuildException
       { buildExceptionDerivationPath :: Text,
         buildExceptionDerivationStatus :: DerivationStatus
-        }
+      }
   deriving (Show, Typeable)
 
 instance Exception BuildException
@@ -84,7 +84,7 @@ main = do
             herculesStore = herculesStore_,
             wrappedStore = wrappedStore_,
             shortcutChannel = ch
-            }
+          }
     let runner =
           runConduitRes
             ( sourceHandle stdin
@@ -92,7 +92,7 @@ main = do
                 .| printCommands
                 .| runCommands st
                 .| sinkChan ch
-              )
+            )
             `catch` (\WorkDoneException -> pure ())
             `finally` writeChan ch Nothing
         writer =
@@ -101,7 +101,7 @@ main = do
                 .| conduitEncode
                 .| concatMapC (\x -> [Chunk x, Flush])
                 .| sinkHandleFlush stdout
-              )
+            )
     void $ concurrently runner writer
 
 printCommands :: ConduitT Command Command (ResourceT IO) ()
@@ -110,7 +110,7 @@ printCommands =
     ( \x -> do
         liftIO $ hPutStrLn stderr ("Received command: " <> show x :: Text)
         pure x
-      )
+    )
 
 renderException :: SomeException -> Text
 renderException e | Just (C.CppStdException msg) <- fromException e = toSL msg
@@ -129,24 +129,25 @@ runCommands herculesState = do
   awaitForever $ \case
     Command.Eval eval ->
       void $ liftIO
-        $ flip forkFinally
-            ( \eeu -> case eeu of
-                Left e -> throwIO $ FatalError $ "Failed to fork: " <> show e
-                Right _ -> pure ()
-              )
+        $ flip
+          forkFinally
+          ( \eeu -> case eeu of
+              Left e -> throwIO $ FatalError $ "Failed to fork: " <> show e
+              Right _ -> pure ()
+          )
         $ runConduitRes
-            ( Data.Conduit.handleC
-                ( \e -> do
-                    hPutStrLn stderr $ "Caught exception: " <> renderException e
-                    yield $ Event.Error (renderException e)
-                    liftIO $ throwTo mainThread e
-                  )
-                ( do
-                    runEval herculesState eval
-                    liftIO $ throwTo mainThread ExitSuccess
-                  )
-                .| sinkChan (shortcutChannel herculesState)
+          ( Data.Conduit.handleC
+              ( \e -> do
+                  hPutStrLn stderr $ "Caught exception: " <> renderException e
+                  yield $ Event.Error (renderException e)
+                  liftIO $ throwTo mainThread e
               )
+              ( do
+                  runEval herculesState eval
+                  liftIO $ throwTo mainThread ExitSuccess
+              )
+              .| sinkChan (shortcutChannel herculesState)
+          )
     Command.BuildResult (BuildResult.BuildResult path result) -> do
       hPutStrLn stderr $ ("BuildResult: " <> show path <> " " <> show result :: Text)
       liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (<> M.singleton path result)
@@ -183,14 +184,14 @@ yieldAttributeError path e
         AttributeError.message = "Could not build derivation " <> buildExceptionDerivationPath e' <> ", which is required during evaluation. Build status was " <> show (buildExceptionDerivationStatus e'),
         AttributeError.errorDerivation = Just (buildExceptionDerivationPath e'),
         AttributeError.errorType = Just "BuildException"
-        }
+      }
 yieldAttributeError path e =
   yield $ Event.AttributeError $ AttributeError.AttributeError
     { AttributeError.path = path,
       AttributeError.message = renderException e,
       AttributeError.errorDerivation = Nothing,
       AttributeError.errorType = Just (show (typeOf e))
-      }
+    }
 
 runEval :: HerculesState -> Eval -> ConduitM i Event (ResourceT IO) ()
 runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
@@ -227,51 +228,55 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
     withEvalState store $ \evalState -> do
       hPutStrLn stderr ("EvalState loaded." :: Text)
       args <-
-        liftIO
-          $ evalArgs evalState (autoArgArgs (Eval.autoArguments eval))
-      Data.Conduit.handleC (yieldAttributeError [])
-        $ do
+        liftIO $
+          evalArgs evalState (autoArgArgs (Eval.autoArguments eval))
+      Data.Conduit.handleC (yieldAttributeError []) $
+        do
           imprt <- liftIO $ evalFile evalState (toS $ Eval.file eval)
           applied <- liftIO (autoCallFunction evalState imprt args)
           walk evalState args applied
       yield Event.EvaluationDone
 
-walk
-  :: Ptr EvalState
-  -> Bindings
-  -> RawValue
-  -> ConduitT i Event (ResourceT IO) ()
+walk ::
+  Ptr EvalState ->
+  Bindings ->
+  RawValue ->
+  ConduitT i Event (ResourceT IO) ()
 walk evalState = walk' True [] 10
   where
     handleErrors path = Data.Conduit.handleC (yieldAttributeError path)
-    walk'
-      :: Bool -- ^ If True, always walk this attribute set. Only True for the root.
-      -> [ByteString] -- ^ Attribute path
-      -> Integer -- ^ Depth of tree remaining
-      -> Bindings -- ^ Auto arguments to pass to (attrset-)functions
-      -> RawValue -- ^ Current node of the walk
-      -> ConduitT i1 Event (ResourceT IO) () -- ^ Program that performs the walk and emits 'Event's
+    walk' ::
+      -- | If True, always walk this attribute set. Only True for the root.
+      Bool ->
+      -- | Attribute path
+      [ByteString] ->
+      -- | Depth of tree remaining
+      Integer ->
+      -- | Auto arguments to pass to (attrset-)functions
+      Bindings ->
+      -- | Current node of the walk
+      RawValue ->
+      -- | Program that performs the walk and emits 'Event's
+      ConduitT i1 Event (ResourceT IO) ()
     walk' forceWalkAttrset path depthRemaining autoArgs v =
       -- liftIO $ hPutStrLn stderr $ "Walking " <> (show path :: Text)
-      handleErrors path
-        $ liftIO (match evalState v)
-        >>= \case
-          Left e ->
-            yieldAttributeError path e
-          Right m -> case m of
-            IsAttrs attrValue -> do
-              isDeriv <- liftIO $ isDerivation evalState v
-              if isDeriv
-                then
-                  do
+      handleErrors path $
+        liftIO (match evalState v)
+          >>= \case
+            Left e ->
+              yieldAttributeError path e
+            Right m -> case m of
+              IsAttrs attrValue -> do
+                isDeriv <- liftIO $ isDerivation evalState v
+                if isDeriv
+                  then do
                     drvPath <- getDrvFile evalState v
-                    yield
-                      $ Event.Attribute Attribute.Attribute
-                          { Attribute.path = path,
-                            Attribute.drv = drvPath
-                            }
-                else
-                  do
+                    yield $
+                      Event.Attribute Attribute.Attribute
+                        { Attribute.path = path,
+                          Attribute.drv = drvPath
+                        }
+                  else do
                     walkAttrset <-
                       if forceWalkAttrset
                         then pure True
@@ -282,34 +287,32 @@ walk evalState = walk' True [] 10
                           liftIO $ getRecurseForDerivations evalState attrValue
                     isfunctor <- liftIO $ isFunctor evalState v
                     if isfunctor && walkAttrset
-                      then
-                        do
-                          x <- liftIO (autoCallFunction evalState v autoArgs)
-                          walk' True path (depthRemaining - 1) autoArgs x
-                      else
-                        do
-                          attrs <- liftIO $ getAttrs attrValue
-                          void
-                            $ flip M.traverseWithKey attrs
-                            $ \name value ->
-                              when (depthRemaining > 0 && walkAttrset)
-                                $ walk' -- TODO: else warn
-                                    False
-                                    (path ++ [name])
-                                    (depthRemaining - 1)
-                                    autoArgs
-                                    value
-            _any -> liftIO $ do
-              vt <- rawValueType v
-              unless
-                ( lastMay path
-                    == Just "recurseForDerivations"
-                    && vt
-                    == CNix.Internal.Raw.Bool
+                      then do
+                        x <- liftIO (autoCallFunction evalState v autoArgs)
+                        walk' True path (depthRemaining - 1) autoArgs x
+                      else do
+                        attrs <- liftIO $ getAttrs attrValue
+                        void
+                          $ flip M.traverseWithKey attrs
+                          $ \name value ->
+                            when (depthRemaining > 0 && walkAttrset) $
+                              walk' -- TODO: else warn
+                                False
+                                (path ++ [name])
+                                (depthRemaining - 1)
+                                autoArgs
+                                value
+              _any -> liftIO $ do
+                vt <- rawValueType v
+                unless
+                  ( lastMay path
+                      == Just "recurseForDerivations"
+                      && vt
+                      == CNix.Internal.Raw.Bool
                   )
-                $ hPutStrLn stderr
-                $ "Ignoring "
-                <> show path
-                <> " : "
-                <> (show vt :: Text)
-              pass
+                  $ hPutStrLn stderr
+                  $ "Ignoring "
+                    <> show path
+                    <> " : "
+                    <> (show vt :: Text)
+                pass

@@ -23,9 +23,9 @@ checkLaws gen =
       $ property
       $ do
         a <- gen
-        pure
-          $ counterexample
-              (T.unpack . T.decodeUtf8 . BL.toStrict . encode $ a)
-              ( Right (toJSON a)
-                  == eitherDecode (BB.toLazyByteString (fromEncoding (toEncoding a)))
-                )
+        pure $
+          counterexample
+            (T.unpack . T.decodeUtf8 . BL.toStrict . encode $ a)
+            ( Right (toJSON a)
+                == eitherDecode (BB.toLazyByteString (fromEncoding (toEncoding a)))
+            )

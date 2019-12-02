@@ -11,5 +11,5 @@ data Attribute
       { path :: [ByteString],
         drv :: ByteString
         -- TODO: metadata
-        }
+      }
   deriving (Generic, Binary, Show, Eq)
