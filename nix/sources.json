@@ -59,6 +59,18 @@
         "url": "https://github.com/NixOS/nixpkgs-channels/archive/4cd2cb43fb3a87f48c1e10bb65aee99d8f24cb9d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "ormolu": {
+        "branch": "0.0.2.0",
+        "description": "A formatter for Haskell source code",
+        "homepage": null,
+        "owner": "tweag",
+        "repo": "ormolu",
+        "rev": "46ede8aa35c28f0ecb0fa8fc935c5edf888b2bdf",
+        "sha256": "1v2a1qf0wjw2rz1wsmrlf956m9c684ynqq3h25la06y1l4s54q87",
+        "type": "tarball",
+        "url": "https://github.com/tweag/ormolu/archive/46ede8aa35c28f0ecb0fa8fc935c5edf888b2bdf.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "pre-commit-hooks.nix": {
         "branch": "master",
         "description": "Seamless integration pre-commit hooks with Nix.",

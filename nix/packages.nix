@@ -141,6 +141,9 @@ recurseIntoAttrs {
   pre-commit-check =
     (import sources."pre-commit-hooks.nix").run {
       src = ../.;
+      tools = {
+        inherit (pkgs) ormolu;
+      };
       hooks = {
         # TODO: hlint.enable = true;
         ormolu.enable = true;

@@ -37,4 +37,7 @@ in
            boehmgc = self.boehmgc-hercules;
          }
   );
+
+  inherit (import sources.ormolu {}) ormolu;
+
 }
