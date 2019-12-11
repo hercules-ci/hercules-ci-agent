@@ -8,8 +8,12 @@
 , hashable
 , http-api-data
 , http-media
+, katip
 , lens
+, lifted-base
 , memory
+, monad-control
+, safe-exceptions
 , servant
 , servant-auth
 , servant-auth-swagger
@@ -36,8 +40,12 @@ mkDerivation {
     hashable
     http-api-data
     http-media
+    katip
     lens
+    lifted-base
     memory
+    monad-control
+    safe-exceptions
     servant
     servant-auth
     servant-auth-swagger

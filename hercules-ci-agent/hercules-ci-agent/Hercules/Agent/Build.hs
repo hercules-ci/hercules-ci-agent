@@ -26,12 +26,12 @@ import qualified Hercules.API.TaskStatus as TaskStatus
 import qualified Hercules.Agent.Cachix as Agent.Cachix
 import qualified Hercules.Agent.Client
 import Hercules.Agent.Env
-import Hercules.Agent.Exception (defaultRetry)
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
 import Hercules.Agent.Nix.RetrieveDerivationInfo
   ( retrieveDerivationInfo,
   )
+import Hercules.Error (defaultRetry)
 import Protolude
 import Servant.Auth.Client
 import System.Process
