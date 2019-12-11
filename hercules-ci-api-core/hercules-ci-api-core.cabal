@@ -34,11 +34,15 @@ library
     , containers
     , cookie
     , exceptions
+    , safe-exceptions
     , hashable
     , http-api-data
     , http-media
     , lens
+    , katip
     , memory
+    , lifted-base
+    , monad-control
     , servant >=0.14.1
     , servant-auth
     , servant-auth-swagger

@@ -41,16 +41,16 @@ import Hercules.Agent.Env
   )
 import Hercules.Agent.EnvironmentInfo (extractAgentInfo)
 import qualified Hercules.Agent.Evaluate as Evaluate
-import Hercules.Agent.Exception
+import qualified Hercules.Agent.Init as Init
+import Hercules.Agent.Log
+import qualified Hercules.Agent.Options as Options
+import Hercules.Agent.Token (withAgentToken)
+import Hercules.Error
   ( cap,
     exponential,
     retry,
     safeLiftedHandle,
   )
-import qualified Hercules.Agent.Init as Init
-import Hercules.Agent.Log
-import qualified Hercules.Agent.Options as Options
-import Hercules.Agent.Token (withAgentToken)
 import Protolude hiding
   ( bracket,
     handle,

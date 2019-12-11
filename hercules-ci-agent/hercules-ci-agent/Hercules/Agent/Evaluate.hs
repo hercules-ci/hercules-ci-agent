@@ -41,7 +41,6 @@ import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
 import qualified Hercules.Agent.Evaluate.TraversalQueue as TraversalQueue
-import Hercules.Agent.Exception (defaultRetry, quickRetry)
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
 import Hercules.Agent.Nix.RetrieveDerivationInfo
@@ -59,6 +58,7 @@ import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as WorkerAttribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as WorkerAttributeError
+import Hercules.Error (defaultRetry, quickRetry)
 import qualified Network.HTTP.Client.Conduit as HTTP.Conduit
 import qualified Network.HTTP.Simple as HTTP.Simple
 import Paths_hercules_ci_agent (getBinDir)

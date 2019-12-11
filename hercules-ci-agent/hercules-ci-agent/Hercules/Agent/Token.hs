@@ -12,7 +12,6 @@ import Hercules.Agent.Client (lifeCycleClient)
 import Hercules.Agent.Config (baseDirectory)
 import Hercules.Agent.Env as Env
 import qualified Hercules.Agent.EnvironmentInfo as EnvironmentInfo
-import Hercules.Agent.Exception
 import Hercules.Agent.Log
 import Hercules.Error
 import Protolude
