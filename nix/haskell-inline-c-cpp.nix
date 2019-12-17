@@ -1,6 +1,6 @@
 { mkDerivation
 , base
-, fetchgit
+, containers
 , hspec
 , inline-c
 , safe-exceptions
@@ -9,21 +9,22 @@
 }:
 mkDerivation {
   pname = "inline-c-cpp";
-  version = "0.4.0.0";
-  src = fetchgit {
-    url = "https://github.com/hercules-ci/inline-c";
-    sha256 = "135z86c37b9k5v59vnicq6l1af6bdicyc8pnsq4ik2f2p9sqsksc";
-    rev = "7ebf55ea582610fcb30fcbdebe13d5b301818168";
-    fetchSubmodules = true;
-  };
-  postUnpack = "sourceRoot+=/inline-c-cpp; echo source root reset to $sourceRoot";
+  version = "0.4.0.1";
+  sha256 = "187b526453791f8c97be4daa4dc153c0b3c034df4815dcaa99f4cb8eb5a955af";
   libraryHaskellDepends = [
     base
+    containers
     inline-c
     safe-exceptions
     template-haskell
   ];
-  testHaskellDepends = [ base hspec inline-c safe-exceptions ];
+  testHaskellDepends = [
+    base
+    containers
+    hspec
+    inline-c
+    safe-exceptions
+  ];
   description = "Lets you embed C++ code into Haskell";
   license = stdenv.lib.licenses.mit;
 }

@@ -3,7 +3,6 @@
 , base
 , bytestring
 , containers
-, fetchgit
 , hashable
 , hspec
 , mtl
@@ -12,6 +11,7 @@
 , QuickCheck
 , raw-strings-qq
 , regex-posix
+, split
 , stdenv
 , template-haskell
 , transformers
@@ -20,14 +20,8 @@
 }:
 mkDerivation {
   pname = "inline-c";
-  version = "0.8.0.1";
-  src = fetchgit {
-    url = "https://github.com/hercules-ci/inline-c";
-    sha256 = "080wp413dbdwanh53hcg0h2ni75l3f0zcmdfdpah7dq9rldiqmzg";
-    rev = "18cdcb008d070931748de1b81d7b84eb8a492a8c";
-    fetchSubmodules = true;
-  };
-  postUnpack = "sourceRoot+=/inline-c; echo source root reset to $sourceRoot";
+  version = "0.9.0.0";
+  sha256 = "061b089a087d7ce9c38b3f13c9c7046526c8651ebbd5dff889b0b31d14c3d320";
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
@@ -54,6 +48,7 @@ mkDerivation {
     QuickCheck
     raw-strings-qq
     regex-posix
+    split
     template-haskell
     transformers
     unordered-containers
