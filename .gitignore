@@ -21,3 +21,6 @@
 
 # nix-pre-commit-hooks
 /.pre-commit-config.yaml
+
+# Ignore stack's lock file; doesn't seem to be worth the hassle.
+stack.yaml.lock
