@@ -47,7 +47,11 @@ push cache paths workers = withNamedContext "cache" cache $ do
           let ctx = withNamedContext "path" storePath
            in Cachix.Push.PushStrategy
                 { onAlreadyPresent = pass,
-                  onAttempt = \_retry -> ctx $ logLocM DebugS "pushing",
+                  onAttempt = \retryStatus size ->
+                    ctx
+                      $ withNamedContext "size" size
+                      $ withNamedContext "retry" (show retryStatus :: Text)
+                      $ logLocM DebugS "pushing",
                   on401 = throwIO $ FatalError $ "Cachix push is unauthorized",
                   onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
                   onDone = ctx $ logLocM DebugS "push done",
