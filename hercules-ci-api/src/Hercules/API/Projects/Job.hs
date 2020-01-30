@@ -19,11 +19,18 @@ data Job
         startTime :: UTCTime,
         endTime :: Maybe UTCTime,
         jobPhase :: JobPhase,
+        isCancelled :: Bool,
         jobStatus :: JobStatus,
         evaluationStatus :: JobStatus,
         derivationStatus :: JobStatus,
         evaluationId :: Id Evaluation,
-        source :: GitCommitSource
+        source :: GitCommitSource,
+        rerunOf :: Maybe (Id Job),
+        rerunOfIndex :: Maybe Int,
+        startedBy :: Maybe (Id Account),
+        cancelledBy :: Maybe (Id Account),
+        mayCancel :: Bool,
+        mayRerun :: Bool
       }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
 

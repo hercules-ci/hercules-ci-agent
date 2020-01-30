@@ -3,7 +3,7 @@
 module Hercules.API.Auth where
 
 import Hercules.API.Prelude
-import Hercules.API.Servant
+import Hercules.API.Servant.Status
 import Servant.API
 import Servant.API.Generic
 

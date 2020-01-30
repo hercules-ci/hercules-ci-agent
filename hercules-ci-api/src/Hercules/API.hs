@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Hercules.API
   ( api,

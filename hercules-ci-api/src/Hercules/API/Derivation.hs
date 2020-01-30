@@ -30,4 +30,5 @@ data DerivationStatus
   | BuildFailure
   | DependencyFailure
   | BuildSuccess
+  | Cancelled
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
