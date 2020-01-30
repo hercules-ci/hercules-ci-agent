@@ -148,6 +148,7 @@ recurseIntoAttrs {
         nixpkgs-fmt.enable = true;
         nixpkgs-fmt.excludes = [ "tests/agent-test/testdata/" ];
       };
+      settings.ormolu.defaultExtensions = [ "TypeApplications" ];
     };
 
   # Not traversed for derivations:

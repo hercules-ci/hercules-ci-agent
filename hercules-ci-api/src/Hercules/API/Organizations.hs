@@ -9,6 +9,7 @@ where
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Organizations.CreateOrganization (CreateOrganization)
 import Hercules.API.Organizations.Organization (Organization)
+import Hercules.API.Organizations.PaymentLink (PaymentLink)
 import Hercules.API.Prelude
 import Servant.API
 import Servant.API.Generic
@@ -30,7 +31,7 @@ data OrganizationsAPI auth f
             :> "organizations"
             :> ReqBody '[JSON] CreateOrganization
             :> Post '[JSON] Organization,
-        organizationConnectAccount ::
+        connectAccountToOrganization ::
           f
             :- Summary "Connect an account to an organization"
             :> auth
@@ -39,6 +40,15 @@ data OrganizationsAPI auth f
             :> Capture "organizationId" (Id Organization)
             :> "accounts"
             :> Capture "accountId" (Id Account)
-            :> Post '[JSON] NoContent
+            :> Post '[JSON] NoContent,
+        paymentLinkForOrganization ::
+          f
+            :- Summary "Generate payment link for an organization"
+            :> auth
+            :> "api"
+            :> "organizations"
+            :> Capture "organizationId" (Id Organization)
+            :> "paymentLink"
+            :> Post '[JSON] PaymentLink
       }
   deriving (Generic)

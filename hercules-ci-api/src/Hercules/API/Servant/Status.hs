@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE KindSignatures #-}
 
-module Hercules.API.Servant where
+module Hercules.API.Servant.Status where
 
 import Data.Text (Text)
 import Servant.API

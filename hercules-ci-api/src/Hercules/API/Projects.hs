@@ -98,6 +98,26 @@ data ProjectsAPI auth f
             :> "derivations"
             :> "failed"
             :> auth
-            :> Get '[JSON] FailureGraph.Graph
+            :> Get '[JSON] FailureGraph.Graph,
+        jobRerun ::
+          f :- Summary "Create a new job like this job"
+            :> Description
+                 "The newly created job will be in the same project, have the same inputs but a new evaluation.\
+                 \ The response has the newly created job."
+            :> "jobs"
+            :> Capture' '[Required, Strict] "jobId" (Id Job)
+            :> "rerun"
+            :> QueryParam "rebuildFailures" Bool
+            :> auth
+            :> Post '[JSON] Job,
+        jobCancel ::
+          f :- Summary "Cancel the job and any work that becomes redundant"
+            :> Description
+                 "Some derivations may keep going, if referenced by active jobs."
+            :> "jobs"
+            :> Capture' '[Required, Strict] "jobId" (Id Job)
+            :> "cancel"
+            :> auth
+            :> Post '[JSON] NoContent
       }
   deriving (Generic)

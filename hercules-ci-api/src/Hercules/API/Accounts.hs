@@ -2,7 +2,9 @@
 
 module Hercules.API.Accounts where
 
-import Hercules.API.Accounts.Account
+import Hercules.API.Accounts.Account (Account)
+import Hercules.API.Accounts.AccountSettings (AccountSettings)
+import Hercules.API.Accounts.AccountSettingsPatch (AccountSettingsPatch)
 import Hercules.API.Prelude
 import Hercules.API.SourceHostingSite.SourceHostingSite
   ( SourceHostingSite,
@@ -27,6 +29,28 @@ data AccountsAPI auth f
             :> QueryParam "site" (Name SourceHostingSite)
             :> QueryParam "name" (Name Account)
             :> auth
-            :> Get '[JSON] [Account]
+            :> Get '[JSON] [Account],
+        getAccountSettings ::
+          f :- Summary "Retrieve the account settings"
+            :> "accounts"
+            :> Capture "accountId" (Id Account)
+            :> "settings"
+            :> auth
+            :> Get '[JSON] AccountSettings,
+        patchAccountSettings ::
+          f :- Summary "Update the account settings"
+            :> "accounts"
+            :> Capture "accountId" (Id Account)
+            :> "settings"
+            :> ReqBody '[JSON] AccountSettingsPatch
+            :> auth
+            :> Patch '[JSON] AccountSettings,
+        postDisableAllProjects ::
+          f :- Summary "Disable all projects in the account."
+            :> "accounts"
+            :> Capture "accountId" (Id Account)
+            :> "disable-all-projects"
+            :> auth
+            :> Post '[JSON] Int
       }
   deriving (Generic)
