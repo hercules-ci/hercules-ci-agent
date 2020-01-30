@@ -63,7 +63,7 @@
 }:
 mkDerivation {
   pname = "hercules-ci-agent";
-  version = "0.6.1";
+  version = "0.6.2";
   src = ./hercules-ci-agent;
   isLibrary = true;
   isExecutable = true;
