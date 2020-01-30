@@ -28,7 +28,7 @@
 }:
 mkDerivation {
   pname = "hercules-ci-api";
-  version = "0.4.0.0";
+  version = "0.5.0.0";
   src = ./hercules-ci-api;
   isLibrary = true;
   isExecutable = true;
