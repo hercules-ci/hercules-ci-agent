@@ -13,7 +13,6 @@ import Control.Monad
 import Control.Monad.IO.Unlift
 import Control.Monad.State
 import Data.Foldable
-import Data.Monoid
 import Data.Traversable
 import Katip
 import UnliftIO.Exception
