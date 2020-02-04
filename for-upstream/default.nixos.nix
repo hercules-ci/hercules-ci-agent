@@ -30,6 +30,7 @@ in
     systemd.services.hercules-ci-agent = {
       wantedBy = [ "multi-user.target" ];
       after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
       serviceConfig = {
         User = cfg.user;
         ExecStart = "${cfg.package}/bin/hercules-ci-agent --config ${cfg.tomlFile}";
