@@ -1,0 +1,74 @@
+#!/usr/bin/env nix-shell
+#!nix-shell nix/shellFor.nix
+#!nix-shell -i bash
+set -ue
+
+if test -n ${HIE_BIOS_OUTPUT:-}; then
+  exec 1>$HIE_BIOS_OUTPUT
+fi
+
+ghc_version="$(ghc --version | sed -e 's/.* //')"
+
+packages="$(yaml2json <stack.yaml | jq -c .packages)"
+extradeps="$(yaml2json <stack.yaml | jq -c '."extra-deps"')"
+
+# Build a stack.yaml for the purpose of teasing out the ghci flags for all
+# local modules together.
+cat >stack.yaml.nixed.tmp <<EOF
+# This file was generated on demand.
+# Feel free to delete it.
+resolver: ghc-$ghc_version
+packages: $packages
+extra-deps: $extradeps
+nix:
+  packages: []
+  pure: false
+EOF
+
+#  --silent \
+
+run_stack() {
+  stack repl \
+    --no-load \
+    --no-nix-pure \
+    --no-install-ghc \
+    --system-ghc \
+    --stack-yaml stack.yaml.nixed.tmp \
+    --with-ghc=$PWD/.hie-bios-helper \
+    "$@" ;
+}
+
+# Do we need -L?
+if ! run_stack --silent \
+  | grep -v -- '-package-id=' \
+  | grep -v -- '-package=' \
+  | grep -v -- '--interactive' \
+  | grep -v -- '-N' \
+  | grep -v -- '-L' \
+  | grep -v -- '-odir=' \
+  | grep -v -- '-hidir=' \
+  | grep -v -- '^-i.*\.stack-work' \
+  | grep -v -- '-hide-all-packages' \
+  ;
+then
+  echo 1>&2 "Stack failed to produce the package flags."
+  echo 1>&2 "Below is an attempt without --silent..."
+  run_stack
+  echo 1>&2
+  echo 1>&2 "Stack will not find the dependencies. This is expected."
+  echo 1>&2 "This script does not use stack to manage dependencies."
+  echo 1>&2
+fi
+
+for a in $NIX_LDFLAGS; do
+  echo "$a"
+done | grep '^-L'
+
+echo -i$PWD/hercules-ci-agent/.stack-work/dist/x86_64-linux-nix/Cabal-2.4.0.1/build/autogen/
+echo -i$PWD/sources/hercules-ci-agent/hercules-ci-agent/src-internal-ffi
+echo -DGHCIDE=1
+
+ghc-pkg list --global -v0 | grep /nix/store | while read p; do
+  echo -package-db
+  echo "$p"
+done

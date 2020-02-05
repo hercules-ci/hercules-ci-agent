@@ -24,3 +24,7 @@
 
 # Ignore stack's lock file; doesn't seem to be worth the hassle.
 stack.yaml.lock
+
+# .hie-bios
+stack.yaml.nixed.tmp
+stack.yaml.nixed.tmp.lock
