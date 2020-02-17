@@ -101,7 +101,10 @@ main = do
                 .| concatMapC (\x -> [Chunk x, Flush])
                 .| sinkHandleFlush stdout
             )
-    void $ concurrently runner writer
+    void $ do
+      withAsync runner $ \runnerAsync -> do
+        writer -- runner can stop writer only by passing Nothing in channel (finally)
+        wait runnerAsync -- include the potential exception
 
 printCommands :: ConduitT Command Command (ResourceT IO) ()
 printCommands =
