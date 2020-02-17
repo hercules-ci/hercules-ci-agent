@@ -143,7 +143,10 @@ recurseIntoAttrs {
       hooks = {
         # TODO: hlint.enable = true;
         ormolu.enable = true;
-        ormolu.excludes = [ "Hercules/Agent/Compat.hs" ];
+        ormolu.excludes = [
+          # CPP
+          "Hercules/Agent/Compat.hs"
+        ];
         shellcheck.enable = true;
         nixpkgs-fmt.enable = true;
         nixpkgs-fmt.excludes = [ "tests/agent-test/testdata/" ];
