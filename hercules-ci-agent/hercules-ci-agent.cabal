@@ -60,6 +60,7 @@ library
     , transformers-base
     , unliftio-core
     , unliftio
+    , uuid
   default-language: Haskell2010
 
 -- ugly hack to avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
@@ -226,6 +227,7 @@ executable hercules-ci-agent-worker
     , stm
     , text
     , transformers-base
+    , uuid
   pkgconfig-depends:
       nix-store >= 2.0
     , nix-expr >= 2.0
