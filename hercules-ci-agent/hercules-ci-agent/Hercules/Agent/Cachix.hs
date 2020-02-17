@@ -5,7 +5,6 @@ module Hercules.Agent.Cachix
 where
 
 import qualified Cachix.Client.Push as Cachix.Push
-import qualified Cachix.Client.URI as Cachix.URI
 import Control.Monad.IO.Unlift
 import qualified Data.Map as M
 import qualified Data.Text as Text
@@ -20,20 +19,20 @@ import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 import Hercules.Error
 import qualified Hercules.Formats.CachixCache as CachixCache
 import Protolude
-import qualified Servant.Client as Servant
 import System.IO (hClose)
 
 push :: Text -> [Text] -> Int -> App ()
 push cache paths workers = withNamedContext "cache" cache $ do
-  Agent.Cachix.Env {pushCaches = pushCaches, nixStore = nixStore} <-
+  Agent.Cachix.Env
+    { pushCaches = pushCaches,
+      nixStore = nixStore,
+      clientEnv = clientEnv
+    } <-
     asks $ Agent.Cachix.getEnv
-  httpManager <- asks $ manager
   pushCache <-
     escalate
       $ maybeToEither (FatalError $ "Cache not found " <> cache)
       $ M.lookup cache pushCaches
-  let clientEnv =
-        Servant.mkClientEnv httpManager Cachix.URI.defaultCachixBaseUrl
   ul <- askUnliftIO
   void $
     Cachix.Push.pushClosure

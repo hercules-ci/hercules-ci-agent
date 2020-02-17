@@ -4,13 +4,15 @@ import qualified Cachix.Client.Push as Cachix
 import Cachix.Client.Store (Store)
 import Hercules.Formats.CachixCache (CachixCache)
 import Protolude
+import Servant.Client (ClientEnv)
 
 data Env
   = Env
       { pushCaches :: Map Text Cachix.PushCache,
         cacheKeys :: Map Text CachixCache,
         netrcLines :: [Text],
-        nixStore :: Store
+        nixStore :: Store,
+        clientEnv :: ClientEnv
       }
 
 class HasEnv env where
