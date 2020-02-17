@@ -30,6 +30,7 @@ in
     systemd.services.hercules-ci-agent = {
       wantedBy = [ "multi-user.target" ];
       after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
       serviceConfig = {
         User = cfg.user;
         ExecStart = "${cfg.package}/bin/hercules-ci-agent --config ${cfg.tomlFile}";
@@ -50,7 +51,11 @@ in
     systemd.services.hercules-ci-agent-restarter = {
       serviceConfig.Type = "oneshot";
       script = ''
-        systemctl restart hercules-ci-agent.service
+        if systemctl is-active --quiet hercules-ci-agent.service; then
+          systemctl restart hercules-ci-agent.service
+        else
+          echo 1>&2 "Not restarting hercules-ci-agent despite config file update, because it is not already active."
+        fi
       '';
     };
 
