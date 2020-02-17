@@ -93,7 +93,6 @@ main = do
                 .| runCommands st
                 .| sinkChan ch
             )
-            `catch` (\WorkDoneException -> pure ())
             `finally` writeChan ch Nothing
         writer =
           runConduitRes
@@ -118,10 +117,6 @@ renderException e
   | Just (C.CppOtherException maybeType) <- fromException e =
     "Unexpected C++ exception" <> foldMap (\t -> " of type " <> toSL t) maybeType
 renderException e = toS $ displayException e
-
-data WorkDoneException = WorkDoneException deriving (Show, Typeable)
-
-instance Exception WorkDoneException
 
 runCommands :: HerculesState -> ConduitM Command Event (ResourceT IO) ()
 runCommands herculesState = do
