@@ -146,6 +146,7 @@ recurseIntoAttrs {
         ormolu.excludes = [
           # CPP
           "Hercules/Agent/Compat.hs"
+          "Hercules/Agent/StoreFFI.hs"
         ];
         shellcheck.enable = true;
         nixpkgs-fmt.enable = true;
