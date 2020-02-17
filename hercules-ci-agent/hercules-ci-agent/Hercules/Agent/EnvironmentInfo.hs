@@ -2,11 +2,13 @@ module Hercules.Agent.EnvironmentInfo where
 
 import Control.Lens
   ( (^..),
+    (^?),
     to,
   )
 import qualified Data.Aeson as Aeson
 import Data.Aeson.Lens
   ( _Array,
+    _Number,
     _String,
     key,
   )
@@ -47,7 +49,8 @@ data NixInfo
         nixPlatforms :: [Text],
         nixSystemFeatures :: [Text],
         nixSubstituters :: [Text],
-        nixTrustedPublicKeys :: [Text]
+        nixTrustedPublicKeys :: [Text],
+        nixNarinfoCacheNegativeTTL :: Maybe Integer
       }
 
 getNixInfo :: IO NixInfo
@@ -92,7 +95,13 @@ getNixInfo = do
           . _Array
           . traverse
           . _String
-          . to cleanUrl
+          . to cleanUrl,
+      nixNarinfoCacheNegativeTTL =
+        cfg
+          ^? key "narinfo-cache-negative-ttl"
+          . key "value"
+          . _Number
+          . to floor
     }
 
 cleanUrl :: Text -> Text
