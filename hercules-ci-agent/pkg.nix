@@ -91,6 +91,7 @@ mkDerivation {
     transformers-base
     unliftio
     unliftio-core
+    uuid
   ];
   executableHaskellDepends = [
     aeson
