@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+ - Fix a concurrency problem causing not all evaluation events to be written to server when evaluation fails.
+
+ - Fix evaluation errors triggered by build outputs go missing from cache, by requesting a forced rebuild.
+
+ - Fix blocked shutdown on NixOS, fix agent status in dashboard, by stopping agent before network shutdown #195.
+
+ - Fix upload of large outputs by using the correct http client manager for Cachix, removing a timeout.
+
+### Changed
+
+ - Agent will now try to verify that the nix-daemon has narinfo-cache-negative-ttl = 0. This is required for correct operation.
+
 ### [0.6.2] - 2020-01-30
 
 ### Fixed
