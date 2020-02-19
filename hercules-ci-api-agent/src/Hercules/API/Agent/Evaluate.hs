@@ -2,6 +2,7 @@
 
 module Hercules.API.Agent.Evaluate where
 
+import Data.UUID
 import Hercules.API.Agent.Evaluate.DerivationStatus (DerivationStatus)
 import Hercules.API.Agent.Evaluate.EvaluateEvent
   ( EvaluateEvent,
@@ -37,6 +38,13 @@ data EvalAPI auth f
             :> "build"
             :> Capture "derivationPath" Text
             :> auth
-            :> Get '[JSON] (Maybe DerivationStatus)
+            :> Get '[JSON] (Maybe DerivationStatus),
+        getDerivationStatus2 ::
+          f
+            :- "agent"
+            :> "eval-build"
+            :> Capture "derivationPath" Text
+            :> auth
+            :> Get '[JSON] (Maybe (UUID, DerivationStatus))
       }
   deriving (Generic)

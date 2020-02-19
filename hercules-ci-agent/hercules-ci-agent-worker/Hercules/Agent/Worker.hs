@@ -20,8 +20,7 @@ import Data.IORef
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Data.Typeable (typeOf)
-import Hercules.API.Agent.Evaluate.DerivationStatus (DerivationStatus)
-import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatus
+import Data.UUID (UUID)
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import Hercules.Agent.WorkerProtocol.Command
   ( Command,
@@ -45,7 +44,7 @@ import qualified Prelude
 
 data HerculesState
   = HerculesState
-      { drvsCompleted :: TVar (Map Text BuildResult.BuildStatus),
+      { drvsCompleted :: TVar (Map Text (UUID, BuildResult.BuildStatus)),
         drvsInProgress :: IORef (Set Text),
         herculesStore :: Ptr (Ref HerculesStore),
         wrappedStore :: Ptr (Ref NixStore),
@@ -55,7 +54,7 @@ data HerculesState
 data BuildException
   = BuildException
       { buildExceptionDerivationPath :: Text,
-        buildExceptionDerivationStatus :: DerivationStatus
+        buildExceptionDetail :: Maybe Text
       }
   deriving (Show, Typeable)
 
@@ -93,7 +92,6 @@ main = do
                 .| runCommands st
                 .| sinkChan ch
             )
-            `catch` (\WorkDoneException -> pure ())
             `finally` writeChan ch Nothing
         writer =
           runConduitRes
@@ -102,7 +100,10 @@ main = do
                 .| concatMapC (\x -> [Chunk x, Flush])
                 .| sinkHandleFlush stdout
             )
-    void $ concurrently runner writer
+    void $ do
+      withAsync runner $ \runnerAsync -> do
+        writer -- runner can stop writer only by passing Nothing in channel (finally)
+        wait runnerAsync -- include the potential exception
 
 printCommands :: ConduitT Command Command (ResourceT IO) ()
 printCommands =
@@ -118,10 +119,6 @@ renderException e
   | Just (C.CppOtherException maybeType) <- fromException e =
     "Unexpected C++ exception" <> foldMap (\t -> " of type " <> toSL t) maybeType
 renderException e = toS $ displayException e
-
-data WorkDoneException = WorkDoneException deriving (Show, Typeable)
-
-instance Exception WorkDoneException
 
 runCommands :: HerculesState -> ConduitM Command Event (ResourceT IO) ()
 runCommands herculesState = do
@@ -148,9 +145,9 @@ runCommands herculesState = do
               )
               .| sinkChan (shortcutChannel herculesState)
           )
-    Command.BuildResult (BuildResult.BuildResult path result) -> do
+    Command.BuildResult (BuildResult.BuildResult path attempt result) -> do
       hPutStrLn stderr $ ("BuildResult: " <> show path <> " " <> show result :: Text)
-      liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (<> M.singleton path result)
+      liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (<> M.singleton path (attempt, result))
 
 -- TODO: test
 autoArgArgs :: Map Text Eval.Arg -> [ByteString]
@@ -181,7 +178,10 @@ yieldAttributeError path e
   | (Just e') <- fromException e =
     yield $ Event.AttributeError $ AttributeError.AttributeError
       { AttributeError.path = path,
-        AttributeError.message = "Could not build derivation " <> buildExceptionDerivationPath e' <> ", which is required during evaluation. Build status was " <> show (buildExceptionDerivationStatus e'),
+        AttributeError.message =
+          "Could not build derivation " <> buildExceptionDerivationPath e'
+            <> ", which is required during evaluation."
+            <> foldMap (" " <>) (buildExceptionDetail e'),
         AttributeError.errorDerivation = Just (buildExceptionDerivationPath e'),
         AttributeError.errorType = Just "BuildException"
       }
@@ -192,6 +192,13 @@ yieldAttributeError path e =
       AttributeError.errorDerivation = Nothing,
       AttributeError.errorType = Just (show (typeOf e))
     }
+
+maybeThrowBuildException :: MonadIO m => BuildResult.BuildStatus -> Text -> m ()
+maybeThrowBuildException result plainDrvText =
+  case result of
+    BuildResult.Failure -> throwIO $ BuildException plainDrvText Nothing
+    BuildResult.DependencyFailure -> throwIO $ BuildException plainDrvText (Just "A dependency could not be built.")
+    BuildResult.Success -> pass
 
 runEval :: HerculesState -> Eval -> ConduitM i Event (ResourceT IO) ()
 runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
@@ -206,23 +213,40 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
           outputName = BS.dropWhile (== fromIntegral (ord '!')) bangOut
           plainDrvText = toS plainDrv
       withDrvInProgress st plainDrvText $ do
-        writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName)
-        -- TODO: try to fetch immediately
-        hPutStrLn stderr ("Awaiting " <> show plainDrvText :: Text)
-        result <-
-          liftIO $ atomically $ do
-            c <- readTVar drvsCompl
-            anyAlternative $ M.lookup plainDrvText c
-        case result of
-          BuildResult.Failure -> throwIO $ BuildException plainDrvText DerivationStatus.BuildFailure
-          BuildResult.DependencyFailure -> throwIO $ BuildException plainDrvText DerivationStatus.DependencyFailure
-          BuildResult.Success -> pass
-        clearSubstituterCaches
-        clearPathInfoCache store
+        writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName) Nothing
         derivation <- getDerivation store plainDrv
         outputPath <- derivationOutputPath derivation outputName
-        ensurePath (wrappedStore st) outputPath `catch` \e -> do
-          hPutStrLn stderr ("ensurePath (wrapped) failed: " <> show (e :: SomeException) :: Text)
+        hPutStrLn stderr ("Naive ensurePath " <> outputPath)
+        ensurePath (wrappedStore st) outputPath `catch` \e0 -> do
+          hPutStrLn stderr ("Naive wrapped.ensurePath failed: " <> show (e0 :: SomeException) :: Text)
+          (attempt0, result) <-
+            liftIO $ atomically $ do
+              c <- readTVar drvsCompl
+              anyAlternative $ M.lookup plainDrvText c
+          maybeThrowBuildException result plainDrvText
+          clearSubstituterCaches
+          clearPathInfoCache store
+          ensurePath (wrappedStore st) outputPath `catch` \e1 -> do
+            hPutStrLn stderr ("Fresh ensurePath failed: " <> show (e1 :: SomeException) :: Text)
+            writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName) (Just attempt0)
+            -- TODO sync
+            result' <-
+              liftIO $ atomically $ do
+                c <- readTVar drvsCompl
+                (attempt1, r) <- anyAlternative $ M.lookup plainDrvText c
+                guard (attempt1 /= attempt0)
+                pure r
+            maybeThrowBuildException result' plainDrvText
+            clearSubstituterCaches
+            clearPathInfoCache store
+            ensurePath (wrappedStore st) outputPath `catch` \e2 -> do
+              throwIO $
+                BuildException
+                  plainDrvText
+                  ( Just $
+                      "It could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
+                        <> show (e2 :: SomeException)
+                  )
       hPutStrLn stderr ("Built " <> show path :: Text)
     hPutStrLn stderr ("Store uri: " <> s)
     withEvalState store $ \evalState -> do

@@ -18,8 +18,9 @@ import Data.IORef
   )
 import qualified Data.Map as M
 import qualified Data.Set as S
+import Data.UUID (UUID)
 import Hercules.API.Agent.Evaluate
-  ( getDerivationStatus,
+  ( getDerivationStatus2,
     tasksGetEvaluation,
     tasksUpdateEvaluation,
   )
@@ -268,7 +269,7 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                       Message.message = e
                     }
                 continue
-              Event.Build drv outputName -> do
+              Event.Build drv outputName notAttempt -> do
                 status <-
                   withNamedContext "derivation" drv $ do
                     currentIndex <- liftIO $ atomicModifyIORef buildRequiredIndex (\i -> (i + 1, i))
@@ -287,12 +288,15 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                             withNamedContext "cache" cache $ logLocM DebugS "Pushing ifd drvs to cachix"
                             Agent.Cachix.push cache [drv] pushEvalWorkers
                     Async.Lifted.concurrently_ submitDerivationInfos pushDerivations
-                    emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest {BuildRequest.derivationPath = drv}
+                    emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest
+                      { derivationPath = drv,
+                        forceRebuild = isJust notAttempt
+                      }
                     flush
-                    status <- drvPoller drv
+                    status <- drvPoller notAttempt drv
                     logLocM DebugS $ "Got derivation status " <> show status
                     return status
-                writeChan commandChan $ Just $ Command.BuildResult $ BuildResult.BuildResult drv status
+                writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drv) status
                 continue
           )
           ( \case
@@ -322,24 +326,25 @@ produceWorkerEvents eval nixPath commandChan writeEvent = do
         }
   runWorker wps stderrLineHandler commandChan writeEvent
 
-drvPoller :: Text -> App BuildResult.BuildStatus
-drvPoller drvPath = do
+drvPoller :: Maybe UUID -> Text -> App (UUID, BuildResult.BuildStatus)
+drvPoller notAttempt drvPath = do
   resp <-
     defaultRetry $ runHerculesClient $
-      getDerivationStatus
+      getDerivationStatus2
         Hercules.Agent.Client.evalClient
         drvPath
   let oneSecond = 1000 * 1000
       again = do
         liftIO $ threadDelay oneSecond
-        drvPoller drvPath
+        drvPoller notAttempt drvPath
   case resp of
     Nothing -> again
-    Just DerivationStatus.Waiting -> again
-    Just DerivationStatus.Building -> again
-    Just DerivationStatus.BuildFailure -> pure BuildResult.Failure
-    Just DerivationStatus.DependencyFailure -> pure BuildResult.DependencyFailure
-    Just DerivationStatus.BuildSuccess -> pure BuildResult.Success
+    Just (attempt, _) | Just attempt == notAttempt -> again
+    Just (_attempt, DerivationStatus.Waiting) -> again
+    Just (_attempt, DerivationStatus.Building) -> again
+    Just (attempt, DerivationStatus.BuildFailure) -> pure (attempt, BuildResult.Failure)
+    Just (attempt, DerivationStatus.DependencyFailure) -> pure (attempt, BuildResult.DependencyFailure)
+    Just (attempt, DerivationStatus.BuildSuccess) -> pure (attempt, BuildResult.Success)
 
 newtype SubprocessFailure = SubprocessFailure {message :: Text}
   deriving (Typeable, Exception, Show)

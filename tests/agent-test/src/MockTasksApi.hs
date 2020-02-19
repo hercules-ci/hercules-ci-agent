@@ -40,6 +40,7 @@ import Data.IORef
 import qualified Data.List as L
 import qualified Data.Map as M
 import qualified Data.Text as T
+import Data.UUID (UUID)
 import qualified Data.UUID.V4 as UUID
 import qualified DummyApi
 import Hercules.API.Agent
@@ -344,7 +345,7 @@ handleTasksUpdate st id body _authResult = do
   liftIO $ atomicModifyIORef_ (evalEvents st) $ \m ->
     M.alter (\prev -> Just $ fromMaybe mempty prev <> body) id m
   for_ body $ \ev -> case ev of
-    EvaluateEvent.BuildRequest (BuildRequest.BuildRequest drvPath) -> do
+    EvaluateEvent.BuildRequest (BuildRequest.BuildRequest {derivationPath = drvPath}) -> do
       buildId <- liftIO randomId
       liftIO $ enqueue (ServerHandle st) $ AgentTask.Build $ BuildTask.BuildTask
         { BuildTask.id = buildId,
@@ -370,17 +371,18 @@ evalEndpoints server =
   DummyApi.dummyEvalEndpoints
     { tasksGetEvaluation = handleTasksGetEvaluation server,
       tasksUpdateEvaluation = handleTasksUpdate server,
-      getDerivationStatus = handleGetDerivationStatus server
+      getDerivationStatus2 = handleGetDerivationStatus server
     }
 
-handleGetDerivationStatus :: ServerState -> Text -> AuthResult Session -> Handler (Maybe DerivationStatus)
+handleGetDerivationStatus :: ServerState -> Text -> AuthResult Session -> Handler (Maybe (UUID, DerivationStatus))
 handleGetDerivationStatus server drv _auth = do
   drvPaths <- liftIO $ readIORef (drvTasks server)
+  uuid <- liftIO UUID.nextRandom
   case M.lookup drv drvPaths of
-    Nothing -> pure $ Just $ DerivationStatus.BuildFailure -- TODO exception failure
+    Nothing -> pure $ Just (uuid, DerivationStatus.BuildFailure) -- TODO exception failure
     Just taskId -> do
       dones <- liftIO $ atomically $ readTVar (done server)
-      pure (translate <$> M.lookup (idText taskId) dones)
+      pure ((\s -> (uuid, translate s)) <$> M.lookup (idText taskId) dones)
   where
     translate TaskStatus.Exceptional {} = DerivationStatus.BuildFailure
     translate TaskStatus.Terminated {} = DerivationStatus.BuildFailure

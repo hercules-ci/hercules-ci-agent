@@ -543,9 +543,8 @@ spec = describe "Evaluation" $ do
             toS (fromMaybe "" (AttributeErrorEvent.errorDerivation ae1)) `shouldContain` "-ifd-2.nix"
             toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "/nix/store"
             toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "-ifd-2.nix"
-            toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "BuildFailure"
+            toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "Could not build derivation"
             toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "evaluat"
-            toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "derivation"
             BuildRequired.index br2 `shouldBe` 1
             toSL (BuildRequired.derivationPath br2) `shouldContain` "/nix/store/"
             toSL (BuildRequired.derivationPath br2) `shouldContain` "-ifd-1.nix"
