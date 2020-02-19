@@ -1,7 +1,7 @@
 cabal-version: 1.12
 
 name:           hercules-ci-api-agent
-version:        0.1.0.0
+version:        0.1.1.0
 homepage:       https://github.com/hercules-ci/hercules-ci-agent#readme
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
 author:         Hercules Labs
