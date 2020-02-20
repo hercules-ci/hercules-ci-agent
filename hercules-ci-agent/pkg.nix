@@ -63,7 +63,7 @@
 }:
 mkDerivation {
   pname = "hercules-ci-agent";
-  version = "0.6.2";
+  version = "0.6.3";
   src = ./hercules-ci-agent;
   isLibrary = true;
   isExecutable = true;
@@ -91,6 +91,7 @@ mkDerivation {
     transformers-base
     unliftio
     unliftio-core
+    uuid
   ];
   executableHaskellDepends = [
     aeson

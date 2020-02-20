@@ -1,2 +1,2 @@
 
-Agent api changes are recorded in the hercules-ci-api-agent package changelog.
+Agent api changes are recorded in the hercules-ci-agent package changelog.

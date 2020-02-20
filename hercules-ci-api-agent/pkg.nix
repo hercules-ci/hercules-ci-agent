@@ -30,7 +30,7 @@
 }:
 mkDerivation {
   pname = "hercules-ci-api-agent";
-  version = "0.1.0.0";
+  version = "0.1.1.0";
   src = ./hercules-ci-api-agent;
   libraryHaskellDepends = [
     aeson
