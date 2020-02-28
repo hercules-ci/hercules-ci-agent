@@ -147,7 +147,7 @@ runCommands herculesState = do
           )
     Command.BuildResult (BuildResult.BuildResult path attempt result) -> do
       hPutStrLn stderr $ ("BuildResult: " <> show path <> " " <> show result :: Text)
-      liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (<> M.singleton path (attempt, result))
+      liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (M.insert path (attempt, result))
 
 -- TODO: test
 autoArgArgs :: Map Text Eval.Arg -> [ByteString]
