@@ -133,7 +133,8 @@ in
 recurseIntoAttrs {
   inherit (internal.haskellPackages) hercules-ci-agent;
   inherit (internal) hercules-ci-api-swagger;
-  tests = if pkgs.stdenv.isLinux then internal.tests else null;
+  # isx86_64: Don't run the VM tests on aarch64 to save time
+  tests = if pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64 then internal.tests else null;
   pre-commit-check =
     (import sources."pre-commit-hooks.nix").run {
       src = ../.;

@@ -18,6 +18,7 @@ let
 
 
       dimension "System" {
+        "aarch64-linux" = { enable = true; };
         "x86_64-linux" = { enable = true; };
         "x86_64-darwin" = { enable = true; };
       } (
