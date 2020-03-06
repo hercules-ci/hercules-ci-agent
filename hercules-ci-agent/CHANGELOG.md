@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+ - Fix a bug blocking evaluation when a store path is removed from cache or cache configuration is changed.
+
+### Added
+
+ - Cached builds to speed up `aarch64-linux` agent deployments.
+
 ### [0.6.3] - 2020-02-19
 
 ### Fixed
