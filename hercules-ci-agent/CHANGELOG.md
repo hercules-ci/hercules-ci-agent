@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### [0.6.4] - 2020-03-06
+
 ### Fixed
 
  - Fix a bug blocking evaluation when a store path is removed from cache or cache configuration is changed.
@@ -203,6 +205,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
+[0.6.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.3...hercules-ci-agent-0.6.4
 [0.6.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.2...hercules-ci-agent-0.6.3
 [0.6.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.1...hercules-ci-agent-0.6.2
 [0.6.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.0...hercules-ci-agent-0.6.1
