@@ -15,6 +15,9 @@ let
     createHome = true;
   };
 
+  command = "${cfg.package}/bin/hercules-ci-agent --config ${cfg.tomlFile}";
+  testCommand = "${command} --test-configuration";
+
 in
 {
   imports = [
@@ -33,7 +36,7 @@ in
       wants = [ "network-online.target" ];
       serviceConfig = {
         User = cfg.user;
-        ExecStart = "${cfg.package}/bin/hercules-ci-agent --config ${cfg.tomlFile}";
+        ExecStart = command;
         Restart = "on-failure";
         RestartSec = 120;
         StartLimitBurst = 30 * 1000000; # practically infinite
@@ -51,8 +54,15 @@ in
     systemd.services.hercules-ci-agent-restarter = {
       serviceConfig.Type = "oneshot";
       script = ''
+        # Wait a bit, with the effect of bundling up file changes into a single
+        # run of this script and hopefully a single restart.
+        sleep 10
         if systemctl is-active --quiet hercules-ci-agent.service; then
-          systemctl restart hercules-ci-agent.service
+          if ${testCommand}; then
+            systemctl restart hercules-ci-agent.service
+          else
+            echo 1>&2 "WARNING: Not restarting agent because config is not valid at this time."
+          fi
         else
           echo 1>&2 "Not restarting hercules-ci-agent despite config file update, because it is not already active."
         fi
