@@ -65,6 +65,17 @@ main = Init.setupLogging $ \logEnv -> do
   let cfgPath = Options.configFile opts
   cfg <- Config.finalizeConfig cfgPath =<< Config.readConfig cfgPath
   env <- Init.newEnv cfg logEnv
+  case Options.mode opts of
+    Options.Run -> run env cfg
+    Options.Test -> testConfiguration env cfg
+
+testConfiguration :: Env.Env -> Config.FinalConfig -> IO ()
+testConfiguration _env _cfg = do
+  -- Room for checks that are not in Init.newEnv
+  pass
+
+run :: Env.Env -> Config.FinalConfig -> IO ()
+run env cfg = do
   fetchTaskMutex <- newMVar ()
   Env.runApp env
     $ katipAddContext (sl "agent-version" (A.String herculesAgentVersion))
