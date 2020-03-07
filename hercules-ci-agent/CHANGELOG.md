@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### [0.6.4] - 2020-03-06
+### Fixed
+
+ - Work around a systemd behavior where it didn't restart the unit
+
+### Added
+
+ - `--test-configuration` flag to validate the configuration without actually running the agent.
+
+## [0.6.4] - 2020-03-06
 
 ### Fixed
 
