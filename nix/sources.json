@@ -47,6 +47,18 @@
         "url": "https://github.com/NixOS/nixpkgs-channels/archive/6d9a4a615ee2706047c2cec3acc61d2cfbffdb0b.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "nixos-20.03": {
+        "branch": "nixos-20.03",
+        "description": "A read-only mirror of NixOS/nixpkgs tracking the released channels. Send issues and PRs to",
+        "homepage": "https://github.com/NixOS/nixpkgs",
+        "owner": "NixOS",
+        "repo": "nixpkgs-channels",
+        "rev": "cbe553c988aa7a36aee74f8b751fce884e0cf471",
+        "sha256": "1j85mi2k17qf6s8cyi0rx462igydsj67fxjn81891zx7m191qi4s",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs-channels/archive/cbe553c988aa7a36aee74f8b751fce884e0cf471.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
     "nixos-unstable": {
         "branch": "nixos-unstable",
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
