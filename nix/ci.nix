@@ -9,12 +9,17 @@ let
   allTargets = dimension "Nixpkgs version" {
     "nixos-19_09" = {
       nixpkgsSource = "nixos-19.09";
+      nixosTestIsPerl = true;
+    };
+    "nixos-20_03" = {
+      nixpkgsSource = "nixos-20.03";
     };
     "nixos-unstable" = {
       nixpkgsSource = "nixos-unstable";
+      nixosTestIsPerl = true;
     };
   } (
-    _name: { nixpkgsSource }:
+    _name: { nixpkgsSource, nixosTestIsPerl ? false }:
 
 
       dimension "System" {

@@ -6,13 +6,14 @@
 , testSuiteTarget ? "nixos-19_09"
 , testSuitePkgs ? allTargets.${testSuiteTarget}.${system}
 , system ? builtins.currentSystem
+, nixosTestIsPerl ? false
 }:
 
 let
   dev-and-test-overlay =
     self: pkgs:
       {
-        inherit testSuitePkgs;
+        inherit testSuitePkgs nixosTestIsPerl;
         devTools =
           {
             inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
