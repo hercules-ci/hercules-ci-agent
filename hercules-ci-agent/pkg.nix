@@ -60,6 +60,8 @@
 , unliftio-core
 , unordered-containers
 , uuid
+, websockets
+, wuss
 }:
 mkDerivation {
   pname = "hercules-ci-agent";
@@ -148,6 +150,8 @@ mkDerivation {
     unliftio-core
     unordered-containers
     uuid
+    websockets
+    wuss
   ];
   executableSystemDepends = [ boost_context ];
   executablePkgconfigDepends = [

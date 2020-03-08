@@ -21,7 +21,6 @@ import qualified Data.Set as S
 import Data.UUID (UUID)
 import Hercules.API.Agent.Evaluate
   ( getDerivationStatus2,
-    tasksGetEvaluation,
     tasksUpdateEvaluation,
   )
 import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatus
@@ -35,8 +34,6 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll as PushedAll
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Servant (noContent)
-import Hercules.API.Task (Task)
-import qualified Hercules.API.Task as Task
 import qualified Hercules.Agent.Cachix as Agent.Cachix
 import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Config as Config
@@ -76,7 +73,7 @@ eventLimit = 50000
 pushEvalWorkers :: Int
 pushEvalWorkers = 16
 
-performEvaluation :: Task EvaluateTask.EvaluateTask -> App ()
+performEvaluation :: EvaluateTask.EvaluateTask -> App ()
 performEvaluation task' =
   withProducer (produceEvaluationTaskEvents task') $ \producer ->
     withBoundedDelayBatchProducer (1000 * 1000) 1000 producer $ \batchProducer ->
@@ -84,15 +81,11 @@ performEvaluation task' =
         joinSTM $ listen batchProducer (\b -> withSync b (postBatch task' . catMaybes) *> continue) pure
 
 produceEvaluationTaskEvents ::
-  Task EvaluateTask.EvaluateTask ->
+  EvaluateTask.EvaluateTask ->
   (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
   App ()
-produceEvaluationTaskEvents task' writeToBatch = withWorkDir $ \tmpdir -> do
+produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
   logLocM DebugS "Retrieving evaluation task"
-  task <-
-    defaultRetry $
-      runHerculesClient
-        (tasksGetEvaluation Hercules.Agent.Client.evalClient (Task.id task'))
   let emitSingle = writeToBatch . Syncable
       sync = syncer writeToBatch
   projectDir <-
@@ -431,13 +424,13 @@ stderrLineHandler pid ln =
     $ "Evaluator: "
       <> logStr (toSL ln :: Text)
 
-postBatch :: Task EvaluateTask.EvaluateTask -> [EvaluateEvent.EvaluateEvent] -> App ()
+postBatch :: EvaluateTask.EvaluateTask -> [EvaluateEvent.EvaluateEvent] -> App ()
 postBatch task events =
   noContent $ defaultRetry $
     runHerculesClient
       ( tasksUpdateEvaluation
           Hercules.Agent.Client.evalClient
-          (Task.id task)
+          (EvaluateTask.id task)
           events
       )
 

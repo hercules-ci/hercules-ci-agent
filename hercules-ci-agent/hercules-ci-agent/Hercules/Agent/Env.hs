@@ -15,6 +15,7 @@ import Hercules.Agent.Config (FinalConfig)
 import qualified Hercules.Agent.Nix.Env as Nix
   ( Env,
   )
+import Hercules.Agent.Socket.Env (Socket)
 import Hercules.Error
 import qualified Katip as K
 import qualified Network.HTTP.Client
@@ -35,6 +36,7 @@ data Env
         currentToken :: Servant.Auth.Client.Token,
         cachixEnv :: Cachix.Env,
         nixEnv :: Nix.Env,
+        socket :: Socket,
         -- katip
         kNamespace :: K.Namespace,
         kContext :: K.LogContexts,

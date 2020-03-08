@@ -19,8 +19,6 @@ import Hercules.API.Agent.Build.BuildTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
 import qualified Hercules.API.Logs as API.Logs
 import Hercules.API.Servant (noContent)
-import Hercules.API.Task (Task)
-import qualified Hercules.API.Task as Task
 import Hercules.API.TaskStatus (TaskStatus)
 import qualified Hercules.API.TaskStatus as TaskStatus
 import qualified Hercules.Agent.Cachix as Agent.Cachix
@@ -36,12 +34,8 @@ import Protolude
 import Servant.Auth.Client
 import System.Process
 
-performBuild :: Task BuildTask.BuildTask -> App TaskStatus
-performBuild task = do
-  buildTask <-
-    defaultRetry $
-      runHerculesClient
-        (API.Build.getBuild Hercules.Agent.Client.buildClient (Task.id task))
+performBuild :: BuildTask.BuildTask -> App TaskStatus
+performBuild buildTask = do
   result <- realise buildTask
   case result of
     s@TaskStatus.Successful {} -> s <$ do

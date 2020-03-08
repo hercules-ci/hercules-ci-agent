@@ -38,6 +38,7 @@ newEnv config logEnv = do
       herculesClientEnv = clientEnv,
       currentToken = Servant.Auth.Client.Token $ encodeUtf8 token,
       cachixEnv = cachix,
+      socket = panic "Socket not defined yet.", -- Hmm, needs different monad?
       kNamespace = emptyNamespace,
       kContext = mempty,
       kLogEnv = logEnv,

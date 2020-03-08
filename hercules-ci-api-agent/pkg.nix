@@ -1,6 +1,7 @@
 { mkDerivation
 , aeson
 , base
+, base64-bytestring-type
 , bytestring
 , containers
 , cookie
@@ -27,6 +28,7 @@
 , text
 , time
 , uuid
+, vector
 }:
 mkDerivation {
   pname = "hercules-ci-api-agent";
@@ -35,6 +37,7 @@ mkDerivation {
   libraryHaskellDepends = [
     aeson
     base
+    base64-bytestring-type
     bytestring
     containers
     cookie
@@ -56,6 +59,7 @@ mkDerivation {
     text
     time
     uuid
+    vector
   ];
   testHaskellDepends = [
     aeson

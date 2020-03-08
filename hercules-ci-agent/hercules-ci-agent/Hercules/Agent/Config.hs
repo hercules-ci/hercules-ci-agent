@@ -14,6 +14,7 @@ module Hercules.Agent.Config
   )
 where
 
+import qualified Data.Text as T
 import Protolude hiding (to)
 import qualified System.Environment
 import System.FilePath ((</>))
@@ -39,6 +40,7 @@ type FinalConfig = Config 'Final
 data Config purpose
   = Config
       { herculesApiBaseURL :: Item purpose 'Required Text,
+        agentSocketBase :: Item purpose 'Required Text,
         concurrentTasks :: Item purpose 'Required Integer,
         baseDirectory :: Item purpose 'Required FilePath,
         -- | Read-only
@@ -56,6 +58,8 @@ tomlCodec =
   Config
     <$> dioptional (Toml.text "apiBaseUrl")
     .= herculesApiBaseURL
+    <*> dioptional (Toml.text "socketBase")
+    .= agentSocketBase
     <*> dioptional (Toml.integer "concurrentTasks")
     .= concurrentTasks
     <*> dioptional (Toml.string keyBaseDirectory)
@@ -113,8 +117,12 @@ finalizeConfig loc input = do
     case rawConcurrentTasks of
       x | not (x >= 1) -> throwIO $ FatalError "concurrentTasks must be at least 1"
       x -> pure x
+  let apiBaseUrl = fromMaybe dabu $ herculesApiBaseURL input
+      defaultSocketBase = "agent-socket." <> (strip "https://" $ strip "http://" apiBaseUrl)
+      strip p s = fromMaybe s $ T.stripPrefix p s
   pure Config
-    { herculesApiBaseURL = fromMaybe dabu $ herculesApiBaseURL input,
+    { herculesApiBaseURL = apiBaseUrl,
+      agentSocketBase = fromMaybe defaultSocketBase $ agentSocketBase input,
       binaryCachesPath = binaryCachesP,
       clusterJoinTokenPath = clusterJoinTokenP,
       concurrentTasks = validConcurrentTasks,

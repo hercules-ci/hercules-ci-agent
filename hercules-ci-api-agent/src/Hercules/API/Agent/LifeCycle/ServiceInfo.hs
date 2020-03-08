@@ -1,0 +1,14 @@
+{-# LANGUAGE DeriveAnyClass #-}
+
+module Hercules.API.Agent.LifeCycle.ServiceInfo
+  ( ServiceInfo (..),
+  )
+where
+
+import Hercules.API.Prelude
+
+data ServiceInfo
+  = ServiceInfo
+      { version :: (Int, Int)
+      }
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
