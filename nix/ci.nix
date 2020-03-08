@@ -16,7 +16,6 @@ let
     };
     "nixos-unstable" = {
       nixpkgsSource = "nixos-unstable";
-      nixosTestIsPerl = true;
     };
   } (
     _name: { nixpkgsSource, nixosTestIsPerl ? false }:
