@@ -216,9 +216,14 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
         writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName) Nothing
         derivation <- getDerivation store plainDrv
         outputPath <- derivationOutputPath derivation outputName
-        hPutStrLn stderr ("Naive ensurePath " <> outputPath)
-        ensurePath (wrappedStore st) outputPath `catch` \e0 -> do
-          hPutStrLn stderr ("Naive wrapped.ensurePath failed: " <> show (e0 :: SomeException) :: Text)
+        -- TODO revert the commit that comments this when https://github.com/NixOS/nix/issues/3398
+        --      is resolved *and* can be tested or assumed to work on nix daemon...
+        --      By not fetching before building, we avoid a negative binary cache hit
+        --      in most cases.
+        --hPutStrLn stderr ("Naive ensurePath " <> outputPath)
+        --ensurePath (wrappedStore st) outputPath `catch` \e0 -> do
+        --  hPutStrLn stderr ("Naive wrapped.ensurePath failed: " <> show (e0 :: SomeException) :: Text)
+        do
           (attempt0, result) <-
             liftIO $ atomically $ do
               c <- readTVar drvsCompl
