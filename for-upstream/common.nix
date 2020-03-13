@@ -6,6 +6,37 @@ let
 
   cfg =
     config.services.hercules-ci-agent;
+
+  checkNix = if lib.versionAtLeast config.nix.package.version "2.4.0" then "" else
+    pkgs.stdenv.mkDerivation {
+      name = "hercules-ci-validate-nix-src";
+      inherit (config.nix.package) src patches;
+      configurePhase = ":";
+      buildPhase = ''
+        echo "Checking in-memory pathInfoCache expiry"
+        if ! grep 'struct PathInfoCacheValue' src/libstore/store-api.hh >/dev/null; then
+          cat 1>&2 <<EOF
+          You are deploying Hercules CI Agent on a system with an incompatible nix-daemon. Please
+           - either upgrade Nix to version 2.4.0 (when released),
+           - or set option services.hercules-ci.patchNix = true;
+           - or set option nix.package to a build of Nix 2.3 with this patch applied:
+               https://github.com/NixOS/nix/pull/3405
+        EOF
+          exit 1
+        fi
+      '';
+      installPhase = "echo ok > $out";
+    };
+
+  patchedNix = lib.mkIf (!lib.versionAtLeast pkgs.nix.version "2.4.0") (
+    if lib.versionAtLeast pkgs.nix.version "2.4pre"
+    then lib.warn "Hercules CI Agent module will not patch 2.4 pre-release. Make sure it includes (equivalently) PR #3043, commit d048577909 or is no older than 2020-03-13." pkgs.nix
+    else pkgs.nix.overrideAttrs (
+      o: {
+        patches = (o.patches or []) ++ [ ./issue-3398-path-info-cache-ttls-backport-2.3.patch ];
+      }
+    )
+  );
 in
 {
   imports = [
@@ -17,6 +48,17 @@ in
       type = types.bool;
       default = false;
       description = "If true, run the agent as a system service";
+    };
+    patchNix = mkOption {
+      type = types.bool;
+      default = false;
+      description = ''
+        Whether to set nix.package to a patched pkgs.nix if necessary.
+
+        We strive for minimal patching. This option is only for your convenience,
+        when an important patch is not accepted into the stable branch for
+        example.
+      '';
     };
     baseDirectory = mkOption {
       type = types.path;
@@ -97,11 +139,12 @@ in
   };
 
   config = mkIf cfg.enable {
-    nix.extraOptions = ''
+    nix.extraOptions = lib.addContextFrom checkNix ''
       # A store path that was missing at first may well have finished building,
       # even shortly after the previous lookup. This *also* applies to the daemon.
       narinfo-cache-negative-ttl = 0
     '';
+    nix.package = mkIf cfg.patchNix patchedNix;
     services.hercules-ci-agent = {
       secretsDirectory = cfg.baseDirectory + "/secrets";
       tomlFile = pkgs.writeText "hercules-ci-agent.toml"
