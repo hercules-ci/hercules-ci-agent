@@ -17,7 +17,6 @@
 , filepath
 , fsnotify
 , here
-, hnix-store-core
 , hspec
 , hspec-discover
 , http-client
@@ -50,15 +49,16 @@
 , text
 , unix
 , uri-bytestring
+, vector
 , versions
 }:
 mkDerivation {
   pname = "cachix";
-  version = "0.3.5";
+  version = "0.3.7";
   src = fetchgit {
     url = "https://github.com/cachix/cachix";
-    sha256 = "1ppsndzsav572kbjh0prkri3vvgsgxznkyzp3k4l28f9vsrbx280";
-    rev = "ba89b84c4de1acac8db86023ddf888a54c204fa8";
+    sha256 = "1p45bfvq3zs0z5bldf4js5drsnmr468l8xnsjng3z077j5whwg8k";
+    rev = "1087621f8535dc2342744af4562ca1e4cb43e78b";
     fetchSubmodules = true;
   };
   postUnpack = "sourceRoot+=/cachix; echo source root reset to $sourceRoot";
@@ -81,7 +81,6 @@ mkDerivation {
     filepath
     fsnotify
     here
-    hnix-store-core
     http-client
     http-client-tls
     http-conduit
@@ -108,6 +107,7 @@ mkDerivation {
     text
     unix
     uri-bytestring
+    vector
     versions
   ];
   librarySystemDepends = [ boost_context ];

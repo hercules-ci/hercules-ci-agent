@@ -11,7 +11,7 @@ extra-deps:
   - hnix-store-core-0.1.0.0@sha256:719a261870367b3ce2e2e8d11502e7170faa664109a14486b95b555bc3672807
   - nix-derivation-1.0.2@sha256:dc1f13f89d37d4dcc7a46dbac7f6b4e8cd2877f4af99e35b9cb8255d08179bd4
   - git: https://github.com/cachix/cachix
-    commit: ba89b84c4de1acac8db86023ddf888a54c204fa8
+    commit: 386d355e9cca76ab0240e0773dd3b2671dd1cc2e
     subdirs:
       - cachix
       - cachix-api
