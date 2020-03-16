@@ -24,7 +24,7 @@ let
           You are deploying Hercules CI Agent on a system with an incompatible
           nix-daemon. Please
            - either upgrade Nix to version 2.4.0 (when released),
-           - or set option services.hercules-ci.patchNix = true;
+           - or set option services.hercules-ci-agent.patchNix = true;
            - or set option nix.package to a build of Nix 2.3 with this patch applied:
                https://github.com/NixOS/nix/pull/3405
 
@@ -33,7 +33,7 @@ let
           from derivation will fail if your cluster has more than one machine.
           We are conservative with changes to the overall system, which is why we
           keep changes to a minimum and why we ask for confirmation in the form of
-          services.hercules-ci.patchNix = true before applying.
+          services.hercules-ci-agent.patchNix = true before applying.
 
         EOF
           exit 1
