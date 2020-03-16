@@ -94,7 +94,7 @@ in
       type = types.str;
     };
     package = let
-      version = "0.6.5";
+      version = "0.6.6";
     in
       mkOption {
         description = "Package containing the bin/hercules-ci-agent program";
