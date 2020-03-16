@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.6] - 2020-03-16
+
+### Fixed
+
+ - NixOS, nix-darwin modules: check the `nix-daemon` source and add option to patch an in-memory cache expiry issue
+   causing errors in build clusters (of more than 1 machine). The module asks for confirmation.
+
+ - **Manual action:** if you are not using the provided module and you run the agent on
+   more than one machine, and you use `nix-daemon`, to fix above issue, you need to:
+    - either upgrade your system's Nix to a recent `master` or version 2.4.0 when released,
+    - or apply this patch to your system's Nix installation: https://github.com/NixOS/nix/pull/3405
+
+ - Cachix: 0.3.5 -> [0.3.7](https://github.com/cachix/cachix/blob/master/cachix/CHANGELOG.md#037---2020-03-12) to prevent uploading bad NARs in rare cases.
+
 ## [0.6.5] - 2020-03-07
 
 ### Fixed
@@ -215,6 +229,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
+[0.6.6]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.4...hercules-ci-agent-0.6.6
 [0.6.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.3...hercules-ci-agent-0.6.5
 [0.6.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.3...hercules-ci-agent-0.6.4
 [0.6.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.2...hercules-ci-agent-0.6.3
