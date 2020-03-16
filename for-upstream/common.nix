@@ -7,20 +7,34 @@ let
   cfg =
     config.services.hercules-ci-agent;
 
-  checkNix = if lib.versionAtLeast config.nix.package.version "2.4.0" then "" else
-    pkgs.stdenv.mkDerivation {
-      name = "hercules-ci-validate-nix-src";
+  checkNix =
+    if !cfg.checkNix
+    then ""
+    else if lib.versionAtLeast config.nix.package.version "2.4.0"
+    then ""
+    else pkgs.stdenv.mkDerivation {
+      name = "hercules-ci-check-system-nix-src";
       inherit (config.nix.package) src patches;
       configurePhase = ":";
       buildPhase = ''
         echo "Checking in-memory pathInfoCache expiry"
         if ! grep 'struct PathInfoCacheValue' src/libstore/store-api.hh >/dev/null; then
           cat 1>&2 <<EOF
-          You are deploying Hercules CI Agent on a system with an incompatible nix-daemon. Please
+
+          You are deploying Hercules CI Agent on a system with an incompatible
+          nix-daemon. Please
            - either upgrade Nix to version 2.4.0 (when released),
            - or set option services.hercules-ci.patchNix = true;
            - or set option nix.package to a build of Nix 2.3 with this patch applied:
                https://github.com/NixOS/nix/pull/3405
+
+          The patch is required for Nix-daemon clients that expect a change in binary
+          cache contents while running, like the agent's evaluator. Without it, import
+          from derivation will fail if your cluster has more than one machine.
+          We are conservative with changes to the overall system, which is why we
+          keep changes to a minimum and why we ask for confirmation in the form of
+          services.hercules-ci.patchNix = true before applying.
+
         EOF
           exit 1
         fi
@@ -58,6 +72,16 @@ in
         We strive for minimal patching. This option is only for your convenience,
         when an important patch is not accepted into the stable branch for
         example.
+      '';
+    };
+    checkNix = mkOption {
+      type = types.bool;
+      default = true;
+      description = ''
+        Whether to make sure that the system's Nix (nix-daemon) is compatible.
+
+        If you set this to false, please take the responsibility to keep up with
+        the change log.
       '';
     };
     baseDirectory = mkOption {
