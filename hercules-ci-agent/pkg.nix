@@ -15,6 +15,7 @@
 , conduit-extra
 , containers
 , directory
+, dlist
 , exceptions
 , filepath
 , hercules-ci-api-agent
@@ -65,7 +66,7 @@
 }:
 mkDerivation {
   pname = "hercules-ci-agent";
-  version = "0.6.6";
+  version = "0.7.0";
   src = ./hercules-ci-agent;
   isLibrary = true;
   isExecutable = true;
@@ -110,6 +111,7 @@ mkDerivation {
     conduit-extra
     containers
     directory
+    dlist
     exceptions
     filepath
     hercules-ci-api-agent
