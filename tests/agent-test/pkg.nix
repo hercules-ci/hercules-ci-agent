@@ -21,12 +21,14 @@
 , servant-auth-server
 , servant-conduit
 , servant-server
+, servant-websockets
 , stdenv
 , stm
 , tar-conduit
 , text
 , uuid
 , warp
+, websockets
 }:
 mkDerivation {
   pname = "hercules-ci-agent-test";
@@ -57,11 +59,13 @@ mkDerivation {
     servant-auth-server
     servant-conduit
     servant-server
+    servant-websockets
     stm
     tar-conduit
     text
     uuid
     warp
+    websockets
   ];
   homepage = "https://github.com/hercules-ci/hercules-ci#readme";
   license = stdenv.lib.licenses.asl20;

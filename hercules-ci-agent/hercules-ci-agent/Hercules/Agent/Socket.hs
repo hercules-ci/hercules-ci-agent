@@ -35,7 +35,7 @@ import Hercules.Agent.Env (App, config, currentToken)
 import qualified Hercules.Agent.Env as Agent.Env
 import Hercules.Agent.Log
 import Hercules.Agent.Socket.Env
-import Network.WebSockets (Connection)
+import Network.WebSockets (Connection, runClientWith)
 import qualified Network.WebSockets as WS
 import Protolude hiding (handle, race, race_)
 import qualified Servant.Auth.Client
@@ -158,6 +158,7 @@ withConnection' base token m = do
   UnliftIO unlift <- askUnliftIO
   let opts = WS.defaultConnectionOptions
       headers = [("Authorization", "Bearer " <> token)]
-  liftIO
-    $ runSecureClientWith (toS base) 443 "/api/v1/agent-socket" opts headers
-    $ \conn -> unlift (m conn)
+      runSocket
+        | base == "test://api" = runClientWith "api" 80 "/api/v1/agent-socket" opts []
+        | otherwise = runSecureClientWith (toS base) 443 "/api/v1/agent-socket" opts headers
+  liftIO $ runSocket $ \conn -> unlift (m conn)

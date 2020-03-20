@@ -119,6 +119,8 @@ let
 
               wuss = self.callPackage ./wuss.nix {};
 
+              servant-websockets = self.callPackage ./servant-websockets.nix {};
+
             }
         );
 

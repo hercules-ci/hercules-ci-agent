@@ -57,9 +57,11 @@ executable hercules-ci-agent-test
     , servant-auth-server
     , servant-conduit
     , servant-server
+    , servant-websockets
     , stm
     , tar-conduit
     , text
     , uuid
     , warp
+    , websockets
   default-language: Haskell2010
