@@ -58,7 +58,7 @@ import Hercules.API.Agent.LifeCycle (LifeCycleAPI (..))
 import qualified Hercules.API.Agent.LifeCycle as LifeCycle
 import qualified Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 as CreateAgentSession
 import qualified Hercules.API.Agent.LifeCycle.ServiceInfo as SI
-import Hercules.API.Agent.Socket.AgentPayload
+import Hercules.API.Agent.Socket.AgentPayload (AgentPayload)
 import Hercules.API.Agent.Socket.Frame as Frame
 import Hercules.API.Agent.Socket.ServicePayload (ServicePayload)
 import qualified Hercules.API.Agent.Socket.ServicePayload as SP
