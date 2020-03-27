@@ -96,18 +96,18 @@ run env _cfg = do
             (liftIO $ atomically $ readTChan $ serviceChan socket) >>= \case
               ServicePayload.ServiceInfo _ -> pass
               ServicePayload.StartEvaluation evalTask ->
-                launchTask tasks (Task.upcastId $ EvaluateTask.id evalTask) do
+                launchTask tasks socket (Task.upcastId $ EvaluateTask.id evalTask) do
                   Cachix.withCaches do
                     Evaluate.performEvaluation evalTask
                     pure $ TaskStatus.Successful ()
               ServicePayload.StartBuild buildTask ->
-                launchTask tasks (Task.upcastId $ BuildTask.id buildTask) do
+                launchTask tasks socket (Task.upcastId $ BuildTask.id buildTask) do
                   Cachix.withCaches $
                     Build.performBuild buildTask
-              ServicePayload.Cancel cancellation -> cancelTask tasks cancellation
+              ServicePayload.Cancel cancellation -> cancelTask tasks socket cancellation
 
-launchTask :: IORef (Map (Id (Task Task.Any)) ThreadId) -> Id (Task Task.Any) -> App TaskStatus.TaskStatus -> App ()
-launchTask tasks taskId doWork = withNamedContext "task" taskId do
+launchTask :: IORef (Map (Id (Task Task.Any)) ThreadId) -> Socket -> Id (Task Task.Any) -> App TaskStatus.TaskStatus -> App ()
+launchTask tasks socket taskId doWork = withNamedContext "task" taskId do
   let insertSelf = do
         me <- liftIO myThreadId
         join $ atomicModifyIORef tasks \tasks0 ->
@@ -145,10 +145,11 @@ launchTask tasks taskId doWork = withNamedContext "task" taskId do
     flip forkFinally done do
       insertSelf
       logLocM InfoS "Starting task"
+      liftIO $ atomically $ Socket.write socket $ AgentPayload.Started $ AgentPayload.MkStarted {taskId = taskId}
       doWork
 
-cancelTask :: IORef (Map (Id (Task Task.Any)) ThreadId) -> ServicePayload.Cancel -> App ()
-cancelTask tasks cancellation = do
+cancelTask :: IORef (Map (Id (Task Task.Any)) ThreadId) -> Socket -> ServicePayload.Cancel -> App ()
+cancelTask tasks socket cancellation = do
   let taskId = ServicePayload.taskId cancellation
   withNamedContext "taskId" taskId do
     tasksNow <- readIORef tasks
@@ -156,6 +157,7 @@ cancelTask tasks cancellation = do
       Just x -> do
         logLocM DebugS "Killing thread for cancelled task"
         killThread x
+        liftIO $ atomically $ Socket.write socket $ AgentPayload.Cancelled $ AgentPayload.MkCancelled {taskId = taskId}
       Nothing ->
         logLocM DebugS "cancelTask: No such task"
 
