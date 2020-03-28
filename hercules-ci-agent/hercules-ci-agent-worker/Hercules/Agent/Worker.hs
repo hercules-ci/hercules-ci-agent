@@ -21,6 +21,7 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import Data.Typeable (typeOf)
 import Data.UUID (UUID)
+import Hercules.Agent.Worker.Build
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import Hercules.Agent.WorkerProtocol.Command
   ( Command,
@@ -149,6 +150,8 @@ runCommands herculesState = do
     Command.BuildResult (BuildResult.BuildResult path attempt result) -> do
       hPutStrLn stderr $ ("BuildResult: " <> show path <> " " <> show result :: Text)
       liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (M.insert path (attempt, result))
+    Command.Build build -> do
+      runBuild (wrappedStore herculesState) build
 
 -- TODO: test
 autoArgArgs :: Map Text Eval.Arg -> [ByteString]

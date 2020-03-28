@@ -17,6 +17,7 @@ data BuildTask
   = BuildTask
       { id :: Id (Task BuildTask),
         derivationPath :: Text,
-        logToken :: Text
+        logToken :: Text,
+        inputDerivationOutputs :: [Text]
       }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

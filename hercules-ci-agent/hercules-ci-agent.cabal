@@ -23,6 +23,7 @@ library
   exposed-modules:
       Hercules.Agent.Producer
       Hercules.Agent.WorkerProtocol.Command
+      Hercules.Agent.WorkerProtocol.Command.Build
       Hercules.Agent.WorkerProtocol.Command.BuildResult
       Hercules.Agent.WorkerProtocol.Command.Eval
       Hercules.Agent.WorkerProtocol.Event
@@ -178,6 +179,8 @@ executable hercules-ci-agent-worker
       CNix.Internal.Store
       CNix.Internal.Typed
       Hercules.Agent.Worker
+      Hercules.Agent.Worker.Build
+      Hercules.Agent.Worker.Build.Prefetched
       Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent-worker

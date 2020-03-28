@@ -394,7 +394,8 @@ handleTasksUpdate st id body _authResult = do
       liftIO $ enqueue (ServerHandle st) $ AgentTask.Build $ BuildTask.BuildTask
         { BuildTask.id = buildId,
           BuildTask.derivationPath = drvPath,
-          BuildTask.logToken = "eyBlurb="
+          BuildTask.logToken = "eyBlurb=",
+          inputDerivationOutputs = []
         }
     _ -> pass
   pure NoContent
