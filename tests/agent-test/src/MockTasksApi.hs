@@ -224,6 +224,7 @@ type MockAPI =
         :<|> ToServantApi (LifeCycleAPI Auth')
     )
     :<|> "api" :> "v1" :> "agent-socket" :> WebSocket
+    :<|> "api" :> "v1" :> "logs" :> "build" :> "socket" :> WebSocket
     :<|> "tarball" :> Capture "tarball" Text :> StreamGet NoFraming OctetStream (SourceIO ByteString)
 
 mockApi :: Proxy MockAPI
@@ -257,25 +258,51 @@ endpoints server =
       :<|> toServant (lifeCycleEndpoints server)
   )
     :<|> (socket server)
+    :<|> (logSocket server)
     :<|> (toSourceIO & liftA & liftA & ($ sourceball))
 
 serviceVersion :: (Int, Int)
 serviceVersion = (1, 0)
 
+logSocket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
+logSocket server conn = do
+  let send :: MonadIO m => [Frame SI.ServiceInfo SI.ServiceInfo] -> m ()
+      send = send' conn
+      -- FIXME
+      recv :: Handler (Frame () ())
+      recv = recv' conn
+  let serviceInfo = SI.ServiceInfo {version = serviceVersion}
+  send [Frame.Oob {o = serviceInfo}]
+  _hello <- recv
+  send [Frame.Ack (-1)]
+  forever $ do
+    pl <- recv
+    case pl of
+      Frame.Exception {message = msg} -> panic $ "Agent exception: " <> msg
+      Frame.Ack {} -> pass
+      Frame.Oob {} -> pass
+      Frame.Msg {p = payload} -> processLogPayload payload
+
+processLogPayload _ = pass
+
 socket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
 socket server conn = do
+  let send :: MonadIO m => [Frame ServicePayload ServicePayload] -> m ()
+      send = send' conn
+      recv :: MonadIO m => m (Frame AgentPayload AgentPayload)
+      recv = recv' conn
   let serviceInfo = SI.ServiceInfo {version = serviceVersion}
-  send conn [Frame.Oob {o = SP.ServiceInfo serviceInfo}]
-  _hello <- recv conn
-  send conn [Frame.Ack (-1)]
+  send [Frame.Oob {o = SP.ServiceInfo serviceInfo}]
+  _hello <- recv
+  send [Frame.Ack (-1)]
   _writerThreadId <- liftIO $ flip forkFinally (putErrText . ("Writer died: " <>) . show @(Either SomeException Void)) $ do
     let doSend msgN = do
           payload <- takeMVar (queue server)
-          send conn [Frame.Msg {p = payload, n = msgN}]
+          send [Frame.Msg {p = payload, n = msgN}]
           doSend (msgN + 1)
     doSend 0
   forever $ do
-    pl <- recv conn
+    pl <- recv
     case pl of
       Frame.Exception {message = msg} -> panic $ "Agent exception: " <> msg
       Frame.Ack {} -> pass
@@ -285,19 +312,19 @@ socket server conn = do
 processPayload :: AgentPayload -> Handler ()
 processPayload _ap = pass
 
-send :: MonadIO m => WS.Connection -> [Frame ServicePayload ServicePayload] -> m ()
-send conn msgs = do
+send' :: forall sp m. (ToJSON sp, MonadIO m) => WS.Connection -> [Frame sp sp] -> m ()
+send' conn msgs = do
   let bs = A.encode <$> msgs
   forM_ bs $ putErrText . ("Service message: " <>) . toS
   liftIO $ WS.sendDataMessages conn (WS.Binary <$> bs)
 
-recv :: MonadIO m => WS.Connection -> m (Frame AgentPayload AgentPayload)
-recv conn = do
+recv' :: forall ap m. (FromJSON ap, Show ap, MonadIO m) => WS.Connection -> m (Frame ap ap)
+recv' conn = do
   (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
     Left e -> liftIO $ throwIO (FatalError $ "Error decoding agent message: " <> toSL e)
     Right (Frame.Exception e) -> do
       putErrText $ "Agent exception message: " <> toSL e
-      recv conn
+      recv' conn
     Right r -> do
       putErrText $ "Agent message: " <> (toSL (show r :: Text))
       pure r
@@ -395,7 +422,7 @@ handleTasksUpdate st id body _authResult = do
         { BuildTask.id = buildId,
           BuildTask.derivationPath = drvPath,
           BuildTask.logToken = "eyBlurb=",
-          inputDerivationOutputs = []
+          inputDerivationOutputPaths = []
         }
     _ -> pass
   pure NoContent

@@ -3,6 +3,7 @@ module Hercules.Agent.Build where
 import Data.Char (isSpace)
 import qualified Data.Conduit.Combinators as Conduit
 import Data.Conduit.Process (sourceProcessWithStreams)
+import Data.IORef.Lifted
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Hercules.API.Agent.Build as API.Build
@@ -23,12 +24,19 @@ import Hercules.API.TaskStatus (TaskStatus)
 import qualified Hercules.API.TaskStatus as TaskStatus
 import qualified Hercules.Agent.Cachix as Agent.Cachix
 import qualified Hercules.Agent.Client
+import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
+import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
 import Hercules.Agent.Nix.RetrieveDerivationInfo
   ( retrieveDerivationInfo,
   )
+import Hercules.Agent.WorkerProcess
+import qualified Hercules.Agent.WorkerProtocol.Command as Command
+import qualified Hercules.Agent.WorkerProtocol.Command.Build as Command.Build
+import qualified Hercules.Agent.WorkerProtocol.Event as Event
+import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.Error (defaultRetry)
 import Protolude
 import Servant.Auth.Client
@@ -36,7 +44,45 @@ import System.Process
 
 performBuild :: BuildTask.BuildTask -> App TaskStatus
 performBuild buildTask = do
-  result <- realise buildTask
+  workerExe <- getWorkerExe
+  commandChan <- liftIO newChan
+  statusRef <- newIORef Nothing
+  let opts = [show $ extraNixOptions]
+      extraNixOptions :: [(Text, Text)]
+      extraNixOptions = []
+      procSpec =
+        (System.Process.proc workerExe opts)
+          { env = Just [("NIX_PATH", "")],
+            close_fds = True,
+            cwd = Just "/"
+          }
+      writeEvent :: Event.Event -> App ()
+      writeEvent event = case event of
+        Event.BuildResult r -> writeIORef statusRef $ Just r
+        Event.Exception e -> do
+          logLocM DebugS $ show e
+          panic e
+        _ -> pass
+  bulkSocketHost <- asks (Config.bulkSocketBase . Env.config)
+  liftIO $ writeChan commandChan $ Just $ Command.Build $ Command.Build.Build
+    { drvPath = BuildTask.derivationPath buildTask,
+      inputDerivationOutputPaths = toS <$> BuildTask.inputDerivationOutputPaths buildTask,
+      logSettings = LogSettings.LogSettings
+        { token = LogSettings.Sensitive $ BuildTask.logToken buildTask,
+          path = "/api/v1/logs/build/socket",
+          host = bulkSocketHost
+        }
+    }
+  exitCode <- runWorker procSpec stderrLineHandler commandChan writeEvent
+  logLocM DebugS $ "Worker exit: " <> show exitCode
+  case exitCode of
+    ExitSuccess -> pass
+    _ -> panic $ "Worker failed: " <> show exitCode
+  status <- readIORef statusRef
+  let result = case status of
+        Just True -> TaskStatus.Successful ()
+        Just False -> TaskStatus.Terminated ()
+        Nothing -> TaskStatus.Exceptional "Build did not complete"
   case result of
     s@TaskStatus.Successful {} -> s <$ do
       outs <- getOutputPathInfos buildTask
@@ -44,6 +90,13 @@ performBuild buildTask = do
       push buildTask outs
       reportSuccess buildTask
     x -> pure x
+
+stderrLineHandler :: Int -> ByteString -> App ()
+stderrLineHandler pid ln =
+  withNamedContext "worker" (pid :: Int)
+    $ logLocM InfoS
+    $ "Builder: "
+      <> logStr (toSL ln :: Text)
 
 realise :: BuildTask.BuildTask -> App TaskStatus
 realise buildTask = do

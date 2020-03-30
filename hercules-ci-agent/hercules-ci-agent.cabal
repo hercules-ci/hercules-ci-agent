@@ -13,6 +13,7 @@ extra-source-files:
     CHANGELOG.md
     cbits/aliases.h
     cbits/hercules-store.hh
+    cbits/hercules-logger.hh
     testdata/vm-test-run-agent-test.drv
 
 source-repository head
@@ -30,6 +31,7 @@ library
       Hercules.Agent.WorkerProtocol.Event
       Hercules.Agent.WorkerProtocol.Event.Attribute
       Hercules.Agent.WorkerProtocol.Event.AttributeError
+      Hercules.Agent.WorkerProtocol.LogSettings
       Data.Conduit.Extras
 
   other-modules:
@@ -185,11 +187,13 @@ executable hercules-ci-agent-worker
       Hercules.Agent.Worker
       Hercules.Agent.Worker.Build
       Hercules.Agent.Worker.Build.Prefetched
+      Hercules.Agent.Worker.Build.Logger
       Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent-worker
   cxx-sources:
      cbits/hercules-store.cc
+     cbits/hercules-logger.cc
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
     -Werror=incomplete-patterns -Werror=missing-fields
@@ -239,7 +243,9 @@ executable hercules-ci-agent-worker
     , stm
     , text
     , transformers-base
+    , unliftio
     , uuid
+    , vector
   pkgconfig-depends:
       nix-store >= 2.0
     , nix-expr >= 2.0

@@ -46,6 +46,8 @@ library
       Hercules.API.Agent.Tasks
       Hercules.API.Agent
       Hercules.API.Logs
+      Hercules.API.Logs.LogEntry
+      Hercules.API.Logs.LogMessage
       Hercules.API.TaskStatus
       Hercules.API.Task
       Hercules.Formats.CachixCache

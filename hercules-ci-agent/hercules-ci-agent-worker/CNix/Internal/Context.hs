@@ -30,6 +30,12 @@ data HerculesStore
 
 data Derivation
 
+data Fields
+
+data HerculesLoggerEntry
+
+data LogEntryQueue
+
 context :: C.Context
 context =
   C.cppCtx <> C.fptrCtx
@@ -43,6 +49,9 @@ context =
             <> M.singleton (C.TypeName "Strings") [t|Strings|]
             <> M.singleton (C.TypeName "refHerculesStore") [t|Ref HerculesStore|]
             <> M.singleton (C.TypeName "Derivation") [t|Derivation|]
+            <> M.singleton (C.TypeName "LoggerFields") [t|Fields|]
+            <> M.singleton (C.TypeName "HerculesLoggerEntry") [t|HerculesLoggerEntry|]
+            <> M.singleton (C.TypeName "LogEntryQueue") [t|LogEntryQueue|]
             <> M.singleton (C.TypeName "exception_ptr") [t|ExceptionPtr|]
       }
 

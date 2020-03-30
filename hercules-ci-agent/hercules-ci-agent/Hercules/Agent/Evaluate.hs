@@ -59,7 +59,6 @@ import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as WorkerAtt
 import Hercules.Error (defaultRetry, quickRetry)
 import qualified Network.HTTP.Client.Conduit as HTTP.Conduit
 import qualified Network.HTTP.Simple as HTTP.Simple
-import Paths_hercules_ci_agent (getBinDir)
 import Protolude hiding (finally, newChan, writeChan)
 import qualified Servant.Client
 import qualified System.Directory as Dir
@@ -291,6 +290,9 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                     return status
                 writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drv) status
                 continue
+              -- Unused during eval
+              Event.BuildResult _ -> pass
+              Event.Exception e -> panic e
           )
           ( \case
               ExitSuccess -> logLocM DebugS "Clean worker exit"
@@ -306,13 +308,13 @@ produceWorkerEvents ::
   (Event.Event -> App ()) ->
   App ExitCode
 produceWorkerEvents eval nixPath commandChan writeEvent = do
-  workerBinDir <- liftIO getBinDir
+  workerExe <- getWorkerExe
   let opts = [show $ Eval.extraNixOptions eval]
   -- NiceToHave: replace renderNixPath by something structured like -I
   -- to support = and : in paths
   wps <-
     pure
-      (System.Process.proc (workerBinDir </> "hercules-ci-agent-worker") opts)
+      (System.Process.proc workerExe opts)
         { env = Just [("NIX_PATH", toS $ renderNixPath nixPath)],
           close_fds = True, -- Disable on Windows?
           cwd = Just (Eval.cwd eval)

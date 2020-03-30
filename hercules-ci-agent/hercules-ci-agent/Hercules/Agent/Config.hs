@@ -41,6 +41,7 @@ data Config purpose
   = Config
       { herculesApiBaseURL :: Item purpose 'Required Text,
         agentSocketBase :: Item purpose 'Required Text,
+        bulkSocketBase :: Item purpose 'Required Text,
         concurrentTasks :: Item purpose 'Required Integer,
         baseDirectory :: Item purpose 'Required FilePath,
         -- | Read-only
@@ -60,6 +61,8 @@ tomlCodec =
     .= herculesApiBaseURL
     <*> dioptional (Toml.text "socketBase")
     .= agentSocketBase
+    <*> dioptional (Toml.text "bulkSocketBase")
+    .= bulkSocketBase
     <*> dioptional (Toml.integer "concurrentTasks")
     .= concurrentTasks
     <*> dioptional (Toml.string keyBaseDirectory)
@@ -119,10 +122,12 @@ finalizeConfig loc input = do
       x -> pure x
   let apiBaseUrl = fromMaybe dabu $ herculesApiBaseURL input
       defaultSocketBase = "agent-socket." <> (strip "https://" $ strip "http://" apiBaseUrl)
+      defaultBulkSocketBase = "bulk-socket." <> (strip "https://" $ strip "http://" apiBaseUrl)
       strip p s = fromMaybe s $ T.stripPrefix p s
   pure Config
     { herculesApiBaseURL = apiBaseUrl,
       agentSocketBase = fromMaybe defaultSocketBase $ agentSocketBase input,
+      bulkSocketBase = fromMaybe defaultBulkSocketBase $ bulkSocketBase input,
       binaryCachesPath = binaryCachesP,
       clusterJoinTokenPath = clusterJoinTokenP,
       concurrentTasks = validConcurrentTasks,

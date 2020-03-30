@@ -9,8 +9,8 @@ import Data.Conduit
 import Prelude
 
 -- | Write to a channel terminating with @Nothing@
-sinkChan :: (MonadUnliftIO m, MonadIO m) => Chan (Maybe a) -> ConduitT a o m ()
-sinkChan ch =
+sinkChanTerminate :: (MonadUnliftIO m, MonadIO m) => Chan (Maybe a) -> ConduitT a o m ()
+sinkChanTerminate ch =
   handleC
     ( \e -> liftIO $ do
         writeChan ch Nothing
@@ -19,6 +19,16 @@ sinkChan ch =
     $ do
       awaitForever $ \msg -> liftIO $ writeChan ch (Just msg)
       liftIO $ writeChan ch Nothing
+
+-- | Write to a channel terminating with @Nothing@
+sinkChan :: (MonadUnliftIO m, MonadIO m) => Chan (Maybe a) -> ConduitT a o m ()
+sinkChan ch =
+  handleC
+    ( \e -> liftIO $ do
+        throwIO (e :: SomeException)
+    )
+    $ do
+      awaitForever $ \msg -> liftIO $ writeChan ch (Just msg)
 
 -- | Read a channel until @Nothing@ is encountered
 sourceChan :: MonadIO m => Chan (Maybe a) -> ConduitT i a m ()

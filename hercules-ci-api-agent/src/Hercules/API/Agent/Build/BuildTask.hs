@@ -18,6 +18,6 @@ data BuildTask
       { id :: Id (Task BuildTask),
         derivationPath :: Text,
         logToken :: Text,
-        inputDerivationOutputs :: [Text]
+        inputDerivationOutputPaths :: [Text]
       }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)

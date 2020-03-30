@@ -7,6 +7,7 @@ module Hercules.API.Logs
 where
 
 import Data.ByteString (ByteString)
+import Hercules.API.Logs.LogEntry
 import Hercules.API.Prelude
 import Servant.API
 import Servant.API.Generic
@@ -21,6 +22,14 @@ data LogsAPI logJWT f
             :> "log"
             :> Auth '[JWT] logJWT
             :> ReqBody '[OctetStream] ByteString
+            :> Post '[JSON] NoContent,
+        writeEntries ::
+          f
+            :- Summary "Write to a log"
+            :> "log"
+            :> "entries"
+            :> Auth '[JWT] logJWT
+            :> ReqBody '[JSON] [LogEntry]
             :> Post '[JSON] NoContent
       }
   deriving (Generic)

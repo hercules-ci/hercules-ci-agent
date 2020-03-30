@@ -81,7 +81,7 @@ spec = describe "Build" $ it "works" $ \srv -> do
           { id = id2,
             derivationPath = drvPath,
             logToken = "pretend-jwt-for-log",
-            inputDerivationOutputs = []
+            inputDerivationOutputPaths = []
           }
       )
   s2 `shouldBe` TaskStatus.Successful ()

@@ -15,4 +15,6 @@ data Event
   | EvaluationDone
   | Error Text
   | Build Text Text (Maybe UUID)
+  | BuildResult Bool
+  | Exception Text
   deriving (Generic, Binary, Show, Eq)

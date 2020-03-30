@@ -7,6 +7,7 @@ module Hercules.Agent.Socket
   ( withReliableSocket,
     checkVersion',
     Socket (..),
+    syncIO,
     SocketConfig (..),
   )
 where
@@ -33,8 +34,12 @@ import Wuss (runSecureClientWith)
 data Socket r w
   = Socket
       { write :: w -> STM (),
-        serviceChan :: TChan r
+        serviceChan :: TChan r,
+        sync :: STM (STM ())
       }
+
+syncIO :: Socket r w -> IO ()
+syncIO = join . fmap atomically . atomically . sync
 
 -- | Parameters to start 'withReliableSocket'.
 data SocketConfig ap sp m
@@ -56,16 +61,22 @@ a'ly = liftIO . atomically
 withReliableSocket :: (A.FromJSON sp, A.ToJSON ap, MonadIO m, MonadUnliftIO m, KatipContext m) => SocketConfig ap sp m -> (Socket sp ap -> m a) -> m a
 withReliableSocket socketConfig f = do
   writeQueue <- a'ly $ newTBQueue 100
-  agentMessageCounter <- a'ly $ newTVar 0
+  agentMessageNextN <- a'ly $ newTVar 0
   serviceMessageChan <- a'ly $ newTChan
+  highestAcked <- a'ly $ newTVar (-1)
   let tagPayload p = do
-        c <- readTVar agentMessageCounter
-        writeTVar agentMessageCounter (c + 1)
+        c <- readTVar agentMessageNextN
+        writeTVar agentMessageNextN (c + 1)
         pure $ Frame.Msg {n = c, p = p}
-      socketThread = runReliableSocket socketConfig writeQueue serviceMessageChan
+      socketThread = runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked
       socket = Socket
         { write = tagPayload >=> writeTBQueue writeQueue,
-          serviceChan = serviceMessageChan
+          serviceChan = serviceMessageChan,
+          sync = do
+            counterAtSyncStart <- (\n -> n - 1) <$> readTVar agentMessageNextN
+            pure do
+              acked <- readTVar highestAcked
+              guard $ acked >= counterAtSyncStart
         }
   race socketThread (f socket) <&> either identity identity
 
@@ -75,8 +86,8 @@ checkVersion' si =
     then pure $ Left $ "Expected service version " <> show requiredServiceVersion
     else pure $ Right ()
 
-runReliableSocket :: forall ap sp m. (A.ToJSON ap, A.FromJSON sp, MonadUnliftIO m, KatipContext m) => SocketConfig ap sp m -> TBQueue (Frame ap ap) -> TChan sp -> forall a. m a
-runReliableSocket socketConfig writeQueue serviceMessageChan = katipAddNamespace "Socket" do
+runReliableSocket :: forall ap sp m. (A.ToJSON ap, A.FromJSON sp, MonadUnliftIO m, KatipContext m) => SocketConfig ap sp m -> TBQueue (Frame ap ap) -> TChan sp -> TVar Integer -> forall a. m a
+runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = katipAddNamespace "Socket" do
   (unacked :: TVar (DList (Frame Void ap))) <- a'ly $ newTVar mempty
   (lastServiceN :: TVar Integer) <- a'ly $ newTVar (-1)
   let logWarningPause :: SomeException -> m ()
@@ -126,6 +137,7 @@ runReliableSocket socketConfig writeQueue serviceMessageChan = katipAddNamespace
                   Frame.Exception {} -> False
               )
             & fromList
+        modifyTVar highestAcked (max newAck)
       -- TODO (performance) IntMap?
 
       readThread conn = katipAddNamespace "Reader" do
