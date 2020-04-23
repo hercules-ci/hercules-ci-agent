@@ -7,6 +7,8 @@ import Control.Monad.Base (MonadBase)
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control (MonadBaseControl)
+import Hercules.API.Agent.Socket.AgentPayload (AgentPayload)
+import Hercules.API.Agent.Socket.ServicePayload (ServicePayload)
 import qualified Hercules.Agent.Cachix.Env as Cachix
   ( Env,
     HasEnv (..),
@@ -15,7 +17,7 @@ import Hercules.Agent.Config (FinalConfig)
 import qualified Hercules.Agent.Nix.Env as Nix
   ( Env,
   )
-import Hercules.Agent.Socket.Env (Socket)
+import Hercules.Agent.Socket (Socket)
 import Hercules.Error
 import qualified Katip as K
 import qualified Network.HTTP.Client
@@ -36,12 +38,14 @@ data Env
         currentToken :: Servant.Auth.Client.Token,
         cachixEnv :: Cachix.Env,
         nixEnv :: Nix.Env,
-        socket :: Socket,
+        socket :: AgentSocket,
         -- katip
         kNamespace :: K.Namespace,
         kContext :: K.LogContexts,
         kLogEnv :: K.LogEnv
       }
+
+type AgentSocket = Socket ServicePayload AgentPayload
 
 instance Cachix.HasEnv Env where
   getEnv = cachixEnv

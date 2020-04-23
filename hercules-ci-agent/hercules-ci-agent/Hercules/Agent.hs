@@ -21,6 +21,7 @@ import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import qualified Hercules.API.Agent.LifeCycle as LifeCycle
 import qualified Hercules.API.Agent.LifeCycle.StartInfo as StartInfo
+import Hercules.API.Agent.LifeCycle.StartInfo (tasksInProgress)
 import qualified Hercules.API.Agent.Socket.AgentPayload as AgentPayload
 import qualified Hercules.API.Agent.Socket.ServicePayload as ServicePayload
 import Hercules.API.Agent.Tasks
@@ -31,6 +32,7 @@ import Hercules.API.Servant (noContent)
 import Hercules.API.Task (Task)
 import qualified Hercules.API.Task as Task
 import qualified Hercules.API.TaskStatus as TaskStatus
+import Hercules.Agent.AgentSocket (withAgentSocket)
 import qualified Hercules.Agent.Build as Build
 import Hercules.Agent.CabalInfo (herculesAgentVersion)
 import qualified Hercules.Agent.Cachix as Cachix
@@ -89,7 +91,7 @@ run env _cfg = do
     $ katipAddContext (sl "agent-version" (A.String herculesAgentVersion))
     $ withAgentToken
     $ withLifeCycle \hello ->
-      withReliableSocket hello tasks \socket ->
+      withAgentSocket hello tasks \socket ->
         withApplicationLevelPinger socket $ do
           logLocM InfoS "Agent online."
           forever $ do
@@ -106,7 +108,7 @@ run env _cfg = do
                     Build.performBuild buildTask
               ServicePayload.Cancel cancellation -> cancelTask tasks socket cancellation
 
-launchTask :: IORef (Map (Id (Task Task.Any)) ThreadId) -> Socket -> Id (Task Task.Any) -> App TaskStatus.TaskStatus -> App ()
+launchTask :: IORef (Map (Id (Task Task.Any)) ThreadId) -> Env.AgentSocket -> Id (Task Task.Any) -> App TaskStatus.TaskStatus -> App ()
 launchTask tasks socket taskId doWork = withNamedContext "task" taskId do
   let insertSelf = do
         me <- liftIO myThreadId
@@ -148,7 +150,7 @@ launchTask tasks socket taskId doWork = withNamedContext "task" taskId do
       liftIO $ atomically $ Socket.write socket $ AgentPayload.Started $ AgentPayload.MkStarted {taskId = taskId}
       doWork
 
-cancelTask :: IORef (Map (Id (Task Task.Any)) ThreadId) -> Socket -> ServicePayload.Cancel -> App ()
+cancelTask :: IORef (Map (Id (Task Task.Any)) ThreadId) -> Env.AgentSocket -> ServicePayload.Cancel -> App ()
 cancelTask tasks socket cancellation = do
   let taskId = ServicePayload.taskId cancellation
   withNamedContext "taskId" taskId do
@@ -180,7 +182,7 @@ withLifeCycle app = do
       sayGoodbye = req $ LifeCycle.goodbye lifeCycleClient startInfo
   bracket pass (\() -> sayGoodbye) (\() -> app hello)
 
-withApplicationLevelPinger :: Socket -> App a -> App a
+withApplicationLevelPinger :: Env.AgentSocket -> App a -> App a
 withApplicationLevelPinger socket = fmap (either identity identity) . race pinger
   where
     pinger = forever $ do
