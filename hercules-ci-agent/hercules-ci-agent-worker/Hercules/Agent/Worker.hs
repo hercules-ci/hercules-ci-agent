@@ -118,6 +118,7 @@ renderException e | Just (C.CppStdException msg) <- fromException e = toSL msg
 renderException e
   | Just (C.CppOtherException maybeType) <- fromException e =
     "Unexpected C++ exception" <> foldMap (\t -> " of type " <> toSL t) maybeType
+renderException e | Just (FatalError msg) <- fromException e = msg
 renderException e = toS $ displayException e
 
 runCommands :: HerculesState -> ConduitM Command Event (ResourceT IO) ()

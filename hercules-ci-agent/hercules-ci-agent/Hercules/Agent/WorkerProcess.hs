@@ -27,7 +27,12 @@ data WorkerException
       }
   deriving (Show, Typeable)
 
-instance Exception WorkerException
+instance Exception WorkerException where
+  displayException we =
+    displayException (originalException we)
+      <> case exitStatus we of
+        Nothing -> ""
+        Just s -> " (worker: " <> show s <> ")"
 
 -- | Control a child process by communicating over stdin and stdout
 -- using a 'Binary' interface.
