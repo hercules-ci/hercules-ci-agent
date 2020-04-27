@@ -47,9 +47,8 @@ performBuild buildTask = do
   workerExe <- getWorkerExe
   commandChan <- liftIO newChan
   statusRef <- newIORef Nothing
+  extraNixOptions <- Nix.askExtraOptions
   let opts = [show $ extraNixOptions]
-      extraNixOptions :: [(Text, Text)]
-      extraNixOptions = []
       procSpec =
         (System.Process.proc workerExe opts)
           { env = Just [("NIX_PATH", "")],
