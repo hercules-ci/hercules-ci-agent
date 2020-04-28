@@ -128,6 +128,7 @@ convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \le
             return ln.entryType;
           case 2:
             *$(const char **textStrPtr) = strdup(ln.text.c_str());
+            *$(int *levelPtr) = ln.level;
             *$(uint64_t *activityIdPtr) = ln.activityId;
             *$(uint64_t *typePtr) = ln.type;
             *$(uint64_t *parentPtr) = ln.parent;

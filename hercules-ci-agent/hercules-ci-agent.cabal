@@ -31,6 +31,7 @@ library
       Hercules.Agent.WorkerProtocol.Event
       Hercules.Agent.WorkerProtocol.Event.Attribute
       Hercules.Agent.WorkerProtocol.Event.AttributeError
+      Hercules.Agent.WorkerProtocol.Event.BuildResult
       Hercules.Agent.WorkerProtocol.LogSettings
       Data.Conduit.Extras
 
@@ -225,6 +226,7 @@ executable hercules-ci-agent-worker
     , binary
     , binary-conduit
     , bytestring
+    , cachix
     , conduit
     , containers
     , exceptions

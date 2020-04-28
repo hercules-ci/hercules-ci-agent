@@ -1,8 +1,13 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module CNix.Internal.Context where
+module CNix.Internal.Context
+  ( module CNix.Internal.Context,
+    NixStore,
+  )
+where
 
+import Cachix.Client.Store.Context (NixStore)
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import qualified Data.Map as M
 import qualified Foreign.C.String
@@ -11,8 +16,6 @@ import qualified Language.C.Inline.Context as C
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Types as C
 import Protolude
-
-data NixStore
 
 data EvalState
 
@@ -36,6 +39,10 @@ data HerculesLoggerEntry
 
 data LogEntryQueue
 
+data StringsIterator
+
+data DerivationOutputsIterator
+
 context :: C.Context
 context =
   C.cppCtx <> C.fptrCtx
@@ -47,11 +54,13 @@ context =
             <> M.singleton (C.TypeName "Value") [t|Value'|]
             <> M.singleton (C.TypeName "Attr") [t|Attr'|]
             <> M.singleton (C.TypeName "Strings") [t|Strings|]
+            <> M.singleton (C.TypeName "StringsIterator") [t|StringsIterator|]
             <> M.singleton (C.TypeName "refHerculesStore") [t|Ref HerculesStore|]
             <> M.singleton (C.TypeName "Derivation") [t|Derivation|]
             <> M.singleton (C.TypeName "LoggerFields") [t|Fields|]
             <> M.singleton (C.TypeName "HerculesLoggerEntry") [t|HerculesLoggerEntry|]
             <> M.singleton (C.TypeName "LogEntryQueue") [t|LogEntryQueue|]
+            <> M.singleton (C.TypeName "DerivationOutputsIterator") [t|DerivationOutputsIterator|]
             <> M.singleton (C.TypeName "exception_ptr") [t|ExceptionPtr|]
       }
 

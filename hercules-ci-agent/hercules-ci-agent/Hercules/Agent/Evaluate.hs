@@ -291,7 +291,7 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                 writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drv) status
                 continue
               -- Unused during eval
-              Event.BuildResult _ -> pass
+              Event.BuildResult {} -> pass
               Event.Exception e -> panic e
           )
           ( \case

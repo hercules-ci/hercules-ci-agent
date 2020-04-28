@@ -335,7 +335,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
       withDrvInProgress st plainDrvText $ do
         writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName) Nothing
         derivation <- getDerivation store plainDrv
-        outputPath <- derivationOutputPath derivation outputName
+        outputPath <- getDerivationOutputPath derivation outputName
         hPutStrLn stderr ("Naive ensurePath " <> outputPath)
         ensurePath (wrappedStore st) outputPath `catch` \e0 -> do
           hPutStrLn stderr ("Naive wrapped.ensurePath failed: " <> show (e0 :: SomeException) :: Text)

@@ -12,7 +12,7 @@ module Hercules.Agent.Worker.Build.Prefetched where
 import CNix
 import CNix.Internal.Context
 import qualified Data.ByteString.Char8 as C8
-import Foreign (alloca, peek)
+import Foreign (FinalizerPtr, ForeignPtr, alloca, newForeignPtr, nullPtr, peek)
 import Foreign.C (peekCString)
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
@@ -88,9 +88,46 @@ data BuildResult
       }
   deriving (Show)
 
+nullableForeignPtr :: FinalizerPtr a -> Ptr a -> IO (Maybe (ForeignPtr a))
+nullableForeignPtr _ rawPtr | rawPtr == nullPtr = pure Nothing
+nullableForeignPtr finalize rawPtr = Just <$> newForeignPtr finalize rawPtr
+
+getDerivation :: Ptr (Ref NixStore) -> ByteString -> IO (Maybe (ForeignPtr Derivation))
+getDerivation store derivationPath =
+  nullableForeignPtr finalizeDerivation
+    =<< [C.throwBlock| Derivation *{
+      Store &store = **$(refStore* store);
+      std::string derivationPath($bs-ptr:derivationPath, $bs-len:derivationPath);
+      std::list<nix::ref<nix::Store>> stores = getDefaultSubstituters();
+      stores.push_front(*$(refStore* store));
+
+      nix::Derivation *derivation = nullptr;
+
+      for (nix::ref<nix::Store> & currentStore : stores) {
+        try {
+          auto accessor = currentStore->getFSAccessor();
+          auto drvText = accessor->readFile(derivationPath);
+
+          Path tmpDir = createTempDir();
+          AutoDelete delTmpDir(tmpDir, true);
+          Path drvTmpPath = tmpDir + "/drv";
+          writeFile(drvTmpPath, drvText, 0600);
+          derivation = new nix::Derivation(nix::readDerivation(drvTmpPath));
+          break;
+        } catch (nix::Interrupted &e) {
+          throw e;
+        } catch (nix::Error &e) {
+          printTalkative("ignoring exception during drv lookup in %s: %s", currentStore->getUri(), e.what());
+        } catch (std::exception &e) {
+          printTalkative("ignoring exception during drv lookup in %s: %s", currentStore->getUri(), e.what());
+        }
+      }
+      return derivation;
+    }|]
+
 -- | @buildDerivation derivationPath derivationText@
-buildDerivation :: Ptr (Ref NixStore) -> ByteString -> [ByteString] -> IO BuildResult
-buildDerivation store derivationPath extraInputs =
+buildDerivation :: Ptr (Ref NixStore) -> ByteString -> ForeignPtr Derivation -> [ByteString] -> IO BuildResult
+buildDerivation store derivationPath derivation extraInputs =
   let extraInputsMerged = C8.intercalate "\n" extraInputs
    in alloca $ \successPtr ->
         alloca $ \statusPtr ->
@@ -108,33 +145,8 @@ buildDerivation store derivationPath extraInputs =
       std::string extraInputsMerged($bs-ptr:extraInputsMerged, $bs-len:extraInputsMerged);
       std::list<nix::ref<nix::Store>> stores = getDefaultSubstituters();
       stores.push_front(*$(refStore* store));
-      stores.push_back(openStore("https://hercules-ci.cachix.org"));
 
-      std::unique_ptr<nix::Derivation> derivation(nullptr);
-
-      for (nix::ref<nix::Store> & currentStore : stores) {
-        try {
-          auto accessor = currentStore->getFSAccessor();
-          auto drvText = accessor->readFile(derivationPath);
-
-          Path tmpDir = createTempDir();
-          AutoDelete delTmpDir(tmpDir, true);
-          Path drvTmpPath = tmpDir + "/drv";
-          writeFile(drvTmpPath, drvText, 0600);
-          derivation = make_unique<nix::Derivation>(nix::readDerivation(drvTmpPath));
-          break;
-        } catch (nix::Interrupted &e) {
-          throw e;
-        } catch (nix::Error &e) {
-          printTalkative("ignoring exception during drv lookup in %s: %s", currentStore->getUri(), e.what());
-        } catch (std::exception &e) {
-          printTalkative("ignoring exception during drv lookup in %s: %s", currentStore->getUri(), e.what());
-        }
-      }
-
-      if (!derivation) {
-        throw nix::Error(format("Could not read derivation %1% from local store or substituters.") % derivationPath);
-      }
+      nix::BasicDerivation *derivation = new BasicDerivation(*$fptr-ptr:(Derivation *derivation));
 
       {
         std::string extraInput;

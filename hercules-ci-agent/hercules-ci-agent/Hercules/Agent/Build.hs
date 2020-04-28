@@ -1,11 +1,9 @@
 module Hercules.Agent.Build where
 
-import Data.Char (isSpace)
 import qualified Data.Conduit.Combinators as Conduit
 import Data.Conduit.Process (sourceProcessWithStreams)
 import Data.IORef.Lifted
 import qualified Data.Map as M
-import qualified Data.Text as T
 import qualified Hercules.API.Agent.Build as API.Build
 import qualified Hercules.API.Agent.Build.BuildEvent as BuildEvent
 import qualified Hercules.API.Agent.Build.BuildEvent.OutputInfo as OutputInfo
@@ -17,7 +15,6 @@ import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import Hercules.API.Agent.Build.BuildTask
   ( BuildTask,
   )
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
 import qualified Hercules.API.Logs as API.Logs
 import Hercules.API.Servant (noContent)
 import Hercules.API.TaskStatus (TaskStatus)
@@ -29,13 +26,11 @@ import Hercules.Agent.Env
 import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
-import Hercules.Agent.Nix.RetrieveDerivationInfo
-  ( retrieveDerivationInfo,
-  )
 import Hercules.Agent.WorkerProcess
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.Build as Command.Build
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
+import qualified Hercules.Agent.WorkerProtocol.Event.BuildResult as BuildResult
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.Error (defaultRetry)
 import Protolude
@@ -78,17 +73,26 @@ performBuild buildTask = do
     ExitSuccess -> pass
     _ -> panic $ "Worker failed: " <> show exitCode
   status <- readIORef statusRef
-  let result = case status of
-        Just True -> TaskStatus.Successful ()
-        Just False -> TaskStatus.Terminated ()
-        Nothing -> TaskStatus.Exceptional "Build did not complete"
-  case result of
-    s@TaskStatus.Successful {} -> s <$ do
-      outs <- getOutputPathInfos buildTask
+  case status of
+    Just (BuildResult.BuildSuccess {outputs = outs'}) -> do
+      let outs = convertOutputs (BuildTask.derivationPath buildTask) outs'
       reportOutputInfos buildTask outs
       push buildTask outs
       reportSuccess buildTask
-    x -> pure x
+      pure $ TaskStatus.Successful ()
+    Just (BuildResult.BuildFailure {}) -> pure $ TaskStatus.Terminated ()
+    Nothing -> pure $ TaskStatus.Exceptional "Build did not complete"
+
+convertOutputs :: Text -> [BuildResult.OutputInfo] -> Map Text OutputInfo
+convertOutputs deriver = foldMap $ \oi ->
+  M.singleton (toS $ BuildResult.name oi) $
+    OutputInfo.OutputInfo
+      { OutputInfo.deriver = deriver,
+        name = toSL $ BuildResult.name oi,
+        path = toSL $ BuildResult.path oi,
+        size = fromIntegral $ BuildResult.size oi,
+        hash = toSL $ BuildResult.hash oi
+      }
 
 stderrLineHandler :: Int -> ByteString -> App ()
 stderrLineHandler pid ln =
@@ -133,31 +137,6 @@ realise buildTask = do
       emitEvents buildTask [BuildEvent.Done False]
       pure $ TaskStatus.Terminated ()
     ExitSuccess -> TaskStatus.Successful () <$ logLocM DebugS "Building succeeded"
-
-getOutputPathInfos :: BuildTask -> App (Map Text OutputInfo)
-getOutputPathInfos buildTask = do
-  let drvPath = BuildTask.derivationPath buildTask
-  drvInfo <- retrieveDerivationInfo drvPath
-  flip M.traverseWithKey (DerivationInfo.outputs drvInfo) $ \outputName o -> do
-    let outputPath = DerivationInfo.path o
-    sizeStr <- Nix.readNixProcess "nix-store" ["--query", "--size"] [toS outputPath] ""
-    size <-
-      case reads (toS $ T.dropAround isSpace $ toS sizeStr) of
-        [(x, "")] -> pure x
-        _ ->
-          throwIO
-            $ FatalError
-            $ "nix-store returned invalid size "
-              <> show sizeStr
-    hashStr <- Nix.readNixProcess "nix-store" ["--query", "--hash"] [toS outputPath] ""
-    let h = T.dropAround isSpace (toS hashStr)
-    pure OutputInfo.OutputInfo
-      { OutputInfo.deriver = drvPath,
-        name = outputName,
-        path = outputPath,
-        size = size,
-        hash = h
-      }
 
 push :: BuildTask -> Map Text OutputInfo -> App ()
 push buildTask outs = do
