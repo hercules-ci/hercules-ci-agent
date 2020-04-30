@@ -1,10 +1,17 @@
+{-# LANGUAGE PartialTypeSignatures #-}
+
+-- | STM functions in MonadIO and custom functions like modifyTVarIO.
+--
+-- Why not lifted-stm of stm-lifted package?
+--  - neither is in stackage
+--  - only a few functions needed
 module Hercules.Agent.STM
   ( module Hercules.Agent.STM,
     module Control.Concurrent.STM,
   )
 where
 
-import Control.Concurrent.STM (STM, TVar, readTVar, writeTVar)
+import Control.Concurrent.STM (STM, TBQueue, TChan, TVar, readTVar, writeTVar)
 import qualified Control.Concurrent.STM as STM
 import Protolude hiding (atomically)
 
@@ -24,3 +31,6 @@ modifyTVarIO tvar f = atomically $ do
   let (a1, b) = f a0
   writeTVar tvar a1
   pure b
+
+newTChanIO :: MonadIO m => m (TChan a)
+newTChanIO = liftIO STM.newTChanIO

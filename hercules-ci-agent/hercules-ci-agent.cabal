@@ -24,6 +24,7 @@ library
   exposed-modules:
       Hercules.Agent.Producer
       Hercules.Agent.Socket
+      Hercules.Agent.STM
       Hercules.Agent.WorkerProtocol.Command
       Hercules.Agent.WorkerProtocol.Command.Build
       Hercules.Agent.WorkerProtocol.Command.BuildResult
@@ -111,7 +112,6 @@ executable hercules-ci-agent
       Hercules.Agent.NixPath
       Hercules.Agent.Options
       Hercules.Agent.SecureDirectory
-      Hercules.Agent.STM
       Hercules.Agent.Token
       Hercules.Agent.WorkerProcess
       Paths_hercules_ci_agent

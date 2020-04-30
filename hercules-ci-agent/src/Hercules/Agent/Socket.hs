@@ -12,9 +12,8 @@ module Hercules.Agent.Socket
   )
 where
 
-import Control.Concurrent.STM (atomically)
 import Control.Concurrent.STM.TBQueue (TBQueue, flushTBQueue, newTBQueue, writeTBQueue)
-import Control.Concurrent.STM.TChan (TChan, newTChan, writeTChan)
+import Control.Concurrent.STM.TChan (TChan, writeTChan)
 import Control.Concurrent.STM.TVar (TVar, modifyTVar, newTVar, readTVar, writeTVar)
 import Control.Monad.IO.Unlift
 import qualified Data.Aeson as A
@@ -23,10 +22,11 @@ import Hercules.API.Agent.LifeCycle.ServiceInfo (ServiceInfo)
 import qualified Hercules.API.Agent.LifeCycle.ServiceInfo as ServiceInfo
 import qualified Hercules.API.Agent.Socket.Frame as Frame
 import Hercules.API.Agent.Socket.Frame (Frame)
+import Hercules.Agent.STM (atomically, newTChanIO, newTVarIO)
 import Katip (KatipContext, Severity (..), katipAddContext, katipAddNamespace, logLocM, sl)
 import Network.WebSockets (Connection, runClientWith)
 import qualified Network.WebSockets as WS
-import Protolude hiding (handle, race, race_)
+import Protolude hiding (atomically, handle, race, race_)
 import UnliftIO.Async (race, race_)
 import UnliftIO.Exception (handle)
 import Wuss (runSecureClientWith)
@@ -54,16 +54,12 @@ data SocketConfig ap sp m
 requiredServiceVersion :: (Int, Int)
 requiredServiceVersion = (1, 0)
 
--- | @'liftIO' . 'atomically'@
-a'ly :: MonadIO m => STM a -> m a
-a'ly = liftIO . atomically
-
 withReliableSocket :: (A.FromJSON sp, A.ToJSON ap, MonadIO m, MonadUnliftIO m, KatipContext m) => SocketConfig ap sp m -> (Socket sp ap -> m a) -> m a
 withReliableSocket socketConfig f = do
-  writeQueue <- a'ly $ newTBQueue 100
-  agentMessageNextN <- a'ly $ newTVar 0
-  serviceMessageChan <- a'ly $ newTChan
-  highestAcked <- a'ly $ newTVar (-1)
+  writeQueue <- atomically $ newTBQueue 100
+  agentMessageNextN <- newTVarIO 0
+  serviceMessageChan <- newTChanIO
+  highestAcked <- newTVarIO (-1)
   let tagPayload p = do
         c <- readTVar agentMessageNextN
         writeTVar agentMessageNextN (c + 1)
@@ -88,8 +84,8 @@ checkVersion' si =
 
 runReliableSocket :: forall ap sp m. (A.ToJSON ap, A.FromJSON sp, MonadUnliftIO m, KatipContext m) => SocketConfig ap sp m -> TBQueue (Frame ap ap) -> TChan sp -> TVar Integer -> forall a. m a
 runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = katipAddNamespace "Socket" do
-  (unacked :: TVar (DList (Frame Void ap))) <- a'ly $ newTVar mempty
-  (lastServiceN :: TVar Integer) <- a'ly $ newTVar (-1)
+  (unacked :: TVar (DList (Frame Void ap))) <- atomically $ newTVar mempty
+  (lastServiceN :: TVar Integer) <- atomically $ newTVar (-1)
   let logWarningPause :: SomeException -> m ()
       logWarningPause e = do
         katipAddContext (sl "message" (displayException e))
@@ -122,9 +118,9 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
         sendUnacked conn
       sendUnacked :: Connection -> m ()
       sendUnacked conn = do
-        unackedNow <- a'ly $ readTVar unacked
+        unackedNow <- atomically $ readTVar unacked
         send conn $ fmap (Frame.mapOob absurd) $ toList unackedNow
-      cleanAcknowledged newAck = a'ly do
+      cleanAcknowledged newAck = atomically do
         unacked0 <- readTVar unacked
         writeTVar unacked $
           unacked0
@@ -144,7 +140,7 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
         forever $ do
           msg <- recv conn
           case msg of
-            Frame.Msg {p = pl, n = n} -> a'ly do
+            Frame.Msg {p = pl, n = n} -> atomically do
               lastN <- readTVar lastServiceN
               -- when recent
               when (n > lastN) do
@@ -153,12 +149,12 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
               writeTBQueue writeQueue (Frame.Ack {n = n})
             Frame.Ack {n = n} ->
               cleanAcknowledged n
-            Frame.Oob o -> a'ly do
+            Frame.Oob o -> atomically do
               writeTChan serviceMessageChan o
             Frame.Exception e -> katipAddContext (sl "message" e) $ logLocM WarningS $ "Service exception"
       writeThread conn = katipAddNamespace "Writer" do
         forever do
-          msgs <- a'ly do
+          msgs <- atomically do
             -- TODO: make unacked bounded
             allMessages <- flushTBQueue writeQueue
             when (null allMessages) retry
