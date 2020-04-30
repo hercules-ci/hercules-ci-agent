@@ -42,6 +42,7 @@ data Config purpose
       { herculesApiBaseURL :: Item purpose 'Required Text,
         agentSocketBase :: Item purpose 'Required Text,
         bulkSocketBase :: Item purpose 'Required Text,
+        requireMaterializedDerivations :: Item purpose 'Required Bool,
         concurrentTasks :: Item purpose 'Required Integer,
         baseDirectory :: Item purpose 'Required FilePath,
         -- | Read-only
@@ -63,6 +64,8 @@ tomlCodec =
     .= agentSocketBase
     <*> dioptional (Toml.text "bulkSocketBase")
     .= bulkSocketBase
+    <*> dioptional (Toml.bool "requireMaterializedDerivations")
+    .= requireMaterializedDerivations
     <*> dioptional (Toml.integer "concurrentTasks")
     .= concurrentTasks
     <*> dioptional (Toml.string keyBaseDirectory)
@@ -128,6 +131,7 @@ finalizeConfig loc input = do
     { herculesApiBaseURL = apiBaseUrl,
       agentSocketBase = fromMaybe defaultSocketBase $ agentSocketBase input,
       bulkSocketBase = fromMaybe defaultBulkSocketBase $ bulkSocketBase input,
+      requireMaterializedDerivations = fromMaybe False $ requireMaterializedDerivations input,
       binaryCachesPath = binaryCachesP,
       clusterJoinTokenPath = clusterJoinTokenP,
       concurrentTasks = validConcurrentTasks,

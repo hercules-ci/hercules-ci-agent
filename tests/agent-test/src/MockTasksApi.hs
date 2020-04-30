@@ -65,6 +65,7 @@ import qualified Hercules.API.Agent.Socket.ServicePayload as SP
 import Hercules.API.Agent.Tasks (TasksAPI (..))
 import Hercules.API.Id
 import Hercules.API.Logs (LogsAPI (..))
+import Hercules.API.Logs.LogMessage (LogMessage)
 import Hercules.API.Task (Task)
 import qualified Hercules.API.Task as Task
 import qualified Hercules.API.TaskStatus as TaskStatus
@@ -265,11 +266,11 @@ serviceVersion :: (Int, Int)
 serviceVersion = (1, 0)
 
 logSocket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
-logSocket server conn = do
+logSocket _server conn = do
   let send :: MonadIO m => [Frame SI.ServiceInfo SI.ServiceInfo] -> m ()
       send = send' conn
       -- FIXME
-      recv :: Handler (Frame () ())
+      recv :: Handler (Frame LogMessage LogMessage)
       recv = recv' conn
   let serviceInfo = SI.ServiceInfo {version = serviceVersion}
   send [Frame.Oob {o = serviceInfo}]
@@ -281,8 +282,11 @@ logSocket server conn = do
       Frame.Exception {message = msg} -> panic $ "Agent exception: " <> msg
       Frame.Ack {} -> pass
       Frame.Oob {} -> pass
-      Frame.Msg {p = payload} -> processLogPayload payload
+      Frame.Msg {p = payload, n = number} -> do
+        processLogPayload payload
+        send [Frame.Ack number]
 
+processLogPayload :: LogMessage -> Handler ()
 processLogPayload _ = pass
 
 socket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
@@ -307,7 +311,9 @@ socket server conn = do
       Frame.Exception {message = msg} -> panic $ "Agent exception: " <> msg
       Frame.Ack {} -> pass
       Frame.Oob {} -> pass
-      Frame.Msg {p = payload} -> processPayload payload
+      Frame.Msg {p = payload, n = number} -> do
+        processPayload payload
+        send [Frame.Ack number]
 
 processPayload :: AgentPayload -> Handler ()
 processPayload _ap = pass

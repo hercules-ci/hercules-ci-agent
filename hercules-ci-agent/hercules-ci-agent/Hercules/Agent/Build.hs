@@ -61,6 +61,7 @@ performBuild buildTask = do
           panic e
         _ -> pass
   bulkSocketHost <- asks (Config.bulkSocketBase . Env.config)
+  materialize <- asks (Config.requireMaterializedDerivations . Env.config)
   liftIO $ writeChan commandChan $ Just $ Command.Build $ Command.Build.Build
     { drvPath = BuildTask.derivationPath buildTask,
       inputDerivationOutputPaths = toS <$> BuildTask.inputDerivationOutputPaths buildTask,
@@ -68,7 +69,8 @@ performBuild buildTask = do
         { token = LogSettings.Sensitive $ BuildTask.logToken buildTask,
           path = "/api/v1/logs/build/socket",
           host = bulkSocketHost
-        }
+        },
+      materializeDerivation = materialize
     }
   exitCode <- runWorker procSpec stderrLineHandler commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> show exitCode

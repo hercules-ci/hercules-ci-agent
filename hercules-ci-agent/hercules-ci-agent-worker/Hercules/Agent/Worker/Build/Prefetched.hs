@@ -126,9 +126,10 @@ getDerivation store derivationPath =
     }|]
 
 -- | @buildDerivation derivationPath derivationText@
-buildDerivation :: Ptr (Ref NixStore) -> ByteString -> ForeignPtr Derivation -> [ByteString] -> IO BuildResult
+buildDerivation :: Ptr (Ref NixStore) -> ByteString -> ForeignPtr Derivation -> Maybe [ByteString] -> IO BuildResult
 buildDerivation store derivationPath derivation extraInputs =
-  let extraInputsMerged = C8.intercalate "\n" extraInputs
+  let extraInputsMerged = C8.intercalate "\n" (fromMaybe [] extraInputs)
+      materializeDerivation = if isNothing extraInputs then 1 else 0
    in alloca $ \successPtr ->
         alloca $ \statusPtr ->
           alloca $ \startTimePtr ->
@@ -142,70 +143,87 @@ buildDerivation store derivationPath derivation extraInputs =
       time_t &startTime = *$(time_t *startTimePtr);
       time_t &stopTime = *$(time_t *stopTimePtr);
       std::string derivationPath($bs-ptr:derivationPath, $bs-len:derivationPath);
-      std::string extraInputsMerged($bs-ptr:extraInputsMerged, $bs-len:extraInputsMerged);
-      std::list<nix::ref<nix::Store>> stores = getDefaultSubstituters();
-      stores.push_front(*$(refStore* store));
 
-      nix::BasicDerivation *derivation = new BasicDerivation(*$fptr-ptr:(Derivation *derivation));
-
-      {
+      if ($(bool materializeDerivation)) {
+        store.ensurePath(derivationPath);
+        nix::PathSet paths{derivationPath};
+        try {
+          store.buildPaths(paths);
+          status = -1;
+          success = true;
+          errorMessage = strdup("");
+          startTime = 0;
+          stopTime = 0;
+        }
+        catch (nix::Error &e) {
+          status = -2;
+          success = false;
+          errorMessage = strdup(e.msg().c_str());
+          startTime = 0;
+          stopTime = 0;
+        }
+      }
+      else {
+        nix::BasicDerivation *derivation = new BasicDerivation(*$fptr-ptr:(Derivation *derivation));
+        std::string extraInputsMerged($bs-ptr:extraInputsMerged, $bs-len:extraInputsMerged);
         std::string extraInput;
         std::istringstream stream(extraInputsMerged);
+
         while (std::getline(stream, extraInput)) {
           derivation->inputSrcs.insert(extraInput);
         }
-      }
 
-      // TODO: fall back to untrusted buildDerivation
-      nix::BuildResult result = store.buildDerivation(derivationPath, *derivation);
-      switch (result.status) {
-        case nix::BuildResult::Built:
-          status = 0;
-          break;
-        case nix::BuildResult::Substituted:
-          status = 1;
-          break;
-        case nix::BuildResult::AlreadyValid:
-          status = 2;
-          break;
-        case nix::BuildResult::PermanentFailure:
-          status = 3;
-          break;
-        case nix::BuildResult::InputRejected:
-          status = 4;
-          break;
-        case nix::BuildResult::OutputRejected:
-          status = 5;
-          break;
-        case nix::BuildResult::TransientFailure: // possibly transient
-          status = 6;
-          break;
-        case nix::BuildResult::CachedFailure: // no longer used
-          status = 7;
-          break;
-        case nix::BuildResult::TimedOut:
-          status = 8;
-          break;
-        case nix::BuildResult::MiscFailure:
-          status = 9;
-          break;
-        case nix::BuildResult::DependencyFailed:
-          status = 10;
-          break;
-        case nix::BuildResult::LogLimitExceeded:
-          status = 11;
-          break;
-        case nix::BuildResult::NotDeterministic:
-          status = 12;
-          break;
-        default:
-          status = result.success() ? -1 : -2;
-          break;
+        nix::BuildResult result = store.buildDerivation(derivationPath, *derivation);
+
+        switch (result.status) {
+          case nix::BuildResult::Built:
+            status = 0;
+            break;
+          case nix::BuildResult::Substituted:
+            status = 1;
+            break;
+          case nix::BuildResult::AlreadyValid:
+            status = 2;
+            break;
+          case nix::BuildResult::PermanentFailure:
+            status = 3;
+            break;
+          case nix::BuildResult::InputRejected:
+            status = 4;
+            break;
+          case nix::BuildResult::OutputRejected:
+            status = 5;
+            break;
+          case nix::BuildResult::TransientFailure: // possibly transient
+            status = 6;
+            break;
+          case nix::BuildResult::CachedFailure: // no longer used
+            status = 7;
+            break;
+          case nix::BuildResult::TimedOut:
+            status = 8;
+            break;
+          case nix::BuildResult::MiscFailure:
+            status = 9;
+            break;
+          case nix::BuildResult::DependencyFailed:
+            status = 10;
+            break;
+          case nix::BuildResult::LogLimitExceeded:
+            status = 11;
+            break;
+          case nix::BuildResult::NotDeterministic:
+            status = 12;
+            break;
+          default:
+            status = result.success() ? -1 : -2;
+            break;
+        }
+        success = result.success();
+        errorMessage = strdup(result.errorMsg.c_str());
+        startTime = result.startTime;
+        stopTime = result.stopTime;
       }
-      success = result.success();
-      errorMessage = strdup(result.errorMsg.c_str());
-      startTime = result.startTime;
-      stopTime = result.stopTime;
     }
     |]
                 successValue <- peek successPtr

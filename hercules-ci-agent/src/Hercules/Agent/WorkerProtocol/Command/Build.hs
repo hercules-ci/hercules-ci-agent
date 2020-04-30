@@ -10,6 +10,7 @@ data Build
   = Build
       { drvPath :: Text,
         inputDerivationOutputPaths :: [ByteString],
-        logSettings :: LogSettings
+        logSettings :: LogSettings,
+        materializeDerivation :: Bool
       }
   deriving (Generic, Binary, Show, Eq)

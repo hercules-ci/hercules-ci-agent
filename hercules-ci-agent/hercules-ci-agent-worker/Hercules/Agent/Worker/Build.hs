@@ -24,7 +24,7 @@ runBuild store build = do
   derivation <- case derivationMaybe of
     Just drv -> pure drv
     Nothing -> panic $ "Could not retrieve derivation " <> show drvPath <> " from local store or binary caches."
-  nixBuildResult <- liftIO $ buildDerivation store drvPath derivation extraPaths
+  nixBuildResult <- liftIO $ buildDerivation store drvPath derivation (extraPaths <$ guard (not (Command.Build.materializeDerivation build)))
   liftIO $ putErrText $ show nixBuildResult
   buildResult <- liftIO $ enrichResult store derivation nixBuildResult
   yield $ Event.BuildResult buildResult
