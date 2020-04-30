@@ -1,5 +1,7 @@
 module Hercules.Agent.Build where
 
+import qualified Data.Aeson as A
+import qualified Data.ByteString as BS
 import qualified Data.Conduit.Combinators as Conduit
 import Data.Conduit.Process (sourceProcessWithStreams)
 import Data.IORef.Lifted
@@ -33,6 +35,7 @@ import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.BuildResult as BuildResult
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.Error (defaultRetry)
+import qualified Katip.Core
 import Protolude
 import Servant.Auth.Client
 import System.Process
@@ -95,11 +98,15 @@ convertOutputs deriver = foldMap $ \oi ->
       }
 
 stderrLineHandler :: Int -> ByteString -> App ()
+stderrLineHandler _ ln
+  | "@katip " `BS.isPrefixOf` ln,
+    Just item <- A.decode (toS $ BS.drop 7 ln) =
+    -- "This is the lowest level function [...] useful when implementing centralised logging services."
+    Katip.Core.logKatipItem (Katip.Core.SimpleLogPayload . M.toList . fmap (Katip.Core.AnyLogPayload :: A.Value -> Katip.Core.AnyLogPayload) <$> item)
 stderrLineHandler pid ln =
   withNamedContext "worker" (pid :: Int)
     $ logLocM InfoS
-    $ "Builder: "
-      <> logStr (toSL ln :: Text)
+    $ "Builder: " <> logStr (toSL ln :: Text)
 
 realise :: BuildTask.BuildTask -> App TaskStatus
 realise buildTask = do

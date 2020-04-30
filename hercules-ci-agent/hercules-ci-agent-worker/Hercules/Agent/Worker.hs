@@ -205,7 +205,7 @@ logger :: Build -> ConduitM () (Vector LogEntry) IO () -> IO ()
 logger buildCommand entriesSource = do
   socketConfig <- makeSocketConfig buildCommand
   -- TODO integrate katip more
-  withKatip $ Socket.withReliableSocket socketConfig $ \socket -> do
+  withKatip $ Socket.withReliableSocket socketConfig $ \socket -> katipAddNamespace "Build" do
     let conduit =
           entriesSource
             .| Logger.unbatch
@@ -251,13 +251,15 @@ foldMapTap f = go mempty
 
 withKatip :: (MonadUnliftIO m) => KatipContextT m a -> m a
 withKatip m = do
-  handleScribe <- liftIO $ mkHandleScribe (ColorLog False) stderr (permitItem DebugS) V2
+  let format :: forall a. LogItem a => ItemFormatter a
+      format = (\_ _ _ -> "@katip ") <> jsonFormat
+  handleScribe <- liftIO $ mkHandleScribeWithFormatter format (ColorLog False) stderr (permitItem DebugS) V2
   let makeLogEnv = registerScribe "stderr" handleScribe defaultScribeSettings =<< initLogEnv "Worker" "production"
       initialContext = ()
-      ns = "Worker"
-  -- closeScribes will stop accepting new logs, flush existing ones and clean up resources
+      extraNs = mempty -- "Worker" is already set in initLogEnv.
+        -- closeScribes will stop accepting new logs, flush existing ones and clean up resources
   bracket (liftIO makeLogEnv) (liftIO . closeScribes) $ \logEnv ->
-    runKatipContextT logEnv initialContext ns m
+    runKatipContextT logEnv initialContext extraNs m
 
 makeSocketConfig :: Monad m => Build -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
 makeSocketConfig Build.Build {logSettings = l} = do
