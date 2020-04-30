@@ -86,11 +86,18 @@ runReliableSocket :: forall ap sp m. (A.ToJSON ap, A.FromJSON sp, MonadUnliftIO 
 runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = katipAddNamespace "Socket" do
   (unacked :: TVar (DList (Frame Void ap))) <- atomically $ newTVar mempty
   (lastServiceN :: TVar Integer) <- atomically $ newTVar (-1)
-  let logWarningPause :: SomeException -> m ()
-      logWarningPause e = do
+  let katipExceptionContext e =
         katipAddContext (sl "message" (displayException e))
-          $ katipAddContext (sl "exception" (show e :: [Char]))
-          $ logLocM WarningS "Recovering from exception in socket handler"
+          . katipAddContext (sl "exception" (show e :: [Char]))
+      logWarningPause :: SomeException -> m ()
+      logWarningPause e | Just (WS.ConnectionClosed) <- fromException e = do
+        katipExceptionContext e $ logLocM InfoS "Socket closed. Reconnecting."
+        liftIO $ threadDelay 10_000_000
+      logWarningPause e | Just (WS.ParseException "not enough bytes") <- fromException e = do
+        katipExceptionContext e $ logLocM InfoS "Socket closed prematurely. Reconnecting."
+        liftIO $ threadDelay 10_000_000
+      logWarningPause e = do
+        katipExceptionContext e $ logLocM WarningS "Recovering from exception in socket handler. Reconnecting."
         liftIO $ threadDelay 10_000_000
       send :: Connection -> [Frame ap ap] -> m ()
       send conn msgs = do
