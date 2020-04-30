@@ -7,13 +7,14 @@ where
 
 import Control.Concurrent.Async.Lifted
   ( race,
+    withAsync,
   )
 import Control.Concurrent.Lifted (forkFinally, killThread)
+import Control.Concurrent.STM (TVar, readTVar)
 import Control.Concurrent.STM.TChan
 import Control.Exception (displayException)
 import Control.Exception.Lifted (bracket)
 import qualified Data.Aeson as A
-import Data.IORef.Lifted
 import qualified Data.Map as M
 import Data.Time (getCurrentTime)
 import qualified Data.UUID.V4 as UUID
@@ -51,6 +52,7 @@ import qualified Hercules.Agent.Evaluate as Evaluate
 import qualified Hercules.Agent.Init as Init
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Options as Options
+import Hercules.Agent.STM
 import Hercules.Agent.Socket as Socket
 import Hercules.Agent.Socket (serviceChan)
 import Hercules.Agent.Token (withAgentToken)
@@ -60,14 +62,17 @@ import Hercules.Error
     retry,
   )
 import Protolude hiding
-  ( bracket,
+  ( atomically,
+    bracket,
     forkFinally,
     handle,
     killThread,
     race,
     retry,
+    withAsync,
     withMVar,
   )
+import qualified Prelude
 
 main :: IO ()
 main = Init.setupLogging $ \logEnv -> do
@@ -86,11 +91,10 @@ testConfiguration _env _cfg = do
 
 run :: Env.Env -> Config.FinalConfig -> IO ()
 run env _cfg = do
-  tasks <- newIORef mempty
   Env.runApp env
     $ katipAddContext (sl "agent-version" (A.String herculesAgentVersion))
     $ withAgentToken
-    $ withLifeCycle \hello ->
+    $ withLifeCycle \hello -> withTaskState \tasks ->
       withAgentSocket hello tasks \socket ->
         withApplicationLevelPinger socket $ do
           logLocM InfoS "Agent online."
@@ -108,11 +112,30 @@ run env _cfg = do
                     Build.performBuild buildTask
               ServicePayload.Cancel cancellation -> cancelTask tasks socket cancellation
 
-launchTask :: IORef (Map (Id (Task Task.Any)) ThreadId) -> Env.AgentSocket -> Id (Task Task.Any) -> App TaskStatus.TaskStatus -> App ()
+withTaskState :: (TVar (Map (Id (Task Task.Any)) ThreadId) -> App a) -> App a
+withTaskState f = do
+  tasks <- newTVarIO mempty
+  withAsync (taskStateMonitor tasks) \_ ->
+    f tasks
+
+taskStateMonitor :: TVar (Map (Id (Task Task.Any)) ThreadId) -> App ()
+taskStateMonitor tasks = watchChange mempty
+  where
+    watchChange :: Map (Id (Task Task.Any)) ThreadId -> App ()
+    watchChange current = do
+      new <- atomically do
+        now <- readTVar tasks
+        guard $ now /= current
+        pure now
+      katipAddContext (sl "state" (A.toJSON $ fmap Prelude.show new)) do
+        logLocM DebugS "Task state updated"
+      watchChange new
+
+launchTask :: TVar (Map (Id (Task Task.Any)) ThreadId) -> Env.AgentSocket -> Id (Task Task.Any) -> App TaskStatus.TaskStatus -> App ()
 launchTask tasks socket taskId doWork = withNamedContext "task" taskId do
   let insertSelf = do
         me <- liftIO myThreadId
-        join $ atomicModifyIORef tasks \tasks0 ->
+        join $ modifyTVarIO tasks \tasks0 ->
           case M.lookup taskId tasks0 of
             Just preexist ->
               ( tasks0,
@@ -122,7 +145,7 @@ launchTask tasks socket taskId doWork = withNamedContext "task" taskId do
             Nothing -> (M.insert taskId me tasks0, pass)
       done st = do
         report' st
-        liftIO $ atomicModifyIORef tasks \tasks0 ->
+        modifyTVarIO tasks \tasks0 ->
           (M.delete taskId tasks0, ())
       report' (Right s@(TaskStatus.Terminated _)) = do
         logLocM InfoS "Completed failed task"
@@ -150,16 +173,16 @@ launchTask tasks socket taskId doWork = withNamedContext "task" taskId do
       liftIO $ atomically $ Socket.write socket $ AgentPayload.Started $ AgentPayload.MkStarted {taskId = taskId}
       doWork
 
-cancelTask :: IORef (Map (Id (Task Task.Any)) ThreadId) -> Env.AgentSocket -> ServicePayload.Cancel -> App ()
+cancelTask :: TVar (Map (Id (Task Task.Any)) ThreadId) -> Env.AgentSocket -> ServicePayload.Cancel -> App ()
 cancelTask tasks socket cancellation = do
   let taskId = ServicePayload.taskId cancellation
   withNamedContext "taskId" taskId do
-    tasksNow <- readIORef tasks
+    tasksNow <- readTVarIO tasks
     case M.lookup taskId tasksNow of
       Just x -> do
         logLocM DebugS "Killing thread for cancelled task"
         killThread x
-        liftIO $ atomically $ Socket.write socket $ AgentPayload.Cancelled $ AgentPayload.MkCancelled {taskId = taskId}
+        atomically $ Socket.write socket $ AgentPayload.Cancelled $ AgentPayload.MkCancelled {taskId = taskId}
       Nothing ->
         logLocM DebugS "cancelTask: No such task"
 

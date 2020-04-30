@@ -1,6 +1,5 @@
 module Hercules.Agent.AgentSocket (withAgentSocket) where
 
-import Data.IORef.Lifted
 import qualified Data.Map as M
 import Hercules.API.Agent.LifeCycle.StartInfo (Hello, tasksInProgress)
 import qualified Hercules.API.Agent.Socket.AgentPayload as AgentPayload
@@ -15,6 +14,7 @@ import Hercules.Agent.Env
   ( App,
   )
 import qualified Hercules.Agent.Env as Agent.Env
+import Hercules.Agent.STM (TVar, readTVarIO)
 import Hercules.Agent.Socket as Socket
 import Protolude hiding
   ( bracket,
@@ -27,7 +27,7 @@ import Protolude hiding
   )
 import qualified Servant.Auth.Client
 
-withAgentSocket :: Hello -> IORef (Map (Id (Task Task.Any)) b) -> (Socket ServicePayload AgentPayload -> App a) -> App a
+withAgentSocket :: Hello -> TVar (Map (Id (Task Task.Any)) b) -> (Socket ServicePayload AgentPayload -> App a) -> App a
 withAgentSocket hello tasks f = do
   let setSocket socket env = env {Agent.Env.socket = socket}
       appThread socket = local (setSocket socket) $ f socket
@@ -38,7 +38,7 @@ withAgentSocket hello tasks f = do
   withReliableSocket
     ( Socket.SocketConfig
         { makeHello = do
-            currentTasks <- readIORef tasks
+            currentTasks <- readTVarIO tasks
             pure $ AgentPayload.Hello hello {tasksInProgress = M.keys currentTasks},
           checkVersion = checkAgentVersion,
           host = base,
