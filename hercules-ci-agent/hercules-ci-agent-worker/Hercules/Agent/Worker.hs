@@ -55,6 +55,7 @@ import Katip
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude hiding (bracket, evalState)
 import qualified System.Environment as Environment
+import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.Timeout (timeout)
 import UnliftIO.Exception (bracket)
 import Prelude ()
@@ -80,10 +81,9 @@ instance Exception BuildException
 
 main :: IO ()
 main = do
-  -- setDebug
-  --CNix.init
-  --Logger.initLogger
-  -- setDebug
+  hSetBuffering stderr LineBuffering
+  CNix.init
+  Logger.initLogger
   [options] <- Environment.getArgs
   -- narinfo-cache-negative-ttl: Always try requesting narinfos because it may have been built in the meanwhile
   let allOptions = Prelude.read options ++ [("narinfo-cache-negative-ttl", "0")]
