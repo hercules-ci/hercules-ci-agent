@@ -39,8 +39,6 @@ type FinalConfig = Config 'Final
 data Config purpose
   = Config
       { herculesApiBaseURL :: Item purpose 'Required Text,
-        agentSocketBase :: Item purpose 'Optional Text,
-        bulkSocketBase :: Item purpose 'Optional Text,
         requireMaterializedDerivations :: Item purpose 'Required Bool,
         concurrentTasks :: Item purpose 'Required Integer,
         baseDirectory :: Item purpose 'Required FilePath,
@@ -59,10 +57,6 @@ tomlCodec =
   Config
     <$> dioptional (Toml.text "apiBaseUrl")
     .= herculesApiBaseURL
-    <*> dioptional (Toml.text "socketBase")
-    .= agentSocketBase
-    <*> dioptional (Toml.text "bulkSocketBase")
-    .= bulkSocketBase
     <*> dioptional (Toml.bool "requireMaterializedDerivations")
     .= requireMaterializedDerivations
     <*> dioptional (Toml.integer "concurrentTasks")
@@ -125,8 +119,6 @@ finalizeConfig loc input = do
   let apiBaseUrl = fromMaybe dabu $ herculesApiBaseURL input
   pure Config
     { herculesApiBaseURL = apiBaseUrl,
-      agentSocketBase = agentSocketBase input,
-      bulkSocketBase = bulkSocketBase input,
       requireMaterializedDerivations = fromMaybe False $ requireMaterializedDerivations input,
       binaryCachesPath = binaryCachesP,
       clusterJoinTokenPath = clusterJoinTokenP,
