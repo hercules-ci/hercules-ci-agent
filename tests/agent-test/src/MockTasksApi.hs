@@ -262,9 +262,6 @@ endpoints server =
     :<|> (logSocket server)
     :<|> (toSourceIO & liftA & liftA & ($ sourceball))
 
-serviceVersion :: (Int, Int)
-serviceVersion = (1, 0)
-
 logSocket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
 logSocket _server conn = do
   let send :: MonadIO m => [Frame SI.ServiceInfo SI.ServiceInfo] -> m ()
@@ -272,7 +269,6 @@ logSocket _server conn = do
       -- FIXME
       recv :: Handler (Frame LogMessage LogMessage)
       recv = recv' conn
-  let serviceInfo = SI.ServiceInfo {version = serviceVersion}
   send [Frame.Oob {o = serviceInfo}]
   _hello <- recv
   send [Frame.Ack (-1)]
@@ -295,7 +291,6 @@ socket server conn = do
       send = send' conn
       recv :: MonadIO m => m (Frame AgentPayload AgentPayload)
       recv = recv' conn
-  let serviceInfo = SI.ServiceInfo {version = serviceVersion}
   send [Frame.Oob {o = SP.ServiceInfo serviceInfo}]
   _hello <- recv
   send [Frame.Ack (-1)]
@@ -484,8 +479,16 @@ lifeCycleEndpoints _server =
     { LifeCycle.agentSessionCreate = handleAgentCreate,
       LifeCycle.hello = \_ _ -> pure NoContent,
       LifeCycle.heartbeat = \_ _ -> pure NoContent,
-      LifeCycle.goodbye = \_ _ -> pure NoContent
+      LifeCycle.goodbye = \_ _ -> pure NoContent,
+      LifeCycle.getServiceInfo = pure serviceInfo
     }
+
+serviceInfo :: SI.ServiceInfo
+serviceInfo = SI.ServiceInfo
+  { SI.version = (1, 0),
+    SI.agentSocketBaseURL = "http://api",
+    SI.bulkSocketBaseURL = "http://api"
+  }
 
 handleAgentCreate ::
   CreateAgentSession.CreateAgentSession ->

@@ -59,6 +59,7 @@ library
     , lifted-base
     , monad-control
     , mtl
+    , network-uri
     , optparse-applicative
     , protolude
     , process
@@ -112,6 +113,7 @@ executable hercules-ci-agent
       Hercules.Agent.NixPath
       Hercules.Agent.Options
       Hercules.Agent.SecureDirectory
+      Hercules.Agent.ServiceInfo
       Hercules.Agent.Token
       Hercules.Agent.WorkerProcess
       Paths_hercules_ci_agent
@@ -151,6 +153,7 @@ executable hercules-ci-agent
     , lifted-base
     , monad-control
     , mtl
+    , network-uri
     , nix-derivation
     , network
     , optparse-applicative
@@ -240,6 +243,7 @@ executable hercules-ci-agent-worker
     , lifted-async
     , lifted-base
     , monad-control
+    , network-uri
     , optparse-applicative
     , protolude
     , safe-exceptions

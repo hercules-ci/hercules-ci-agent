@@ -53,6 +53,7 @@ import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as Attribute
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Katip
 import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Network.URI
 import Protolude hiding (bracket, evalState)
 import qualified System.Environment as Environment
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
@@ -263,10 +264,13 @@ withKatip m = do
 
 makeSocketConfig :: Monad m => Build -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
 makeSocketConfig Build.Build {logSettings = l} = do
+  baseURL <- case Network.URI.parseURI $ toS $ LogSettings.baseURL l of
+    Just x -> pure x
+    Nothing -> panic "LogSettings: invalid base url"
   pure Socket.SocketConfig
     { makeHello = pure (LogMessage.LogEntries mempty),
       checkVersion = Socket.checkVersion',
-      host = LogSettings.host l,
+      baseURL = baseURL,
       path = LogSettings.path l,
       token = toSL $ LogSettings.reveal $ LogSettings.token l
     }

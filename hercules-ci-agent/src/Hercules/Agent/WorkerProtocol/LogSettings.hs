@@ -9,7 +9,7 @@ import Text.Show
 data LogSettings
   = LogSettings
       { path :: Text,
-        host :: Text,
+        baseURL :: Text,
         token :: Sensitive Text
       }
   deriving (Generic, Binary, Show, Eq)

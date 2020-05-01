@@ -28,6 +28,7 @@ import Hercules.Agent.Env
 import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
+import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import Hercules.Agent.WorkerProcess
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.Build as Command.Build
@@ -36,6 +37,7 @@ import qualified Hercules.Agent.WorkerProtocol.Event.BuildResult as BuildResult
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.Error (defaultRetry)
 import qualified Katip.Core
+import qualified Network.URI
 import Protolude
 import Servant.Auth.Client
 import System.Process
@@ -60,7 +62,7 @@ performBuild buildTask = do
           logLocM DebugS $ show e
           panic e
         _ -> pass
-  bulkSocketHost <- asks (Config.bulkSocketBase . Env.config)
+  baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   materialize <- asks (Config.requireMaterializedDerivations . Env.config)
   liftIO $ writeChan commandChan $ Just $ Command.Build $ Command.Build.Build
     { drvPath = BuildTask.derivationPath buildTask,
@@ -68,7 +70,7 @@ performBuild buildTask = do
       logSettings = LogSettings.LogSettings
         { token = LogSettings.Sensitive $ BuildTask.logToken buildTask,
           path = "/api/v1/logs/build/socket",
-          host = bulkSocketHost
+          baseURL = toS $ Network.URI.uriToString identity baseURL ""
         },
       materializeDerivation = materialize
     }

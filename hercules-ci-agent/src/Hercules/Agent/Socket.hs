@@ -18,12 +18,14 @@ import Control.Concurrent.STM.TVar (TVar, modifyTVar, newTVar, readTVar, writeTV
 import Control.Monad.IO.Unlift
 import qualified Data.Aeson as A
 import Data.DList (DList, fromList)
+import Data.List (dropWhileEnd)
 import Hercules.API.Agent.LifeCycle.ServiceInfo (ServiceInfo)
 import qualified Hercules.API.Agent.LifeCycle.ServiceInfo as ServiceInfo
 import qualified Hercules.API.Agent.Socket.Frame as Frame
 import Hercules.API.Agent.Socket.Frame (Frame)
 import Hercules.Agent.STM (atomically, newTChanIO, newTVarIO)
 import Katip (KatipContext, Severity (..), katipAddContext, katipAddNamespace, logLocM, sl)
+import Network.URI (URI, uriAuthority, uriPath, uriPort, uriQuery, uriRegName, uriScheme)
 import Network.WebSockets (Connection, runClientWith)
 import qualified Network.WebSockets as WS
 import Protolude hiding (atomically, handle, race, race_)
@@ -46,7 +48,7 @@ data SocketConfig ap sp m
   = SocketConfig
       { makeHello :: m ap,
         checkVersion :: (sp -> m (Either Text ())),
-        host :: Text,
+        baseURL :: URI,
         path :: Text,
         token :: ByteString
       }
@@ -181,9 +183,24 @@ withConnection' socketConfig m = do
   UnliftIO unlift <- askUnliftIO
   let opts = WS.defaultConnectionOptions
       headers = [("Authorization", "Bearer " <> token socketConfig)]
-      host' = host socketConfig
-      path' = toS $ path socketConfig
+      base = baseURL socketConfig
+      url = base {uriPath = uriPath base `slash` toS (path socketConfig)}
+      defaultPort
+        | uriScheme url == "http:" = 80
+        | uriScheme url == "https:" = 443
+        | otherwise = panic "Hercules.Agent.Socket: invalid uri scheme"
+      port = fromMaybe defaultPort $ do
+        auth <- uriAuthority url
+        readMaybe $ dropWhile (== ':') $ uriPort auth
+      regname = fromMaybe (panic "Hercules.Agent.Socket: url has no regname") $ do
+        auth <- uriAuthority url
+        pure $ uriRegName auth
+      httpPath = uriPath url <> uriQuery url
       runSocket
-        | host' == "test://api" = runClientWith "api" 80 path' opts headers
-        | otherwise = runSecureClientWith (toS host') 443 path' opts headers
+        | uriScheme url == "http:" = runClientWith regname port httpPath opts headers
+        | uriScheme url == "https:" = runSecureClientWith regname (fromIntegral port) httpPath opts headers
+        | otherwise = panic "Hercules.Agent.Socket: invalid uri scheme"
   liftIO $ runSocket $ \conn -> unlift (m conn)
+
+slash :: [Char] -> [Char] -> [Char]
+a `slash` b = dropWhileEnd (== '/') a <> "/" <> dropWhile (== '/') b

@@ -9,12 +9,12 @@ import Hercules.API.Agent.Socket.ServicePayload (ServicePayload)
 import Hercules.API.Id (Id)
 import Hercules.API.Task (Task)
 import qualified Hercules.API.Task as Task
-import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
   ( App,
   )
 import qualified Hercules.Agent.Env as Agent.Env
 import Hercules.Agent.STM (TVar, readTVarIO)
+import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import Hercules.Agent.Socket as Socket
 import Protolude hiding
   ( bracket,
@@ -33,7 +33,7 @@ withAgentSocket hello tasks f = do
       appThread socket = local (setSocket socket) $ f socket
       checkAgentVersion (ServicePayload.ServiceInfo si) = checkVersion' si
       checkAgentVersion _ = throwIO $ FatalError "Unexpected message. This is either a bug or you might need to update your agent."
-  base <- asks (Config.agentSocketBase . Agent.Env.config)
+  base <- asks (ServiceInfo.agentSocketBaseURL . Agent.Env.serviceInfo)
   agentToken <- asks (Servant.Auth.Client.getToken . Agent.Env.currentToken)
   withReliableSocket
     ( Socket.SocketConfig
@@ -41,7 +41,7 @@ withAgentSocket hello tasks f = do
             currentTasks <- readTVarIO tasks
             pure $ AgentPayload.Hello hello {tasksInProgress = M.keys currentTasks},
           checkVersion = checkAgentVersion,
-          host = base,
+          baseURL = base,
           path = "/api/v1/agent-socket",
           token = agentToken
         }

@@ -17,6 +17,7 @@ import Hercules.Agent.Config (FinalConfig)
 import qualified Hercules.Agent.Nix.Env as Nix
   ( Env,
   )
+import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import Hercules.Agent.Socket (Socket)
 import Hercules.Error
 import qualified Katip as K
@@ -31,6 +32,7 @@ data Env
         config :: FinalConfig,
         herculesBaseUrl :: Servant.Client.BaseUrl,
         herculesClientEnv :: Servant.Client.ClientEnv,
+        serviceInfo :: ServiceInfo.Env,
         -- TODO: The implicit limitation here is that we can
         --       only have one token at a time. I wouldn't be surprised if this becomes
         --       problematic at some point. Perhaps we should switch to a polymorphic
