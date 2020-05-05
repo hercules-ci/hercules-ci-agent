@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+- Allow `Id` in JSON object keys
+
 ## [0.1.0.0] - 2020-01-30
 
 - Initial release, split out of hercules-ci-api
