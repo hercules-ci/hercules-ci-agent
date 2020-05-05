@@ -26,15 +26,22 @@ pattern ResultTypeProgress = ResultType 105
 data Field = Int !Word64 | String !Text
   deriving (Eq, Show)
 
+-- | Maps to corresponding 'A.Value' constructors
 instance ToJSON Field where
   toJSON (Int int) = A.toJSON int
   toJSON (String s) = A.toJSON s
 
+-- | Maps from corresponding 'A.Value' constructors
 instance FromJSON Field where
   parseJSON v =
     Int <$> A.parseJSON v
       <|> String <$> A.parseJSON v
 
+-- | @i@: increasing index number,
+--
+-- @ms@: time since start in milliseconds
+--
+-- @level@: verbosity level as defined in Nix
 data LogEntry
   = Msg
       { i :: !Word64,
