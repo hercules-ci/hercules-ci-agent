@@ -120,6 +120,9 @@ getDerivation store derivationPath =
           printTalkative("ignoring exception during drv lookup in %s: %s", currentStore->getUri(), e.what());
         } catch (std::exception &e) {
           printTalkative("ignoring exception during drv lookup in %s: %s", currentStore->getUri(), e.what());
+        } catch (...) {
+          // FIXME: remove this and make the "specific" catches above work on darwin
+          printTalkative("ignoring unknown exception during drv lookup in %s: %s", currentStore->getUri());
         }
       }
       return derivation;
