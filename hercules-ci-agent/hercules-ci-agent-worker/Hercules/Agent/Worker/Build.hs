@@ -18,8 +18,8 @@ runBuild :: Ptr (Ref NixStore) -> Command.Build.Build -> ConduitT i Event (Resou
 runBuild store build = do
   let extraPaths = Command.Build.inputDerivationOutputPaths build
       drvPath = toS $ Command.Build.drvPath build
-  for_ extraPaths $ \drv ->
-    liftIO $ CNix.ensurePath store drv
+  for_ extraPaths $ \input ->
+    liftIO $ CNix.ensurePath store input
   derivationMaybe <- liftIO $ Build.getDerivation store drvPath
   derivation <- case derivationMaybe of
     Just drv -> pure drv
