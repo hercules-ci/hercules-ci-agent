@@ -1,4 +1,6 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NumericUnderscores #-}
 
 module Hercules.Agent.Worker
   ( main,
@@ -11,7 +13,7 @@ import Conduit
 import Control.Concurrent.STM
 import qualified Data.ByteString as BS
 import qualified Data.Conduit
-import Data.Conduit.Extras (sinkChan, sourceChan)
+import Data.Conduit.Extras (sinkChan, sinkChanTerminate, sourceChan)
 import Data.Conduit.Serialization.Binary
   ( conduitDecode,
     conduitEncode,
@@ -21,10 +23,22 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import Data.Typeable (typeOf)
 import Data.UUID (UUID)
+import Data.Vector (Vector)
+import qualified Data.Vector as V
+import qualified Hercules.API.Agent.LifeCycle.ServiceInfo
+import Hercules.API.Logs.LogEntry (LogEntry)
+import qualified Hercules.API.Logs.LogEntry as LogEntry
+import Hercules.API.Logs.LogMessage (LogMessage)
+import qualified Hercules.API.Logs.LogMessage as LogMessage
+import qualified Hercules.Agent.Socket as Socket
+import Hercules.Agent.Worker.Build
+import qualified Hercules.Agent.Worker.Build.Logger as Logger
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import Hercules.Agent.WorkerProtocol.Command
   ( Command,
   )
+import Hercules.Agent.WorkerProtocol.Command.Build (Build)
+import qualified Hercules.Agent.WorkerProtocol.Command.Build as Build
 import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
 import Hercules.Agent.WorkerProtocol.Command.Eval
@@ -32,13 +46,19 @@ import Hercules.Agent.WorkerProtocol.Command.Eval
   )
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import Hercules.Agent.WorkerProtocol.Event
-  ( Event,
+  ( Event (Exception),
   )
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
+import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
+import Katip
 import qualified Language.C.Inline.Cpp.Exceptions as C
-import Protolude hiding (evalState)
+import qualified Network.URI
+import Protolude hiding (bracket, evalState)
 import qualified System.Environment as Environment
+import System.IO (BufferMode (LineBuffering), hSetBuffering)
+import System.Timeout (timeout)
+import UnliftIO.Exception (bracket)
 import Prelude ()
 import qualified Prelude
 
@@ -62,10 +82,9 @@ instance Exception BuildException
 
 main :: IO ()
 main = do
-  hPutStrLn stderr ("Initializing store..." :: Text)
-  -- setDebug
+  hSetBuffering stderr LineBuffering
   CNix.init
-  -- setDebug
+  Logger.initLogger
   [options] <- Environment.getArgs
   -- narinfo-cache-negative-ttl: Always try requesting narinfos because it may have been built in the meanwhile
   let allOptions = Prelude.read options ++ [("narinfo-cache-negative-ttl", "0")]
@@ -85,14 +104,27 @@ main = do
             shortcutChannel = ch
           }
     let runner =
-          runConduitRes
-            ( sourceHandle stdin
-                .| conduitDecode
-                .| printCommands
-                .| runCommands st
-                .| sinkChan ch
+          ( ( do
+                command <- runConduitRes -- Res shouldn't be necessary
+                  ( sourceHandle stdin
+                      .| conduitDecode
+                      .| printCommands
+                      .| await
+                  )
+                  >>= \case
+                    Just c -> pure c
+                    Nothing -> panic "Not a valid starting command"
+                runCommand st ch command
             )
-            `finally` writeChan ch Nothing
+              `catch` ( \e -> do
+                          writeChan ch (Just $ Exception (renderException (e :: SomeException)))
+                          exitFailure
+                      )
+          )
+            `finally` ( do
+                          writeChan ch Nothing
+                          putErrText "runner done"
+                      )
         writer =
           runConduitRes
             ( sourceChan ch
@@ -103,6 +135,7 @@ main = do
     void $ do
       withAsync runner $ \runnerAsync -> do
         writer -- runner can stop writer only by passing Nothing in channel (finally)
+        putErrText "Writer done"
         wait runnerAsync -- include the potential exception
 
 printCommands :: ConduitT Command Command (ResourceT IO) ()
@@ -118,13 +151,26 @@ renderException e | Just (C.CppStdException msg) <- fromException e = toSL msg
 renderException e
   | Just (C.CppOtherException maybeType) <- fromException e =
     "Unexpected C++ exception" <> foldMap (\t -> " of type " <> toSL t) maybeType
+renderException e | Just (FatalError msg) <- fromException e = msg
 renderException e = toS $ displayException e
 
-runCommands :: HerculesState -> ConduitM Command Event (ResourceT IO) ()
-runCommands herculesState = do
+connectCommand :: Chan (Maybe Event) -> ConduitM Command Event (ResourceT IO) () -> IO ()
+connectCommand ch conduit =
+  runConduitRes
+    ( sourceHandle stdin
+        .| conduitDecode
+        .| printCommands
+        .| conduit
+        .| sinkChan ch
+    )
+
+runCommand :: HerculesState -> Chan (Maybe Event) -> Command -> IO ()
+-- runCommand' :: HerculesState -> Command -> ConduitM Command Event (ResourceT IO) ()
+runCommand herculesState ch command = do
+  -- TODO don't do this
   mainThread <- liftIO $ myThreadId
-  awaitForever $ \case
-    Command.Eval eval ->
+  case command of
+    Command.Eval eval -> connectCommand ch $ do
       void $ liftIO
         $ flip
           forkFinally
@@ -143,11 +189,91 @@ runCommands herculesState = do
                   runEval herculesState eval
                   liftIO $ throwTo mainThread ExitSuccess
               )
-              .| sinkChan (shortcutChannel herculesState)
+              .| sinkChanTerminate (shortcutChannel herculesState)
           )
-    Command.BuildResult (BuildResult.BuildResult path attempt result) -> do
-      hPutStrLn stderr $ ("BuildResult: " <> show path <> " " <> show result :: Text)
-      liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (M.insert path (attempt, result))
+      awaitForever $ \case
+        Command.BuildResult (BuildResult.BuildResult path attempt result) -> do
+          hPutStrLn stderr $ ("BuildResult: " <> show path <> " " <> show result :: Text)
+          liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (M.insert path (attempt, result))
+        _ -> pass
+    Command.Build build ->
+      Logger.withLoggerConduit (logger build) $ do
+        connectCommand ch $ runBuild (wrappedStore herculesState) build
+    _ ->
+      panic "Not a valid starting command"
+
+logger :: Build -> ConduitM () (Vector LogEntry) IO () -> IO ()
+logger buildCommand entriesSource = do
+  socketConfig <- makeSocketConfig buildCommand
+  -- TODO integrate katip more
+  withKatip $ Socket.withReliableSocket socketConfig $ \socket -> katipAddNamespace "Build" do
+    let conduit =
+          entriesSource
+            .| Logger.unbatch
+            .| Logger.filterProgress
+            .| renumber 0
+            .| batchAndEnd
+            .| socketSink socket
+        batch = Logger.batch .| mapC (LogMessage.LogEntries . V.fromList)
+        batchAndEnd =
+          ( (foldMapTap (Last . ims) `fuseUpstream` batch) >>= \case
+              Last (Just (i, ms)) -> yield $ LogMessage.End {i = i + 1, ms = ms}
+              Last Nothing -> yield $ LogMessage.End 0 0
+          )
+          where
+            ims (Chunk logEntry) = Just (LogEntry.i logEntry, LogEntry.ms logEntry)
+            ims _ = Nothing
+        renumber i = await >>= traverse_ \case
+          Flush -> yield Flush >> renumber i
+          Chunk e -> do
+            yield $ Chunk e {LogEntry.i = i}
+            renumber (i + 1)
+    liftIO $ runConduit $ conduit
+    logLocM DebugS "Syncing"
+    liftIO (timeout 600_000_000 $ Socket.syncIO $ socket) >>= \case
+      Just _ -> pass
+      Nothing -> panic "Could not push logs within 10 minutes after completion"
+    logLocM DebugS "Logger done"
+
+socketSink :: MonadIO m => Socket.Socket r w -> ConduitT w o m ()
+socketSink socket = awaitForever $ liftIO . atomically . Socket.write socket
+
+-- | Perform a foldMap while yielding the original values ("tap").
+--
+-- '<>' is invoked with the new b on the right.
+foldMapTap :: (Monoid b, Monad m) => (a -> b) -> ConduitT a a m b
+foldMapTap f = go mempty
+  where
+    go b = await >>= \case
+      Nothing -> pure b
+      Just a -> do
+        yield a
+        go (b <> f a)
+
+withKatip :: (MonadUnliftIO m) => KatipContextT m a -> m a
+withKatip m = do
+  let format :: forall a. LogItem a => ItemFormatter a
+      format = (\_ _ _ -> "@katip ") <> jsonFormat
+  handleScribe <- liftIO $ mkHandleScribeWithFormatter format (ColorLog False) stderr (permitItem DebugS) V2
+  let makeLogEnv = registerScribe "stderr" handleScribe defaultScribeSettings =<< initLogEnv "Worker" "production"
+      initialContext = ()
+      extraNs = mempty -- "Worker" is already set in initLogEnv.
+        -- closeScribes will stop accepting new logs, flush existing ones and clean up resources
+  bracket (liftIO makeLogEnv) (liftIO . closeScribes) $ \logEnv ->
+    runKatipContextT logEnv initialContext extraNs m
+
+makeSocketConfig :: Monad m => Build -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
+makeSocketConfig Build.Build {logSettings = l} = do
+  baseURL <- case Network.URI.parseURI $ toS $ LogSettings.baseURL l of
+    Just x -> pure x
+    Nothing -> panic "LogSettings: invalid base url"
+  pure Socket.SocketConfig
+    { makeHello = pure (LogMessage.LogEntries mempty),
+      checkVersion = Socket.checkVersion',
+      baseURL = baseURL,
+      path = LogSettings.path l,
+      token = toSL $ LogSettings.reveal $ LogSettings.token l
+    }
 
 -- TODO: test
 autoArgArgs :: Map Text Eval.Arg -> [ByteString]
@@ -215,7 +341,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
       withDrvInProgress st plainDrvText $ do
         writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName) Nothing
         derivation <- getDerivation store plainDrv
-        outputPath <- derivationOutputPath derivation outputName
+        outputPath <- getDerivationOutputPath derivation outputName
         hPutStrLn stderr ("Naive ensurePath " <> outputPath)
         ensurePath (wrappedStore st) outputPath `catch` \e0 -> do
           hPutStrLn stderr ("Naive wrapped.ensurePath failed: " <> show (e0 :: SomeException) :: Text)

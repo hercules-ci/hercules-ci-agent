@@ -8,6 +8,7 @@ import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Env (Env (Env))
 import qualified Hercules.Agent.Nix.Init
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
+import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import qualified Hercules.Agent.Token as Token
 import qualified Katip as K
 import qualified Network.HTTP.Client.TLS
@@ -31,13 +32,16 @@ newEnv config logEnv = do
   token <- Token.readTokenFile $ toS $ Config.clusterJoinTokenPath config
   cachix <- withLogging $ Hercules.Agent.Cachix.Init.newEnv config (BC.cachixCaches bcs)
   nix <- Hercules.Agent.Nix.Init.newEnv
+  serviceInfo <- ServiceInfo.newEnv clientEnv
   pure Env
     { manager = manager,
       config = config,
       herculesBaseUrl = baseUrl,
       herculesClientEnv = clientEnv,
+      serviceInfo = serviceInfo,
       currentToken = Servant.Auth.Client.Token $ encodeUtf8 token,
       cachixEnv = cachix,
+      socket = panic "Socket not defined yet.", -- Hmm, needs different monad?
       kNamespace = emptyNamespace,
       kContext = mempty,
       kLogEnv = logEnv,

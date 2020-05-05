@@ -38,10 +38,16 @@ library
       Hercules.API.Agent.LifeCycle.AgentInfo
       Hercules.API.Agent.LifeCycle.CreateAgentSession
       Hercules.API.Agent.LifeCycle.CreateAgentSession_V2
+      Hercules.API.Agent.LifeCycle.ServiceInfo
       Hercules.API.Agent.LifeCycle.StartInfo
+      Hercules.API.Agent.Socket.Frame
+      Hercules.API.Agent.Socket.AgentPayload
+      Hercules.API.Agent.Socket.ServicePayload
       Hercules.API.Agent.Tasks
       Hercules.API.Agent
       Hercules.API.Logs
+      Hercules.API.Logs.LogEntry
+      Hercules.API.Logs.LogMessage
       Hercules.API.TaskStatus
       Hercules.API.Task
       Hercules.Formats.CachixCache
@@ -54,6 +60,7 @@ library
       aeson
     , base >=4.7 && <5
     , bytestring
+    , base64-bytestring-type
     , containers
     , cookie
     , exceptions
@@ -74,6 +81,7 @@ library
     , text
     , time
     , uuid
+    , vector
   default-language: Haskell2010
 
 test-suite hercules-api-agent-unit-tests

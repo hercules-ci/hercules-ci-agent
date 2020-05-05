@@ -114,8 +114,8 @@ finalizeDerivation =
     } |]
 
 -- | Throws when missing
-derivationOutputPath :: ForeignPtr Derivation -> ByteString -> IO ByteString
-derivationOutputPath fd outputName = withForeignPtr fd $ \d ->
+getDerivationOutputPath :: ForeignPtr Derivation -> ByteString -> IO ByteString
+getDerivationOutputPath fd outputName = withForeignPtr fd $ \d ->
   [C.throwBlock|
     const char *{
       std::string outputName($bs-ptr:outputName, $bs-len:outputName);
@@ -124,6 +124,79 @@ derivationOutputPath fd outputName = withForeignPtr fd $ \d ->
     }
   |]
     >>= BS.unsafePackMallocCString
+
+data DerivationOutput
+  = DerivationOutput
+      { derivationOutputName :: !ByteString,
+        derivationOutputPath :: !ByteString,
+        derivationOutputHashAlgo :: !ByteString,
+        derivationOutputHash :: !ByteString
+      }
+
+getDerivationOutputs :: ForeignPtr Derivation -> IO [DerivationOutput]
+getDerivationOutputs derivation =
+  bracket
+    [C.exp| DerivationOutputsIterator* {
+      new DerivationOutputsIterator($fptr-ptr:(Derivation *derivation)->outputs.begin())
+    }|]
+    deleteDerivationOutputsIterator
+    $ \i -> fix $ \continue -> do
+      isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationOutputsIterator *i) == $fptr-ptr:(Derivation *derivation)->outputs.end() }|]
+      if isEnd
+        then pure []
+        else do
+          name <- [C.exp| const char*{ strdup((*$(DerivationOutputsIterator *i))->first.c_str()) }|] >>= BS.unsafePackMallocCString
+          path <- [C.exp| const char*{ strdup((*$(DerivationOutputsIterator *i))->second.path.c_str()) }|] >>= BS.unsafePackMallocCString
+          hash_ <- [C.exp| const char*{ strdup((*$(DerivationOutputsIterator *i))->second.hash.c_str()) }|] >>= BS.unsafePackMallocCString
+          hashAlgo <- [C.exp| const char*{ strdup((*$(DerivationOutputsIterator *i))->second.hashAlgo.c_str()) }|] >>= BS.unsafePackMallocCString
+          [C.block| void { (*$(DerivationOutputsIterator *i))++; }|]
+          (DerivationOutput name path hashAlgo hash_ :) <$> continue
+
+deleteDerivationOutputsIterator :: Ptr DerivationOutputsIterator -> IO ()
+deleteDerivationOutputsIterator a = [C.block| void { delete $(DerivationOutputsIterator *a); }|]
+
+getDerivationOutputNames :: ForeignPtr Derivation -> IO [ByteString]
+getDerivationOutputNames derivation =
+  bracket
+    [C.throwBlock| Strings* {
+      Strings *r = new Strings();
+      for (auto i : $fptr-ptr:(Derivation *derivation)->outputs) {
+        r->push_back(i.first);
+      }
+      return r;
+    }|]
+    deleteStrings
+    toByteStrings
+
+deleteStrings :: Ptr Strings -> IO ()
+deleteStrings s = [C.block| void { delete $(Strings *s); }|]
+
+finalizeStrings :: FinalizerPtr Strings
+{-# NOINLINE finalizeStrings #-}
+finalizeStrings =
+  unsafePerformIO
+    [C.exp|
+    void (*)(Strings *) {
+      [](Strings *v) {
+        delete v;
+      }
+    } |]
+
+getStringsLength :: Ptr Strings -> IO C.CSize
+getStringsLength strings = [C.exp| size_t { $(Strings *strings)->size() }|]
+
+toByteStrings :: Ptr Strings -> IO [ByteString]
+toByteStrings strings = do
+  i <- [C.exp| StringsIterator *{ new StringsIterator($(Strings *strings)->begin()) } |]
+  fix $ \go -> do
+    isEnd <- (0 /=) <$> [C.exp| bool { *$(StringsIterator *i) == $(Strings *strings)->end() }|]
+    if isEnd
+      then pure []
+      else do
+        s <- [C.exp| const char*{ strdup((*$(StringsIterator *i))->c_str()) }|]
+        bs <- BS.unsafePackMallocCString s
+        [C.block| void { (*$(StringsIterator *i))++; }|]
+        (bs :) <$> go
 
 ----- Hercules -----
 withHerculesStore ::

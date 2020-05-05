@@ -1,10 +1,11 @@
 module Hercules.Agent.Build where
 
-import Data.Char (isSpace)
+import qualified Data.Aeson as A
+import qualified Data.ByteString as BS
 import qualified Data.Conduit.Combinators as Conduit
 import Data.Conduit.Process (sourceProcessWithStreams)
+import Data.IORef.Lifted
 import qualified Data.Map as M
-import qualified Data.Text as T
 import qualified Hercules.API.Agent.Build as API.Build
 import qualified Hercules.API.Agent.Build.BuildEvent as BuildEvent
 import qualified Hercules.API.Agent.Build.BuildEvent.OutputInfo as OutputInfo
@@ -16,40 +17,100 @@ import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import Hercules.API.Agent.Build.BuildTask
   ( BuildTask,
   )
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
 import qualified Hercules.API.Logs as API.Logs
 import Hercules.API.Servant (noContent)
-import Hercules.API.Task (Task)
-import qualified Hercules.API.Task as Task
 import Hercules.API.TaskStatus (TaskStatus)
 import qualified Hercules.API.TaskStatus as TaskStatus
 import qualified Hercules.Agent.Cachix as Agent.Cachix
 import qualified Hercules.Agent.Client
+import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
+import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
-import Hercules.Agent.Nix.RetrieveDerivationInfo
-  ( retrieveDerivationInfo,
-  )
+import qualified Hercules.Agent.ServiceInfo as ServiceInfo
+import Hercules.Agent.WorkerProcess
+import qualified Hercules.Agent.WorkerProtocol.Command as Command
+import qualified Hercules.Agent.WorkerProtocol.Command.Build as Command.Build
+import qualified Hercules.Agent.WorkerProtocol.Event as Event
+import qualified Hercules.Agent.WorkerProtocol.Event.BuildResult as BuildResult
+import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.Error (defaultRetry)
+import qualified Katip.Core
+import qualified Network.URI
 import Protolude
 import Servant.Auth.Client
 import System.Process
 
-performBuild :: Task BuildTask.BuildTask -> App TaskStatus
-performBuild task = do
-  buildTask <-
-    defaultRetry $
-      runHerculesClient
-        (API.Build.getBuild Hercules.Agent.Client.buildClient (Task.id task))
-  result <- realise buildTask
-  case result of
-    s@TaskStatus.Successful {} -> s <$ do
-      outs <- getOutputPathInfos buildTask
+performBuild :: BuildTask.BuildTask -> App TaskStatus
+performBuild buildTask = do
+  workerExe <- getWorkerExe
+  commandChan <- liftIO newChan
+  statusRef <- newIORef Nothing
+  extraNixOptions <- Nix.askExtraOptions
+  let opts = [show $ extraNixOptions]
+      procSpec =
+        (System.Process.proc workerExe opts)
+          { env = Just [("NIX_PATH", "")],
+            close_fds = True,
+            cwd = Just "/"
+          }
+      writeEvent :: Event.Event -> App ()
+      writeEvent event = case event of
+        Event.BuildResult r -> writeIORef statusRef $ Just r
+        Event.Exception e -> do
+          logLocM DebugS $ show e
+          panic e
+        _ -> pass
+  baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
+  materialize <- asks (Config.requireMaterializedDerivations . Env.config)
+  liftIO $ writeChan commandChan $ Just $ Command.Build $ Command.Build.Build
+    { drvPath = BuildTask.derivationPath buildTask,
+      inputDerivationOutputPaths = toS <$> BuildTask.inputDerivationOutputPaths buildTask,
+      logSettings = LogSettings.LogSettings
+        { token = LogSettings.Sensitive $ BuildTask.logToken buildTask,
+          path = "/api/v1/logs/build/socket",
+          baseURL = toS $ Network.URI.uriToString identity baseURL ""
+        },
+      materializeDerivation = materialize
+    }
+  exitCode <- runWorker procSpec stderrLineHandler commandChan writeEvent
+  logLocM DebugS $ "Worker exit: " <> show exitCode
+  case exitCode of
+    ExitSuccess -> pass
+    _ -> panic $ "Worker failed: " <> show exitCode
+  status <- readIORef statusRef
+  case status of
+    Just (BuildResult.BuildSuccess {outputs = outs'}) -> do
+      let outs = convertOutputs (BuildTask.derivationPath buildTask) outs'
       reportOutputInfos buildTask outs
       push buildTask outs
       reportSuccess buildTask
-    x -> pure x
+      pure $ TaskStatus.Successful ()
+    Just (BuildResult.BuildFailure {}) -> pure $ TaskStatus.Terminated ()
+    Nothing -> pure $ TaskStatus.Exceptional "Build did not complete"
+
+convertOutputs :: Text -> [BuildResult.OutputInfo] -> Map Text OutputInfo
+convertOutputs deriver = foldMap $ \oi ->
+  M.singleton (toS $ BuildResult.name oi) $
+    OutputInfo.OutputInfo
+      { OutputInfo.deriver = deriver,
+        name = toSL $ BuildResult.name oi,
+        path = toSL $ BuildResult.path oi,
+        size = fromIntegral $ BuildResult.size oi,
+        hash = toSL $ BuildResult.hash oi
+      }
+
+stderrLineHandler :: Int -> ByteString -> App ()
+stderrLineHandler _ ln
+  | "@katip " `BS.isPrefixOf` ln,
+    Just item <- A.decode (toS $ BS.drop 7 ln) =
+    -- "This is the lowest level function [...] useful when implementing centralised logging services."
+    Katip.Core.logKatipItem (Katip.Core.SimpleLogPayload . M.toList . fmap (Katip.Core.AnyLogPayload :: A.Value -> Katip.Core.AnyLogPayload) <$> item)
+stderrLineHandler pid ln =
+  withNamedContext "worker" (pid :: Int)
+    $ logLocM InfoS
+    $ "Builder: " <> logStr (toSL ln :: Text)
 
 realise :: BuildTask.BuildTask -> App TaskStatus
 realise buildTask = do
@@ -87,31 +148,6 @@ realise buildTask = do
       emitEvents buildTask [BuildEvent.Done False]
       pure $ TaskStatus.Terminated ()
     ExitSuccess -> TaskStatus.Successful () <$ logLocM DebugS "Building succeeded"
-
-getOutputPathInfos :: BuildTask -> App (Map Text OutputInfo)
-getOutputPathInfos buildTask = do
-  let drvPath = BuildTask.derivationPath buildTask
-  drvInfo <- retrieveDerivationInfo drvPath
-  flip M.traverseWithKey (DerivationInfo.outputs drvInfo) $ \outputName o -> do
-    let outputPath = DerivationInfo.path o
-    sizeStr <- Nix.readNixProcess "nix-store" ["--query", "--size"] [toS outputPath] ""
-    size <-
-      case reads (toS $ T.dropAround isSpace $ toS sizeStr) of
-        [(x, "")] -> pure x
-        _ ->
-          throwIO
-            $ FatalError
-            $ "nix-store returned invalid size "
-              <> show sizeStr
-    hashStr <- Nix.readNixProcess "nix-store" ["--query", "--hash"] [toS outputPath] ""
-    let h = T.dropAround isSpace (toS hashStr)
-    pure OutputInfo.OutputInfo
-      { OutputInfo.deriver = drvPath,
-        name = outputName,
-        path = outputPath,
-        size = size,
-        hash = h
-      }
 
 push :: BuildTask -> Map Text OutputInfo -> App ()
 push buildTask outs = do

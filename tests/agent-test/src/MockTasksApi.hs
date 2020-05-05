@@ -25,6 +25,7 @@ import Data.Aeson
     ToJSON,
     eitherDecode,
   )
+import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
 import qualified Data.Conduit as Conduit
 import Data.Conduit ((.|))
@@ -56,17 +57,26 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Agent.LifeCycle (LifeCycleAPI (..))
 import qualified Hercules.API.Agent.LifeCycle as LifeCycle
 import qualified Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 as CreateAgentSession
+import qualified Hercules.API.Agent.LifeCycle.ServiceInfo as SI
+import Hercules.API.Agent.Socket.AgentPayload (AgentPayload)
+import Hercules.API.Agent.Socket.Frame as Frame
+import Hercules.API.Agent.Socket.ServicePayload (ServicePayload)
+import qualified Hercules.API.Agent.Socket.ServicePayload as SP
 import Hercules.API.Agent.Tasks (TasksAPI (..))
 import Hercules.API.Id
 import Hercules.API.Logs (LogsAPI (..))
+import Hercules.API.Logs.LogMessage (LogMessage)
 import Hercules.API.Task (Task)
 import qualified Hercules.API.Task as Task
 import qualified Hercules.API.TaskStatus as TaskStatus
 import Network.Wai.Handler.Warp (run)
+import qualified Network.WebSockets as WS
+import qualified Network.WebSockets.Connection
 import Orphans ()
 import Protolude
 import Servant.API
 import Servant.API.Generic
+import Servant.API.WebSocket
 import Servant.Auth.Server
 import Servant.Conduit ()
 import Servant.Server
@@ -81,7 +91,7 @@ import qualified Prelude
 
 data ServerState
   = ServerState
-      { queue :: MVar (Task Task.Any),
+      { queue :: MVar (ServicePayload),
         done :: TVar (Map Text TaskStatus.TaskStatus),
         evalTasks ::
           IORef
@@ -120,13 +130,12 @@ enqueue (ServerHandle st) t = do
         M.insert (BuildTask.id buildTask) buildTask
       atomicModifyIORef_ (drvTasks st) $
         M.insert (BuildTask.derivationPath buildTask) (BuildTask.id buildTask)
-  putMVar (queue st) (toTask t')
+  putMVar (queue st) (toServicePayload t')
 
-toTask :: AgentTask.AgentTask -> Task.Task Task.Any
-toTask (AgentTask.Evaluate t) =
-  Task.upcast $ Task.Task {Task.id = EvaluateTask.id t, Task.typ = "eval"}
-toTask (AgentTask.Build t) =
-  Task.upcast $ Task.Task {Task.id = BuildTask.id t, Task.typ = "build"}
+toServicePayload :: AgentTask.AgentTask -> SP.ServicePayload
+toServicePayload = \case
+  AgentTask.Evaluate t -> SP.StartEvaluation t
+  AgentTask.Build t -> SP.StartBuild t
 
 fixup :: AgentTask.AgentTask -> IO AgentTask.AgentTask
 fixup (AgentTask.Evaluate t)
@@ -215,9 +224,9 @@ type MockAPI =
         :<|> ToServantApi (LogsAPI Session)
         :<|> ToServantApi (LifeCycleAPI Auth')
     )
-    :<|> "tarball"
-    :> Capture "tarball" Text
-    :> StreamGet NoFraming OctetStream (SourceIO ByteString)
+    :<|> "api" :> "v1" :> "agent-socket" :> WebSocket
+    :<|> "api" :> "v1" :> "logs" :> "build" :> "socket" :> WebSocket
+    :<|> "tarball" :> Capture "tarball" Text :> StreamGet NoFraming OctetStream (SourceIO ByteString)
 
 mockApi :: Proxy MockAPI
 mockApi = Proxy
@@ -249,7 +258,77 @@ endpoints server =
       :<|> toServant (logsEndpoints server)
       :<|> toServant (lifeCycleEndpoints server)
   )
+    :<|> (socket server)
+    :<|> (logSocket server)
     :<|> (toSourceIO & liftA & liftA & ($ sourceball))
+
+logSocket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
+logSocket _server conn = do
+  let send :: MonadIO m => [Frame SI.ServiceInfo SI.ServiceInfo] -> m ()
+      send = send' conn
+      -- FIXME
+      recv :: Handler (Frame LogMessage LogMessage)
+      recv = recv' conn
+  send [Frame.Oob {o = serviceInfo}]
+  _hello <- recv
+  send [Frame.Ack (-1)]
+  forever $ do
+    pl <- recv
+    case pl of
+      Frame.Exception {message = msg} -> panic $ "Agent exception: " <> msg
+      Frame.Ack {} -> pass
+      Frame.Oob {} -> pass
+      Frame.Msg {p = payload, n = number} -> do
+        processLogPayload payload
+        send [Frame.Ack number]
+
+processLogPayload :: LogMessage -> Handler ()
+processLogPayload _ = pass
+
+socket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
+socket server conn = do
+  let send :: MonadIO m => [Frame ServicePayload ServicePayload] -> m ()
+      send = send' conn
+      recv :: MonadIO m => m (Frame AgentPayload AgentPayload)
+      recv = recv' conn
+  send [Frame.Oob {o = SP.ServiceInfo serviceInfo}]
+  _hello <- recv
+  send [Frame.Ack (-1)]
+  _writerThreadId <- liftIO $ flip forkFinally (putErrText . ("Writer died: " <>) . show @(Either SomeException Void)) $ do
+    let doSend msgN = do
+          payload <- takeMVar (queue server)
+          send [Frame.Msg {p = payload, n = msgN}]
+          doSend (msgN + 1)
+    doSend 0
+  forever $ do
+    pl <- recv
+    case pl of
+      Frame.Exception {message = msg} -> panic $ "Agent exception: " <> msg
+      Frame.Ack {} -> pass
+      Frame.Oob {} -> pass
+      Frame.Msg {p = payload, n = number} -> do
+        processPayload payload
+        send [Frame.Ack number]
+
+processPayload :: AgentPayload -> Handler ()
+processPayload _ap = pass
+
+send' :: forall sp m. (ToJSON sp, MonadIO m) => WS.Connection -> [Frame sp sp] -> m ()
+send' conn msgs = do
+  let bs = A.encode <$> msgs
+  forM_ bs $ putErrText . ("Service message: " <>) . toS
+  liftIO $ WS.sendDataMessages conn (WS.Binary <$> bs)
+
+recv' :: forall ap m. (FromJSON ap, Show ap, MonadIO m) => WS.Connection -> m (Frame ap ap)
+recv' conn = do
+  (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
+    Left e -> liftIO $ throwIO (FatalError $ "Error decoding agent message: " <> toSL e)
+    Right (Frame.Exception e) -> do
+      putErrText $ "Agent exception message: " <> toSL e
+      recv' conn
+    Right r -> do
+      putErrText $ "Agent message: " <> (toSL (show r :: Text))
+      pure r
 
 relativePathConduit ::
   (MonadThrow m, MonadResource m) =>
@@ -312,12 +391,6 @@ sourceball fname = do
             .| gzip
         )
 
-handleTasksReady ::
-  ServerState ->
-  AuthResult Session ->
-  Handler (Maybe (Task Task.Any))
-handleTasksReady st _authResult = liftIO $ tryTakeMVar (queue st)
-
 handleTasksSetStatus ::
   ServerState ->
   Id (Task Task.Any) ->
@@ -331,8 +404,7 @@ handleTasksSetStatus st tid status _authResult = do
 taskEndpoints :: ServerState -> TasksAPI Auth' AsServer
 taskEndpoints server =
   DummyApi.dummyTasksEndpoints
-    { tasksReady = handleTasksReady server,
-      tasksSetStatus = handleTasksSetStatus server
+    { tasksSetStatus = handleTasksSetStatus server
     }
 
 handleTasksUpdate ::
@@ -350,7 +422,8 @@ handleTasksUpdate st id body _authResult = do
       liftIO $ enqueue (ServerHandle st) $ AgentTask.Build $ BuildTask.BuildTask
         { BuildTask.id = buildId,
           BuildTask.derivationPath = drvPath,
-          BuildTask.logToken = "eyBlurb="
+          BuildTask.logToken = "eyBlurb=",
+          inputDerivationOutputPaths = []
         }
     _ -> pass
   pure NoContent
@@ -406,8 +479,16 @@ lifeCycleEndpoints _server =
     { LifeCycle.agentSessionCreate = handleAgentCreate,
       LifeCycle.hello = \_ _ -> pure NoContent,
       LifeCycle.heartbeat = \_ _ -> pure NoContent,
-      LifeCycle.goodbye = \_ _ -> pure NoContent
+      LifeCycle.goodbye = \_ _ -> pure NoContent,
+      LifeCycle.getServiceInfo = pure serviceInfo
     }
+
+serviceInfo :: SI.ServiceInfo
+serviceInfo = SI.ServiceInfo
+  { SI.version = (1, 0),
+    SI.agentSocketBaseURL = "http://api",
+    SI.bulkSocketBaseURL = "http://api"
+  }
 
 handleAgentCreate ::
   CreateAgentSession.CreateAgentSession ->

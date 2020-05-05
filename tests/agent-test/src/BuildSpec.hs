@@ -80,7 +80,8 @@ spec = describe "Build" $ it "works" $ \srv -> do
       ( BuildTask.BuildTask
           { id = id2,
             derivationPath = drvPath,
-            logToken = "pretend-jwt-for-log"
+            logToken = "pretend-jwt-for-log",
+            inputDerivationOutputPaths = []
           }
       )
   s2 `shouldBe` TaskStatus.Successful ()

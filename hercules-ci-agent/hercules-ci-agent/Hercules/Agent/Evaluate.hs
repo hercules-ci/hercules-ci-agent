@@ -21,7 +21,6 @@ import qualified Data.Set as S
 import Data.UUID (UUID)
 import Hercules.API.Agent.Evaluate
   ( getDerivationStatus2,
-    tasksGetEvaluation,
     tasksUpdateEvaluation,
   )
 import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatus
@@ -35,8 +34,6 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll as PushedAll
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Servant (noContent)
-import Hercules.API.Task (Task)
-import qualified Hercules.API.Task as Task
 import qualified Hercules.Agent.Cachix as Agent.Cachix
 import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Config as Config
@@ -62,7 +59,6 @@ import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as WorkerAtt
 import Hercules.Error (defaultRetry, quickRetry)
 import qualified Network.HTTP.Client.Conduit as HTTP.Conduit
 import qualified Network.HTTP.Simple as HTTP.Simple
-import Paths_hercules_ci_agent (getBinDir)
 import Protolude hiding (finally, newChan, writeChan)
 import qualified Servant.Client
 import qualified System.Directory as Dir
@@ -76,7 +72,7 @@ eventLimit = 50000
 pushEvalWorkers :: Int
 pushEvalWorkers = 16
 
-performEvaluation :: Task EvaluateTask.EvaluateTask -> App ()
+performEvaluation :: EvaluateTask.EvaluateTask -> App ()
 performEvaluation task' =
   withProducer (produceEvaluationTaskEvents task') $ \producer ->
     withBoundedDelayBatchProducer (1000 * 1000) 1000 producer $ \batchProducer ->
@@ -84,15 +80,11 @@ performEvaluation task' =
         joinSTM $ listen batchProducer (\b -> withSync b (postBatch task' . catMaybes) *> continue) pure
 
 produceEvaluationTaskEvents ::
-  Task EvaluateTask.EvaluateTask ->
+  EvaluateTask.EvaluateTask ->
   (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
   App ()
-produceEvaluationTaskEvents task' writeToBatch = withWorkDir $ \tmpdir -> do
+produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
   logLocM DebugS "Retrieving evaluation task"
-  task <-
-    defaultRetry $
-      runHerculesClient
-        (tasksGetEvaluation Hercules.Agent.Client.evalClient (Task.id task'))
   let emitSingle = writeToBatch . Syncable
       sync = syncer writeToBatch
   projectDir <-
@@ -298,6 +290,9 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                     return status
                 writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drv) status
                 continue
+              -- Unused during eval
+              Event.BuildResult {} -> pass
+              Event.Exception e -> panic e
           )
           ( \case
               ExitSuccess -> logLocM DebugS "Clean worker exit"
@@ -313,13 +308,13 @@ produceWorkerEvents ::
   (Event.Event -> App ()) ->
   App ExitCode
 produceWorkerEvents eval nixPath commandChan writeEvent = do
-  workerBinDir <- liftIO getBinDir
+  workerExe <- getWorkerExe
   let opts = [show $ Eval.extraNixOptions eval]
   -- NiceToHave: replace renderNixPath by something structured like -I
   -- to support = and : in paths
   wps <-
     pure
-      (System.Process.proc (workerBinDir </> "hercules-ci-agent-worker") opts)
+      (System.Process.proc workerExe opts)
         { env = Just [("NIX_PATH", toS $ renderNixPath nixPath)],
           close_fds = True, -- Disable on Windows?
           cwd = Just (Eval.cwd eval)
@@ -431,13 +426,13 @@ stderrLineHandler pid ln =
     $ "Evaluator: "
       <> logStr (toSL ln :: Text)
 
-postBatch :: Task EvaluateTask.EvaluateTask -> [EvaluateEvent.EvaluateEvent] -> App ()
+postBatch :: EvaluateTask.EvaluateTask -> [EvaluateEvent.EvaluateEvent] -> App ()
 postBatch task events =
   noContent $ defaultRetry $
     runHerculesClient
       ( tasksUpdateEvaluation
           Hercules.Agent.Client.evalClient
-          (Task.id task)
+          (EvaluateTask.id task)
           events
       )
 

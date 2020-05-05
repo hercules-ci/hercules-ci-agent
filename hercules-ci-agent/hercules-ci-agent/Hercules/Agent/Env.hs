@@ -7,6 +7,8 @@ import Control.Monad.Base (MonadBase)
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control (MonadBaseControl)
+import Hercules.API.Agent.Socket.AgentPayload (AgentPayload)
+import Hercules.API.Agent.Socket.ServicePayload (ServicePayload)
 import qualified Hercules.Agent.Cachix.Env as Cachix
   ( Env,
     HasEnv (..),
@@ -15,6 +17,8 @@ import Hercules.Agent.Config (FinalConfig)
 import qualified Hercules.Agent.Nix.Env as Nix
   ( Env,
   )
+import qualified Hercules.Agent.ServiceInfo as ServiceInfo
+import Hercules.Agent.Socket (Socket)
 import Hercules.Error
 import qualified Katip as K
 import qualified Network.HTTP.Client
@@ -28,6 +32,7 @@ data Env
         config :: FinalConfig,
         herculesBaseUrl :: Servant.Client.BaseUrl,
         herculesClientEnv :: Servant.Client.ClientEnv,
+        serviceInfo :: ServiceInfo.Env,
         -- TODO: The implicit limitation here is that we can
         --       only have one token at a time. I wouldn't be surprised if this becomes
         --       problematic at some point. Perhaps we should switch to a polymorphic
@@ -35,11 +40,14 @@ data Env
         currentToken :: Servant.Auth.Client.Token,
         cachixEnv :: Cachix.Env,
         nixEnv :: Nix.Env,
+        socket :: AgentSocket,
         -- katip
         kNamespace :: K.Namespace,
         kContext :: K.LogContexts,
         kLogEnv :: K.LogEnv
       }
+
+type AgentSocket = Socket ServicePayload AgentPayload
 
 instance Cachix.HasEnv Env where
   getEnv = cachixEnv

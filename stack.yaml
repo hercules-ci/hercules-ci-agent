@@ -17,6 +17,7 @@ extra-deps:
       - cachix-api
   - inline-c-0.9.0.0
   - inline-c-cpp-0.4.0.1
+  - servant-websockets-2.0.0@sha256:6e9e3600bced90fd52ed3d1bf632205cb21479075b20d6637153cc4567000234,2253
 
 install-ghc: false  # we're using nixpkgs' ghc
 system-ghc: true    # nixpkgs ghc is perceived as 'system ghc'

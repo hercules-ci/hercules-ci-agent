@@ -8,6 +8,7 @@ module Hercules.API.Id
 where
 
 import Data.Aeson
+import Data.Aeson.Types (toJSONKeyText)
 import Data.Hashable (Hashable (..))
 import Data.Proxy
 import Data.Swagger
@@ -50,6 +51,15 @@ instance ToJSON (Id a) where
 
 instance FromJSON (Id a) where
   parseJSON = fmap Id . parseJSON
+
+instance ToJSONKey (Id a) where
+  toJSONKey = toJSONKeyText idText
+
+instance FromJSONKey (Id a) where
+  fromJSONKey = FromJSONKeyTextParser $ \text ->
+    case UUID.fromText text of
+      Just x -> pure $ Id x
+      Nothing -> fail "Expected UUID"
 
 instance ToHttpApiData (Id a) where
   toUrlPiece = idText

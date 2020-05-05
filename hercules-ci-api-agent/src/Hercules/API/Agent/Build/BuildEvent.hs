@@ -13,6 +13,6 @@ import Hercules.API.Prelude
 data BuildEvent
   = OutputInfo OutputInfo
   | Pushed Pushed
-  | -- | True: successful
+  | -- | legacy
     Done Bool
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)

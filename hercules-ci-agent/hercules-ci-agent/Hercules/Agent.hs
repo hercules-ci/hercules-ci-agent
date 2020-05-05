@@ -1,3 +1,5 @@
+{-# LANGUAGE BlockArguments #-}
+
 module Hercules.Agent
   ( main,
   )
@@ -5,27 +7,33 @@ where
 
 import Control.Concurrent.Async.Lifted
   ( race,
-    replicateConcurrently_,
+    withAsync,
   )
-import Control.Concurrent.MVar.Lifted (withMVar)
+import Control.Concurrent.Lifted (forkFinally, killThread)
+import Control.Concurrent.STM (TVar, readTVar)
+import Control.Concurrent.STM.TChan
 import Control.Exception (displayException)
 import Control.Exception.Lifted (bracket)
 import qualified Data.Aeson as A
+import qualified Data.Map as M
 import Data.Time (getCurrentTime)
 import qualified Data.UUID.V4 as UUID
 import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import qualified Hercules.API.Agent.LifeCycle as LifeCycle
 import qualified Hercules.API.Agent.LifeCycle.StartInfo as StartInfo
+import Hercules.API.Agent.LifeCycle.StartInfo (tasksInProgress)
+import qualified Hercules.API.Agent.Socket.AgentPayload as AgentPayload
+import qualified Hercules.API.Agent.Socket.ServicePayload as ServicePayload
 import Hercules.API.Agent.Tasks
-  ( tasksReady,
-    tasksSetStatus,
+  ( tasksSetStatus,
   )
 import Hercules.API.Id (Id (Id))
 import Hercules.API.Servant (noContent)
 import Hercules.API.Task (Task)
 import qualified Hercules.API.Task as Task
 import qualified Hercules.API.TaskStatus as TaskStatus
+import Hercules.Agent.AgentSocket (withAgentSocket)
 import qualified Hercules.Agent.Build as Build
 import Hercules.Agent.CabalInfo (herculesAgentVersion)
 import qualified Hercules.Agent.Cachix as Cachix
@@ -44,20 +52,27 @@ import qualified Hercules.Agent.Evaluate as Evaluate
 import qualified Hercules.Agent.Init as Init
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Options as Options
+import Hercules.Agent.STM
+import Hercules.Agent.Socket as Socket
+import Hercules.Agent.Socket (serviceChan)
 import Hercules.Agent.Token (withAgentToken)
 import Hercules.Error
   ( cap,
     exponential,
     retry,
-    safeLiftedHandle,
   )
 import Protolude hiding
-  ( bracket,
+  ( atomically,
+    bracket,
+    forkFinally,
     handle,
+    killThread,
     race,
     retry,
+    withAsync,
     withMVar,
   )
+import qualified Prelude
 
 main :: IO ()
 main = Init.setupLogging $ \logEnv -> do
@@ -75,40 +90,103 @@ testConfiguration _env _cfg = do
   pass
 
 run :: Env.Env -> Config.FinalConfig -> IO ()
-run env cfg = do
-  fetchTaskMutex <- newMVar ()
+run env _cfg = do
   Env.runApp env
     $ katipAddContext (sl "agent-version" (A.String herculesAgentVersion))
     $ withAgentToken
-    $ withLifeCycle
-    $ (logLocM InfoS "Agent online." >>)
-    $ replicateConcurrently_ (fromIntegral $ Config.concurrentTasks cfg)
-    $ forever
-    $ do
-      taskMaybe <-
-        withMVar fetchTaskMutex
-          $ const
-          $ safeLiftedHandle
-            ( \e -> do
-                logLocM WarningS $
-                  "Exception fetching task, retrying: "
-                    <> show
-                      (e :: SomeException)
-                liftIO $ threadDelay (60 * 1000 * 1000)
-                pure Nothing
-            )
-          $ ( >>=
-                \case
-                  Nothing -> do
-                    liftIO $ threadDelay (1000 * 1000)
-                    pure Nothing
-                  x -> pure x
-            )
-          $ Env.runHerculesClient
-          $ tasksReady tasksClient
-      forM_ taskMaybe $ performTask
+    $ withLifeCycle \hello -> withTaskState \tasks ->
+      withAgentSocket hello tasks \socket ->
+        withApplicationLevelPinger socket $ do
+          logLocM InfoS "Agent online."
+          forever $ do
+            (liftIO $ atomically $ readTChan $ serviceChan socket) >>= \case
+              ServicePayload.ServiceInfo _ -> pass
+              ServicePayload.StartEvaluation evalTask ->
+                launchTask tasks socket (Task.upcastId $ EvaluateTask.id evalTask) do
+                  Cachix.withCaches do
+                    Evaluate.performEvaluation evalTask
+                    pure $ TaskStatus.Successful ()
+              ServicePayload.StartBuild buildTask ->
+                launchTask tasks socket (Task.upcastId $ BuildTask.id buildTask) do
+                  Cachix.withCaches $
+                    Build.performBuild buildTask
+              ServicePayload.Cancel cancellation -> cancelTask tasks socket cancellation
 
-withLifeCycle :: App a -> App a
+withTaskState :: (TVar (Map (Id (Task Task.Any)) ThreadId) -> App a) -> App a
+withTaskState f = do
+  tasks <- newTVarIO mempty
+  withAsync (taskStateMonitor tasks) \_ ->
+    f tasks
+
+taskStateMonitor :: TVar (Map (Id (Task Task.Any)) ThreadId) -> App ()
+taskStateMonitor tasks = watchChange mempty
+  where
+    watchChange :: Map (Id (Task Task.Any)) ThreadId -> App ()
+    watchChange current = do
+      new <- atomically do
+        now <- readTVar tasks
+        guard $ now /= current
+        pure now
+      katipAddContext (sl "state" (A.toJSON $ fmap Prelude.show new)) do
+        logLocM DebugS "Task state updated"
+      watchChange new
+
+launchTask :: TVar (Map (Id (Task Task.Any)) ThreadId) -> Env.AgentSocket -> Id (Task Task.Any) -> App TaskStatus.TaskStatus -> App ()
+launchTask tasks socket taskId doWork = withNamedContext "task" taskId do
+  let insertSelf = do
+        me <- liftIO myThreadId
+        join $ modifyTVarIO tasks \tasks0 ->
+          case M.lookup taskId tasks0 of
+            Just preexist ->
+              ( tasks0,
+                withNamedContext "preexistingThread" (show preexist :: Text) do
+                  logLocM ErrorS "Refusing to overwrite thread for task"
+              )
+            Nothing -> (M.insert taskId me tasks0, pass)
+      done st = do
+        report' st
+        modifyTVarIO tasks \tasks0 ->
+          (M.delete taskId tasks0, ())
+      report' (Right s@(TaskStatus.Terminated _)) = do
+        logLocM InfoS "Completed failed task"
+        report s
+      report' (Right s@(TaskStatus.Successful _)) = do
+        logLocM InfoS "Completed task successfully"
+        report s
+      report' (Right s@(TaskStatus.Exceptional e)) = withNamedContext "message" e do
+        logLocM ErrorS "Exceptional status in task"
+        report s
+      report' (Left e) = withNamedContext "message" (displayException e) $
+        withNamedContext "exception" (show e :: Text) do
+          logLocM ErrorS "Exception in task"
+          report $ TaskStatus.Exceptional $ toSL $ displayException e
+      -- TODO use socket
+      report status =
+        retry (cap 60 exponential)
+          $ noContent
+          $ runHerculesClient
+          $ tasksSetStatus tasksClient taskId status
+  void @_ @ThreadId $
+    flip forkFinally done do
+      insertSelf
+      logLocM InfoS "Starting task"
+      liftIO $ atomically $ Socket.write socket $ AgentPayload.Started $ AgentPayload.MkStarted {taskId = taskId}
+      doWork
+
+cancelTask :: TVar (Map (Id (Task Task.Any)) ThreadId) -> Env.AgentSocket -> ServicePayload.Cancel -> App ()
+cancelTask tasks socket cancellation = do
+  let taskId = ServicePayload.taskId cancellation
+  withNamedContext "taskId" taskId do
+    tasksNow <- readTVarIO tasks
+    case M.lookup taskId tasksNow of
+      Just x -> do
+        logLocM DebugS "Killing thread for cancelled task"
+        killThread x
+        atomically $ Socket.write socket $ AgentPayload.Cancelled $ AgentPayload.MkCancelled {taskId = taskId}
+      Nothing ->
+        logLocM DebugS "cancelTask: No such task"
+
+withLifeCycle :: (StartInfo.Hello -> App a) -> App a
 withLifeCycle app = do
   agentInfo <- extractAgentInfo
   now <- liftIO getCurrentTime
@@ -116,59 +194,21 @@ withLifeCycle app = do
   let startInfo = StartInfo.StartInfo {id = freshId, startTime = now}
       hello = StartInfo.Hello
         { agentInfo = agentInfo,
-          startInfo = startInfo
+          startInfo = startInfo,
+          tasksInProgress = []
         }
       req r =
         retry (cap 60 exponential)
           $ noContent
           $ runHerculesClient
           $ r
-      sayHello = req $ LifeCycle.hello lifeCycleClient hello
-      pinger = forever $ do
-        req $ LifeCycle.heartbeat lifeCycleClient startInfo
-        let oneSecond = 1000 * 1000
-        liftIO $ threadDelay (oneSecond * 60)
       sayGoodbye = req $ LifeCycle.goodbye lifeCycleClient startInfo
-      withPinger =
-        fmap (either identity identity)
-          . race pinger
-  bracket sayHello (\() -> sayGoodbye) (\() -> withPinger app)
+  bracket pass (\() -> sayGoodbye) (\() -> app hello)
 
-performTask :: Task Task.Any -> App ()
-performTask task = contextually $ do
-  result <- handleExceptions performTaskPerType
-  logStatus result
-  report result
+withApplicationLevelPinger :: Env.AgentSocket -> App a -> App a
+withApplicationLevelPinger socket = fmap (either identity identity) . race pinger
   where
-    contextually =
-      withNamedContext "task" (Task.id task)
-        . withNamedContext "task-type" (Task.typ task)
-    handleExceptions m =
-      safeLiftedHandle
-        ( \e -> do
-            pure $ TaskStatus.Exceptional (toSL $ displayException e)
-        )
-        m
-    performTaskPerType = do
-      logLocM InfoS "Starting task"
-      case Task.typ task of
-        "eval" -> do
-          let evalTask :: Task EvaluateTask.EvaluateTask
-              evalTask = Task.uncheckedCast task
-          Cachix.withCaches $
-            Evaluate.performEvaluation evalTask
-          pure (TaskStatus.Successful ())
-        "build" -> do
-          let buildTask :: Task BuildTask.BuildTask
-              buildTask = Task.uncheckedCast task
-          Cachix.withCaches $
-            Build.performBuild buildTask
-        _ -> panicWithLog "Unknown task type"
-    report status =
-      retry (cap 60 exponential)
-        $ noContent
-        $ runHerculesClient
-        $ tasksSetStatus tasksClient (Task.id task) status
-    logStatus (TaskStatus.Terminated _) = logLocM InfoS "Completed failed task"
-    logStatus (TaskStatus.Successful _) = logLocM InfoS "Completed task successfully"
-    logStatus (TaskStatus.Exceptional e) = logLocM ErrorS $ "Exception in task: " <> logStr e
+    pinger = forever $ do
+      liftIO $ atomically $ Socket.write socket AgentPayload.Ping
+      liftIO $ threadDelay (oneSecond * 30)
+    oneSecond = 1000 * 1000

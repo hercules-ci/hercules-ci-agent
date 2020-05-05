@@ -115,6 +115,12 @@ let
 
               hnix-store-core = self.callPackage ./haskell-hnix-store-core.nix {};
 
+              websockets = self.callPackage ./websockets.nix {};
+
+              wuss = self.callPackage ./wuss.nix {};
+
+              servant-websockets = self.callPackage ./servant-websockets.nix {};
+
             }
         );
 

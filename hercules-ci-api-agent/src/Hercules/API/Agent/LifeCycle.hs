@@ -6,6 +6,7 @@ module Hercules.API.Agent.LifeCycle where
 import Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 as CreateAgentSession_V2
   ( CreateAgentSession,
   )
+import Hercules.API.Agent.LifeCycle.ServiceInfo
 import Hercules.API.Agent.LifeCycle.StartInfo
   ( Hello,
     StartInfo,
@@ -53,6 +54,12 @@ data LifeCycleAPI auth f
             :> "goodbye"
             :> ReqBody '[JSON] StartInfo
             :> auth
-            :> Post '[JSON] NoContent
+            :> Post '[JSON] NoContent,
+        getServiceInfo ::
+          f
+            :- Summary "Service version and configuration."
+            :> "agent"
+            :> "service-info"
+            :> Get '[JSON] ServiceInfo
       }
   deriving (Generic)

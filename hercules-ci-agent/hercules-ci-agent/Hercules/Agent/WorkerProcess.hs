@@ -1,5 +1,6 @@
 module Hercules.Agent.WorkerProcess
   ( runWorker,
+    getWorkerExe,
   )
 where
 
@@ -13,7 +14,9 @@ import Data.Conduit.Serialization.Binary
     conduitEncode,
   )
 import GHC.IO.Exception
+import Paths_hercules_ci_agent (getBinDir)
 import Protolude
+import System.FilePath ((</>))
 import System.IO (hClose)
 import System.IO.Error
 import System.Process
@@ -27,7 +30,16 @@ data WorkerException
       }
   deriving (Show, Typeable)
 
-instance Exception WorkerException
+instance Exception WorkerException where
+  displayException we =
+    displayException (originalException we)
+      <> case exitStatus we of
+        Nothing -> ""
+        Just s -> " (worker: " <> show s <> ")"
+
+getWorkerExe :: MonadIO m => m [Char]
+getWorkerExe = do
+  liftIO getBinDir <&> (</> "hercules-ci-agent-worker")
 
 -- | Control a child process by communicating over stdin and stdout
 -- using a 'Binary' interface.

@@ -15,6 +15,7 @@
 , conduit-extra
 , containers
 , directory
+, dlist
 , exceptions
 , filepath
 , hercules-ci-api-agent
@@ -60,10 +61,12 @@
 , unliftio-core
 , unordered-containers
 , uuid
+, websockets
+, wuss
 }:
 mkDerivation {
   pname = "hercules-ci-agent";
-  version = "0.6.6";
+  version = "0.7.0";
   src = ./hercules-ci-agent;
   isLibrary = true;
   isExecutable = true;
@@ -108,6 +111,7 @@ mkDerivation {
     conduit-extra
     containers
     directory
+    dlist
     exceptions
     filepath
     hercules-ci-api-agent
@@ -148,6 +152,8 @@ mkDerivation {
     unliftio-core
     unordered-containers
     uuid
+    websockets
+    wuss
   ];
   executableSystemDepends = [ boost_context ];
   executablePkgconfigDepends = [
