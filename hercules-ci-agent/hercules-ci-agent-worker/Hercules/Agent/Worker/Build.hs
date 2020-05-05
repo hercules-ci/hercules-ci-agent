@@ -18,12 +18,15 @@ runBuild :: Ptr (Ref NixStore) -> Command.Build.Build -> ConduitT i Event (Resou
 runBuild store build = do
   let extraPaths = Command.Build.inputDerivationOutputPaths build
       drvPath = toS $ Command.Build.drvPath build
-  for_ extraPaths $ \drv ->
-    liftIO $ CNix.ensurePath store drv
+  for_ extraPaths $ \input -> do
+    putErrText $ "Fetching input " <> show input
+    liftIO $ CNix.ensurePath store input
+  putErrText $ "Derivation " <> show drvPath
   derivationMaybe <- liftIO $ Build.getDerivation store drvPath
   derivation <- case derivationMaybe of
     Just drv -> pure drv
     Nothing -> panic $ "Could not retrieve derivation " <> show drvPath <> " from local store or binary caches."
+  putErrText $ "Building " <> show drvPath
   nixBuildResult <- liftIO $ buildDerivation store drvPath derivation (extraPaths <$ guard (not (Command.Build.materializeDerivation build)))
   liftIO $ putErrText $ show nixBuildResult
   buildResult <- liftIO $ enrichResult store derivation nixBuildResult
