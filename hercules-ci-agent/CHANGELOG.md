@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+ - Jobs can be cancelled
+
+ - Streaming build logs are streamed in realtime
+
+ - The build log now has timestamps and color
+
+ - Distributed builds performance has improved by fetching fewer derivations
+
+### Fixed
+
+ - Extra nix options were not passed to the build process
+
 ## [0.6.6] - 2020-03-16
 
 ### Fixed
