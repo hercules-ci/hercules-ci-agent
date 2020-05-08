@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+ - ...
+
 ## [0.7.0] - 2020-05-05
+
+### Known issues
+
+ - Evaluator may not find `git` executable
+
+ - Agent process user must be in `trusted-users`. This is recommended for ease of use and performance but should not be a requirement.
 
 ### Added
 
  - Jobs can be cancelled
 
- - Streaming build logs are streamed in realtime
+ - Build logs are streamed in realtime
 
  - The build log now has timestamps and color
 
