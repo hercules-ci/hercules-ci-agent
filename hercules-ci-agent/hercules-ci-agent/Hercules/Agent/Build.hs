@@ -30,6 +30,7 @@ import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
 import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import Hercules.Agent.WorkerProcess
+import qualified Hercules.Agent.WorkerProcess as WorkerProcess
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.Build as Command.Build
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
@@ -48,10 +49,11 @@ performBuild buildTask = do
   commandChan <- liftIO newChan
   statusRef <- newIORef Nothing
   extraNixOptions <- Nix.askExtraOptions
+  workerEnv <- liftIO $ WorkerProcess.prepareEnv (WorkerProcess.WorkerEnvSettings {nixPath = mempty})
   let opts = [show $ extraNixOptions]
       procSpec =
         (System.Process.proc workerExe opts)
-          { env = Just [("NIX_PATH", "")],
+          { env = Just workerEnv,
             close_fds = True,
             cwd = Just "/"
           }

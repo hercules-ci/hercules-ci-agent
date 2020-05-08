@@ -269,6 +269,9 @@ test-suite hercules-test
       Hercules.Agent.NixPathSpec
       Hercules.Agent.Nix.RetrieveDerivationInfo
       Hercules.Agent.Nix.RetrieveDerivationInfoSpec
+      Hercules.Agent.WorkerProcess
+      Hercules.Agent.WorkerProcessSpec
+      Paths_hercules_ci_agent
       Spec
   hs-source-dirs:
       test
@@ -286,7 +289,9 @@ test-suite hercules-test
     , conduit
     , containers
     , exceptions
+    , filepath
     , hercules-ci-api-agent
+    , hercules-ci-agent
     , hercules-ci-api-core
     , hspec
     , katip
@@ -295,9 +300,11 @@ test-suite hercules-test
     , monad-control
     , nix-derivation
     , optparse-applicative
+    , process
     , protolude
     , safe-exceptions
     , system-filepath
     , text
     , transformers-base
+    , unliftio-core
   default-language: Haskell2010
