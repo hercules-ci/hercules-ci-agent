@@ -10,9 +10,9 @@ name:           hercules-ci-agent-test
 version:        0.1.0.0
 homepage:       https://github.com/hercules-ci/hercules-ci#readme
 bug-reports:    https://github.com/hercules-ci/hercules-ci/issues
-author:         Hercules Labs
+author:         Hercules CI contributors
 maintainer:     info@hercules-ci.com
-copyright:      2018-2019 Hercules Labs OÜ
+copyright:      2018-2020 Hercules CI
 license:        Apache-2.0
 build-type:     Simple
 

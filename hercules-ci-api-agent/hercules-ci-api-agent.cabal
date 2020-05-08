@@ -1,12 +1,12 @@
 cabal-version: 1.12
 
 name:           hercules-ci-api-agent
-version:        0.1.1.0
+version:        0.2.0.0
 homepage:       https://github.com/hercules-ci/hercules-ci-agent#readme
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
-author:         Hercules Labs
+author:         Hercules CI contributors
 maintainer:     info@hercules-ci.com
-copyright:      2018-2019 Hercules Labs OÜ
+copyright:      2018-2020 Hercules CI
 license:        Apache-2.0
 build-type:     Simple
 extra-source-files:

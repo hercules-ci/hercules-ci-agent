@@ -15,7 +15,9 @@ dst_dir="${nix_darwin_dir}/modules/services/hercules-ci-agent"
 cp "$src_dir/default.nix-darwin.nix" \
    "$dst_dir/default.nix"
 
-cp "$src_dir/common.nix" "$src_dir/gc.nix" \
+cp "$src_dir/common.nix" \
+   "$src_dir/gc.nix" \
+   "$src_dir/issue-3398-path-info-cache-ttls-backport-2.3.patch" \
    "$dst_dir/"
 
 mkdir -p "$dst_dir/to-toml"

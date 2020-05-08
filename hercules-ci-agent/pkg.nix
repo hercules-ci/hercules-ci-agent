@@ -35,6 +35,7 @@
 , monad-control
 , mtl
 , network
+, network-uri
 , nix-derivation
 , nix-expr
 , nix-main
@@ -61,6 +62,7 @@
 , unliftio-core
 , unordered-containers
 , uuid
+, vector
 , websockets
 , wuss
 }:
@@ -79,12 +81,15 @@ mkDerivation {
     bytestring
     conduit
     containers
+    dlist
     exceptions
+    hercules-ci-api-agent
     katip
     lifted-async
     lifted-base
     monad-control
     mtl
+    network-uri
     optparse-applicative
     process
     protolude
@@ -95,6 +100,8 @@ mkDerivation {
     unliftio
     unliftio-core
     uuid
+    websockets
+    wuss
   ];
   executableHaskellDepends = [
     aeson
@@ -130,6 +137,7 @@ mkDerivation {
     monad-control
     mtl
     network
+    network-uri
     nix-derivation
     optparse-applicative
     process
@@ -152,6 +160,7 @@ mkDerivation {
     unliftio-core
     unordered-containers
     uuid
+    vector
     websockets
     wuss
   ];
