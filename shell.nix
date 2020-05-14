@@ -18,6 +18,7 @@ pkgs.mkShell {
       agentpkgs.devTools.cabal2nix
       agentpkgs.devTools.nix-prefetch-git
       agentpkgs.hercules-ci-agent-packages.internal.haskellPackages.ghc
+      agentpkgs.hercules-ci-agent-packages.internal.haskellPackages.ghcide
     ];
   inherit (agentpkgs.hercules-ci-agent-packages.pre-commit-check) shellHook;
 }
