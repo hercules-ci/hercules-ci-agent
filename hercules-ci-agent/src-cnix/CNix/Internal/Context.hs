@@ -1,3 +1,4 @@
+{-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -43,6 +44,12 @@ data StringsIterator
 
 data DerivationOutputsIterator
 
+data DerivationInputsIterator
+
+data StringPairsIterator
+
+data StringPairs
+
 context :: C.Context
 context =
   C.cppCtx <> C.fptrCtx
@@ -55,12 +62,15 @@ context =
             <> M.singleton (C.TypeName "Attr") [t|Attr'|]
             <> M.singleton (C.TypeName "Strings") [t|Strings|]
             <> M.singleton (C.TypeName "StringsIterator") [t|StringsIterator|]
+            <> M.singleton (C.TypeName "StringPairs") [t|StringPairs|]
+            <> M.singleton (C.TypeName "StringPairsIterator") [t|StringPairsIterator|]
             <> M.singleton (C.TypeName "refHerculesStore") [t|Ref HerculesStore|]
             <> M.singleton (C.TypeName "Derivation") [t|Derivation|]
             <> M.singleton (C.TypeName "LoggerFields") [t|Fields|]
             <> M.singleton (C.TypeName "HerculesLoggerEntry") [t|HerculesLoggerEntry|]
             <> M.singleton (C.TypeName "LogEntryQueue") [t|LogEntryQueue|]
             <> M.singleton (C.TypeName "DerivationOutputsIterator") [t|DerivationOutputsIterator|]
+            <> M.singleton (C.TypeName "DerivationInputsIterator") [t|DerivationInputsIterator|]
             <> M.singleton (C.TypeName "exception_ptr") [t|ExceptionPtr|]
       }
 

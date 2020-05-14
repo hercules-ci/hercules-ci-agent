@@ -27,7 +27,7 @@ let
               cachix =
                 # avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
                 haskell.lib.disableLibraryProfiling (
-                  self.callPackage ./cachix.nix { nix-main = nix; nix-store = nix; boost_context = pkgs.boost; }
+                  self.callPackage ./cachix.nix {}
                 );
               cachix-api = self.callPackage ./cachix-api.nix {};
 
@@ -39,11 +39,7 @@ let
                 let
                   basePkg =
                     callPkg super "hercules-ci-agent" ../hercules-ci-agent {
-                      nix-store = nix;
-                      nix-expr = nix;
-                      nix-main = nix;
                       bdw-gc = pkgs.boehmgc-hercules;
-                      boost_context = pkgs.boost;
                     };
 
                 in

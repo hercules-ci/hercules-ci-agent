@@ -82,6 +82,56 @@ library internal-ffi
   build-depends:       base, protolude
   default-language:    Haskell2010
 
+library cnix
+  exposed-modules:
+      CNix
+      CNix.Internal.Context
+      CNix.Internal.Raw
+      CNix.Internal.Store
+      CNix.Internal.Typed
+  hs-source-dirs: src-cnix
+  include-dirs:
+      cbits
+  cxx-sources:
+     cbits/hercules-store.cc
+     cbits/hercules-logger.cc
+  build-depends:
+      base
+    , inline-c
+    , inline-c-cpp
+    , internal-ffi
+    , bytestring
+    , cachix
+    , conduit
+    , containers
+    , protolude
+    , unliftio-core
+  pkgconfig-depends:
+      nix-store >= 2.0
+    , nix-expr >= 2.0
+    , nix-main >= 2.0
+    , bdw-gc
+  extra-libraries:
+      stdc++
+      boost_context
+  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
+  ghc-options:
+    -Werror=incomplete-patterns -Werror=missing-fields
+    -Wall
+    -fwarn-tabs
+    -fwarn-unused-imports
+    -fwarn-missing-signatures
+    -fwarn-name-shadowing
+    -fwarn-incomplete-patterns
+    -threaded
+    -- match what Nix is using
+    -optc-std=c++17
+  cxx-options: -Wall -std=c++17
+  if os(darwin)
+    -- avoid https://gitlab.haskell.org/ghc/ghc/issues/11829
+    ld-options:  -Wl,-keep_dwarf_unwind
+    ghc-options: -pgmc=clang++
+
 executable hercules-ci-agent
   main-is: Main.hs
   other-modules:
@@ -132,6 +182,7 @@ executable hercules-ci-agent
     , bytestring
     , cachix
     , cachix-api
+    , cnix
     , conduit
     , conduit-extra
     , containers
@@ -154,7 +205,6 @@ executable hercules-ci-agent
     , monad-control
     , mtl
     , network-uri
-    , nix-derivation
     , network
     , optparse-applicative
     , process
@@ -165,7 +215,6 @@ executable hercules-ci-agent
     , servant-client
     , servant-client-core
     , stm
-    , system-filepath
     , temporary
     , text
     , time
@@ -184,11 +233,6 @@ executable hercules-ci-agent
 executable hercules-ci-agent-worker
   main-is: Main.hs
   other-modules:
-      CNix
-      CNix.Internal.Context
-      CNix.Internal.Raw
-      CNix.Internal.Store
-      CNix.Internal.Typed
       Hercules.Agent.Worker
       Hercules.Agent.Worker.Build
       Hercules.Agent.Worker.Build.Prefetched
@@ -196,9 +240,6 @@ executable hercules-ci-agent-worker
       Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent-worker
-  cxx-sources:
-     cbits/hercules-store.cc
-     cbits/hercules-logger.cc
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
     -Werror=incomplete-patterns -Werror=missing-fields
@@ -231,6 +272,7 @@ executable hercules-ci-agent-worker
     , binary-conduit
     , bytestring
     , cachix
+    , cnix
     , conduit
     , containers
     , exceptions
@@ -283,6 +325,7 @@ test-suite hercules-test
     , binary
     , binary-conduit
     , bytestring
+    , cnix
     , conduit
     , containers
     , exceptions
@@ -293,11 +336,9 @@ test-suite hercules-test
     , lifted-async
     , lifted-base
     , monad-control
-    , nix-derivation
     , optparse-applicative
     , protolude
     , safe-exceptions
-    , system-filepath
     , text
     , transformers-base
   default-language: Haskell2010
