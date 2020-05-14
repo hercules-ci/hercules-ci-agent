@@ -14,6 +14,7 @@ import Control.Concurrent.STM (TVar, readTVar)
 import Control.Concurrent.STM.TChan
 import Control.Exception (displayException)
 import Control.Exception.Lifted (bracket)
+import Control.Monad.IO.Unlift (MonadUnliftIO)
 import qualified Data.Aeson as A
 import qualified Data.Map as M
 import Data.Time (getCurrentTime)
@@ -64,6 +65,7 @@ import Hercules.Error
 import Protolude hiding
   ( atomically,
     bracket,
+    catch,
     forkFinally,
     handle,
     killThread,
@@ -72,6 +74,8 @@ import Protolude hiding
     withAsync,
     withMVar,
   )
+import System.Posix.Resource
+import UnliftIO.Exception (catch)
 import qualified Prelude
 
 main :: IO ()
@@ -93,6 +97,7 @@ run :: Env.Env -> Config.FinalConfig -> IO ()
 run env _cfg = do
   Env.runApp env
     $ katipAddContext (sl "agent-version" (A.String herculesAgentVersion))
+    $ (configureLimits >>)
     $ withAgentToken
     $ withLifeCycle \hello -> withTaskState \tasks ->
       withAgentSocket hello tasks \socket ->
@@ -212,3 +217,45 @@ withApplicationLevelPinger socket = fmap (either identity identity) . race pinge
       liftIO $ atomically $ Socket.write socket AgentPayload.Ping
       liftIO $ threadDelay (oneSecond * 30)
     oneSecond = 1000 * 1000
+
+configureLimits :: (MonadUnliftIO m, KatipContext m) => m ()
+configureLimits = do
+  tryIncreaseResourceLimitTo ResourceOpenFiles "open files" (ResourceLimit 65536)
+
+tryIncreaseResourceLimitTo :: (MonadUnliftIO m, KatipContext m) => Resource -> Text -> ResourceLimit -> m ()
+tryIncreaseResourceLimitTo resource resourceName target = katipAddContext (sl "resource" resourceName) do
+  lims <- liftIO $ getResourceLimit resource
+  let lims' = ResourceLimits
+        { softLimit = target & atLeast (softLimit lims) & atMost (hardLimit lims),
+          hardLimit = hardLimit lims
+        }
+      atLeast ResourceLimitInfinity _ = ResourceLimitInfinity
+      atLeast _ ResourceLimitInfinity = ResourceLimitInfinity
+      atLeast ResourceLimitUnknown r = r
+      atLeast l ResourceLimitUnknown = l
+      atLeast (ResourceLimit a) (ResourceLimit b) | a > b = ResourceLimit a
+      atLeast _ r = r
+      atMost (ResourceLimit a) (ResourceLimit b) | a > b = ResourceLimit b
+      atMost (ResourceLimit a) _ = ResourceLimit a
+      atMost ResourceLimitInfinity r = r
+      atMost l ResourceLimitInfinity = l
+      atMost ResourceLimitUnknown r = r
+      -- atMost l ResourceLimitUnknown = l -- already covered
+      showLimit (ResourceLimitInfinity) = "infinity"
+      showLimit (ResourceLimitUnknown) = A.Null
+      showLimit (ResourceLimit n) = A.Number $ fromIntegral n
+  liftIO (setResourceLimit resource lims') `catch` \e ->
+    katipAddContext
+      ( sl "message" (displayException (e :: SomeException))
+          <> sl "soft" (showLimit (softLimit lims'))
+          <> sl "hard" (showLimit (hardLimit lims'))
+      )
+      do
+        logLocM WarningS "Could not increase resource limit"
+  limsFinal <- liftIO (getResourceLimit resource)
+  katipAddContext
+    ( sl "soft" (showLimit (softLimit limsFinal))
+        <> sl "hard" (showLimit (hardLimit limsFinal))
+    )
+    do
+      logLocM DebugS "Resource limit"
