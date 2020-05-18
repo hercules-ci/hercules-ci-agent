@@ -10,9 +10,9 @@ let
     "nixos-20_03" = {
       nixpkgsSource = "nixos-20.03";
     };
-    "nixos-unstable" = {
-      nixpkgsSource = "nixos-unstable";
-    };
+    # "nixos-unstable" = {
+    #   nixpkgsSource = "nixos-unstable";
+    # };
   } (
     _name: { nixpkgsSource }:
 
