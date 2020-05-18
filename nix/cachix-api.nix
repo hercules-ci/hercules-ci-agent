@@ -8,7 +8,6 @@
 , cryptonite
 , deepseq
 , exceptions
-, fetchgit
 , hspec
 , hspec-discover
 , http-api-data
@@ -34,13 +33,7 @@
 mkDerivation {
   pname = "cachix-api";
   version = "0.4.0";
-  src = fetchgit {
-    url = "https://github.com/cachix/cachix";
-    sha256 = "1p45bfvq3zs0z5bldf4js5drsnmr468l8xnsjng3z077j5whwg8k";
-    rev = "1087621f8535dc2342744af4562ca1e4cb43e78b";
-    fetchSubmodules = true;
-  };
-  postUnpack = "sourceRoot+=/cachix-api; echo source root reset to $sourceRoot";
+  sha256 = "5d8a2c8ec4b86c5199216ae85c7ee0cc1dcc349b8482e3dfe7d72b9b6db21c92";
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [

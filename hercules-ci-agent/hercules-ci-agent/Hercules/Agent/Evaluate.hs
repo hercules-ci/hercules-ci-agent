@@ -6,6 +6,7 @@ module Hercules.Agent.Evaluate
   )
 where
 
+import CNix (withStore)
 import Conduit
 import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
@@ -200,9 +201,9 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
               _ -> pass
             emit msg
           emitDrvs =
-            TraversalQueue.work derivationQueue $ \recurse drvPath -> do
+            withStore $ \store -> TraversalQueue.work derivationQueue $ \recurse drvPath -> do
               liftIO $ atomicModifyIORef allAttrPaths ((,()) . S.insert drvPath)
-              drvInfo <- retrieveDerivationInfo drvPath
+              drvInfo <- retrieveDerivationInfo store drvPath
               forM_
                 (M.keys $ DerivationInfo.inputDerivations drvInfo)
                 recurse -- asynchronously

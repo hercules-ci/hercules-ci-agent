@@ -51,13 +51,15 @@ in
 
   testScript =
     ''
-      startAll;
+      start_all()
 
       # Make sure it even starts (if it doesn't start we need to time
       # out, which will take a very long time on current CI)
-      $agent->waitForUnit("hercules-ci-agent.service");
+      agent.wait_for_unit("hercules-ci-agent.service")
 
       # Run the test code + api
-      $api->succeed("(cd ${testdata} && hercules-ci-agent-test >/dev/console 2>/dev/console)");
+      api.succeed(
+          "(cd ${testdata} && hercules-ci-agent-test >/dev/console 2>/dev/console)"
+      )
     '';
 }

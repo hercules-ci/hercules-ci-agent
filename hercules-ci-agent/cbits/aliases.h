@@ -18,5 +18,7 @@ typedef std::queue<std::unique_ptr<HerculesLogger::LogEntry>> LogEntryQueue;
 
 typedef nix::Strings::iterator StringsIterator;
 typedef nix::DerivationOutputs::iterator DerivationOutputsIterator;
+typedef nix::DerivationInputs::iterator DerivationInputsIterator;
+typedef nix::StringPairs::iterator StringPairsIterator;
 
 using namespace std;
