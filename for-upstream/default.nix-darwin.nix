@@ -44,7 +44,10 @@ in
       chown ${toString user.uid}:${toString user.gid} '${cfg.logFile}'
     '';
 
+    # Trusted user allows simplified configuration and better performance
+    # when operating in a cluster.
     nix.trustedUsers = [ "hercules-ci-agent" ];
+    services.hercules-ci-agent.extraOptions.nixUserIsTrusted = true;
 
     users.knownGroups = [ "hercules-ci-agent" ];
     users.knownUsers = [ "hercules-ci-agent" ];

@@ -39,7 +39,7 @@ type FinalConfig = Config 'Final
 data Config purpose
   = Config
       { herculesApiBaseURL :: Item purpose 'Required Text,
-        requireMaterializedDerivations :: Item purpose 'Required Bool,
+        nixUserIsTrusted :: Item purpose 'Required Bool,
         concurrentTasks :: Item purpose 'Required Integer,
         baseDirectory :: Item purpose 'Required FilePath,
         -- | Read-only
@@ -57,8 +57,8 @@ tomlCodec =
   Config
     <$> dioptional (Toml.text "apiBaseUrl")
     .= herculesApiBaseURL
-    <*> dioptional (Toml.bool "requireMaterializedDerivations")
-    .= requireMaterializedDerivations
+    <*> dioptional (Toml.bool "nixUserIsTrusted")
+    .= nixUserIsTrusted
     <*> dioptional (Toml.integer "concurrentTasks")
     .= concurrentTasks
     <*> dioptional (Toml.string keyBaseDirectory)
@@ -119,7 +119,7 @@ finalizeConfig loc input = do
   let apiBaseUrl = fromMaybe dabu $ herculesApiBaseURL input
   pure Config
     { herculesApiBaseURL = apiBaseUrl,
-      requireMaterializedDerivations = fromMaybe False $ requireMaterializedDerivations input,
+      nixUserIsTrusted = fromMaybe False $ nixUserIsTrusted input,
       binaryCachesPath = binaryCachesP,
       clusterJoinTokenPath = clusterJoinTokenP,
       concurrentTasks = validConcurrentTasks,
