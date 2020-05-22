@@ -69,7 +69,10 @@ in
       '';
     };
 
+    # Trusted user allows simplified configuration and better performance
+    # when operating in a cluster.
     nix.trustedUsers = [ cfg.user ];
+    services.hercules-ci-agent.extraOptions.nixUserIsTrusted = true;
 
     users = mkIf (cfg.user == defaultUser) {
       users.hercules-ci-agent =

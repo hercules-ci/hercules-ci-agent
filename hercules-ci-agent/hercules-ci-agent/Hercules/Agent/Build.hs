@@ -59,7 +59,7 @@ performBuild buildTask = do
           panic e
         _ -> pass
   baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
-  materialize <- asks (Config.requireMaterializedDerivations . Env.config)
+  materialize <- asks (not . Config.nixUserIsTrusted . Env.config)
   liftIO $ writeChan commandChan $ Just $ Command.Build $ Command.Build.Build
     { drvPath = BuildTask.derivationPath buildTask,
       inputDerivationOutputPaths = toS <$> BuildTask.inputDerivationOutputPaths buildTask,

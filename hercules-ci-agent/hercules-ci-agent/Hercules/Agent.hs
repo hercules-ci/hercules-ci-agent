@@ -93,11 +93,18 @@ testConfiguration _env _cfg = do
   -- Room for checks that are not in Init.newEnv
   pass
 
+configChecks :: App ()
+configChecks = do
+  trusted <- asks (Config.nixUserIsTrusted . Env.config)
+  when (not trusted) do
+    logLocM WarningS "Your config does not indicate you have set up your user as a trusted user on the system. Running the agent as a trusted user ensures that your cache configuration is compatible with the system and improves performance if you have more than one agent. The NixOS and nix-darwin modules should configure this automatically. If this agent was set up with a manually written config file, see https://docs.hercules-ci.com/hercules-ci/reference/agent-config/"
+
 run :: Env.Env -> Config.FinalConfig -> IO ()
 run env _cfg = do
   Env.runApp env
     $ katipAddContext (sl "agent-version" (A.String herculesAgentVersion))
     $ (configureLimits >>)
+    $ (configChecks >>)
     $ withAgentToken
     $ withLifeCycle \hello -> withTaskState \tasks ->
       withAgentSocket hello tasks \socket ->
