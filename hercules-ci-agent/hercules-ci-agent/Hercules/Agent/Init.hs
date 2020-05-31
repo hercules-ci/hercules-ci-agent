@@ -1,9 +1,9 @@
 module Hercules.Agent.Init where
 
-import qualified Hercules.Agent.BinaryCaches as BC
 import qualified Hercules.Agent.Cachix.Init
 import qualified Hercules.Agent.Compat as Compat
 import qualified Hercules.Agent.Config as Config
+import qualified Hercules.Agent.Config.BinaryCaches as BC
 import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Env (Env (Env))
 import qualified Hercules.Agent.Nix.Init
@@ -40,6 +40,7 @@ newEnv config logEnv = do
       herculesClientEnv = clientEnv,
       serviceInfo = serviceInfo,
       currentToken = Servant.Auth.Client.Token $ encodeUtf8 token,
+      binaryCaches = bcs,
       cachixEnv = cachix,
       socket = panic "Socket not defined yet.", -- Hmm, needs different monad?
       kNamespace = emptyNamespace,

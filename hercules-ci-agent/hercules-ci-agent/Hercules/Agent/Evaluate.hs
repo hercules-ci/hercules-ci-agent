@@ -35,7 +35,7 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll as PushedAll
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Servant (noContent)
-import qualified Hercules.Agent.Cachix as Agent.Cachix
+import qualified Hercules.Agent.Cache as Agent.Cache
 import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
@@ -186,11 +186,11 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
             TraversalQueue.waitUntilDone derivationQueue
             TraversalQueue.close derivationQueue
           pushDrvs = do
-            caches <- Agent.Cachix.activePushCaches
+            caches <- activePushCaches
             paths <- liftIO $ readIORef allAttrPaths
             forM_ caches $ \cache -> do
-              withNamedContext "cache" cache $ logLocM DebugS "Pushing drvs to cachix"
-              Agent.Cachix.push cache (toList paths) pushEvalWorkers
+              withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations"
+              Agent.Cache.push cache (toList paths) pushEvalWorkers
               emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll {cache = cache}
           captureAttrDrvAndEmit msg = do
             case msg of
@@ -276,10 +276,10 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                           TraversalQueue.enqueue derivationQueue drv
                           TraversalQueue.waitUntilDone derivationQueue
                         pushDerivations = do
-                          caches <- Agent.Cachix.activePushCaches
+                          caches <- activePushCaches
                           forM_ caches $ \cache -> do
-                            withNamedContext "cache" cache $ logLocM DebugS "Pushing ifd drvs to cachix"
-                            Agent.Cachix.push cache [drv] pushEvalWorkers
+                            withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations for import from derivation"
+                            Agent.Cache.push cache [drv] pushEvalWorkers
                     Async.Lifted.concurrently_ submitDerivationInfos pushDerivations
                     emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest
                       { derivationPath = drv,

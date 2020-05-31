@@ -50,6 +50,8 @@ data StringPairsIterator
 
 data StringPairs
 
+data SecretKey
+
 context :: C.Context
 context =
   C.cppCtx <> C.fptrCtx
@@ -72,6 +74,7 @@ context =
             <> M.singleton (C.TypeName "DerivationOutputsIterator") [t|DerivationOutputsIterator|]
             <> M.singleton (C.TypeName "DerivationInputsIterator") [t|DerivationInputsIterator|]
             <> M.singleton (C.TypeName "exception_ptr") [t|ExceptionPtr|]
+            <> M.singleton (C.TypeName "SecretKey") [t|SecretKey|]
       }
 
 unsafeMallocBS :: MonadIO m => IO Foreign.C.String.CString -> m ByteString

@@ -7,19 +7,14 @@ where
 import qualified Cachix.Client.Push as Cachix.Push
 import Control.Monad.IO.Unlift
 import qualified Data.Map as M
-import qualified Data.Text as Text
-import qualified Data.Text.IO as Text
 import qualified Hercules.Agent.Cachix.Env as Agent.Cachix
 import Hercules.Agent.Cachix.Info (activePushCaches)
-import Hercules.Agent.Env as Agent.Env
+import Hercules.Agent.Env as Agent.Env hiding (activePushCaches)
 import qualified Hercules.Agent.EnvironmentInfo as EnvInfo
 import Hercules.Agent.Log
-import qualified Hercules.Agent.Nix as Nix
-import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 import Hercules.Error
 import qualified Hercules.Formats.CachixCache as CachixCache
 import Protolude
-import System.IO (hClose)
 
 push :: Text -> [Text] -> Int -> App ()
 push cache paths workers = withNamedContext "cache" cache $ do
@@ -76,19 +71,3 @@ getTrustedPublicKeys = do
   cks <- asks (Agent.Cachix.cacheKeys . Agent.Env.cachixEnv)
   nixInfo <- liftIO EnvInfo.getNixInfo
   pure (EnvInfo.nixTrustedPublicKeys nixInfo ++ concatMap CachixCache.publicKeys cks)
-
-withCaches :: App a -> App a
-withCaches m = do
-  netrcLns <- getNetrcLines
-  substs <- getSubstituters
-  pubkeys <- getTrustedPublicKeys
-  SecureDirectory.withSecureTempFile "tmp-netrc.key" $ \netrcPath netrcHandle -> do
-    liftIO $ do
-      Text.hPutStrLn netrcHandle (Text.unlines netrcLns)
-      hClose netrcHandle
-    Nix.withExtraOptions
-      [ ("netrc-file", toSL netrcPath),
-        ("substituters", Text.intercalate " " substs),
-        ("trusted-public-keys", Text.intercalate " " pubkeys)
-      ]
-      m

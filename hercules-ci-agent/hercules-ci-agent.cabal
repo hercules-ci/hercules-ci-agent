@@ -140,15 +140,16 @@ executable hercules-ci-agent
       Hercules.Agent
       Hercules.Agent.AgentSocket
       Hercules.Agent.Bag
-      Hercules.Agent.BinaryCaches
       Hercules.Agent.Build
       Hercules.Agent.CabalInfo
+      Hercules.Agent.Cache
       Hercules.Agent.Cachix
       Hercules.Agent.Cachix.Env
       Hercules.Agent.Cachix.Info
       Hercules.Agent.Cachix.Init
       Hercules.Agent.Client
       Hercules.Agent.Config
+      Hercules.Agent.Config.BinaryCaches
       Hercules.Agent.Compat
       Hercules.Agent.Env
       Hercules.Agent.EnvironmentInfo
@@ -311,6 +312,8 @@ test-suite hercules-test
       Hercules.Agent.NixPathSpec
       Hercules.Agent.Nix.RetrieveDerivationInfo
       Hercules.Agent.Nix.RetrieveDerivationInfoSpec
+      Hercules.Agent.WorkerProcess
+      Paths_hercules_ci_agent
       Spec
   hs-source-dirs:
       test
@@ -329,6 +332,8 @@ test-suite hercules-test
     , conduit
     , containers
     , exceptions
+    , filepath
+    , hercules-ci-agent
     , hercules-ci-api-agent
     , hercules-ci-api-core
     , hspec
@@ -337,8 +342,10 @@ test-suite hercules-test
     , lifted-base
     , monad-control
     , optparse-applicative
+    , process
     , protolude
     , safe-exceptions
     , text
     , transformers-base
+    , unliftio-core
   default-language: Haskell2010

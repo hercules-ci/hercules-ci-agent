@@ -37,7 +37,7 @@ import qualified Hercules.API.TaskStatus as TaskStatus
 import Hercules.Agent.AgentSocket (withAgentSocket)
 import qualified Hercules.Agent.Build as Build
 import Hercules.Agent.CabalInfo (herculesAgentVersion)
-import qualified Hercules.Agent.Cachix as Cachix
+import qualified Hercules.Agent.Cache as Cache
 import Hercules.Agent.Client
   ( lifeCycleClient,
     tasksClient,
@@ -115,12 +115,12 @@ run env _cfg = do
               ServicePayload.ServiceInfo _ -> pass
               ServicePayload.StartEvaluation evalTask ->
                 launchTask tasks socket (Task.upcastId $ EvaluateTask.id evalTask) do
-                  Cachix.withCaches do
+                  Cache.withCaches do
                     Evaluate.performEvaluation evalTask
                     pure $ TaskStatus.Successful ()
               ServicePayload.StartBuild buildTask ->
                 launchTask tasks socket (Task.upcastId $ BuildTask.id buildTask) do
-                  Cachix.withCaches $
+                  Cache.withCaches $
                     Build.performBuild buildTask
               ServicePayload.Cancel cancellation -> cancelTask tasks socket cancellation
 

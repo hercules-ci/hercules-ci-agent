@@ -10,6 +10,7 @@ module CNix
     type NixStore,
     type EvalState,
     type Ref,
+    type SecretKey,
   )
 where
 
