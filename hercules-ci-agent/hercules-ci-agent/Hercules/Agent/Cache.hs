@@ -79,6 +79,7 @@ signClosure store key' path =
     CNix.signPath store key path >>= \case
       False -> pure 0
       True -> do
+        -- TODO factor out cnix library and avoid unsafeCoerce https://github.com/hercules-ci/hercules-ci-agent/issues/223
         vpi <- Store.queryPathInfo (Unsafe.Coerce.unsafeCoerce store) path
         refs <- Store.validPathInfoReferences vpi
         n <- refs

@@ -47,6 +47,6 @@ enrichResult store derivation _ = do
       }
   pure $ Event.BuildResult.BuildSuccess outputInfos
 
--- TODO factor out cnix library and avoid unsafeCoerce
+-- TODO factor out cnix library and avoid unsafeCoerce https://github.com/hercules-ci/hercules-ci-agent/issues/223
 coerceStore :: Ptr (Ref NixStore) -> Store
 coerceStore = unsafeCoerce
