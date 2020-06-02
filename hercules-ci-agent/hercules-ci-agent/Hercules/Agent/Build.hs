@@ -18,7 +18,7 @@ import Hercules.API.Agent.Build.BuildTask
 import Hercules.API.Servant (noContent)
 import Hercules.API.TaskStatus (TaskStatus)
 import qualified Hercules.API.TaskStatus as TaskStatus
-import qualified Hercules.Agent.Cachix as Agent.Cachix
+import qualified Hercules.Agent.Cache as Agent.Cache
 import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
@@ -111,9 +111,9 @@ stderrLineHandler pid ln =
 push :: BuildTask -> Map Text OutputInfo -> App ()
 push buildTask outs = do
   let paths = OutputInfo.path <$> toList outs
-  caches <- Agent.Cachix.activePushCaches
+  caches <- activePushCaches
   forM_ caches $ \cache -> do
-    Agent.Cachix.push cache paths 4
+    Agent.Cache.push cache paths 4
     emitEvents buildTask [BuildEvent.Pushed $ Pushed.Pushed {cache = cache}]
 
 reportSuccess :: BuildTask -> App ()

@@ -52,6 +52,7 @@ library
       Hercules.API.Task
       Hercules.Formats.CachixCache
       Hercules.Formats.Common
+      Hercules.Formats.NixCache
   hs-source-dirs:
       src
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators

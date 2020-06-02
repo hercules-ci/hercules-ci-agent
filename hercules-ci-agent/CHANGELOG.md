@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+ - Push to any nix store, including S3, using the `NixCache` kind in `binary-caches.json`
+
 ### Changed
 
  - Switch to NixOS 20.03

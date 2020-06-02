@@ -28,14 +28,16 @@ extractAgentInfo :: App AgentInfo.AgentInfo
 extractAgentInfo = do
   hostname <- liftIO getHostName
   nix <- liftIO getNixInfo
-  pushCaches <- Cachix.Info.activePushCaches
+  cachixPushCaches <- Cachix.Info.activePushCaches
+  pushCaches <- Env.activePushCaches
   concurrentTasks <- asks (Config.concurrentTasks . Env.config)
   let s = AgentInfo.AgentInfo
         { hostname = toS hostname,
           agentVersion = CabalInfo.herculesAgentVersion, -- TODO: Add git revision
           nixVersion = nixExeVersion nix,
           platforms = nixPlatforms nix,
-          cachixPushCaches = pushCaches,
+          cachixPushCaches = cachixPushCaches,
+          pushCaches = pushCaches,
           systemFeatures = nixSystemFeatures nix,
           substituters = nixSubstituters nix, -- TODO: Add cachix substituters
           concurrentTasks = fromIntegral concurrentTasks

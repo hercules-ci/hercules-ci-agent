@@ -63,6 +63,23 @@ withStore' =
     )
     (\x -> liftIO $ [C.exp| void { delete $(refStore* x) } |])
 
+withStoreFromURI ::
+  MonadUnliftIO m =>
+  Text ->
+  (Ptr (Ref NixStore) -> m r) ->
+  m r
+withStoreFromURI storeURIText f = do
+  let storeURI = encodeUtf8 storeURIText
+  (UnliftIO unlift) <- askUnliftIO
+  liftIO $
+    bracket
+      [C.throwBlock| refStore* {
+        refStore s = openStore($bs-cstr:storeURI);
+        return new refStore(s);
+      }|]
+      (\x -> [C.exp| void { delete $(refStore* x) } |])
+      (unlift . f)
+
 storeUri :: MonadIO m => Ptr (Ref NixStore) -> m ByteString
 storeUri store =
   unsafeMallocBS
@@ -288,6 +305,74 @@ toByteStringMap strings = M.fromList <$> do
         bv <- BS.unsafePackMallocCString v
         [C.block| void { (*$(StringPairsIterator *i))++; }|]
         ((bk, bv) :) <$> go
+
+withStrings :: (Ptr Strings -> IO a) -> IO a
+withStrings =
+  bracket
+    [C.exp| Strings *{ new Strings() }|]
+    (\sp -> [C.block| void { delete $(Strings *sp); }|])
+
+pushString :: Ptr Strings -> ByteString -> IO ()
+pushString strings s =
+  [C.block| void { $(Strings *strings)->push_back($bs-cstr:s); }|]
+
+copyClosure :: Ptr (Ref NixStore) -> Ptr (Ref NixStore) -> [ByteString] -> IO ()
+copyClosure src dest paths = do
+  withStrings $ \pathStrings -> do
+    paths & traverse_ (pushString pathStrings)
+    [C.throwBlock| void {
+      StringSet pathSet;
+      for (auto path : *$(Strings *pathStrings)) {
+        pathSet.insert(path);
+      }
+      nix::copyClosure(*$(refStore* src), *$(refStore* dest), pathSet);
+    }|]
+
+parseSecretKey :: ByteString -> IO (ForeignPtr SecretKey)
+parseSecretKey bs =
+  [C.throwBlock| SecretKey* {
+    return new SecretKey($bs-cstr:bs);
+  }|]
+    >>= newForeignPtr finalizeSecretKey
+
+finalizeSecretKey :: FinalizerPtr SecretKey
+{-# NOINLINE finalizeSecretKey #-}
+finalizeSecretKey =
+  unsafePerformIO
+    [C.exp|
+    void (*)(SecretKey *) {
+      [](SecretKey *v) {
+        delete v;
+      }
+    } |]
+
+signPath ::
+  Ptr (Ref NixStore) ->
+  -- | Secret signing key
+  Ptr SecretKey ->
+  -- | Store path
+  ByteString ->
+  -- | False if the signature was already present, True if the signature was added
+  IO Bool
+signPath store secretKey path = (== 1) <$> do
+  [C.throwBlock| int {
+    nix::ref<nix::Store> store = *$(refStore *store);
+    std::string storePath($bs-cstr:path);
+    auto currentInfo = store->queryPathInfo(storePath);
+
+    auto info2(*currentInfo);
+    info2.sigs.clear();
+    info2.sign(*$(SecretKey *secretKey));
+    assert(!info2.sigs.empty());
+    auto sig = *info2.sigs.begin();
+
+    if (currentInfo->sigs.count(sig)) {
+      return 0;
+    } else {
+      store->addSignatures(storePath, info2.sigs);
+      return 1;
+    }
+  }|]
 
 ----- Hercules -----
 withHerculesStore ::
