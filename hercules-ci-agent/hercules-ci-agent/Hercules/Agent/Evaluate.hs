@@ -140,7 +140,7 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
         pure $ EvaluateEvent.Message m {Message.index = i}
       fixIndex other = pure other
   eventCounter <- liftIO $ newIORef 0
-  allAttrPaths <- liftIO $ newIORef mempty
+  topDerivationPaths <- liftIO $ newIORef mempty
   let emit :: EvaluateEvent.EvaluateEvent -> App ()
       emit update = do
         n <- liftIO $ atomicModifyIORef eventCounter $ \n -> dup (n + 1)
@@ -173,6 +173,12 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
             -- derivationInfo upload has finished
             -- allAttrPaths :: IORef has been populated
             pushDrvs
+          uploadDrvInfos drvPath = do
+            TraversalQueue.enqueue derivationQueue drvPath
+            TraversalQueue.waitUntilDone derivationQueue
+          addTopDerivation drvPath = do
+            TraversalQueue.enqueue derivationQueue drvPath
+            liftIO $ atomicModifyIORef topDerivationPaths ((,()) . S.insert drvPath)
           evaluation = do
             runEvalProcess
               projectDir
@@ -180,14 +186,14 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
               autoArguments
               nixPath
               captureAttrDrvAndEmit
-              derivationQueue
+              uploadDrvInfos
               sync
             -- process has finished
             TraversalQueue.waitUntilDone derivationQueue
             TraversalQueue.close derivationQueue
           pushDrvs = do
             caches <- activePushCaches
-            paths <- liftIO $ readIORef allAttrPaths
+            paths <- liftIO $ readIORef topDerivationPaths
             forM_ caches $ \cache -> do
               withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations"
               Agent.Cache.push cache (toList paths) pushEvalWorkers
@@ -195,14 +201,11 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
           captureAttrDrvAndEmit msg = do
             case msg of
               EvaluateEvent.Attribute ae ->
-                TraversalQueue.enqueue
-                  derivationQueue
-                  (AttributeEvent.derivationPath ae)
+                addTopDerivation (AttributeEvent.derivationPath ae)
               _ -> pass
             emit msg
           emitDrvs =
             withStore $ \store -> TraversalQueue.work derivationQueue $ \recurse drvPath -> do
-              liftIO $ atomicModifyIORef allAttrPaths ((,()) . S.insert drvPath)
               drvInfo <- retrieveDerivationInfo store drvPath
               forM_
                 (M.keys $ DerivationInfo.inputDerivations drvInfo)
@@ -218,10 +221,11 @@ runEvalProcess ::
       (EvaluateTask.SubPathOf FilePath)
   ] ->
   (EvaluateEvent.EvaluateEvent -> App ()) ->
-  TraversalQueue.Queue Text ->
+  -- | Upload a derivation, return when done
+  (Text -> App ()) ->
   App () ->
   App ()
-runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush = do
+runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush = do
   extraOpts <- Nix.askExtraOptions
   let eval = Eval.Eval
         { Eval.cwd = projectDir,
@@ -272,15 +276,14 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                           BuildRequired.index = currentIndex,
                           BuildRequired.outputName = outputName
                         }
-                    let submitDerivationInfos = do
-                          TraversalQueue.enqueue derivationQueue drv
-                          TraversalQueue.waitUntilDone derivationQueue
-                        pushDerivations = do
+                    let pushDerivations = do
                           caches <- activePushCaches
                           forM_ caches $ \cache -> do
                             withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations for import from derivation"
                             Agent.Cache.push cache [drv] pushEvalWorkers
-                    Async.Lifted.concurrently_ submitDerivationInfos pushDerivations
+                    Async.Lifted.concurrently_
+                      (uploadDerivationInfos drv)
+                      pushDerivations
                     emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest
                       { derivationPath = drv,
                         forceRebuild = isJust notAttempt
