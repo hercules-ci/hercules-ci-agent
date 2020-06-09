@@ -64,25 +64,32 @@ nixPush cacheConf pathsText _concurrency = do
   let paths = map encodeUtf8 pathsText
   keys <- liftIO $ for (NixCache.signingKeys cacheConf) (CNix.parseSecretKey . encodeUtf8)
   CNix.withStore $ \store -> do
-    sigs <- for paths \path ->
-      for keys \key ->
-        liftIO $ signClosure store key path
-    katipAddContext (sl "num-signatures" (getSum $ mconcat $ mconcat sigs)) $
+    (Sum total, Sum signed) <-
+      mconcat <$> for keys \key -> liftIO $ do
+        pathSet <- paths & map toS & newPathSetWith
+        signClosure store key pathSet
+    katipAddContext (sl "num-signatures" signed <> sl "num-paths" total) $
       logLocM DebugS "Signed"
     liftIO $ CNix.clearPathInfoCache store
     CNix.withStoreFromURI (NixCache.storeURI cacheConf) $ \cache -> do
       liftIO (CNix.copyClosure store cache paths)
 
-signClosure :: Ptr (CNix.Ref CNix.NixStore) -> ForeignPtr CNix.SecretKey -> ByteString -> IO (Sum Int)
-signClosure store key' path =
-  withForeignPtr key' \key -> do
-    CNix.signPath store key path >>= \case
-      False -> pure 0
-      True -> do
-        -- TODO factor out cnix library and avoid unsafeCoerce https://github.com/hercules-ci/hercules-ci-agent/issues/223
-        vpi <- Store.queryPathInfo (Unsafe.Coerce.unsafeCoerce store) path
-        refs <- Store.validPathInfoReferences vpi
-        n <- refs
-          & Store.traversePathSet \p ->
-            if (p == path) then mempty else signClosure store key' p
-        pure (1 <> mconcat n)
+newPathSetWith :: [ByteString] -> IO Store.PathSet
+newPathSetWith paths = do
+  pathSet <- Store.newEmptyPathSet
+  for_ paths \path ->
+    Store.addToPathSet path pathSet
+  pure pathSet
+
+castStore :: Ptr (CNix.Ref CNix.NixStore) -> Store.Store
+castStore = Unsafe.Coerce.unsafeCoerce
+
+signClosure :: Ptr (CNix.Ref CNix.NixStore) -> ForeignPtr CNix.SecretKey -> Store.PathSet -> IO (Sum Int, Sum Int)
+signClosure store key' pathSet = withForeignPtr key' \key -> do
+  closure <- Store.computeFSClosure (castStore store) Store.defaultClosureParams pathSet
+  closure
+    & Store.traversePathSet
+      ( \path -> do
+          CNix.signPath store key path
+      )
+    <&> foldMap (\case True -> (1, 1); False -> (1, 0))

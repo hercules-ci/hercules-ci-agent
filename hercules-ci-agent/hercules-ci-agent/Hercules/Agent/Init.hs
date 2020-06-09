@@ -1,5 +1,6 @@
 module Hercules.Agent.Init where
 
+import qualified CNix
 import qualified Hercules.Agent.Cachix.Init
 import qualified Hercules.Agent.Compat as Compat
 import qualified Hercules.Agent.Config as Config
@@ -59,3 +60,8 @@ setupLogging f = do
 
 emptyNamespace :: K.Namespace
 emptyNamespace = K.Namespace []
+
+initCNix :: IO ()
+initCNix = do
+  CNix.init
+  CNix.setTalkative
