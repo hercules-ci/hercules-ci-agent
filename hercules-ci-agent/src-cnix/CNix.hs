@@ -78,6 +78,12 @@ init =
       nix::initGC();
     } |]
 
+setTalkative :: IO ()
+setTalkative =
+  [C.throwBlock| void {
+    nix::verbosity = nix::lvlTalkative;
+  } |]
+
 setDebug :: IO ()
 setDebug =
   [C.throwBlock| void {
