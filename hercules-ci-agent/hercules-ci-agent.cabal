@@ -22,6 +22,8 @@ source-repository head
 
 library
   exposed-modules:
+      Data.Fixed.Extras
+      Data.Time.Extras
       Hercules.Agent.Producer
       Hercules.Agent.Socket
       Hercules.Agent.STM
@@ -66,7 +68,9 @@ library
     , safe-exceptions
     , stm
     , text
+    , time
     , transformers-base
+    , unbounded-delays
     , unliftio-core
     , unliftio
     , uuid

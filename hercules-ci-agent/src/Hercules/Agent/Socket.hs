@@ -19,6 +19,9 @@ import Control.Monad.IO.Unlift
 import qualified Data.Aeson as A
 import Data.DList (DList, fromList)
 import Data.List (dropWhileEnd)
+import Data.Semigroup
+import Data.Time (NominalDiffTime, addUTCTime, diffUTCTime, getCurrentTime)
+import Data.Time.Extras
 import Hercules.API.Agent.LifeCycle.ServiceInfo (ServiceInfo)
 import qualified Hercules.API.Agent.LifeCycle.ServiceInfo as ServiceInfo
 import qualified Hercules.API.Agent.Socket.Frame as Frame
@@ -56,6 +59,9 @@ data SocketConfig ap sp m
 requiredServiceVersion :: (Int, Int)
 requiredServiceVersion = (1, 0)
 
+ackTimeout :: NominalDiffTime
+ackTimeout = 60 -- seconds
+
 withReliableSocket :: (A.FromJSON sp, A.ToJSON ap, MonadIO m, MonadUnliftIO m, KatipContext m) => SocketConfig ap sp m -> (Socket sp ap -> m a) -> m a
 withReliableSocket socketConfig f = do
   writeQueue <- atomically $ newTBQueue 100
@@ -86,6 +92,7 @@ checkVersion' si =
 
 runReliableSocket :: forall ap sp m. (A.ToJSON ap, A.FromJSON sp, MonadUnliftIO m, KatipContext m) => SocketConfig ap sp m -> TBQueue (Frame ap ap) -> TChan sp -> TVar Integer -> forall a. m a
 runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = katipAddNamespace "Socket" do
+  expectedAck <- liftIO $ newTVarIO Nothing
   (unacked :: TVar (DList (Frame Void ap))) <- atomically $ newTVar mempty
   (lastServiceN :: TVar Integer) <- atomically $ newTVar (-1)
   let katipExceptionContext e =
@@ -101,9 +108,15 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
       logWarningPause e = do
         katipExceptionContext e $ logLocM WarningS "Recovering from exception in socket handler. Reconnecting."
         liftIO $ threadDelay 10_000_000
+      setExpectedAckForMsgs :: [Frame ap ap] -> m ()
+      setExpectedAckForMsgs msgs =
+        msgs
+          & foldMap (\case Frame.Msg {n = n} -> Option $ Just $ Max n; _ -> mempty)
+          & traverse_ (\(Max n) -> setExpectedAck n)
       send :: Connection -> [Frame ap ap] -> m ()
       send conn msgs = do
         liftIO $ WS.sendDataMessages conn (WS.Binary . A.encode <$> msgs)
+        setExpectedAckForMsgs msgs
       recv :: Connection -> m (Frame sp sp)
       recv conn = do
         (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
@@ -170,13 +183,40 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
             modifyTVar unacked (<> (allMessages >>= Frame.removeOob & fromList))
             pure allMessages
           send conn msgs
+      setExpectedAck :: Integer -> m ()
+      setExpectedAck n = do
+        now <- liftIO getCurrentTime
+        atomically do
+          writeTVar expectedAck $ Just $ (n, now)
+      noAckCleanupThread = noAckCleanupThread' (-1)
+      noAckCleanupThread' confirmedLastTime = do
+        (expectedN, sendTime) <- atomically do
+          readTVar expectedAck
+            >>= \case
+              Nothing -> retry
+              Just (expectedN, _) | expectedN <= confirmedLastTime -> retry
+              Just a -> pure a
+        let expectedArrival = ackTimeout `addUTCTime` sendTime
+        liftIO do
+          now <- getCurrentTime
+          let waitTime = expectedArrival `diffUTCTime` now
+          delayNominalDiffTime waitTime
+        currentHighestAck <- atomically do
+          readTVar highestAcked
+        if expectedN > currentHighestAck
+          then do
+            katipAddContext (sl "expectedAck" expectedN <> sl "highestAck" currentHighestAck) do
+              logLocM Katip.DebugS "Did not receive ack in time. Will reconnect."
+            -- terminate other threads via race_
+            pass
+          else noAckCleanupThread' expectedN
   forever
     $ handle logWarningPause
     $ withConnection' socketConfig
     $ \conn -> do
       katipAddNamespace "Handshake" do
         handshake conn
-      race_ (readThread conn) (writeThread conn)
+      readThread conn `race_` writeThread conn `race_` noAckCleanupThread
 
 withConnection' :: (MonadUnliftIO m) => SocketConfig any0 any1 m -> (Connection -> m a) -> m a
 withConnection' socketConfig m = do
