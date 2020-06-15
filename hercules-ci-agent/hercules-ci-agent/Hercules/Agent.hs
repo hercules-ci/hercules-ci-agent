@@ -14,6 +14,7 @@ import Control.Concurrent.STM (TVar, readTVar)
 import Control.Concurrent.STM.TChan
 import Control.Exception (displayException)
 import Control.Exception.Lifted (bracket)
+import Control.Monad.IO.Unlift (MonadUnliftIO)
 import qualified Data.Aeson as A
 import qualified Data.Map as M
 import Data.Time (getCurrentTime)
@@ -36,7 +37,7 @@ import qualified Hercules.API.TaskStatus as TaskStatus
 import Hercules.Agent.AgentSocket (withAgentSocket)
 import qualified Hercules.Agent.Build as Build
 import Hercules.Agent.CabalInfo (herculesAgentVersion)
-import qualified Hercules.Agent.Cachix as Cachix
+import qualified Hercules.Agent.Cache as Cache
 import Hercules.Agent.Client
   ( lifeCycleClient,
     tasksClient,
@@ -64,6 +65,7 @@ import Hercules.Error
 import Protolude hiding
   ( atomically,
     bracket,
+    catch,
     forkFinally,
     handle,
     killThread,
@@ -72,10 +74,13 @@ import Protolude hiding
     withAsync,
     withMVar,
   )
+import System.Posix.Resource
+import UnliftIO.Exception (catch)
 import qualified Prelude
 
 main :: IO ()
 main = Init.setupLogging $ \logEnv -> do
+  Init.initCNix
   opts <- Options.parse
   let cfgPath = Options.configFile opts
   cfg <- Config.finalizeConfig cfgPath =<< Config.readConfig cfgPath
@@ -89,10 +94,18 @@ testConfiguration _env _cfg = do
   -- Room for checks that are not in Init.newEnv
   pass
 
+configChecks :: App ()
+configChecks = do
+  trusted <- asks (Config.nixUserIsTrusted . Env.config)
+  when (not trusted) do
+    logLocM WarningS "Your config does not indicate you have set up your user as a trusted user on the system. Running the agent as a trusted user ensures that your cache configuration is compatible with the system and improves performance if you have more than one agent. The NixOS and nix-darwin modules should configure this automatically. If this agent was set up with a manually written config file, see https://docs.hercules-ci.com/hercules-ci/reference/agent-config/"
+
 run :: Env.Env -> Config.FinalConfig -> IO ()
 run env _cfg = do
   Env.runApp env
     $ katipAddContext (sl "agent-version" (A.String herculesAgentVersion))
+    $ (configureLimits >>)
+    $ (configChecks >>)
     $ withAgentToken
     $ withLifeCycle \hello -> withTaskState \tasks ->
       withAgentSocket hello tasks \socket ->
@@ -103,12 +116,12 @@ run env _cfg = do
               ServicePayload.ServiceInfo _ -> pass
               ServicePayload.StartEvaluation evalTask ->
                 launchTask tasks socket (Task.upcastId $ EvaluateTask.id evalTask) do
-                  Cachix.withCaches do
+                  Cache.withCaches do
                     Evaluate.performEvaluation evalTask
                     pure $ TaskStatus.Successful ()
               ServicePayload.StartBuild buildTask ->
                 launchTask tasks socket (Task.upcastId $ BuildTask.id buildTask) do
-                  Cachix.withCaches $
+                  Cache.withCaches $
                     Build.performBuild buildTask
               ServicePayload.Cancel cancellation -> cancelTask tasks socket cancellation
 
@@ -212,3 +225,45 @@ withApplicationLevelPinger socket = fmap (either identity identity) . race pinge
       liftIO $ atomically $ Socket.write socket AgentPayload.Ping
       liftIO $ threadDelay (oneSecond * 30)
     oneSecond = 1000 * 1000
+
+configureLimits :: (MonadUnliftIO m, KatipContext m) => m ()
+configureLimits = do
+  tryIncreaseResourceLimitTo ResourceOpenFiles "open files" (ResourceLimit 65536)
+
+tryIncreaseResourceLimitTo :: (MonadUnliftIO m, KatipContext m) => Resource -> Text -> ResourceLimit -> m ()
+tryIncreaseResourceLimitTo resource resourceName target = katipAddContext (sl "resource" resourceName) do
+  lims <- liftIO $ getResourceLimit resource
+  let lims' = ResourceLimits
+        { softLimit = target & atLeast (softLimit lims) & atMost (hardLimit lims),
+          hardLimit = hardLimit lims
+        }
+      atLeast ResourceLimitInfinity _ = ResourceLimitInfinity
+      atLeast _ ResourceLimitInfinity = ResourceLimitInfinity
+      atLeast ResourceLimitUnknown r = r
+      atLeast l ResourceLimitUnknown = l
+      atLeast (ResourceLimit a) (ResourceLimit b) | a > b = ResourceLimit a
+      atLeast _ r = r
+      atMost (ResourceLimit a) (ResourceLimit b) | a > b = ResourceLimit b
+      atMost (ResourceLimit a) _ = ResourceLimit a
+      atMost ResourceLimitInfinity r = r
+      atMost l ResourceLimitInfinity = l
+      atMost ResourceLimitUnknown r = r
+      -- atMost l ResourceLimitUnknown = l -- already covered
+      showLimit (ResourceLimitInfinity) = "infinity"
+      showLimit (ResourceLimitUnknown) = A.Null
+      showLimit (ResourceLimit n) = A.Number $ fromIntegral n
+  liftIO (setResourceLimit resource lims') `catch` \e ->
+    katipAddContext
+      ( sl "message" (displayException (e :: SomeException))
+          <> sl "soft" (showLimit (softLimit lims'))
+          <> sl "hard" (showLimit (hardLimit lims'))
+      )
+      do
+        logLocM WarningS "Could not increase resource limit"
+  limsFinal <- liftIO (getResourceLimit resource)
+  katipAddContext
+    ( sl "soft" (showLimit (softLimit limsFinal))
+        <> sl "hard" (showLimit (hardLimit limsFinal))
+    )
+    do
+      logLocM DebugS "Resource limit"

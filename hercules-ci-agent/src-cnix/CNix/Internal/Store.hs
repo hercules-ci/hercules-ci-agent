@@ -9,8 +9,10 @@ where
 
 import CNix.Internal.Context
 import Control.Exception
+import Control.Monad.IO.Unlift
 import qualified Data.ByteString.Unsafe as BS
 import Data.Coerce
+import qualified Data.Map as M
 import Foreign.C.String (withCString)
 import Foreign.ForeignPtr
 import Foreign.StablePtr
@@ -43,18 +45,40 @@ C.include "aliases.h"
 
 C.using "namespace nix"
 
-withStore ::
+withStore :: MonadUnliftIO m => (Ptr (Ref NixStore) -> m a) -> m a
+withStore m = do
+  UnliftIO ul <- askUnliftIO
+  liftIO $ withStore' $ \a -> ul (m a)
+
+withStore' ::
   (Ptr (Ref NixStore) -> IO r) ->
   IO r
-withStore =
+withStore' =
   bracket
     ( liftIO $
-        [C.block| refStore* {
+        [C.throwBlock| refStore* {
             refStore s = openStore();
             return new refStore(s);
           } |]
     )
     (\x -> liftIO $ [C.exp| void { delete $(refStore* x) } |])
+
+withStoreFromURI ::
+  MonadUnliftIO m =>
+  Text ->
+  (Ptr (Ref NixStore) -> m r) ->
+  m r
+withStoreFromURI storeURIText f = do
+  let storeURI = encodeUtf8 storeURIText
+  (UnliftIO unlift) <- askUnliftIO
+  liftIO $
+    bracket
+      [C.throwBlock| refStore* {
+        refStore s = openStore($bs-cstr:storeURI);
+        return new refStore(s);
+      }|]
+      (\x -> [C.exp| void { delete $(refStore* x) } |])
+      (unlift . f)
 
 storeUri :: MonadIO m => Ptr (Ref NixStore) -> m ByteString
 storeUri store =
@@ -98,6 +122,17 @@ getDerivation store path = do
     [C.throwBlock| Derivation *{
       return new Derivation(
           (*$(refStore* store))->derivationFromPath(std::string($bs-ptr:path, $bs-len:path))
+        );
+    } |]
+  newForeignPtr finalizeDerivation ptr
+
+-- Useful for testingg
+getDerivationFromFile :: ByteString -> IO (ForeignPtr Derivation)
+getDerivationFromFile path = do
+  ptr <-
+    [C.throwBlock| Derivation *{
+      return new Derivation(
+          readDerivation(std::string($bs-ptr:path, $bs-len:path))
         );
     } |]
   newForeignPtr finalizeDerivation ptr
@@ -155,6 +190,61 @@ getDerivationOutputs derivation =
 deleteDerivationOutputsIterator :: Ptr DerivationOutputsIterator -> IO ()
 deleteDerivationOutputsIterator a = [C.block| void { delete $(DerivationOutputsIterator *a); }|]
 
+getDerivationPlatform :: ForeignPtr Derivation -> IO ByteString
+getDerivationPlatform derivation =
+  unsafeMallocBS
+    [C.exp| const char* {
+       strdup($fptr-ptr:(Derivation *derivation)->platform.c_str())
+     } |]
+
+getDerivationSources :: ForeignPtr Derivation -> IO [ByteString]
+getDerivationSources derivation =
+  bracket
+    [C.throwBlock| Strings* {
+      Strings *r = new Strings();
+      for (auto i : $fptr-ptr:(Derivation *derivation)->inputSrcs) {
+        r->push_back(i);
+      }
+      return r;
+    }|]
+    deleteStrings
+    toByteStrings
+
+getDerivationInputs :: ForeignPtr Derivation -> IO [(ByteString, [ByteString])]
+getDerivationInputs derivation =
+  bracket
+    [C.exp| DerivationInputsIterator* {
+      new DerivationInputsIterator($fptr-ptr:(Derivation *derivation)->inputDrvs.begin())
+    }|]
+    deleteDerivationInputsIterator
+    $ \i -> fix $ \continue -> do
+      isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationInputsIterator *i) == $fptr-ptr:(Derivation *derivation)->inputDrvs.end() }|]
+      if isEnd
+        then pure []
+        else do
+          name <- [C.exp| const char*{ strdup((*$(DerivationInputsIterator *i))->first.c_str()) }|] >>= BS.unsafePackMallocCString
+          outs <-
+            bracket
+              [C.block| Strings*{ 
+                Strings *r = new Strings();
+                for (auto i : (*$(DerivationInputsIterator *i))->second) {
+                  r->push_back(i);
+                }
+                return r;
+              }|]
+              deleteStrings
+              toByteStrings
+          [C.block| void { (*$(DerivationInputsIterator *i))++; }|]
+          ((name, outs) :) <$> continue
+
+deleteDerivationInputsIterator :: Ptr DerivationInputsIterator -> IO ()
+deleteDerivationInputsIterator a = [C.block| void { delete $(DerivationInputsIterator *a); }|]
+
+getDerivationEnv :: ForeignPtr Derivation -> IO (Map ByteString ByteString)
+getDerivationEnv derivation =
+  [C.exp| StringPairs* { &($fptr-ptr:(Derivation *derivation)->env) }|]
+    >>= toByteStringMap
+
 getDerivationOutputNames :: ForeignPtr Derivation -> IO [ByteString]
 getDerivationOutputNames derivation =
   bracket
@@ -167,6 +257,9 @@ getDerivationOutputNames derivation =
     }|]
     deleteStrings
     toByteStrings
+
+deleteStringPairs :: Ptr StringPairs -> IO ()
+deleteStringPairs s = [C.block| void { delete $(StringPairs *s); }|]
 
 deleteStrings :: Ptr Strings -> IO ()
 deleteStrings s = [C.block| void { delete $(Strings *s); }|]
@@ -197,6 +290,89 @@ toByteStrings strings = do
         bs <- BS.unsafePackMallocCString s
         [C.block| void { (*$(StringsIterator *i))++; }|]
         (bs :) <$> go
+
+toByteStringMap :: Ptr StringPairs -> IO (Map ByteString ByteString)
+toByteStringMap strings = M.fromList <$> do
+  i <- [C.exp| StringPairsIterator *{ new StringPairsIterator($(StringPairs *strings)->begin()) } |]
+  fix $ \go -> do
+    isEnd <- (0 /=) <$> [C.exp| bool { *$(StringPairsIterator *i) == $(StringPairs *strings)->end() }|]
+    if isEnd
+      then pure []
+      else do
+        k <- [C.exp| const char*{ strdup((*$(StringPairsIterator *i))->first.c_str()) }|]
+        v <- [C.exp| const char*{ strdup((*$(StringPairsIterator *i))->second.c_str()) }|]
+        bk <- BS.unsafePackMallocCString k
+        bv <- BS.unsafePackMallocCString v
+        [C.block| void { (*$(StringPairsIterator *i))++; }|]
+        ((bk, bv) :) <$> go
+
+withStrings :: (Ptr Strings -> IO a) -> IO a
+withStrings =
+  bracket
+    [C.exp| Strings *{ new Strings() }|]
+    (\sp -> [C.block| void { delete $(Strings *sp); }|])
+
+pushString :: Ptr Strings -> ByteString -> IO ()
+pushString strings s =
+  [C.block| void { $(Strings *strings)->push_back($bs-cstr:s); }|]
+
+copyClosure :: Ptr (Ref NixStore) -> Ptr (Ref NixStore) -> [ByteString] -> IO ()
+copyClosure src dest paths = do
+  withStrings $ \pathStrings -> do
+    paths & traverse_ (pushString pathStrings)
+    [C.throwBlock| void {
+      StringSet pathSet;
+      for (auto path : *$(Strings *pathStrings)) {
+        pathSet.insert(path);
+      }
+      nix::copyClosure(*$(refStore* src), *$(refStore* dest), pathSet);
+    }|]
+
+parseSecretKey :: ByteString -> IO (ForeignPtr SecretKey)
+parseSecretKey bs =
+  [C.throwBlock| SecretKey* {
+    return new SecretKey($bs-cstr:bs);
+  }|]
+    >>= newForeignPtr finalizeSecretKey
+
+finalizeSecretKey :: FinalizerPtr SecretKey
+{-# NOINLINE finalizeSecretKey #-}
+finalizeSecretKey =
+  unsafePerformIO
+    [C.exp|
+    void (*)(SecretKey *) {
+      [](SecretKey *v) {
+        delete v;
+      }
+    } |]
+
+signPath ::
+  Ptr (Ref NixStore) ->
+  -- | Secret signing key
+  Ptr SecretKey ->
+  -- | Store path
+  ByteString ->
+  -- | False if the signature was already present, True if the signature was added
+  IO Bool
+signPath store secretKey path = (== 1) <$> do
+  [C.throwBlock| int {
+    nix::ref<nix::Store> store = *$(refStore *store);
+    std::string storePath($bs-cstr:path);
+    auto currentInfo = store->queryPathInfo(storePath);
+
+    auto info2(*currentInfo);
+    info2.sigs.clear();
+    info2.sign(*$(SecretKey *secretKey));
+    assert(!info2.sigs.empty());
+    auto sig = *info2.sigs.begin();
+
+    if (currentInfo->sigs.count(sig)) {
+      return 0;
+    } else {
+      store->addSignatures(storePath, info2.sigs);
+      return 1;
+    }
+  }|]
 
 ----- Hercules -----
 withHerculesStore ::

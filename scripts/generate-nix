@@ -17,8 +17,24 @@ cabal2nix hercules-ci-api-core/ > hercules-ci-api-core/pkg.nix
 cabal2nix hercules-ci-api-agent/ > hercules-ci-api-agent/pkg.nix
 cabal2nix tests/agent-test  > tests/agent-test/pkg.nix
 cabal2nix hercules-ci-agent/ > hercules-ci-agent/pkg.nix
-cabal2nix https://github.com/$owner/$repo --revision $rev --subpath cachix > nix/cachix.nix
-cabal2nix https://github.com/$owner/$repo --revision $rev --subpath cachix-api > nix/cachix-api.nix
-cabal2nix cabal://websockets > nix/websockets.nix
-cabal2nix cabal://servant-websockets > nix/servant-websockets.nix
-cabal2nix cabal://wuss > nix/wuss.nix
+cabal2nix cabal://cachix-0.3.7 > nix/cachix.nix
+cabal2nix cabal://cachix-api-0.4.0 > nix/cachix-api.nix
+cabal2nix cabal://inline-c-0.9.0.0 > nix/haskell-inline-c.nix
+cabal2nix cabal://inline-c-cpp-0.4.0.2 >nix/haskell-inline-c-cpp.nix
+cabal2nix cabal://servant-websockets-2.0.0 > nix/servant-websockets.nix
+cabal2nix cabal://websockets-0.12.6.1 > nix/websockets.nix
+
+pre-commit run --files \
+  hercules-ci-api/pkg.nix \
+  hercules-ci-api-core/pkg.nix \
+  hercules-ci-api-agent/pkg.nix \
+  tests/agent-test/pkg.nix \
+  hercules-ci-agent/pkg.nix \
+  nix/cachix.nix \
+  nix/cachix-api.nix \
+  nix/websockets.nix \
+  nix/servant-websockets.nix \
+  nix/cachix.nix \
+  nix/cachix-api.nix \
+  nix/websockets.nix \
+  ;

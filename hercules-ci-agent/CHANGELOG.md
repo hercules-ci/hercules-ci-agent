@@ -7,15 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
- - ...
+### Added
+
+ - Push to any nix store, including S3, using the `NixCache` kind in `binary-caches.json`
+
+### Changed
+
+ - Switch to NixOS 20.03
 
 ## [0.7.0] - 2020-05-05
 
 ### Known issues
 
- - Evaluator may not find `git` executable
-
- - Agent process user must be in `trusted-users`. This is recommended for ease of use and performance but should not be a requirement.
+ - Agent process user must be in `trusted-users`. This is the case with the NixOS and nix-darwin module. Doing so is recommended for ease of use and performance but should not be a requirement.
 
 ### Added
 

@@ -2,8 +2,6 @@ module Hercules.Agent.Build where
 
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
-import qualified Data.Conduit.Combinators as Conduit
-import Data.Conduit.Process (sourceProcessWithStreams)
 import Data.IORef.Lifted
 import qualified Data.Map as M
 import qualified Hercules.API.Agent.Build as API.Build
@@ -17,11 +15,10 @@ import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import Hercules.API.Agent.Build.BuildTask
   ( BuildTask,
   )
-import qualified Hercules.API.Logs as API.Logs
 import Hercules.API.Servant (noContent)
 import Hercules.API.TaskStatus (TaskStatus)
 import qualified Hercules.API.TaskStatus as TaskStatus
-import qualified Hercules.Agent.Cachix as Agent.Cachix
+import qualified Hercules.Agent.Cache as Agent.Cache
 import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
@@ -40,7 +37,6 @@ import Hercules.Error (defaultRetry)
 import qualified Katip.Core
 import qualified Network.URI
 import Protolude
-import Servant.Auth.Client
 import System.Process
 
 performBuild :: BuildTask.BuildTask -> App TaskStatus
@@ -65,7 +61,7 @@ performBuild buildTask = do
           panic e
         _ -> pass
   baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
-  materialize <- asks (Config.requireMaterializedDerivations . Env.config)
+  materialize <- asks (not . Config.nixUserIsTrusted . Env.config)
   liftIO $ writeChan commandChan $ Just $ Command.Build $ Command.Build.Build
     { drvPath = BuildTask.derivationPath buildTask,
       inputDerivationOutputPaths = toS <$> BuildTask.inputDerivationOutputPaths buildTask,
@@ -114,49 +110,12 @@ stderrLineHandler pid ln =
     $ logLocM InfoS
     $ "Builder: " <> logStr (toSL ln :: Text)
 
-realise :: BuildTask.BuildTask -> App TaskStatus
-realise buildTask = do
-  let stdinc = pass
-      stdoutc = pass -- FIXME: use
-      stderrc = Conduit.fold
-  nixStoreProc <-
-    Nix.nixProc
-      "nix-store"
-      [ "--realise",
-        "--timeout",
-        "36000", -- 10h TODO: make configurable via meta.timeout and decrease default to 3600s or so
-        "--max-silent-time",
-        "1800" -- 0.5h TODO: make configurable via (?) and decrease default to 600s
-      ]
-      [ BuildTask.derivationPath buildTask
-      ]
-  let procSpec =
-        nixStoreProc
-          { close_fds = True, -- Disable on Windows?
-            cwd = Just "/"
-          }
-  logLocM DebugS $ "Building: " <> show (System.Process.cmdspec procSpec)
-  (status, _out, errBytes) <-
-    liftIO $
-      sourceProcessWithStreams procSpec stdinc stdoutc stderrc
-  noContent $ defaultRetry $ runHerculesClient' $
-    API.Logs.writeLog
-      Hercules.Agent.Client.logsClient
-      (Token $ toSL $ BuildTask.logToken buildTask)
-      errBytes
-  case status of
-    ExitFailure e -> do
-      withNamedContext "exitStatus" e $ logLocM ErrorS "Building failed"
-      emitEvents buildTask [BuildEvent.Done False]
-      pure $ TaskStatus.Terminated ()
-    ExitSuccess -> TaskStatus.Successful () <$ logLocM DebugS "Building succeeded"
-
 push :: BuildTask -> Map Text OutputInfo -> App ()
 push buildTask outs = do
   let paths = OutputInfo.path <$> toList outs
-  caches <- Agent.Cachix.activePushCaches
+  caches <- activePushCaches
   forM_ caches $ \cache -> do
-    Agent.Cachix.push cache paths 4
+    Agent.Cache.push cache paths 4
     emitEvents buildTask [BuildEvent.Pushed $ Pushed.Pushed {cache = cache}]
 
 reportSuccess :: BuildTask -> App ()

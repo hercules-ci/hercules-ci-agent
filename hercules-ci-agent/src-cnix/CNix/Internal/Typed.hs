@@ -1,3 +1,5 @@
+{-# LANGUAGE EmptyDataDecls #-}
+
 module CNix.Internal.Typed where
 
 import CNix.Internal.Context

@@ -7,7 +7,7 @@
 , bdw-gc
 , binary
 , binary-conduit
-, boost_context
+, boost
 , bytestring
 , cachix
 , cachix-api
@@ -36,10 +36,7 @@
 , mtl
 , network
 , network-uri
-, nix-derivation
-, nix-expr
-, nix-main
-, nix-store
+, nix
 , optparse-applicative
 , process
 , protolude
@@ -50,7 +47,6 @@
 , servant-client-core
 , stdenv
 , stm
-, system-filepath
 , temporary
 , text
 , time
@@ -79,11 +75,14 @@ mkDerivation {
     binary
     binary-conduit
     bytestring
+    cachix
     conduit
     containers
     dlist
     exceptions
     hercules-ci-api-agent
+    inline-c
+    inline-c-cpp
     katip
     lifted-async
     lifted-base
@@ -103,6 +102,8 @@ mkDerivation {
     websockets
     wuss
   ];
+  librarySystemDepends = [ boost ];
+  libraryPkgconfigDepends = [ bdw-gc nix ];
   executableHaskellDepends = [
     aeson
     async
@@ -138,7 +139,6 @@ mkDerivation {
     mtl
     network
     network-uri
-    nix-derivation
     optparse-applicative
     process
     protolude
@@ -148,7 +148,6 @@ mkDerivation {
     servant-client
     servant-client-core
     stm
-    system-filepath
     temporary
     text
     time
@@ -164,13 +163,8 @@ mkDerivation {
     websockets
     wuss
   ];
-  executableSystemDepends = [ boost_context ];
-  executablePkgconfigDepends = [
-    bdw-gc
-    nix-expr
-    nix-main
-    nix-store
-  ];
+  executableSystemDepends = [ boost ];
+  executablePkgconfigDepends = [ bdw-gc nix ];
   testHaskellDepends = [
     aeson
     async
@@ -189,11 +183,9 @@ mkDerivation {
     lifted-async
     lifted-base
     monad-control
-    nix-derivation
     optparse-applicative
     protolude
     safe-exceptions
-    system-filepath
     text
     transformers-base
   ];

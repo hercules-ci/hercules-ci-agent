@@ -27,7 +27,7 @@ let
               cachix =
                 # avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
                 haskell.lib.disableLibraryProfiling (
-                  self.callPackage ./cachix.nix { nix-main = nix; nix-store = nix; boost_context = pkgs.boost; }
+                  self.callPackage ./cachix.nix {}
                 );
               cachix-api = self.callPackage ./cachix-api.nix {};
 
@@ -39,11 +39,7 @@ let
                 let
                   basePkg =
                     callPkg super "hercules-ci-agent" ../hercules-ci-agent {
-                      nix-store = nix;
-                      nix-expr = nix;
-                      nix-main = nix;
                       bdw-gc = pkgs.boehmgc-hercules;
-                      boost_context = pkgs.boost;
                     };
 
                 in
@@ -88,17 +84,6 @@ let
               hercules-ci-agent-test =
                 callPkg super "hercules-ci-agent-test" ../tests/agent-test {};
 
-              tomland =
-                self.callPackage ./haskell-tomland-1-0-1-0.nix {
-                  hedgehog = self.hedgehog_1_0;
-                  tasty-hedgehog = self.tasty-hedgehog_1_0;
-                };
-
-              hedgehog_1_0 =
-                self.callPackage ./haskell-hedgehog-1-0.nix {};
-              tasty-hedgehog_1_0 =
-                self.callPackage ./haskell-tasty-hedgehog-1-0.nix { hedgehog = self.hedgehog_1_0; };
-
               inline-c = self.callPackage ./haskell-inline-c.nix {};
 
               # avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
@@ -111,11 +96,7 @@ let
                   }
                 );
 
-              hnix-store-core = self.callPackage ./haskell-hnix-store-core.nix {};
-
               websockets = self.callPackage ./websockets.nix {};
-
-              wuss = self.callPackage ./wuss.nix {};
 
               servant-websockets = self.callPackage ./servant-websockets.nix {};
 

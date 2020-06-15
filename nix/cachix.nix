@@ -2,7 +2,7 @@
 , async
 , base
 , base64-bytestring
-, boost_context
+, boost
 , bytestring
 , cachix-api
 , conduit
@@ -13,7 +13,6 @@
 , dhall
 , directory
 , ed25519
-, fetchgit
 , filepath
 , fsnotify
 , here
@@ -30,8 +29,7 @@
 , memory
 , mmorph
 , netrc
-, nix-main
-, nix-store
+, nix
 , optparse-applicative
 , process
 , protolude
@@ -55,13 +53,7 @@
 mkDerivation {
   pname = "cachix";
   version = "0.3.7";
-  src = fetchgit {
-    url = "https://github.com/cachix/cachix";
-    sha256 = "1p45bfvq3zs0z5bldf4js5drsnmr468l8xnsjng3z077j5whwg8k";
-    rev = "1087621f8535dc2342744af4562ca1e4cb43e78b";
-    fetchSubmodules = true;
-  };
-  postUnpack = "sourceRoot+=/cachix; echo source root reset to $sourceRoot";
+  sha256 = "0b145755a451910fe13bb63166977d7ea1311953c93cd762ea68dbcd6c463f93";
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
@@ -110,8 +102,8 @@ mkDerivation {
     vector
     versions
   ];
-  librarySystemDepends = [ boost_context ];
-  libraryPkgconfigDepends = [ nix-main nix-store ];
+  librarySystemDepends = [ boost ];
+  libraryPkgconfigDepends = [ nix ];
   executableHaskellDepends = [ base cachix-api ];
   executableToolDepends = [ hspec-discover ];
   testHaskellDepends = [

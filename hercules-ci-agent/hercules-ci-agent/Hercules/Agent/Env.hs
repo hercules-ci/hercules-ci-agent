@@ -7,6 +7,7 @@ import Control.Monad.Base (MonadBase)
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control (MonadBaseControl)
+import qualified Data.Map as M
 import Hercules.API.Agent.Socket.AgentPayload (AgentPayload)
 import Hercules.API.Agent.Socket.ServicePayload (ServicePayload)
 import qualified Hercules.Agent.Cachix.Env as Cachix
@@ -14,6 +15,7 @@ import qualified Hercules.Agent.Cachix.Env as Cachix
     HasEnv (..),
   )
 import Hercules.Agent.Config (FinalConfig)
+import qualified Hercules.Agent.Config.BinaryCaches as Config.BinaryCaches
 import qualified Hercules.Agent.Nix.Env as Nix
   ( Env,
   )
@@ -38,6 +40,7 @@ data Env
         --       problematic at some point. Perhaps we should switch to a polymorphic
         --       reader monad like RIO when we hit that limitation.
         currentToken :: Servant.Auth.Client.Token,
+        binaryCaches :: Config.BinaryCaches.BinaryCaches,
         cachixEnv :: Cachix.Env,
         nixEnv :: Nix.Env,
         socket :: AgentSocket,
@@ -46,6 +49,15 @@ data Env
         kContext :: K.LogContexts,
         kLogEnv :: K.LogEnv
       }
+
+activePushCaches :: App [Text]
+activePushCaches = do
+  bc <- asks (binaryCaches)
+  pure $
+    M.keys
+      ( void (Config.BinaryCaches.cachixCaches bc)
+          <> void (Config.BinaryCaches.nixCaches bc)
+      )
 
 type AgentSocket = Socket ServicePayload AgentPayload
 

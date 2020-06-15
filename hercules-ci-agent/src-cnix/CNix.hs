@@ -10,6 +10,7 @@ module CNix
     type NixStore,
     type EvalState,
     type Ref,
+    type SecretKey,
   )
 where
 
@@ -76,6 +77,12 @@ init =
       nix::initNix();
       nix::initGC();
     } |]
+
+setTalkative :: IO ()
+setTalkative =
+  [C.throwBlock| void {
+    nix::verbosity = nix::lvlTalkative;
+  } |]
 
 setDebug :: IO ()
 setDebug =

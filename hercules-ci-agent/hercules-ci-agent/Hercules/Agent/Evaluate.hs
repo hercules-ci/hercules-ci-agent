@@ -6,6 +6,7 @@ module Hercules.Agent.Evaluate
   )
 where
 
+import CNix (withStore)
 import Conduit
 import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
@@ -34,7 +35,7 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll as PushedAll
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Servant (noContent)
-import qualified Hercules.Agent.Cachix as Agent.Cachix
+import qualified Hercules.Agent.Cache as Agent.Cache
 import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
@@ -139,7 +140,7 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
         pure $ EvaluateEvent.Message m {Message.index = i}
       fixIndex other = pure other
   eventCounter <- liftIO $ newIORef 0
-  allAttrPaths <- liftIO $ newIORef mempty
+  topDerivationPaths <- liftIO $ newIORef mempty
   let emit :: EvaluateEvent.EvaluateEvent -> App ()
       emit update = do
         n <- liftIO $ atomicModifyIORef eventCounter $ \n -> dup (n + 1)
@@ -172,6 +173,12 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
             -- derivationInfo upload has finished
             -- allAttrPaths :: IORef has been populated
             pushDrvs
+          uploadDrvInfos drvPath = do
+            TraversalQueue.enqueue derivationQueue drvPath
+            TraversalQueue.waitUntilDone derivationQueue
+          addTopDerivation drvPath = do
+            TraversalQueue.enqueue derivationQueue drvPath
+            liftIO $ atomicModifyIORef topDerivationPaths ((,()) . S.insert drvPath)
           evaluation = do
             runEvalProcess
               projectDir
@@ -179,30 +186,27 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
               autoArguments
               nixPath
               captureAttrDrvAndEmit
-              derivationQueue
+              uploadDrvInfos
               sync
             -- process has finished
             TraversalQueue.waitUntilDone derivationQueue
             TraversalQueue.close derivationQueue
           pushDrvs = do
-            caches <- Agent.Cachix.activePushCaches
-            paths <- liftIO $ readIORef allAttrPaths
+            caches <- activePushCaches
+            paths <- liftIO $ readIORef topDerivationPaths
             forM_ caches $ \cache -> do
-              withNamedContext "cache" cache $ logLocM DebugS "Pushing drvs to cachix"
-              Agent.Cachix.push cache (toList paths) pushEvalWorkers
+              withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations"
+              Agent.Cache.push cache (toList paths) pushEvalWorkers
               emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll {cache = cache}
           captureAttrDrvAndEmit msg = do
             case msg of
               EvaluateEvent.Attribute ae ->
-                TraversalQueue.enqueue
-                  derivationQueue
-                  (AttributeEvent.derivationPath ae)
+                addTopDerivation (AttributeEvent.derivationPath ae)
               _ -> pass
             emit msg
           emitDrvs =
-            TraversalQueue.work derivationQueue $ \recurse drvPath -> do
-              liftIO $ atomicModifyIORef allAttrPaths ((,()) . S.insert drvPath)
-              drvInfo <- retrieveDerivationInfo drvPath
+            withStore $ \store -> TraversalQueue.work derivationQueue $ \recurse drvPath -> do
+              drvInfo <- retrieveDerivationInfo store drvPath
               forM_
                 (M.keys $ DerivationInfo.inputDerivations drvInfo)
                 recurse -- asynchronously
@@ -217,10 +221,11 @@ runEvalProcess ::
       (EvaluateTask.SubPathOf FilePath)
   ] ->
   (EvaluateEvent.EvaluateEvent -> App ()) ->
-  TraversalQueue.Queue Text ->
+  -- | Upload a derivation, return when done
+  (Text -> App ()) ->
   App () ->
   App ()
-runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush = do
+runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush = do
   extraOpts <- Nix.askExtraOptions
   let eval = Eval.Eval
         { Eval.cwd = projectDir,
@@ -271,15 +276,14 @@ runEvalProcess projectDir file autoArguments nixPath emit derivationQueue flush 
                           BuildRequired.index = currentIndex,
                           BuildRequired.outputName = outputName
                         }
-                    let submitDerivationInfos = do
-                          TraversalQueue.enqueue derivationQueue drv
-                          TraversalQueue.waitUntilDone derivationQueue
-                        pushDerivations = do
-                          caches <- Agent.Cachix.activePushCaches
+                    let pushDerivations = do
+                          caches <- activePushCaches
                           forM_ caches $ \cache -> do
-                            withNamedContext "cache" cache $ logLocM DebugS "Pushing ifd drvs to cachix"
-                            Agent.Cachix.push cache [drv] pushEvalWorkers
-                    Async.Lifted.concurrently_ submitDerivationInfos pushDerivations
+                            withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations for import from derivation"
+                            Agent.Cache.push cache [drv] pushEvalWorkers
+                    Async.Lifted.concurrently_
+                      (uploadDerivationInfos drv)
+                      pushDerivations
                     emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest
                       { derivationPath = drv,
                         forceRebuild = isJust notAttempt
