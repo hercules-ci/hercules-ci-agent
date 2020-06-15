@@ -313,6 +313,7 @@ test-suite hercules-test
       Hercules.Agent.Nix.RetrieveDerivationInfo
       Hercules.Agent.Nix.RetrieveDerivationInfoSpec
       Hercules.Agent.WorkerProcess
+      Hercules.Agent.WorkerProcessSpec
       Paths_hercules_ci_agent
       Spec
   hs-source-dirs:
@@ -333,8 +334,8 @@ test-suite hercules-test
     , containers
     , exceptions
     , filepath
-    , hercules-ci-agent
     , hercules-ci-api-agent
+    , hercules-ci-agent
     , hercules-ci-api-core
     , hspec
     , katip

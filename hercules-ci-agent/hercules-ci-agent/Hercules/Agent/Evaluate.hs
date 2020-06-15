@@ -46,11 +46,11 @@ import Hercules.Agent.Nix.RetrieveDerivationInfo
   ( retrieveDerivationInfo,
   )
 import Hercules.Agent.NixPath
-  ( renderNixPath,
-    renderSubPath,
+  ( renderSubPath,
   )
 import Hercules.Agent.Producer
-import Hercules.Agent.WorkerProcess
+import Hercules.Agent.WorkerProcess ()
+import qualified Hercules.Agent.WorkerProcess as WorkerProcess
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
@@ -312,18 +312,19 @@ produceWorkerEvents ::
   (Event.Event -> App ()) ->
   App ExitCode
 produceWorkerEvents eval nixPath commandChan writeEvent = do
-  workerExe <- getWorkerExe
+  workerExe <- WorkerProcess.getWorkerExe
   let opts = [show $ Eval.extraNixOptions eval]
   -- NiceToHave: replace renderNixPath by something structured like -I
   -- to support = and : in paths
+  workerEnv <- liftIO $ WorkerProcess.prepareEnv (WorkerProcess.WorkerEnvSettings {nixPath = nixPath})
   wps <-
     pure
       (System.Process.proc workerExe opts)
-        { env = Just [("NIX_PATH", toS $ renderNixPath nixPath)],
+        { env = Just workerEnv,
           close_fds = True, -- Disable on Windows?
           cwd = Just (Eval.cwd eval)
         }
-  runWorker wps stderrLineHandler commandChan writeEvent
+  WorkerProcess.runWorker wps stderrLineHandler commandChan writeEvent
 
 drvPoller :: Maybe UUID -> Text -> App (UUID, BuildResult.BuildStatus)
 drvPoller notAttempt drvPath = do

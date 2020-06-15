@@ -1,6 +1,9 @@
 module Hercules.Agent.WorkerProcess
   ( runWorker,
     getWorkerExe,
+    WorkerEnvSettings (..),
+    prepareEnv,
+    modifyEnv,
   )
 where
 
@@ -13,9 +16,13 @@ import Data.Conduit.Serialization.Binary
   ( conduitDecode,
     conduitEncode,
   )
+import qualified Data.Map as M
 import GHC.IO.Exception
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
+import Hercules.Agent.NixPath (renderNixPath)
 import Paths_hercules_ci_agent (getBinDir)
 import Protolude
+import System.Environment (getEnvironment)
 import System.FilePath ((</>))
 import System.IO (hClose)
 import System.IO.Error
@@ -36,6 +43,24 @@ instance Exception WorkerException where
       <> case exitStatus we of
         Nothing -> ""
         Just s -> " (worker: " <> show s <> ")"
+
+data WorkerEnvSettings
+  = WorkerEnvSettings
+      { nixPath :: [EvaluateTask.NixPathElement (EvaluateTask.SubPathOf FilePath)]
+      }
+
+-- | Filter out impure env vars by wildcard, set NIX_PATH
+modifyEnv :: WorkerEnvSettings -> Map [Char] [Char] -> Map [Char] [Char]
+modifyEnv workerEnvSettings =
+  M.insert "NIX_PATH" (toS $ renderNixPath $ nixPath workerEnvSettings)
+    . M.filterWithKey (\k _v -> not ("NIXPKGS_" `isPrefixOf` k))
+    . M.filterWithKey (\k _v -> not ("NIXOS_" `isPrefixOf` k))
+    . M.delete "IN_NIX_SHELL"
+
+prepareEnv :: WorkerEnvSettings -> IO [([Char], [Char])]
+prepareEnv workerEnvSettings = do
+  envMap <- M.fromList <$> getEnvironment
+  pure $ M.toList $ modifyEnv workerEnvSettings envMap
 
 getWorkerExe :: MonadIO m => m [Char]
 getWorkerExe = do
