@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -19,6 +20,7 @@ import Data.IORef
   )
 import qualified Data.Map as M
 import qualified Data.Set as S
+import qualified Data.Text as T
 import Data.UUID (UUID)
 import Hercules.API.Agent.Evaluate
   ( getDerivationStatus2,
@@ -159,6 +161,8 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
             emitSingle truncMsg
             panic "Evaluation limit reached."
           else emitSingle =<< fixIndex update
+  adHocSystem <-
+    readFileMaybe (projectDir </> "ci-default-system.txt")
   liftIO (findNixFile projectDir) >>= \case
     Left e ->
       emit $
@@ -180,14 +184,15 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
             TraversalQueue.enqueue derivationQueue drvPath
             liftIO $ atomicModifyIORef topDerivationPaths ((,()) . S.insert drvPath)
           evaluation = do
-            runEvalProcess
-              projectDir
-              file
-              autoArguments
-              nixPath
-              captureAttrDrvAndEmit
-              uploadDrvInfos
-              sync
+            Nix.withExtraOptions [("system", T.strip s) | Just s <- [adHocSystem]] $
+              runEvalProcess
+                projectDir
+                file
+                autoArguments
+                nixPath
+                captureAttrDrvAndEmit
+                uploadDrvInfos
+                sync
             -- process has finished
             TraversalQueue.waitUntilDone derivationQueue
             TraversalQueue.close derivationQueue
@@ -447,3 +452,8 @@ withWorkDir f = do
   UnliftIO {unliftIO = unlift} <- askUnliftIO
   workDir <- asks (Config.workDirectory . config)
   liftIO $ withTempDirectory workDir "eval" $ unlift . f
+
+readFileMaybe :: MonadIO m => FilePath -> m (Maybe Text)
+readFileMaybe fp = liftIO do
+  exists <- Dir.doesFileExist fp
+  guard exists & traverse \_ -> readFile fp
