@@ -53,6 +53,7 @@
 , tomland
 , transformers
 , transformers-base
+, unbounded-delays
 , unix
 , unliftio
 , unliftio-core
@@ -96,6 +97,7 @@ mkDerivation {
     stm
     text
     transformers-base
+    unbounded-delays
     unliftio
     unliftio-core
     uuid
@@ -176,6 +178,7 @@ mkDerivation {
     conduit
     containers
     exceptions
+    filepath
     hercules-ci-api-agent
     hercules-ci-api-core
     hspec
@@ -184,10 +187,12 @@ mkDerivation {
     lifted-base
     monad-control
     optparse-applicative
+    process
     protolude
     safe-exceptions
     text
     transformers-base
+    unliftio-core
   ];
   doHaddock = false;
   homepage = "https://docs.hercules-ci.com";
