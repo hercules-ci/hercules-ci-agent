@@ -2,6 +2,8 @@ cabal-version: 1.12
 
 name:           hercules-ci-api-core
 version:        0.1.1.0
+synopsis:       Types and convenience modules use across Hercules CI API packages
+category:       API, CI, Testing, DevOps
 homepage:       https://github.com/hercules-ci/hercules-ci-agent#readme
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
 author:         Hercules CI contributors
