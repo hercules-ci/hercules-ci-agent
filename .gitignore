@@ -4,6 +4,7 @@
 
 # Default cabal output paths
 **/dist/
+**/dist-newstyle/
 
 # Ignore logarithms
 **/*.log
