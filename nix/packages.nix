@@ -11,7 +11,7 @@ let
   inherit (pkgs.lib) cleanSource makeBinPath optionalAttrs;
   inherit (haskell.lib) overrideSrc addBuildDepends overrideCabal buildFromSdist doJailbreak disableLibraryProfiling addBuildTool;
   inherit (import sources.gitignore { inherit lib; }) gitignoreSource;
-  callPkg = super: name: srcPath: args: overrideSrc (super.callPackage (srcPath + "/pkg.nix") args) { src = gitignoreSource srcPath; };
+  callPkg = super: name: srcPath: args: overrideSrc (super.callCabal2nix name srcPath args) { src = gitignoreSource srcPath; };
 
   sources = import ./sources.nix;
 
