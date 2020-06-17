@@ -1,7 +1,7 @@
 cabal-version: 1.12
 
 name:           hercules-ci-api-agent
-version:        0.2.0.0
+version:        0.2.1.0
 synopsis:       API definition for Hercules CI Agent to talk to hercules-ci.com or Hercules CI Enterprise
 category:       API, CI, Testing, DevOps
 homepage:       https://github.com/hercules-ci/hercules-ci-agent#readme
