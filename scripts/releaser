@@ -31,9 +31,17 @@ main = do
   hSetBuffering stderr LineBuffering
   gitAssertEmptyStaging
   -- Disabled because metadata change does not warrant a bump
-  -- releasePackage "hercules-ci-api-core" mempty
-  releasePackage "hercules-ci-api-agent" mempty
+  -- releasePackage "hercules-ci-api-core" (bumpExactVersion "hercules-ci-api-core")
+  releasePackage "hercules-ci-api-agent" (bumpExactVersion "hercules-ci-api-agent")
   releasePackage "hercules-ci-agent" bumpVersionInNix
+
+bumpExactVersion :: String -> String -> String -> IO ()
+bumpExactVersion package old new = do
+  void $ readProcess "sh"
+    [ "-c"
+    , "sed -i $(git ls-files | grep '\\.cabal') -e 's/" <> package <> " == " <> old <> "/" <> package <> " == " <> new <> "/g'"
+    ]
+    mempty
 
 bumpVersionInNix :: String -> String -> IO ()
 bumpVersionInNix old new = do

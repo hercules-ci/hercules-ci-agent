@@ -202,8 +202,8 @@ executable hercules-ci-agent
     , exceptions
     , filepath
     , hercules-ci-agent
-    , hercules-ci-api-core == 0.1.*
-    , hercules-ci-api-agent == 0.2.*
+    , hercules-ci-api-core == 0.1.1.0
+    , hercules-ci-api-agent == 0.2.1.0
     , hostname
     , http-client
     , http-client-tls
