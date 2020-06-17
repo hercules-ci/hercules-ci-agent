@@ -40,20 +40,22 @@ releasePackage pkg = do
   let dir = pkg
       tagPrefix = pkg <> "-"
   cabalInfo <- cabalRead dir
-  diff <- gitLog (tagPrefix <> version cabalInfo) "HEAD" [dir]
-  -- print diff
+  let oldVersion = version cabalInfo
+      oldTag = tagPrefix <> oldVersion
+  diff <- gitLog oldTag "HEAD" [dir]
   case diff of 
     [] -> do
       logStep $ "No commits; skipping " <> pkg
     _ -> do
-      logStep $ "Commits for are " <> pkg
+      logStep $ "Commits for " <> dir <> " are:"
       for_ diff putStrLn
       newVersion <- cabalBumpVersion' dir
       let releaseName = pkg <> "-" <> newVersion
       changelogPrepare' defaultChangelogOptions
         { changelogFile = dir </> "CHANGELOG.md"
         , changelogHeaderLines = 
-            [ "Commit log:"
+            [ "Version change: " <> oldVersion <> " -> " <> newVersion
+            , "Commit log:"
             ] <> map (" - " <>) diff
               <> [""]
         }
