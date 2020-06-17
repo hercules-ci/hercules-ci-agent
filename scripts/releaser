@@ -30,7 +30,8 @@ main = do
   hSetBuffering stdout LineBuffering
   hSetBuffering stderr LineBuffering
   gitAssertEmptyStaging
-  releasePackage "hercules-ci-api-core"
+  -- Disabled because metadata change does not warrant a bump
+  -- releasePackage "hercules-ci-api-core"
   releasePackage "hercules-ci-api-agent"
   releasePackage "hercules-ci-agent"
 
