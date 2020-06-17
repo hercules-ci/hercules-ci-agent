@@ -31,12 +31,16 @@ main = do
   hSetBuffering stderr LineBuffering
   gitAssertEmptyStaging
   -- Disabled because metadata change does not warrant a bump
-  -- releasePackage "hercules-ci-api-core"
-  releasePackage "hercules-ci-api-agent"
-  releasePackage "hercules-ci-agent"
+  -- releasePackage "hercules-ci-api-core" mempty
+  releasePackage "hercules-ci-api-agent" mempty
+  releasePackage "hercules-ci-agent" bumpVersionInNix
 
-releasePackage :: String -> IO ()
-releasePackage pkg = do
+bumpVersionInNix :: String -> String -> IO ()
+bumpVersionInNix old new = do
+  void $ readProcess "sed" (["-i", "-e", "s/agentVersion = \"" <> old <> "\"/agentVersion = \"" <> new <> "\"/", "for-upstream/common.nix"]) mempty
+
+releasePackage :: String -> (String -> String -> IO ()) -> IO ()
+releasePackage pkg extraBumps = do
   let dir = pkg
       tagPrefix = pkg <> "-"
   cabalInfo <- cabalRead dir
@@ -59,6 +63,7 @@ releasePackage pkg = do
             ] <> map (" - " <>) diff
               <> [""]
         }
+      extraBumps oldVersion newVersion
       withCurrentDirectory dir $ do
         tarball <- cabalSdist "."
         cabalUpload tarball

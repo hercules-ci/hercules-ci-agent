@@ -94,13 +94,13 @@ in
       type = types.str;
     };
     package = let
-      version = "0.7.0";
+      agentVersion = "0.7.1";
     in
       mkOption {
         description = "Package containing the bin/hercules-ci-agent program";
         type = types.package;
-        default = (import (builtins.fetchTarball "https://github.com/hercules-ci/hercules-ci-agent/archive/hercules-ci-agent-${version}.tar.gz") {}).hercules-ci-agent;
-        defaultText = "hercules-ci-agent-${version}";
+        default = (import (builtins.fetchTarball "https://github.com/hercules-ci/hercules-ci-agent/archive/hercules-ci-agent-${agentVersion}.tar.gz") {}).hercules-ci-agent;
+        defaultText = "hercules-ci-agent-${agentVersion}";
       };
     extraOptions = mkOption {
       description = ''
