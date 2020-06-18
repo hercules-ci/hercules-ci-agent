@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2020-06-18
+
+### Changed
+
+ - cachix: 0.3.7 -> 0.3.8. Improves reliability through better retries and improves error reporting
+
 ## [0.7.1] - 2020-06-17
 
 ### Added
