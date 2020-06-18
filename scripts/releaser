@@ -1,0 +1,174 @@
+#!/usr/bin/env nix-shell
+#!nix-shell -i runghc
+#!nix-shell releaser-shell.nix
+{-# LANGUAGE OverloadedStrings #-}
+import Releaser.Primitives hiding (cabalWriteVersion)
+import System.Process
+import System.FilePath
+import System.Exit
+import System.Environment
+import System.Directory
+import Data.Foldable
+import System.IO
+import Control.Exception
+import Data.List (isPrefixOf)
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
+import Text.Regex.TDFA.Text
+import Text.Regex.TDFA
+import Distribution.Simple.Utils (tryFindPackageDesc)
+import Distribution.Verbosity (silent)
+import Control.Monad
+import Data.Char(isSpace)
+
+
+gitLog from to paths = do
+  lines <$> readProcess "git" (["log", "--format=oneline", (from <>".."<> to), "--"] <> paths) mempty
+
+main :: IO ()
+main = do
+  hSetBuffering stdout LineBuffering
+  hSetBuffering stderr LineBuffering
+  gitAssertEmptyStaging
+  -- Disabled because metadata change does not warrant a bump
+  -- releasePackage "hercules-ci-api-core" (bumpExactVersion "hercules-ci-api-core")
+  releasePackage "hercules-ci-api-agent" (bumpExactVersion "hercules-ci-api-agent")
+  releasePackage "hercules-ci-agent" bumpVersionInNix
+
+bumpExactVersion :: String -> String -> String -> IO ()
+bumpExactVersion package old new = do
+  void $ readProcess "sh"
+    [ "-c"
+    , "sed -i $(git ls-files | grep '\\.cabal') -e 's/" <> package <> " == " <> old <> "/" <> package <> " == " <> new <> "/g'"
+    ]
+    mempty
+
+bumpVersionInNix :: String -> String -> IO ()
+bumpVersionInNix old new = do
+  void $ readProcess "sed" (["-i", "-e", "s/agentVersion = \"" <> old <> "\"/agentVersion = \"" <> new <> "\"/", "for-upstream/common.nix"]) mempty
+
+releasePackage :: String -> (String -> String -> IO ()) -> IO ()
+releasePackage pkg extraBumps = do
+  let dir = pkg
+      tagPrefix = pkg <> "-"
+  cabalInfo <- cabalRead dir
+  let oldVersion = version cabalInfo
+      oldTag = tagPrefix <> oldVersion
+  diff <- gitLog oldTag "HEAD" [dir]
+  case diff of 
+    [] -> do
+      logStep $ "No commits; skipping " <> pkg
+    _ -> do
+      logStep $ "Commits for " <> dir <> " are:"
+      for_ diff putStrLn
+      newVersion <- cabalBumpVersion' dir
+      let releaseName = pkg <> "-" <> newVersion
+      changelogPrepare' defaultChangelogOptions
+        { changelogFile = dir </> "CHANGELOG.md"
+        , changelogHeaderLines = 
+            [ "Version change: " <> oldVersion <> " -> " <> newVersion
+            , "Commit log:"
+            ] <> map (" - " <>) diff
+              <> [""]
+        }
+      extraBumps oldVersion newVersion
+      withCurrentDirectory dir $ do
+        tarball <- cabalSdist "."
+        cabalUpload tarball
+        -- TODO newer releaser
+        -- cabalMakeHaddocks dir
+        -- cabalUploadDocs
+        gitCommit $ releaseName
+        gitTag releaseName
+        gitPush "origin"
+        gitPushTags "origin"
+
+data ChangelogOptions = ChangelogOptions
+  { changelogFile :: FilePath
+  , changelogHeaderLines :: [String]
+  }
+defaultChangelogOptions = ChangelogOptions
+  { changelogFile = "CHANGELOG.md"
+  , changelogHeaderLines = []
+  }
+
+editFile :: FilePath -> (Int -> IO ()) -> IO ()
+editFile path bad = do
+  editorEnv <- lookupEnv "EDITOR"
+  editor <- case editorEnv of
+    Nothing -> abort "please make sure $EDITOR is set"
+    Just editor -> pure editor
+  interactiveProcess (proc editor [path]) bad
+
+changelogPrepare' :: ChangelogOptions -> IO ()
+changelogPrepare' opts = do
+  logStep "Preparing changelog"
+
+  do
+    content <- readFile (changelogFile opts)
+    evaluate (length content)
+    let
+      headerLines = 
+        [ ""
+        , "Please update the changelog"
+        , "Any lines starting with %% will be removed."
+        , ""
+        ] <> changelogHeaderLines opts
+      header = unlines (map comment headerLines)
+      comment "" = "%%"
+      comment x = "%% " <> x
+    writeFile (changelogFile opts) (header <> content)
+
+  editFile (changelogFile opts) $ \i -> do
+    logStep $ "Editor failed with " <> show i
+
+  let
+    filterHeader = unlines . filter (not . isPrefixOf "%%") . lines
+
+  content' <- readFile (changelogFile opts)
+  evaluate (length content')
+  writeFile (changelogFile opts) (filterHeader content')
+
+-- | Given a folder, find a Cabal file and update the package version
+cabalWriteVersion :: FilePath -> String -> IO ()
+cabalWriteVersion dir versionStr = do
+  if validCabalVersion versionStr
+  then do
+    cabalFile <- tryFindPackageDesc dir
+    cabalinfo <- cabalRead dir
+    cabal <- T.readFile cabalFile
+    case cabal =~ ("version:[ \t]*" ++ version cabalinfo) of
+      "" -> abort $ "Failed to replace version in " <> cabalFile <> ", please open an issue at https://github.com/domenkozar/releaser/issues"
+      versionLine -> do
+        let versionSpace = T.takeWhile isSpace . T.drop (T.length "version:") $ versionLine
+        T.writeFile cabalFile $ T.replace versionLine ("version:" <> versionSpace <> T.pack versionStr) cabal
+        logStep $ "Bumped " <> name cabalinfo <> " to " <> versionStr
+  else do
+    promptRetry "Cabal version does not match /^[0-9]+([.][0-9]+)*$/"
+    void $ cabalBumpVersion' dir
+
+cabalBumpVersion' :: FilePath -> IO String
+cabalBumpVersion' dir = do
+  cabalinfo <- cabalRead dir
+  version <- prompt $ "Bump cabal version from " <> version cabalinfo <> " to: "
+  cabalWriteVersion dir version
+  return version
+
+
+----- Unchanged copies from releaser internals -----
+
+validCabalVersion :: String -> Bool
+validCabalVersion version =
+  version =~ ("^[0-9]+([.][0-9]+)*$" :: String)
+
+interactiveProcess :: CreateProcess -> (Int -> IO ()) -> IO ()
+interactiveProcess cmd bad = do
+  (_, _, _, ph) <- createProcess cmd
+  exitcode <- waitForProcess ph
+  case exitcode of
+    ExitSuccess -> return ()
+    ExitFailure i -> bad i
+
+promptRetry :: String -> IO ()
+promptRetry str =
+  void $ prompt $ str <> ". Retry? (press enter) "

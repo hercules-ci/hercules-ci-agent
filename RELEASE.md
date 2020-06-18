@@ -1,40 +1,14 @@
 Example releasing hercules-ci-agent and optionally hercules-ci-api:
 
-### 1. Prepare API
+### Release
 
-- git checkout -B vX.X.X (new agent version)
-- update hercules-ci-api/CHANGELOG.md
-   - git log PREVIOUS..HEAD -- ./hercules-ci-api
-- bump api version
-   - hercules-ci-api/CHANGELOG.md
-   - hercules-ci-api/hercules-ci-api.cabal
-   - hercules-ci-agent/hercules-ci-agent.cabal
-- scripts/generate-nix
-- git add --patch
-- git commit -m "hercules-ci-api-Y.Y.Y.Y"
+    git checkout -B release
+    ./scripts/releaser
 
-### 2. Prepare Agent
+Base the tag message on the changelog, but removing the `###` prefix from headers (avoid accidental comments).
 
-- update hercules-ci-agent/CHANGELOG.md
-   - git log PREVIOUS..HEAD -- ./for-upstream ./hercules-ci-agent
-- bump agent version
-   - hercules-ci-agent/CHANGELOG.md
-   - hercules-ci-agent/hercules-ci-agent.cabal
-   - for-upstream/common.nix package option
-- add a markdown link in CHANGELOG.md markdown link for the added version tag (header and link map at the bottom)
-- scripts/generate-nix
-- pre-commit run -a
-- git add --patch
-- git commit -m "hercules-ci-agent-X.X.X"
-- wait for CI to succeed
-- open a PR against master
+### Dependents
 
-### 3. Preliminary tag and verification
-
-- git log -2
-- copy the contents of the api changelog for this release to: git tag -s -a hercules-ci-api-Y.Y.Y.Y API_COMMIT
-- copy the contents of the agent changelog for this release to: git tag -s -a hercules-ci-agent-X.X.X AGENT_COMMIT
-- git push --tags
 - update nix-darwin
    - prepare branch on nix-darwin clone
       - git fetch upstream
@@ -59,10 +33,10 @@ Example releasing hercules-ci-agent and optionally hercules-ci-api:
    - (after merge of terraform-hercules-ci master)
    - ./update
 
-### 4. Finalize the release
+### Finalize
 
-- merge hercules-ci-agent release into master
-- open a PR against stable using the release branch as a base
-- open a PR on nix-darwin (from previous step's branch)
-- make sure to verify default package url is accessible
-   - update agent-deployments to stable
+- merge the release branch
+- make sure all tags are pushed
+   - hercules-ci-agent
+   - terraform-hercules-ci
+   - example-deploy-agent-terraform-aws

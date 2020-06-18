@@ -7,13 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2020-06-17
+
 ### Added
 
  - Push to any nix store, including S3, using the `NixCache` kind in `binary-caches.json`
 
 ### Changed
 
- - Switch to NixOS 20.03
+ - Switch to Nixpkgs 20.03
+
+ - Environment variables are now passed on to evaluation and build by default. This allows configuration to be passed to Nix without intervention from hercules-ci-agent.
+
+ - `trusted-user` is not a requirement and is configured automatically when using the NixOS module or nix-darwin module.
+
+### Fixed
+
+ - Agent will now reset its connection with hercules-ci.com when pings are not acknowledged in time.
+
+ - Prevent running out of file descriptors by increasing the soft limit if possible.
 
 ## [0.7.0] - 2020-05-05
 

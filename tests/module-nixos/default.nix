@@ -11,7 +11,15 @@ runCommand "test-module-nixos" {
   buildInputs = [ nix ];
   nixpkgs = pkgs.path;
   paths = pkgs.closureInfo {
-    rootPaths = attrValues (import (../../nix/sources.nix));
+    rootPaths = attrValues (import (../../nix/sources.nix)) ++ [
+      pkgs.hercules-ci-agent-packages.internal.haskellPackages.hercules-ci-agent.cabal2nixDeriver
+      pkgs.hercules-ci-agent-packages.internal.haskellPackages.hercules-ci-api-core.cabal2nixDeriver
+      pkgs.hercules-ci-agent-packages.internal.haskellPackages.hercules-ci-api-agent.cabal2nixDeriver
+      # Sandbox can't write drvs, but these seem to pull in all outputs :(
+      pkgs.hercules-ci-agent-packages.internal.haskellPackages.hercules-ci-agent.cabal2nixDeriver.drvPath
+      pkgs.hercules-ci-agent-packages.internal.haskellPackages.hercules-ci-api-core.cabal2nixDeriver.drvPath
+      pkgs.hercules-ci-agent-packages.internal.haskellPackages.hercules-ci-api-agent.cabal2nixDeriver.drvPath
+    ];
   };
   nixopsSrc = stdenv.mkDerivation {
     name = "nixops-src";
