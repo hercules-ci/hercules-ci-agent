@@ -31,9 +31,22 @@ main = do
   hSetBuffering stderr LineBuffering
   gitAssertEmptyStaging
   -- Disabled because metadata change does not warrant a bump
-  -- releasePackage "hercules-ci-api-core" (bumpExactVersion "hercules-ci-api-core")
-  releasePackage "hercules-ci-api-agent" (bumpExactVersion "hercules-ci-api-agent")
+  whenConfirmed "Update hercules-ci-api-core?" $
+    releasePackage "hercules-ci-api-core" (bumpExactVersion "hercules-ci-api-core")
+  whenConfirmed "Update hercules-ci-api-agent?" $
+    releasePackage "hercules-ci-api-agent" (bumpExactVersion "hercules-ci-api-agent")
   releasePackage "hercules-ci-agent" bumpVersionInNix
+
+whenConfirmed :: String -> IO () -> IO ()
+whenConfirmed s m = confirm s >>= \b -> when b m
+
+confirm :: String -> IO Bool
+confirm str = do
+  s <- prompt $ str <> " (y/n)"
+  case s of
+    "y" -> pure True
+    "n" -> pure False
+    _ -> confirm str
 
 bumpExactVersion :: String -> String -> String -> IO ()
 bumpExactVersion package old new = do
