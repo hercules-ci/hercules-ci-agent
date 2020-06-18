@@ -9,7 +9,7 @@ packages:
   - tests/agent-test
 extra-deps:
   # REMINDER: sync with scripts/generate-nix
-  - cachix-0.3.7@sha256:53d6220f067c276e989212992bd84abef9fe447f75552a56525ec2d9181878d9,3667
+  - cachix-0.3.8
   # REMINDER: sync with scripts/generate-nix
   - cachix-api-0.4.0@sha256:6f356eb0d5324cdddbb9911b473fd20bb37481e96481699ca1927afd41f4bb59,2983
   - inline-c-0.9.0.0

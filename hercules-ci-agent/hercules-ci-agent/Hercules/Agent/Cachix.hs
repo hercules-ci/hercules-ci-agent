@@ -49,7 +49,8 @@ push cache paths workers = withNamedContext "cache" cache $ do
                   on401 = throwIO $ FatalError $ "Cachix push is unauthorized",
                   onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
                   onDone = ctx $ logLocM DebugS "push done",
-                  withXzipCompressor = Cachix.Push.defaultWithXzipCompressor
+                  withXzipCompressor = Cachix.Push.defaultWithXzipCompressor,
+                  omitDeriver = False
                 }
       )
       paths
