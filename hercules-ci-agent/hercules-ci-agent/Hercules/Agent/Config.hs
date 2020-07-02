@@ -14,6 +14,7 @@ module Hercules.Agent.Config
   )
 where
 
+import Katip (Severity (..))
 import Protolude hiding (to)
 import qualified System.Environment
 import System.FilePath ((</>))
@@ -46,7 +47,8 @@ data Config purpose
         staticSecretsDirectory :: Item purpose 'Required FilePath,
         workDirectory :: Item purpose 'Required FilePath,
         clusterJoinTokenPath :: Item purpose 'Required FilePath,
-        binaryCachesPath :: Item purpose 'Required FilePath
+        binaryCachesPath :: Item purpose 'Required FilePath,
+        logLevel :: Item purpose 'Required Severity
       }
   deriving (Generic)
 
@@ -71,6 +73,8 @@ tomlCodec =
     .= clusterJoinTokenPath
     <*> dioptional (Toml.string "binaryCachesPath")
     .= binaryCachesPath
+    <*> dioptional (Toml.enumBounded "logLevel")
+    .= logLevel
 
 keyClusterJoinTokenPath :: Key
 keyClusterJoinTokenPath = "clusterJoinTokenPath"
@@ -125,5 +129,6 @@ finalizeConfig loc input = do
       concurrentTasks = validConcurrentTasks,
       baseDirectory = baseDir,
       staticSecretsDirectory = staticSecretsDir,
-      workDirectory = workDir
+      workDirectory = workDir,
+      logLevel = logLevel input & fromMaybe InfoS
     }

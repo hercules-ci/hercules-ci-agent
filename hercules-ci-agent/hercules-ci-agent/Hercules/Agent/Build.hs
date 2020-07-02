@@ -1,7 +1,5 @@
 module Hercules.Agent.Build where
 
-import qualified Data.Aeson as A
-import qualified Data.ByteString as BS
 import Data.IORef.Lifted
 import qualified Data.Map as M
 import qualified Hercules.API.Agent.Build as API.Build
@@ -34,7 +32,6 @@ import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.BuildResult as BuildResult
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.Error (defaultRetry)
-import qualified Katip.Core
 import qualified Network.URI
 import Protolude
 import System.Process
@@ -72,7 +69,7 @@ performBuild buildTask = do
         },
       materializeDerivation = materialize
     }
-  exitCode <- runWorker procSpec stderrLineHandler commandChan writeEvent
+  exitCode <- runWorker procSpec (stderrLineHandler "Builder") commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> show exitCode
   case exitCode of
     ExitSuccess -> pass
@@ -98,17 +95,6 @@ convertOutputs deriver = foldMap $ \oi ->
         size = fromIntegral $ BuildResult.size oi,
         hash = toSL $ BuildResult.hash oi
       }
-
-stderrLineHandler :: Int -> ByteString -> App ()
-stderrLineHandler _ ln
-  | "@katip " `BS.isPrefixOf` ln,
-    Just item <- A.decode (toS $ BS.drop 7 ln) =
-    -- "This is the lowest level function [...] useful when implementing centralised logging services."
-    Katip.Core.logKatipItem (Katip.Core.SimpleLogPayload . M.toList . fmap (Katip.Core.AnyLogPayload :: A.Value -> Katip.Core.AnyLogPayload) <$> item)
-stderrLineHandler pid ln =
-  withNamedContext "worker" (pid :: Int)
-    $ logLocM InfoS
-    $ "Builder: " <> logStr (toSL ln :: Text)
 
 push :: BuildTask -> Map Text OutputInfo -> App ()
 push buildTask outs = do

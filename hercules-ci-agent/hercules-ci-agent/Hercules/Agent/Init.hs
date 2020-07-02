@@ -50,9 +50,9 @@ newEnv config logEnv = do
       nixEnv = nix
     }
 
-setupLogging :: (K.LogEnv -> IO ()) -> IO ()
-setupLogging f = do
-  handleScribe <- K.mkHandleScribe K.ColorIfTerminal stderr (Compat.katipLevel K.DebugS) K.V2
+setupLogging :: Config.FinalConfig -> (K.LogEnv -> IO ()) -> IO ()
+setupLogging cfg f = do
+  handleScribe <- K.mkHandleScribe K.ColorIfTerminal stderr (Compat.katipLevel (Config.logLevel cfg)) K.V2
   let mkLogEnv =
         K.registerScribe "stderr" handleScribe K.defaultScribeSettings
           =<< K.initLogEnv emptyNamespace ""

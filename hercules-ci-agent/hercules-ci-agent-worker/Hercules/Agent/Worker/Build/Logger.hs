@@ -6,7 +6,7 @@
 module Hercules.Agent.Worker.Build.Logger where
 
 import CNix.Internal.Context
-import Conduit (filterC)
+import Conduit (MonadUnliftIO, filterC)
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Data.Conduit (ConduitT, Flush (..), await, awaitForever, yield)
 import Data.Vector (Vector)
@@ -16,8 +16,10 @@ import Hercules.API.Logs.LogEntry (LogEntry)
 import qualified Hercules.API.Logs.LogEntry as LogEntry
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
-import Protolude
+import Protolude hiding (bracket, finally, mask_, onException, wait, withAsync)
 import System.Timeout (timeout)
+import UnliftIO.Async
+import UnliftIO.Exception
 
 C.context context
 
@@ -235,9 +237,9 @@ close =
 -- Conduits for logger
 --
 
-withLoggerConduit :: MonadIO m => (ConduitT () (Vector LogEntry) m () -> IO ()) -> IO a -> IO a
+withLoggerConduit :: (MonadIO m, MonadUnliftIO m) => (ConduitT () (Vector LogEntry) m () -> m ()) -> m a -> m a
 withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
-  ((io `finally` close) <* wait popperAsync) `onException` timeout 2_000_000 (wait popperAsync)
+  ((io `finally` liftIO close) <* wait popperAsync) `onException` liftIO (timeout 2_000_000 (wait popperAsync))
   where
     popper = liftIO popMany >>= \case
       lns | null lns -> pass
@@ -246,7 +248,7 @@ withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
         popper
 
 -- | Remove spammy progress results. Use 'nubProgress' instead?
-filterProgress :: ConduitT (Flush LogEntry) (Flush LogEntry) IO ()
+filterProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 filterProgress = filterC \case
   Chunk (LogEntry.Result {rtype = LogEntry.ResultTypeProgress}) -> False
   _ -> True

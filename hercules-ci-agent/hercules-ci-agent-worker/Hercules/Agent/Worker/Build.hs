@@ -4,6 +4,7 @@ import CNix
 import CNix.Internal.Context (Derivation)
 import Cachix.Client.Store (Store, queryPathInfo, validPathInfoNarHash, validPathInfoNarSize)
 import Conduit
+import Data.Conduit.Katip.Orphans ()
 import Foreign (ForeignPtr)
 import Hercules.Agent.Worker.Build.Prefetched (buildDerivation)
 import qualified Hercules.Agent.Worker.Build.Prefetched as Build
@@ -11,10 +12,11 @@ import qualified Hercules.Agent.WorkerProtocol.Command.Build as Command.Build
 import Hercules.Agent.WorkerProtocol.Event (Event)
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.BuildResult as Event.BuildResult
+import Katip
 import Protolude
 import Unsafe.Coerce
 
-runBuild :: Ptr (Ref NixStore) -> Command.Build.Build -> ConduitT i Event (ResourceT IO) ()
+runBuild :: (MonadIO m, KatipContext m) => Ptr (Ref NixStore) -> Command.Build.Build -> ConduitT i Event m ()
 runBuild store build = do
   let extraPaths = Command.Build.inputDerivationOutputPaths build
       drvPath = toS $ Command.Build.drvPath build
@@ -25,7 +27,8 @@ runBuild store build = do
     Just drv -> pure drv
     Nothing -> panic $ "Could not retrieve derivation " <> show drvPath <> " from local store or binary caches."
   nixBuildResult <- liftIO $ buildDerivation store drvPath derivation (extraPaths <$ guard (not (Command.Build.materializeDerivation build)))
-  liftIO $ putErrText $ show nixBuildResult
+  katipAddContext (sl "result" (show nixBuildResult :: Text)) $
+    logLocM DebugS "Build result"
   buildResult <- liftIO $ enrichResult store derivation nixBuildResult
   yield $ Event.BuildResult buildResult
 

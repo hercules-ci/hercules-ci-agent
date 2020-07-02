@@ -10,10 +10,15 @@ where
 import CNix
 import qualified CNix.Internal.Raw
 import Conduit
+import Control.Concurrent.Async.Lifted.Safe
 import Control.Concurrent.STM
+import qualified Control.Exception.Lifted as EL
+import Control.Monad.IO.Unlift
+import Control.Monad.Trans.Control
 import qualified Data.ByteString as BS
 import qualified Data.Conduit
 import Data.Conduit.Extras (sinkChan, sinkChanTerminate, sourceChan)
+import Data.Conduit.Katip.Orphans ()
 import Data.Conduit.Serialization.Binary
   ( conduitDecode,
     conduitEncode,
@@ -51,14 +56,15 @@ import Hercules.Agent.WorkerProtocol.Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
+import Hercules.Error
 import Katip
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import qualified Network.URI
-import Protolude hiding (bracket, evalState)
+import Protolude hiding (bracket, catch, evalState, wait, withAsync)
 import qualified System.Environment as Environment
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.Timeout (timeout)
-import UnliftIO.Exception (bracket)
+import UnliftIO.Exception (bracket, catch)
 import Prelude ()
 import qualified Prelude
 
@@ -93,8 +99,8 @@ main = do
     setOption k v
   drvsCompleted_ <- newTVarIO mempty
   drvsInProgress_ <- newIORef mempty
-  withStore $ \wrappedStore_ -> withHerculesStore wrappedStore_ $ \herculesStore_ -> do
-    setBuilderCallback herculesStore_ mempty
+  withStore $ \wrappedStore_ -> withHerculesStore wrappedStore_ $ \herculesStore_ -> withKatip $ do
+    liftIO $ setBuilderCallback herculesStore_ mempty
     ch <- liftIO newChan
     let st = HerculesState
           { drvsCompleted = drvsCompleted_,
@@ -103,10 +109,11 @@ main = do
             wrappedStore = wrappedStore_,
             shortcutChannel = ch
           }
-    let runner =
+    let runner :: KatipContextT IO ()
+        runner =
           ( ( do
                 command <- runConduitRes -- Res shouldn't be necessary
-                  ( sourceHandle stdin
+                  ( transPipe liftIO (sourceHandle stdin)
                       .| conduitDecode
                       .| printCommands
                       .| await
@@ -116,33 +123,34 @@ main = do
                     Nothing -> panic "Not a valid starting command"
                 runCommand st ch command
             )
-              `catch` ( \e -> do
-                          writeChan ch (Just $ Exception (renderException (e :: SomeException)))
-                          exitFailure
-                      )
+              `safeLiftedCatch` ( \e -> liftIO $ do
+                                    writeChan ch (Just $ Exception (renderException (e :: SomeException)))
+                                    exitFailure
+                                )
           )
-            `finally` ( do
-                          writeChan ch Nothing
-                          putErrText "runner done"
-                      )
+            `EL.finally` ( do
+                             liftIO $ writeChan ch Nothing
+                             logLocM DebugS "runner done"
+                         )
         writer =
           runConduitRes
             ( sourceChan ch
                 .| conduitEncode
                 .| concatMapC (\x -> [Chunk x, Flush])
-                .| sinkHandleFlush stdout
+                .| transPipe liftIO (sinkHandleFlush stdout)
             )
     void $ do
       withAsync runner $ \runnerAsync -> do
         writer -- runner can stop writer only by passing Nothing in channel (finally)
-        putErrText "Writer done"
+        logLocM DebugS "Writer done"
         wait runnerAsync -- include the potential exception
 
-printCommands :: ConduitT Command Command (ResourceT IO) ()
+printCommands :: KatipContext m => ConduitT Command Command m ()
 printCommands =
   mapMC
     ( \x -> do
-        liftIO $ hPutStrLn stderr ("Received command: " <> show x :: Text)
+        katipAddContext (sl "command" (show x :: Text)) $ do
+          logLocM DebugS "Received command"
         pure x
     )
 
@@ -154,7 +162,11 @@ renderException e
 renderException e | Just (FatalError msg) <- fromException e = msg
 renderException e = toS $ displayException e
 
-connectCommand :: Chan (Maybe Event) -> ConduitM Command Event (ResourceT IO) () -> IO ()
+connectCommand ::
+  (MonadUnliftIO m, KatipContext m, MonadThrow m) =>
+  Chan (Maybe Event) ->
+  ConduitM Command Event (ResourceT m) () ->
+  m ()
 connectCommand ch conduit =
   runConduitRes
     ( sourceHandle stdin
@@ -164,11 +176,12 @@ connectCommand ch conduit =
         .| sinkChan ch
     )
 
-runCommand :: HerculesState -> Chan (Maybe Event) -> Command -> IO ()
+runCommand :: (MonadUnliftIO m, MonadBaseControl IO m, KatipContext m, MonadThrow m) => HerculesState -> Chan (Maybe Event) -> Command -> m ()
 -- runCommand' :: HerculesState -> Command -> ConduitM Command Event (ResourceT IO) ()
 runCommand herculesState ch command = do
   -- TODO don't do this
   mainThread <- liftIO $ myThreadId
+  UnliftIO unlift <- askUnliftIO
   case command of
     Command.Eval eval -> connectCommand ch $ do
       void $ liftIO
@@ -178,10 +191,10 @@ runCommand herculesState ch command = do
               Left e -> throwIO $ FatalError $ "Failed to fork: " <> show e
               Right _ -> pure ()
           )
+        $ unlift
         $ runConduitRes
           ( Data.Conduit.handleC
               ( \e -> do
-                  hPutStrLn stderr $ "Caught exception: " <> renderException e
                   yield $ Event.Error (renderException e)
                   liftIO $ throwTo mainThread e
               )
@@ -193,7 +206,9 @@ runCommand herculesState ch command = do
           )
       awaitForever $ \case
         Command.BuildResult (BuildResult.BuildResult path attempt result) -> do
-          hPutStrLn stderr $ ("BuildResult: " <> show path <> " " <> show result :: Text)
+          katipAddContext (sl "path" path <> sl "result" (show result :: Text))
+            $ logLocM DebugS
+            $ "Received remote build result"
           liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (M.insert path (attempt, result))
         _ -> pass
     Command.Build build ->
@@ -202,11 +217,11 @@ runCommand herculesState ch command = do
     _ ->
       panic "Not a valid starting command"
 
-logger :: Build -> ConduitM () (Vector LogEntry) IO () -> IO ()
+logger :: (MonadIO m, MonadUnliftIO m, KatipContext m) => Build -> ConduitM () (Vector LogEntry) m () -> m ()
 logger buildCommand entriesSource = do
-  socketConfig <- makeSocketConfig buildCommand
+  socketConfig <- liftIO $ makeSocketConfig buildCommand
   -- TODO integrate katip more
-  withKatip $ Socket.withReliableSocket socketConfig $ \socket -> katipAddNamespace "Build" do
+  Socket.withReliableSocket socketConfig $ \socket -> katipAddNamespace "Build" do
     let conduit =
           entriesSource
             .| Logger.unbatch
@@ -228,7 +243,7 @@ logger buildCommand entriesSource = do
           Chunk e -> do
             yield $ Chunk e {LogEntry.i = i}
             renumber (i + 1)
-    liftIO $ runConduit $ conduit
+    runConduit $ conduit
     logLocM DebugS "Syncing"
     liftIO (timeout 600_000_000 $ Socket.syncIO $ socket) >>= \case
       Just _ -> pass
@@ -283,17 +298,17 @@ autoArgArgs kvs = do
     Eval.LiteralArg s -> ["--argstr", toS k, s]
     Eval.ExprArg s -> ["--arg", toS k, s]
 
-withDrvInProgress :: HerculesState -> Text -> IO a -> IO a
+withDrvInProgress :: MonadUnliftIO m => HerculesState -> Text -> m a -> m a
 withDrvInProgress HerculesState {drvsInProgress = ref} drvPath =
   bracket acquire release . const
   where
     acquire =
-      join $ atomicModifyIORef ref $ \inprg ->
+      liftIO $ join $ atomicModifyIORef ref $ \inprg ->
         if drvPath `S.member` inprg
           then (inprg, throwIO $ FatalError "Refusing to build derivation that should have been built remotely. Presumably, substitution has failed.")
           else (S.insert drvPath inprg, pass)
     release _ =
-      atomicModifyIORef ref $ \inprg ->
+      liftIO $ atomicModifyIORef ref $ \inprg ->
         (S.delete drvPath inprg, ())
 
 anyAlternative :: (Foldable l, Alternative f) => l a -> f a
@@ -326,76 +341,86 @@ maybeThrowBuildException result plainDrvText =
     BuildResult.DependencyFailure -> throwIO $ BuildException plainDrvText (Just "A dependency could not be built.")
     BuildResult.Success -> pass
 
-runEval :: HerculesState -> Eval -> ConduitM i Event (ResourceT IO) ()
+runEval ::
+  forall i m.
+  (MonadResource m, KatipContext m, MonadUnliftIO m) =>
+  HerculesState ->
+  Eval ->
+  ConduitM i Event m ()
 runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setGlobalOption
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setOption
-  do
-    let store = nixStore hStore
-    s <- storeUri store
-    liftIO $ setBuilderCallback hStore $ \path -> do
-      hPutStrLn stderr ("Building " <> show path :: Text)
-      let (plainDrv, bangOut) = BS.span (/= fromIntegral (ord '!')) path
-          outputName = BS.dropWhile (== fromIntegral (ord '!')) bangOut
-          plainDrvText = toS plainDrv
-      withDrvInProgress st plainDrvText $ do
-        writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName) Nothing
-        derivation <- getDerivation store plainDrv
-        outputPath <- getDerivationOutputPath derivation outputName
-        hPutStrLn stderr ("Naive ensurePath " <> outputPath)
-        ensurePath (wrappedStore st) outputPath `catch` \e0 -> do
-          hPutStrLn stderr ("Naive wrapped.ensurePath failed: " <> show (e0 :: SomeException) :: Text)
-          (attempt0, result) <-
+  let store = nixStore hStore
+  s <- storeUri store
+  UnliftIO unlift <- lift askUnliftIO
+  liftIO $ setBuilderCallback hStore $ \path -> unlift $ katipAddContext (sl "fullpath" (toSL path :: Text)) $ do
+    logLocM DebugS "Building"
+    let (plainDrv, bangOut) = BS.span (/= fromIntegral (ord '!')) path
+        outputName = BS.dropWhile (== fromIntegral (ord '!')) bangOut
+        plainDrvText = toS plainDrv
+    withDrvInProgress st plainDrvText $ do
+      liftIO $ writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName) Nothing
+      derivation <- liftIO $ getDerivation store plainDrv
+      outputPath <- liftIO $ getDerivationOutputPath derivation outputName
+      katipAddContext (sl "outputPath" (toSL outputPath :: Text)) $ do
+        logLocM DebugS "Naively calling ensurePath"
+      liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e0 -> do
+        katipAddContext (sl "message" (show (e0 :: SomeException) :: Text)) $
+          logLocM DebugS "Recovering from failed wrapped.ensurePath"
+        (attempt0, result) <-
+          liftIO $ atomically $ do
+            c <- readTVar drvsCompl
+            anyAlternative $ M.lookup plainDrvText c
+        liftIO $ maybeThrowBuildException result plainDrvText
+        liftIO $ clearSubstituterCaches
+        liftIO $ clearPathInfoCache store
+        liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e1 -> do
+          katipAddContext (sl "message" (show (e1 :: SomeException) :: Text)) $
+            logLocM DebugS "Recovering from fresh ensurePath"
+          liftIO $ writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName) (Just attempt0)
+          -- TODO sync
+          result' <-
             liftIO $ atomically $ do
               c <- readTVar drvsCompl
-              anyAlternative $ M.lookup plainDrvText c
-          maybeThrowBuildException result plainDrvText
-          clearSubstituterCaches
-          clearPathInfoCache store
-          ensurePath (wrappedStore st) outputPath `catch` \e1 -> do
-            hPutStrLn stderr ("Fresh ensurePath failed: " <> show (e1 :: SomeException) :: Text)
-            writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName) (Just attempt0)
-            -- TODO sync
-            result' <-
-              liftIO $ atomically $ do
-                c <- readTVar drvsCompl
-                (attempt1, r) <- anyAlternative $ M.lookup plainDrvText c
-                guard (attempt1 /= attempt0)
-                pure r
-            maybeThrowBuildException result' plainDrvText
-            clearSubstituterCaches
-            clearPathInfoCache store
-            ensurePath (wrappedStore st) outputPath `catch` \e2 -> do
-              throwIO $
-                BuildException
-                  plainDrvText
-                  ( Just $
-                      "It could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
-                        <> show (e2 :: SomeException)
-                  )
-      hPutStrLn stderr ("Built " <> show path :: Text)
-    hPutStrLn stderr ("Store uri: " <> s)
-    withEvalState store $ \evalState -> do
-      hPutStrLn stderr ("EvalState loaded." :: Text)
-      args <-
-        liftIO $
-          evalArgs evalState (autoArgArgs (Eval.autoArguments eval))
-      Data.Conduit.handleC (yieldAttributeError []) $
-        do
-          imprt <- liftIO $ evalFile evalState (toS $ Eval.file eval)
-          applied <- liftIO (autoCallFunction evalState imprt args)
-          walk evalState args applied
-      yield Event.EvaluationDone
+              (attempt1, r) <- anyAlternative $ M.lookup plainDrvText c
+              guard (attempt1 /= attempt0)
+              pure r
+          liftIO $ maybeThrowBuildException result' plainDrvText
+          liftIO $ clearSubstituterCaches
+          liftIO $ clearPathInfoCache store
+          liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e2 -> do
+            liftIO $ throwIO $
+              BuildException
+                plainDrvText
+                ( Just $
+                    "It could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
+                      <> show (e2 :: SomeException)
+                )
+    logLocM DebugS ("Built")
+  withEvalState store $ \evalState -> do
+    katipAddContext (sl "storeURI" (toSL s :: Text)) $
+      logLocM DebugS "EvalState loaded."
+    args <-
+      liftIO $
+        evalArgs evalState (autoArgArgs (Eval.autoArguments eval))
+    Data.Conduit.handleC (yieldAttributeError []) $
+      do
+        imprt <- liftIO $ evalFile evalState (toS $ Eval.file eval)
+        applied <- liftIO (autoCallFunction evalState imprt args)
+        walk evalState args applied
+    yield Event.EvaluationDone
 
 walk ::
+  (MonadUnliftIO m, KatipContext m) =>
   Ptr EvalState ->
   Bindings ->
   RawValue ->
-  ConduitT i Event (ResourceT IO) ()
+  ConduitT i Event m ()
 walk evalState = walk' True [] 10
   where
     handleErrors path = Data.Conduit.handleC (yieldAttributeError path)
     walk' ::
+      (MonadUnliftIO m, KatipContext m) =>
       -- | If True, always walk this attribute set. Only True for the root.
       Bool ->
       -- | Attribute path
@@ -407,9 +432,9 @@ walk evalState = walk' True [] 10
       -- | Current node of the walk
       RawValue ->
       -- | Program that performs the walk and emits 'Event's
-      ConduitT i1 Event (ResourceT IO) ()
+      ConduitT i1 Event m ()
     walk' forceWalkAttrset path depthRemaining autoArgs v =
-      -- liftIO $ hPutStrLn stderr $ "Walking " <> (show path :: Text)
+      -- logLocM DebugS $ logStr $ "Walking " <> (show path :: Text)
       handleErrors path $
         liftIO (match evalState v)
           >>= \case
@@ -452,15 +477,16 @@ walk evalState = walk' True [] 10
                                 (depthRemaining - 1)
                                 autoArgs
                                 value
-              _any -> liftIO $ do
-                vt <- rawValueType v
+              _any -> do
+                vt <- liftIO $ rawValueType v
                 unless
                   ( lastMay path
                       == Just "recurseForDerivations"
                       && vt
                       == CNix.Internal.Raw.Bool
                   )
-                  $ hPutStrLn stderr
+                  $ logLocM DebugS
+                  $ logStr
                   $ "Ignoring "
                     <> show path
                     <> " : "

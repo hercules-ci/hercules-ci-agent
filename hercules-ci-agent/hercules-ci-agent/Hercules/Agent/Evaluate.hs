@@ -329,7 +329,7 @@ produceWorkerEvents eval nixPath commandChan writeEvent = do
           close_fds = True, -- Disable on Windows?
           cwd = Just (Eval.cwd eval)
         }
-  WorkerProcess.runWorker wps stderrLineHandler commandChan writeEvent
+  WorkerProcess.runWorker wps (stderrLineHandler "evaluator") commandChan writeEvent
 
 drvPoller :: Maybe UUID -> Text -> App (UUID, BuildResult.BuildStatus)
 drvPoller notAttempt drvPath = do
@@ -428,13 +428,6 @@ englishConjunction connective [a1, a2] =
   show a1 <> " " <> connective <> " " <> show a2
 englishConjunction connective (a : as) =
   show a <> ", " <> englishConjunction connective as
-
-stderrLineHandler :: Int -> ByteString -> App ()
-stderrLineHandler pid ln =
-  withNamedContext "worker" (pid :: Int)
-    $ logLocM InfoS
-    $ "Evaluator: "
-      <> logStr (toSL ln :: Text)
 
 postBatch :: EvaluateTask.EvaluateTask -> [EvaluateEvent.EvaluateEvent] -> App ()
 postBatch task events =
