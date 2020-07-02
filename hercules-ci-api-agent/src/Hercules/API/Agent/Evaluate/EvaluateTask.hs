@@ -21,7 +21,8 @@ data EvaluateTask
         primaryInput :: Text, -- HTTP URL
         otherInputs :: Map Identifier Text, -- identifier -> HTTP URL
         autoArguments :: Map Text (SubPathOf Identifier), -- argument name -> identifier
-        nixPath :: [NixPathElement (SubPathOf Identifier)] -- NIX_PATH element -> identifier
+        nixPath :: [NixPathElement (SubPathOf Identifier)], -- NIX_PATH element -> identifier
+        logToken :: Text
       }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
 

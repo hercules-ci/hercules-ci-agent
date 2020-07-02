@@ -42,7 +42,6 @@ import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import Hercules.Agent.WorkerProtocol.Command
   ( Command,
   )
-import Hercules.Agent.WorkerProtocol.Command.Build (Build)
 import qualified Hercules.Agent.WorkerProtocol.Command.Build as Build
 import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
@@ -183,7 +182,7 @@ runCommand herculesState ch command = do
   mainThread <- liftIO $ myThreadId
   UnliftIO unlift <- askUnliftIO
   case command of
-    Command.Eval eval -> connectCommand ch $ do
+    Command.Eval eval -> Logger.withLoggerConduit (logger $ Eval.logSettings eval) $ connectCommand ch $ do
       void $ liftIO
         $ flip
           forkFinally
@@ -212,14 +211,14 @@ runCommand herculesState ch command = do
           liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (M.insert path (attempt, result))
         _ -> pass
     Command.Build build ->
-      Logger.withLoggerConduit (logger build) $ do
+      Logger.withLoggerConduit (logger $ Build.logSettings build) $ do
         connectCommand ch $ runBuild (wrappedStore herculesState) build
     _ ->
       panic "Not a valid starting command"
 
-logger :: (MonadIO m, MonadUnliftIO m, KatipContext m) => Build -> ConduitM () (Vector LogEntry) m () -> m ()
-logger buildCommand entriesSource = do
-  socketConfig <- liftIO $ makeSocketConfig buildCommand
+logger :: (MonadIO m, MonadUnliftIO m, KatipContext m) => LogSettings.LogSettings -> ConduitM () (Vector LogEntry) m () -> m ()
+logger logSettings_ entriesSource = do
+  socketConfig <- liftIO $ makeSocketConfig logSettings_
   -- TODO integrate katip more
   Socket.withReliableSocket socketConfig $ \socket -> katipAddNamespace "Build" do
     let conduit =
@@ -277,8 +276,8 @@ withKatip m = do
   bracket (liftIO makeLogEnv) (liftIO . closeScribes) $ \logEnv ->
     runKatipContextT logEnv initialContext extraNs m
 
-makeSocketConfig :: Monad m => Build -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
-makeSocketConfig Build.Build {logSettings = l} = do
+makeSocketConfig :: Monad m => LogSettings.LogSettings -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
+makeSocketConfig l = do
   baseURL <- case Network.URI.parseURI $ toS $ LogSettings.baseURL l of
     Just x -> pure x
     Nothing -> panic "LogSettings: invalid base url"

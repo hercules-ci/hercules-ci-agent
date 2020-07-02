@@ -57,7 +57,7 @@ data SocketConfig ap sp m
       }
 
 requiredServiceVersion :: (Int, Int)
-requiredServiceVersion = (1, 0)
+requiredServiceVersion = (2, 0)
 
 ackTimeout :: NominalDiffTime
 ackTimeout = 60 -- seconds

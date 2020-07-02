@@ -45,7 +45,8 @@ defaultTask = EvaluateTask.EvaluateTask
     primaryInput = Prelude.error "override EvaluateTask.primaryInput please",
     otherInputs = mempty,
     autoArguments = mempty,
-    nixPath = mempty
+    nixPath = mempty,
+    logToken = "mock-eval-log-token"
   }
 
 spec :: SpecWith ServerHandle

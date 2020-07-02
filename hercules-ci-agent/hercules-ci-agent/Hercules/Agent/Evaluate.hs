@@ -41,6 +41,7 @@ import qualified Hercules.Agent.Cache as Agent.Cache
 import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
+import qualified Hercules.Agent.Env as Env
 import qualified Hercules.Agent.Evaluate.TraversalQueue as TraversalQueue
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
@@ -51,6 +52,7 @@ import Hercules.Agent.NixPath
   ( renderSubPath,
   )
 import Hercules.Agent.Producer
+import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import Hercules.Agent.WorkerProcess ()
 import qualified Hercules.Agent.WorkerProcess as WorkerProcess
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
@@ -59,9 +61,11 @@ import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as WorkerAttribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as WorkerAttributeError
+import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.Error (defaultRetry, quickRetry)
 import qualified Network.HTTP.Client.Conduit as HTTP.Conduit
 import qualified Network.HTTP.Simple as HTTP.Simple
+import qualified Network.URI
 import Protolude hiding (finally, newChan, writeChan)
 import qualified Servant.Client
 import qualified System.Directory as Dir
@@ -193,6 +197,7 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
                 captureAttrDrvAndEmit
                 uploadDrvInfos
                 sync
+                (EvaluateTask.logToken task)
             -- process has finished
             TraversalQueue.waitUntilDone derivationQueue
             TraversalQueue.close derivationQueue
@@ -229,14 +234,21 @@ runEvalProcess ::
   -- | Upload a derivation, return when done
   (Text -> App ()) ->
   App () ->
+  Text ->
   App ()
-runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush = do
+runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush logToken = do
   extraOpts <- Nix.askExtraOptions
+  baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   let eval = Eval.Eval
         { Eval.cwd = projectDir,
           Eval.file = toS file,
           Eval.autoArguments = autoArguments,
-          Eval.extraNixOptions = extraOpts
+          Eval.extraNixOptions = extraOpts,
+          Eval.logSettings = LogSettings.LogSettings
+            { token = LogSettings.Sensitive logToken,
+              path = "/api/v1/logs/build/socket",
+              baseURL = toS $ Network.URI.uriToString identity baseURL ""
+            }
         }
   buildRequiredIndex <- liftIO $ newIORef (0 :: Int)
   commandChan <- newChan
