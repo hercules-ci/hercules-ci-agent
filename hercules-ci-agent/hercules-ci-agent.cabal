@@ -39,6 +39,7 @@ library
       Hercules.Agent.WorkerProtocol.Event.BuildResult
       Hercules.Agent.WorkerProtocol.LogSettings
       Data.Conduit.Extras
+      Data.Conduit.Katip.Orphans
 
   other-modules:
       Paths_hercules_ci_agent
@@ -291,6 +292,7 @@ executable hercules-ci-agent-worker
     , exceptions
     , hercules-ci-agent
     , hercules-ci-api-agent
+    , hercules-ci-api-core
     , internal-ffi
     , inline-c
     , inline-c-cpp
@@ -305,7 +307,9 @@ executable hercules-ci-agent-worker
     , stm
     , text
     , transformers-base
+    , unix
     , unliftio
+    , unliftio-core
     , uuid
     , vector
   pkgconfig-depends:

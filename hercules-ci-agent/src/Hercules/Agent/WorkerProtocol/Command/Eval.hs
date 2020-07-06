@@ -3,6 +3,7 @@
 module Hercules.Agent.WorkerProtocol.Command.Eval where
 
 import Data.Binary
+import Hercules.Agent.WorkerProtocol.LogSettings
 import Protolude
 
 data Eval
@@ -13,7 +14,8 @@ data Eval
         -- | NB currently the options will leak from one evaluation to
         --   the next if you're running them in the same worker!
         --   (as of now, we use one worker process per evaluation)
-        extraNixOptions :: [(Text, Text)]
+        extraNixOptions :: [(Text, Text)],
+        logSettings :: LogSettings
       }
   deriving (Generic, Binary, Show, Eq)
 

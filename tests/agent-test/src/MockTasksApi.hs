@@ -485,7 +485,7 @@ lifeCycleEndpoints _server =
 
 serviceInfo :: SI.ServiceInfo
 serviceInfo = SI.ServiceInfo
-  { SI.version = (1, 0),
+  { SI.version = (2, 0),
     SI.agentSocketBaseURL = "http://api",
     SI.bulkSocketBaseURL = "http://api"
   }

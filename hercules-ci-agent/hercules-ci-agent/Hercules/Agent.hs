@@ -79,15 +79,16 @@ import UnliftIO.Exception (catch)
 import qualified Prelude
 
 main :: IO ()
-main = Init.setupLogging $ \logEnv -> do
+main = do
   Init.initCNix
   opts <- Options.parse
   let cfgPath = Options.configFile opts
   cfg <- Config.finalizeConfig cfgPath =<< Config.readConfig cfgPath
-  env <- Init.newEnv cfg logEnv
-  case Options.mode opts of
-    Options.Run -> run env cfg
-    Options.Test -> testConfiguration env cfg
+  Init.setupLogging cfg $ \logEnv -> do
+    env <- Init.newEnv cfg logEnv
+    case Options.mode opts of
+      Options.Run -> run env cfg
+      Options.Test -> testConfiguration env cfg
 
 testConfiguration :: Env.Env -> Config.FinalConfig -> IO ()
 testConfiguration _env _cfg = do

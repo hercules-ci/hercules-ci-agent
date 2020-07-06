@@ -6,7 +6,8 @@
 module Hercules.Agent.Worker.Build.Logger where
 
 import CNix.Internal.Context
-import Conduit (filterC)
+import Conduit (MonadUnliftIO, filterC)
+import qualified Data.ByteString.Char8 as BSC
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Data.Conduit (ConduitT, Flush (..), await, awaitForever, yield)
 import Data.Vector (Vector)
@@ -14,10 +15,17 @@ import qualified Data.Vector as V
 import Foreign (alloca, nullPtr, peek)
 import Hercules.API.Logs.LogEntry (LogEntry)
 import qualified Hercules.API.Logs.LogEntry as LogEntry
+import Katip
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
-import Protolude
+import Protolude hiding (bracket, finally, mask_, onException, tryJust, wait, withAsync)
+import System.IO (BufferMode (LineBuffering), hSetBuffering)
+import System.IO.Error (isEOFError)
+import System.Posix.IO (createPipe, dup, dupTo, fdToHandle, handleToFd, stdError)
+import System.Posix.Internals (setNonBlockingFD)
 import System.Timeout (timeout)
+import UnliftIO.Async
+import UnliftIO.Exception
 
 C.context context
 
@@ -235,9 +243,9 @@ close =
 -- Conduits for logger
 --
 
-withLoggerConduit :: MonadIO m => (ConduitT () (Vector LogEntry) m () -> IO ()) -> IO a -> IO a
+withLoggerConduit :: (MonadIO m, MonadUnliftIO m) => (ConduitT () (Vector LogEntry) m () -> m ()) -> m a -> m a
 withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
-  ((io `finally` close) <* wait popperAsync) `onException` timeout 2_000_000 (wait popperAsync)
+  ((io `finally` liftIO close) <* wait popperAsync) `onException` liftIO (timeout 2_000_000 (wait popperAsync))
   where
     popper = liftIO popMany >>= \case
       lns | null lns -> pass
@@ -246,7 +254,7 @@ withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
         popper
 
 -- | Remove spammy progress results. Use 'nubProgress' instead?
-filterProgress :: ConduitT (Flush LogEntry) (Flush LogEntry) IO ()
+filterProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 filterProgress = filterC \case
   Chunk (LogEntry.Result {rtype = LogEntry.ResultTypeProgress}) -> False
   _ -> True
@@ -295,3 +303,72 @@ nubSubset1 toKey prevKey = await >>= \case
       unless (ak == prevKey) do
         yield a
       nubSubset1 toKey ak
+
+tryReadLine :: MonadUnliftIO m => Handle -> m (Either () ByteString)
+tryReadLine s = tryJust (\e -> guard $ isEOFError e) (liftIO (BSC.hGetLine s))
+
+tapper :: (KatipContext m, MonadUnliftIO m) => TapState -> m ()
+tapper s = do
+  tryReadLine (readableStderrEnd s) >>= \case
+    Left _ -> pass
+    Right ln -> do
+      katipAddContext (sl "line" (toSL ln :: Text))
+        $ logLocM InfoS
+        $ "Intercepted stderr"
+      liftIO
+        [C.throwBlock| void {
+          std::string s = $bs-cstr:ln;
+          herculesLogger->log(nix::lvlInfo, s);
+        }|]
+      liftIO $ threadDelay 10_000_000
+
+-- | Like 'withTappableStderr' but takes care of the forking and waiting of
+-- the tapper thread.
+withTappedStderr :: (KatipContext m, MonadUnliftIO m) => (TapState -> m ()) -> m a -> m a
+withTappedStderr tapperFunction m = do
+  (r, tapperDone) <-
+    withTappableStderr
+      ( \tapState -> do
+          tapperDone <- UnliftIO.Async.async (tapperFunction tapState)
+          (,tapperDone) <$> m
+      )
+  liftIO (timeout 60_000_000 $ wait tapperDone) >>= \case
+    Just x -> pure x
+    Nothing -> logLocM ErrorS "stderr thread did not finish in time"
+  pure r
+
+data TapState = TapState {originalStderrCopy :: Handle, readableStderrEnd :: Handle}
+
+-- | WARNING: Invoke only once. It leaks probably leaks a file descriptor or two.
+--
+-- @withTappedStderr tapper mainAction@
+--
+-- 'readableStderrEnd' receives EOF when your action terminates (unless you 'dup' the write end, aka 'stdError')
+withTappableStderr :: MonadUnliftIO m => (TapState -> m a) -> m a
+withTappableStderr = bracket (liftIO tapStderrPipe) (liftIO . revertTap)
+
+revertTap :: TapState -> IO ()
+revertTap s = do
+  let origHandle = originalStderrCopy s
+  -- hFlush origHandle (done by handleToFd)
+  origCopyFd <- handleToFd origHandle
+  void $ dupTo origCopyFd stdError
+
+tapStderrPipe :: IO TapState
+tapStderrPipe = do
+  oldStdError <- dup stdError
+  (readable, writable) <- createPipe
+  -- fd 2 := writable pipe
+  void $ dupTo writable stdError
+  -- Make sure all fds are set up correctly for the RTS's IO manager
+  [oldStdError, readable, writable] & traverse_ \fd -> setNonBlockingFD (fromIntegral fd) True
+  let mkHandle fd = do
+        h <- fdToHandle fd
+        hSetBuffering h LineBuffering
+        pure h
+  origHandle <- mkHandle oldStdError
+  readableHandle <- mkHandle readable
+  pure TapState
+    { originalStderrCopy = origHandle,
+      readableStderrEnd = readableHandle
+    }
