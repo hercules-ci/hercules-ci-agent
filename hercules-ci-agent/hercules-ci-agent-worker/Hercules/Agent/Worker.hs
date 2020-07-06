@@ -62,6 +62,7 @@ import qualified Network.URI
 import Protolude hiding (bracket, catch, evalState, wait, withAsync)
 import qualified System.Environment as Environment
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
+import System.Posix.IO (dup, fdToHandle, stdError)
 import System.Timeout (timeout)
 import UnliftIO.Exception (bracket, catch)
 import Prelude ()
@@ -182,7 +183,7 @@ runCommand herculesState ch command = do
   mainThread <- liftIO $ myThreadId
   UnliftIO unlift <- askUnliftIO
   case command of
-    Command.Eval eval -> Logger.withLoggerConduit (logger $ Eval.logSettings eval) $ connectCommand ch $ do
+    Command.Eval eval -> Logger.withLoggerConduit (logger $ Eval.logSettings eval) $ Logger.withTappedStderr Logger.tapper $ connectCommand ch $ do
       void $ liftIO
         $ flip
           forkFinally
@@ -211,7 +212,7 @@ runCommand herculesState ch command = do
           liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (M.insert path (attempt, result))
         _ -> pass
     Command.Build build ->
-      Logger.withLoggerConduit (logger $ Build.logSettings build) $ do
+      Logger.withLoggerConduit (logger $ Build.logSettings build) $ Logger.withTappedStderr Logger.tapper $ do
         connectCommand ch $ runBuild (wrappedStore herculesState) build
     _ ->
       panic "Not a valid starting command"
@@ -268,7 +269,10 @@ withKatip :: (MonadUnliftIO m) => KatipContextT m a -> m a
 withKatip m = do
   let format :: forall a. LogItem a => ItemFormatter a
       format = (\_ _ _ -> "@katip ") <> jsonFormat
-  handleScribe <- liftIO $ mkHandleScribeWithFormatter format (ColorLog False) stderr (permitItem DebugS) V2
+  -- Use a duplicate of stderr, to make sure we keep logging there, even after
+  -- we reassign stderr to catch output from git and other subprocesses of Nix.
+  dupStderr <- liftIO (fdToHandle =<< dup stdError)
+  handleScribe <- liftIO $ mkHandleScribeWithFormatter format (ColorLog False) dupStderr (permitItem DebugS) V2
   let makeLogEnv = registerScribe "stderr" handleScribe defaultScribeSettings =<< initLogEnv "Worker" "production"
       initialContext = ()
       extraNs = mempty -- "Worker" is already set in initLogEnv.
