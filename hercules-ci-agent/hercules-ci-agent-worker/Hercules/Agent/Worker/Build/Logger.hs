@@ -21,8 +21,9 @@ import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude hiding (bracket, finally, mask_, onException, tryJust, wait, withAsync)
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.IO.Error (isEOFError)
-import System.Posix.IO (createPipe, dup, dupTo, fdToHandle, handleToFd, stdError)
+import System.Posix.IO (closeFd, createPipe, dup, dupTo, fdToHandle, stdError)
 import System.Posix.Internals (setNonBlockingFD)
+import System.Posix.Types (Fd)
 import System.Timeout (timeout)
 import UnliftIO.Async
 import UnliftIO.Exception
@@ -311,16 +312,17 @@ tapper :: (KatipContext m, MonadUnliftIO m) => TapState -> m ()
 tapper s = do
   tryReadLine (readableStderrEnd s) >>= \case
     Left _ -> pass
+    Right "__%%hercules terminate log%%__" -> pass
     Right ln -> do
       katipAddContext (sl "line" (toSL ln :: Text))
-        $ logLocM InfoS
+        $ logLocM DebugS
         $ "Intercepted stderr"
       liftIO
         [C.throwBlock| void {
           std::string s = $bs-cstr:ln;
           herculesLogger->log(nix::lvlInfo, s);
         }|]
-      liftIO $ threadDelay 10_000_000
+      tapper s
 
 -- | Like 'withTappableStderr' but takes care of the forking and waiting of
 -- the tapper thread.
@@ -330,14 +332,18 @@ withTappedStderr tapperFunction m = do
     withTappableStderr
       ( \tapState -> do
           tapperDone <- UnliftIO.Async.async (tapperFunction tapState)
-          (,tapperDone) <$> m
+          r <- m
+          -- EOF doesn't seem to reach tapperFunction, so we simulate it with a magic line
+          -- The preceding newline clears any unfinished lines but also introduces a needless newline in the final log
+          hPutStrLn stderr ("\n__%%hercules terminate log%%__" :: ByteString)
+          pure (r, tapperDone)
       )
-  liftIO (timeout 60_000_000 $ wait tapperDone) >>= \case
+  liftIO (timeout 30_000_000 $ wait tapperDone) >>= \case
     Just x -> pure x
     Nothing -> logLocM ErrorS "stderr thread did not finish in time"
   pure r
 
-data TapState = TapState {originalStderrCopy :: Handle, readableStderrEnd :: Handle}
+data TapState = TapState {originalStderrCopy :: Fd, readableStderrEnd :: Handle}
 
 -- | WARNING: Invoke only once. It leaks probably leaks a file descriptor or two.
 --
@@ -349,10 +355,8 @@ withTappableStderr = bracket (liftIO tapStderrPipe) (liftIO . revertTap)
 
 revertTap :: TapState -> IO ()
 revertTap s = do
-  let origHandle = originalStderrCopy s
-  -- hFlush origHandle (done by handleToFd)
-  origCopyFd <- handleToFd origHandle
-  void $ dupTo origCopyFd stdError
+  void $ dupTo (originalStderrCopy s) stdError
+  closeFd (originalStderrCopy s)
 
 tapStderrPipe :: IO TapState
 tapStderrPipe = do
@@ -366,9 +370,8 @@ tapStderrPipe = do
         h <- fdToHandle fd
         hSetBuffering h LineBuffering
         pure h
-  origHandle <- mkHandle oldStdError
   readableHandle <- mkHandle readable
   pure TapState
-    { originalStderrCopy = origHandle,
+    { originalStderrCopy = oldStdError,
       readableStderrEnd = readableHandle
     }
