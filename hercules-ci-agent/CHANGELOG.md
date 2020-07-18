@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+ - Evaluation log
+
+ - Configurable log level via config file or `extraOptions`
+
+### Changed
+
+ - Default log level is `InfoS` rather than `DebugS`
+
 ## [0.7.2] - 2020-06-18
 
 ### Changed
