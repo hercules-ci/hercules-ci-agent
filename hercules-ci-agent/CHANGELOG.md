@@ -5,7 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.3] - 2020-07-18
+
+### Added
+
+ - Evaluation log
+
+ - Configurable log level via config file or `extraOptions`
+
+### Changed
+
+ - Default log level is `InfoS` rather than `DebugS`
 
 ## [0.7.2] - 2020-06-18
 
@@ -275,8 +285,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
-[0.6.6]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.4...hercules-ci-agent-0.6.6
-[0.6.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.3...hercules-ci-agent-0.6.5
+[0.7.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.2...hercules-ci-agent-0.7.3
+[0.7.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.1...hercules-ci-agent-0.7.2
+[0.7.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.6...hercules-ci-agent-0.7.1
+[0.6.6]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.5...hercules-ci-agent-0.6.6
+[0.6.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.4...hercules-ci-agent-0.6.5
 [0.6.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.3...hercules-ci-agent-0.6.4
 [0.6.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.2...hercules-ci-agent-0.6.3
 [0.6.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.1...hercules-ci-agent-0.6.2
