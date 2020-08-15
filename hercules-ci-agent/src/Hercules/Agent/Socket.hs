@@ -18,7 +18,7 @@ import Control.Concurrent.STM.TVar (TVar, modifyTVar, newTVar, readTVar, writeTV
 import Control.Monad.IO.Unlift
 import qualified Data.Aeson as A
 import Data.DList (DList, fromList)
-import Data.List (dropWhileEnd)
+import Data.List (dropWhileEnd, splitAt)
 import Data.Semigroup
 import Data.Time (NominalDiffTime, addUTCTime, diffUTCTime, getCurrentTime)
 import Data.Time.Extras
@@ -114,9 +114,18 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
           & foldMap (\case Frame.Msg {n = n} -> Option $ Just $ Max n; _ -> mempty)
           & traverse_ (\(Max n) -> setExpectedAck n)
       send :: Connection -> [Frame ap ap] -> m ()
-      send conn msgs = do
-        liftIO $ WS.sendDataMessages conn (WS.Binary . A.encode <$> msgs)
-        setExpectedAckForMsgs msgs
+      send conn = sendSorted . sortBy (compare `on` msgN)
+        where
+          sendRaw :: [Frame ap ap] -> m ()
+          sendRaw msgs = do
+            liftIO $ WS.sendDataMessages conn (WS.Binary . A.encode <$> msgs)
+            setExpectedAckForMsgs msgs
+          sendSorted :: [Frame ap ap] -> m ()
+          sendSorted [] = pass
+          sendSorted msgs = do
+            let (msgsNow, msgsLater) = Data.List.splitAt 100 msgs
+            sendRaw msgsNow
+            sendSorted msgsLater
       recv :: Connection -> m (Frame sp sp)
       recv conn = do
         (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
@@ -217,6 +226,10 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
       katipAddNamespace "Handshake" do
         handshake conn
       readThread conn `race_` writeThread conn `race_` noAckCleanupThread
+
+msgN :: Frame o a -> Maybe Integer
+msgN (Frame.Msg {n = n}) = Just n
+msgN _ = Nothing
 
 withConnection' :: (MonadUnliftIO m) => SocketConfig any0 any1 m -> (Connection -> m a) -> m a
 withConnection' socketConfig m = do
