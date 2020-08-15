@@ -147,7 +147,33 @@ buildDerivation store derivationPath derivation extraInputs =
       time_t &stopTime = *$(time_t *stopTimePtr);
       std::string derivationPath($bs-ptr:derivationPath, $bs-len:derivationPath);
 
-      if ($(bool materializeDerivation)) {
+      bool materializeDerivation = $(bool materializeDerivation);
+
+      // Make sure inputs are available. Sources will be fetched later (not affected by materialization decision)
+      if (!materializeDerivation) {
+        try {
+          std::string extraInputsMerged($bs-ptr:extraInputsMerged, $bs-len:extraInputsMerged);
+          std::string extraInput;
+          std::istringstream stream(extraInputsMerged);
+
+          while (std::getline(stream, extraInput)) {
+            store.ensurePath(extraInput);
+          }
+        } catch (const nix::Interrupted &e) {
+          throw e;
+        } catch (const nix::Error &e) {
+          printTalkative("materializing derivation to avoid: %s", e.what());
+          materializeDerivation = true;
+        } catch (const std::exception &e) {
+          printTalkative("materializing derivation to avoid: %s", e.what());
+          materializeDerivation = true;
+        } catch (...) {
+          printTalkative("materializing derivation to avoid unknown exception");
+          materializeDerivation = true;
+        }
+      }
+
+      if (materializeDerivation) {
         store.ensurePath(derivationPath);
         nix::PathSet paths{derivationPath};
         try {
