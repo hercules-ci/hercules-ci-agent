@@ -23,6 +23,7 @@ import CNix.Internal.Store
 import CNix.Internal.Typed
 import Conduit
 import qualified Data.Map as M
+import Foreign (nullPtr)
 import qualified Foreign.C.String
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
@@ -225,6 +226,36 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
             }
           }
         } |]
+
+getAttr :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Maybe RawValue)
+getAttr evalState (Value (RawValue v)) k =
+  mkNullableRawValue
+    =<< [C.throwBlock| Value *{
+      Value &v = *$(Value *v);
+      EvalState &evalState = *$(EvalState *evalState);
+      Symbol k = evalState.symbols.create($bs-cstr:k);
+      Bindings::iterator iter = v.attrs->find(k);
+      if (iter == v.attrs->end()) {
+        return nullptr;
+      } else {
+        return iter->value;
+      }
+    }|]
+
+-- | Converts 'nullPtr' to 'Nothing'; actual values to @Just (a :: 'RawValue')@
+mkNullableRawValue :: Ptr Value' -> IO (Maybe RawValue)
+mkNullableRawValue p | p == nullPtr = pure Nothing
+mkNullableRawValue p = Just <$> mkRawValue p
+
+-- [C.throwBlock| int {
+--         Value *v = $(Value *v);
+--         EvalState *evalState = $(EvalState *evalState);
+--         Symbol rfd = evalState->sRecurseForDerivations;
+--         Bindings::iterator iter = v->attrs->find(rfd);
+--         if (iter == v->attrs->end()) {
+--           return 0;
+--         } else {
+--           evalState->forceValue(*iter->value);
 
 getAttrBindings :: Value NixAttrs -> IO Bindings
 getAttrBindings (Value (RawValue v)) = mkBindings =<< [C.exp| Bindings *{ $(Value *v)->attrs } |]

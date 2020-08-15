@@ -262,7 +262,13 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
               Event.Attribute a -> do
                 emit $ EvaluateEvent.Attribute $ AttributeEvent.AttributeEvent
                   { AttributeEvent.expressionPath = toSL <$> WorkerAttribute.path a,
-                    AttributeEvent.derivationPath = toSL $ WorkerAttribute.drv a
+                    AttributeEvent.derivationPath = toSL $ WorkerAttribute.drv a,
+                    AttributeEvent.typ = case WorkerAttribute.typ a of
+                      WorkerAttribute.Regular -> AttributeEvent.Regular
+                      WorkerAttribute.MustFail -> AttributeEvent.MustFail
+                      WorkerAttribute.MayFail -> AttributeEvent.MayFail
+                      WorkerAttribute.Effect -> AttributeEvent.Effect
+                      WorkerAttribute.DependenciesOnly -> AttributeEvent.DependenciesOnly
                   }
                 continue
               Event.AttributeError e -> do
@@ -311,9 +317,10 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                     return status
                 writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drv) status
                 continue
+              Event.Exception e -> panic e
               -- Unused during eval
               Event.BuildResult {} -> pass
-              Event.Exception e -> panic e
+              Event.EffectResult {} -> pass
           )
           ( \case
               ExitSuccess -> logLocM DebugS "Clean worker exit"

@@ -16,6 +16,7 @@ import qualified Hercules.Agent.Env as Agent.Env
 import Hercules.Agent.STM (TVar, readTVarIO)
 import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import Hercules.Agent.Socket as Socket
+import Network.URI (parseURI)
 import Protolude hiding
   ( bracket,
     forkFinally,

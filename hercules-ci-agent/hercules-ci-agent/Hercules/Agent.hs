@@ -20,6 +20,7 @@ import qualified Data.Map as M
 import Data.Time (getCurrentTime)
 import qualified Data.UUID.V4 as UUID
 import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
+import qualified Hercules.API.Agent.Effect.EffectTask as EffectTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import qualified Hercules.API.Agent.LifeCycle as LifeCycle
 import qualified Hercules.API.Agent.LifeCycle.StartInfo as StartInfo
@@ -43,6 +44,7 @@ import Hercules.Agent.Client
     tasksClient,
   )
 import qualified Hercules.Agent.Config as Config
+import qualified Hercules.Agent.Effect as Effect
 import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Env
   ( App,
@@ -124,6 +126,10 @@ run env _cfg = do
                 launchTask tasks socket (Task.upcastId $ BuildTask.id buildTask) do
                   Cache.withCaches $
                     Build.performBuild buildTask
+              ServicePayload.StartEffect effectTask ->
+                launchTask tasks socket (Task.upcastId $ EffectTask.id effectTask) do
+                  Cache.withCaches $
+                    Effect.performEffect effectTask
               ServicePayload.Cancel cancellation -> cancelTask tasks socket cancellation
 
 withTaskState :: (TVar (Map (Id (Task Task.Any)) ThreadId) -> App a) -> App a

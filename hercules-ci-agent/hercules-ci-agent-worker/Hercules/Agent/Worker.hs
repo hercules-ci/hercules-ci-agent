@@ -35,14 +35,16 @@ import qualified Hercules.API.Logs.LogEntry as LogEntry
 import Hercules.API.Logs.LogMessage (LogMessage)
 import qualified Hercules.API.Logs.LogMessage as LogMessage
 import qualified Hercules.Agent.Socket as Socket
-import Hercules.Agent.Worker.Build
+import Hercules.Agent.Worker.Build (runBuild)
 import qualified Hercules.Agent.Worker.Build.Logger as Logger
+import Hercules.Agent.Worker.Effect (runEffect)
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import Hercules.Agent.WorkerProtocol.Command
   ( Command,
   )
 import qualified Hercules.Agent.WorkerProtocol.Command.Build as Build
 import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
+import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Effect
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
 import Hercules.Agent.WorkerProtocol.Command.Eval
   ( Eval,
@@ -219,8 +221,14 @@ runCommand herculesState ch command = do
           liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (M.insert path (attempt, result))
         _ -> pass
     Command.Build build ->
-      Logger.withLoggerConduit (logger $ Build.logSettings build) $ Logger.withTappedStderr Logger.tapper $ do
+      katipAddNamespace "Build" $ Logger.withLoggerConduit (logger $ Build.logSettings build) $ Logger.withTappedStderr Logger.tapper $ do
         connectCommand ch $ runBuild (wrappedStore herculesState) build
+    Command.Effect effect ->
+      katipAddNamespace "Effect" $ Logger.withLoggerConduit (logger $ Effect.logSettings effect) $ Logger.withTappedStderr Logger.tapper $ do
+        connectCommand ch $ do
+          runEffect (wrappedStore herculesState) effect >>= \case
+            ExitSuccess -> yield $ Event.EffectResult 0
+            ExitFailure n -> yield $ Event.EffectResult n
     _ ->
       panic "Not a valid starting command"
 
@@ -236,7 +244,7 @@ logger logSettings_ entriesSource = do
               atomically $ Socket.write socket ping
           )
           (const m)
-  Socket.withReliableSocket socketConfig $ \socket -> withPings socket $ katipAddNamespace "Build" do
+  Socket.withReliableSocket socketConfig $ \socket -> withPings socket do
     let conduit =
           entriesSource
             .| Logger.unbatch
@@ -464,11 +472,26 @@ walk evalState = walk' True [] 10
                 if isDeriv
                   then do
                     drvPath <- getDrvFile evalState v
-                    yield $
-                      Event.Attribute Attribute.Attribute
-                        { Attribute.path = path,
-                          Attribute.drv = drvPath
-                        }
+                    typE <- runExceptT do
+                      liftIO (getAttr evalState attrValue "isEffect") >>= traverse \attr -> do
+                        isEffect <- liftIO (match evalState attr) >>= \case
+                          Left e -> do
+                            throwE $ Left e
+                          Right (IsBool r) -> do
+                            liftIO $ getBool r
+                          Right _ -> do
+                            pure False
+                        when isEffect (throwE $ Right Attribute.Effect)
+                    let yieldAttribute typ = yield $
+                          Event.Attribute Attribute.Attribute
+                            { Attribute.path = path,
+                              Attribute.drv = drvPath,
+                              Attribute.typ = typ
+                            }
+                    case typE of
+                      Left (Left e) -> yieldAttributeError path e
+                      Left (Right t) -> yieldAttribute t
+                      Right _ -> yieldAttribute Attribute.Regular
                   else do
                     walkAttrset <-
                       if forceWalkAttrset

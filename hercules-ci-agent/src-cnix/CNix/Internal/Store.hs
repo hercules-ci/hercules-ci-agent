@@ -197,6 +197,26 @@ getDerivationPlatform derivation =
        strdup($fptr-ptr:(Derivation *derivation)->platform.c_str())
      } |]
 
+getDerivationBuilder :: ForeignPtr Derivation -> IO ByteString
+getDerivationBuilder derivation =
+  unsafeMallocBS
+    [C.exp| const char* {
+       strdup($fptr-ptr:(Derivation *derivation)->builder.c_str())
+     } |]
+
+getDerivationArguments :: ForeignPtr Derivation -> IO [ByteString]
+getDerivationArguments derivation =
+  bracket
+    [C.throwBlock| Strings* {
+      Strings *r = new Strings();
+      for (auto i : $fptr-ptr:(Derivation *derivation)->args) {
+        r->push_back(i);
+      }
+      return r;
+    }|]
+    deleteStrings
+    toByteStrings
+
 getDerivationSources :: ForeignPtr Derivation -> IO [ByteString]
 getDerivationSources derivation =
   bracket
