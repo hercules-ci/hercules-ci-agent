@@ -106,6 +106,13 @@ setOption opt value = do
     settings.set($bs-cstr:optionStr, $bs-cstr:valueStr);
   }|]
 
+logInfo :: Text -> IO ()
+logInfo t = do
+  let bstr = encodeUtf8 t
+  [C.throwBlock| void {
+    printInfo($bs-cstr:bstr);
+  }|]
+
 mkBindings :: Ptr Bindings' -> IO Bindings
 mkBindings p = pure $ Bindings p
 
