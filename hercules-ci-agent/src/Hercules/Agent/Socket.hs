@@ -34,6 +34,7 @@ import qualified Network.WebSockets as WS
 import Protolude hiding (atomically, handle, race, race_)
 import UnliftIO.Async (race, race_)
 import UnliftIO.Exception (handle)
+import UnliftIO.Timeout (timeout)
 import Wuss (runSecureClientWith)
 
 data Socket r w
@@ -128,9 +129,10 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
             sendSorted msgsLater
       recv :: Connection -> m (Frame sp sp)
       recv conn = do
-        (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
-          Left e -> liftIO $ throwIO (FatalError $ "Error decoding service message: " <> toSL e)
-          Right r -> pure r
+        withTimeout ackTimeout (FatalError "Hercules.Agent.Socket.recv timed out") $
+          (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
+            Left e -> liftIO $ throwIO (FatalError $ "Error decoding service message: " <> toSL e)
+            Right r -> pure r
       handshake conn = katipAddNamespace "Handshake" do
         siMsg <- recv conn
         case siMsg of
@@ -257,3 +259,9 @@ withConnection' socketConfig m = do
 
 slash :: [Char] -> [Char] -> [Char]
 a `slash` b = dropWhileEnd (== '/') a <> "/" <> dropWhile (== '/') b
+
+withTimeout :: (Exception e, MonadIO m, MonadUnliftIO m) => NominalDiffTime -> e -> m a -> m a
+withTimeout t e _ | t <= 0 = throwIO e
+withTimeout t e m = timeout (ceiling $ t * 1_000_000) m >>= \case
+  Nothing -> throwIO e
+  Just a -> pure a
