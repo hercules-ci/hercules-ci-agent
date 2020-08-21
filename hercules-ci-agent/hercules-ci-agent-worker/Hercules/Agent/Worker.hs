@@ -92,8 +92,15 @@ main = do
   CNix.init
   Logger.initLogger
   [options] <- Environment.getArgs
-  -- narinfo-cache-negative-ttl: Always try requesting narinfos because it may have been built in the meanwhile
-  let allOptions = Prelude.read options ++ [("narinfo-cache-negative-ttl", "0")]
+  let allOptions =
+        Prelude.read options
+          ++ [
+               -- narinfo-cache-negative-ttl: Always try requesting narinfos because it may have been built in the meanwhile
+               ("narinfo-cache-negative-ttl", "0"),
+               -- Build concurrency is controlled by hercules-ci-agent, so set it
+               -- to 1 to avoid accidentally consuming too many resources at once.
+               ("max-jobs", "1")
+             ]
   for_ allOptions $ \(k, v) -> do
     setGlobalOption k v
     setOption k v
