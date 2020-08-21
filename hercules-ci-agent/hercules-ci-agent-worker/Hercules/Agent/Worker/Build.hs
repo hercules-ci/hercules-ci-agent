@@ -1,3 +1,6 @@
+{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Hercules.Agent.Worker.Build where
 
 import CNix
@@ -20,13 +23,21 @@ runBuild :: (MonadIO m, KatipContext m) => Ptr (Ref NixStore) -> Command.Build.B
 runBuild store build = do
   let extraPaths = Command.Build.inputDerivationOutputPaths build
       drvPath = toS $ Command.Build.drvPath build
-  for_ extraPaths $ \input ->
-    liftIO $ CNix.ensurePath store input
+  x <- for extraPaths $ \input -> do
+    liftIO $ try $ CNix.ensurePath store input
+  materialize <- case sequenceA x of
+    Right _ ->
+      -- no error, proceed with requested materialization setting
+      pure $ Command.Build.materializeDerivation build
+    Left (e :: SomeException) -> liftIO do
+      CNix.logInfo $ "while retrieving dependencies: " <> toS (displayException e)
+      CNix.logInfo $ "unable to retrieve dependency; will build locally"
+      pure True
   derivationMaybe <- liftIO $ Build.getDerivation store drvPath
   derivation <- case derivationMaybe of
     Just drv -> pure drv
     Nothing -> panic $ "Could not retrieve derivation " <> show drvPath <> " from local store or binary caches."
-  nixBuildResult <- liftIO $ buildDerivation store drvPath derivation (extraPaths <$ guard (not (Command.Build.materializeDerivation build)))
+  nixBuildResult <- liftIO $ buildDerivation store drvPath derivation (extraPaths <$ guard (not materialize))
   katipAddContext (sl "result" (show nixBuildResult :: Text)) $
     logLocM DebugS "Build result"
   buildResult <- liftIO $ enrichResult store derivation nixBuildResult
