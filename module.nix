@@ -10,7 +10,11 @@ in
 {
   imports = [ ./for-upstream/default.nixos.nix ];
 
-  services.hercules-ci-agent.package = agentpkgs.hercules-ci-agent;
+  # This module replaces what's provided by NixOS
+  disabledModules = [ "services/continuous-integration/hercules-ci-agent/default.nix" ];
 
-  # TODO blacklist the upstream module (does that blacklist imports transitively?...)
+  config = {
+    services.hercules-ci-agent.package = agentpkgs.hercules-ci-agent;
+  };
+
 }
