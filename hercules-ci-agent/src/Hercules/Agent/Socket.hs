@@ -18,7 +18,7 @@ import Control.Concurrent.STM.TVar (TVar, modifyTVar, newTVar, readTVar, writeTV
 import Control.Monad.IO.Unlift
 import qualified Data.Aeson as A
 import Data.DList (DList, fromList)
-import Data.List (dropWhileEnd)
+import Data.List (dropWhileEnd, splitAt)
 import Data.Semigroup
 import Data.Time (NominalDiffTime, addUTCTime, diffUTCTime, getCurrentTime)
 import Data.Time.Extras
@@ -34,6 +34,7 @@ import qualified Network.WebSockets as WS
 import Protolude hiding (atomically, handle, race, race_)
 import UnliftIO.Async (race, race_)
 import UnliftIO.Exception (handle)
+import UnliftIO.Timeout (timeout)
 import Wuss (runSecureClientWith)
 
 data Socket r w
@@ -114,14 +115,24 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
           & foldMap (\case Frame.Msg {n = n} -> Option $ Just $ Max n; _ -> mempty)
           & traverse_ (\(Max n) -> setExpectedAck n)
       send :: Connection -> [Frame ap ap] -> m ()
-      send conn msgs = do
-        liftIO $ WS.sendDataMessages conn (WS.Binary . A.encode <$> msgs)
-        setExpectedAckForMsgs msgs
+      send conn = sendSorted . sortBy (compare `on` msgN)
+        where
+          sendRaw :: [Frame ap ap] -> m ()
+          sendRaw msgs = do
+            liftIO $ WS.sendDataMessages conn (WS.Binary . A.encode <$> msgs)
+            setExpectedAckForMsgs msgs
+          sendSorted :: [Frame ap ap] -> m ()
+          sendSorted [] = pass
+          sendSorted msgs = do
+            let (msgsNow, msgsLater) = Data.List.splitAt 100 msgs
+            sendRaw msgsNow
+            sendSorted msgsLater
       recv :: Connection -> m (Frame sp sp)
       recv conn = do
-        (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
-          Left e -> liftIO $ throwIO (FatalError $ "Error decoding service message: " <> toSL e)
-          Right r -> pure r
+        withTimeout ackTimeout (FatalError "Hercules.Agent.Socket.recv timed out") $
+          (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
+            Left e -> liftIO $ throwIO (FatalError $ "Error decoding service message: " <> toSL e)
+            Right r -> pure r
       handshake conn = katipAddNamespace "Handshake" do
         siMsg <- recv conn
         case siMsg of
@@ -218,6 +229,10 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
         handshake conn
       readThread conn `race_` writeThread conn `race_` noAckCleanupThread
 
+msgN :: Frame o a -> Maybe Integer
+msgN (Frame.Msg {n = n}) = Just n
+msgN _ = Nothing
+
 withConnection' :: (MonadUnliftIO m) => SocketConfig any0 any1 m -> (Connection -> m a) -> m a
 withConnection' socketConfig m = do
   UnliftIO unlift <- askUnliftIO
@@ -244,3 +259,9 @@ withConnection' socketConfig m = do
 
 slash :: [Char] -> [Char] -> [Char]
 a `slash` b = dropWhileEnd (== '/') a <> "/" <> dropWhile (== '/') b
+
+withTimeout :: (Exception e, MonadIO m, MonadUnliftIO m) => NominalDiffTime -> e -> m a -> m a
+withTimeout t e _ | t <= 0 = throwIO e
+withTimeout t e m = timeout (ceiling $ t * 1_000_000) m >>= \case
+  Nothing -> throwIO e
+  Just a -> pure a

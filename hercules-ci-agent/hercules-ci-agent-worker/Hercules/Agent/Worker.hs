@@ -10,7 +10,6 @@ where
 import CNix
 import qualified CNix.Internal.Raw
 import Conduit
-import Control.Concurrent.Async.Lifted.Safe
 import Control.Concurrent.STM
 import qualified Control.Exception.Lifted as EL
 import Control.Monad.IO.Unlift
@@ -64,6 +63,7 @@ import qualified System.Environment as Environment
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.Posix.IO (dup, fdToHandle, stdError)
 import System.Timeout (timeout)
+import UnliftIO.Async (wait, withAsync)
 import UnliftIO.Exception (bracket, catch)
 import Prelude ()
 import qualified Prelude
@@ -92,8 +92,15 @@ main = do
   CNix.init
   Logger.initLogger
   [options] <- Environment.getArgs
-  -- narinfo-cache-negative-ttl: Always try requesting narinfos because it may have been built in the meanwhile
-  let allOptions = Prelude.read options ++ [("narinfo-cache-negative-ttl", "0")]
+  let allOptions =
+        Prelude.read options
+          ++ [
+               -- narinfo-cache-negative-ttl: Always try requesting narinfos because it may have been built in the meanwhile
+               ("narinfo-cache-negative-ttl", "0"),
+               -- Build concurrency is controlled by hercules-ci-agent, so set it
+               -- to 1 to avoid accidentally consuming too many resources at once.
+               ("max-jobs", "1")
+             ]
   for_ allOptions $ \(k, v) -> do
     setGlobalOption k v
     setOption k v
@@ -220,8 +227,16 @@ runCommand herculesState ch command = do
 logger :: (MonadIO m, MonadUnliftIO m, KatipContext m) => LogSettings.LogSettings -> ConduitM () (Vector LogEntry) m () -> m ()
 logger logSettings_ entriesSource = do
   socketConfig <- liftIO $ makeSocketConfig logSettings_
-  -- TODO integrate katip more
-  Socket.withReliableSocket socketConfig $ \socket -> katipAddNamespace "Build" do
+  let withPings socket m =
+        withAsync
+          ( liftIO $ forever do
+              -- TODO add ping constructor to Frame or use websocket pings
+              let ping = LogMessage.LogEntries mempty
+              threadDelay 30_000_000
+              atomically $ Socket.write socket ping
+          )
+          (const m)
+  Socket.withReliableSocket socketConfig $ \socket -> withPings socket $ katipAddNamespace "Build" do
     let conduit =
           entriesSource
             .| Logger.unbatch
