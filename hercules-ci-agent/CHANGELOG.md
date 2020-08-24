@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    normal NixOS expectations. Notably, it does not configure automatic garbage
    collection and it does not preconfigure NixOps keys deployment.
 
-   The configuration interface will remain unchanged for `0.7` but `0.8` will
+   The configuration interface in the hercules-ci-agent repo will remain unchanged for `0.7` but `0.8` will
    match the upstream interface.
 
 ## [0.7.3] - 2020-07-18
