@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+ - Paths that are missing from the binary cache will be rebuilt. This affected
+   agent 0.7 - 0.7.3 users with trusted user optimizations turned on, which is
+   the default when using the NixOS or nix-darwin modules.
+
+ - Prevent states where no progress can be made. One caused by a potential buildup
+   of batched messages that may not fit within the timeout interval; the other
+   a receive operation without a timeout during the initial socket handshake.
+
+ - The log socket will remain open instead of reconnecting unnecessarily.
+
+ - Add a safety measure to prevent unintended increases in workload in case
+   Nix sees an opportunity for concurrency that was not intended by Hercules CI.
+
+### Changed
+
+ - The NixOS module in the hercules-ci-agent repo now disables the upcoming
+   module that is packaged upstream with NixOS.
+
+   The upstream module will configure fewer things for you, to be in line with
+   normal NixOS expectations. Notably, it does not configure automatic garbage
+   collection and it does not preconfigure NixOps keys deployment.
+
+   The configuration interface in the hercules-ci-agent repo will remain unchanged for `0.7` but `0.8` will
+   match the upstream interface.
+
 ## [0.7.3] - 2020-07-18
 
 ### Added
