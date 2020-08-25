@@ -35,8 +35,9 @@ Base the tag message on the changelog, but removing the `###` prefix from header
 
 ### Finalize
 
-- merge the release branch
-- make sure all tags are pushed
-   - hercules-ci-agent
-   - terraform-hercules-ci
-   - example-deploy-agent-terraform-aws
+- merge the release branch into master
+- merge master into stable (if appropriate)
+- merge terraform-hercules-ci
+- merge nix-darwin
+- create GitHub release for agent
+- update example-deploy-agent-terraform-aws
