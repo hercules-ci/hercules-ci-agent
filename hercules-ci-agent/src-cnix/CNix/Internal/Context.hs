@@ -24,8 +24,6 @@ data Strings
 
 data Ref a
 
-data Bindings'
-
 data Value'
 
 data Attr'
@@ -59,7 +57,6 @@ context =
       { C.ctxTypesTable =
           M.singleton (C.TypeName "refStore") [t|Ref NixStore|]
             <> M.singleton (C.TypeName "EvalState") [t|EvalState|]
-            <> M.singleton (C.TypeName "Bindings") [t|Bindings'|]
             <> M.singleton (C.TypeName "Value") [t|Value'|]
             <> M.singleton (C.TypeName "Attr") [t|Attr'|]
             <> M.singleton (C.TypeName "Strings") [t|Strings|]

@@ -439,7 +439,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
 walk ::
   (MonadUnliftIO m, KatipContext m) =>
   Ptr EvalState ->
-  Bindings ->
+  Value NixAttrs ->
   RawValue ->
   ConduitT i Event m ()
 walk evalState = walk' True [] 10
@@ -454,7 +454,7 @@ walk evalState = walk' True [] 10
       -- | Depth of tree remaining
       Integer ->
       -- | Auto arguments to pass to (attrset-)functions
-      Bindings ->
+      Value NixAttrs ->
       -- | Current node of the walk
       RawValue ->
       -- | Program that performs the walk and emits 'Event's
