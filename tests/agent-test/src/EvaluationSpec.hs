@@ -1,7 +1,9 @@
 module EvaluationSpec where
 
+import qualified Data.Aeson as A
 import Data.List (last)
 import qualified Data.Map as M
+import qualified Data.Text as T
 import qualified Data.UUID.V4 as UUID
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
 import Hercules.API.Agent.Evaluate.EvaluateEvent
@@ -39,10 +41,14 @@ isAttrLike EvaluateEvent.Message {} = True -- this is a bit of a stretch but hey
 isAttrLike EvaluateEvent.BuildRequired {} = True -- this is a bit of a stretch but hey
 isAttrLike _ = False
 
+(=:) :: k -> a -> Map k a
+(=:) = M.singleton
+
 defaultTask :: EvaluateTask.EvaluateTask
 defaultTask = EvaluateTask.EvaluateTask
   { id = Prelude.error "override EvaluateTask.id please",
-    primaryInput = Prelude.error "override EvaluateTask.primaryInput please",
+    primaryInput = "",
+    inputMetadata = mempty,
     otherInputs = mempty,
     autoArguments = mempty,
     nixPath = mempty,
@@ -64,7 +70,7 @@ spec = describe "Evaluation" $ do
               -- to connect quickly and :61 because it's a port number that
               -- want from assigned to reserved in 2017 and is therefore
               -- very very rarely used.
-              EvaluateTask.primaryInput = "http://localhost:61/problem.tar.gz"
+              EvaluateTask.otherInputs = "src" =: "http://localhost:61/problem.tar.gz"
             }
       let TaskStatus.Exceptional msg = s
       toS msg `shouldContain` "HttpExceptionRequest"
@@ -79,7 +85,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/broken-tarball"
+              EvaluateTask.otherInputs = "src" =: "/tarball/broken-tarball"
             }
       s
         `shouldBe` TaskStatus.Exceptional
@@ -94,7 +100,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/no-nix-file"
+              EvaluateTask.otherInputs = "src" =: "/tarball/no-nix-file"
             }
       s `shouldBe` TaskStatus.Successful ()
       case r of
@@ -113,7 +119,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/ci-dot-nix"
+              EvaluateTask.otherInputs = "src" =: "/tarball/ci-dot-nix"
             }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
@@ -132,7 +138,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/ambiguous-nix-file"
+              EvaluateTask.otherInputs = "src" =: "/tarball/ambiguous-nix-file"
             }
       s `shouldBe` TaskStatus.Successful ()
       case r of
@@ -151,7 +157,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/simple"
+              EvaluateTask.otherInputs = "src" =: "/tarball/simple"
             }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
@@ -170,7 +176,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/naked-derivation"
+              EvaluateTask.otherInputs = "src" =: "/tarball/naked-derivation"
             }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
@@ -189,7 +195,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/list"
+              EvaluateTask.otherInputs = "src" =: "/tarball/list"
             }
       s `shouldBe` TaskStatus.Successful ()
       case r of
@@ -204,7 +210,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/empty-attrset"
+              EvaluateTask.otherInputs = "src" =: "/tarball/empty-attrset"
             }
       s `shouldBe` TaskStatus.Successful ()
       case r of
@@ -220,8 +226,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput =
-                "/tarball/naked-derivation-default-args"
+              EvaluateTask.otherInputs = "src" =: "/tarball/naked-derivation-default-args"
             }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
@@ -242,8 +247,9 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput =
-                "/tarball/naked-derivation-default-args-twice"
+              EvaluateTask.otherInputs =
+                "src"
+                  =: "/tarball/naked-derivation-default-args-twice"
             }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
@@ -264,7 +270,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/abort-at-root"
+              EvaluateTask.otherInputs = "src" =: "/tarball/abort-at-root"
             }
       s `shouldBe` TaskStatus.Successful ()
       case r of
@@ -282,7 +288,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/abort-in-attribute"
+              EvaluateTask.otherInputs = "src" =: "/tarball/abort-in-attribute"
             }
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
@@ -305,7 +311,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/too-many-attrs"
+              EvaluateTask.otherInputs = "src" =: "/tarball/too-many-attrs"
             }
       s
         `shouldBe` TaskStatus.Exceptional
@@ -329,7 +335,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/too-many-errors"
+              EvaluateTask.otherInputs = "src" =: "/tarball/too-many-errors"
             }
       s
         `shouldBe` TaskStatus.Exceptional
@@ -354,8 +360,9 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/nix-path-simple",
-              EvaluateTask.otherInputs = M.singleton "oi1" "/tarball/simple",
+              EvaluateTask.otherInputs =
+                "src" =: "/tarball/nix-path-simple"
+                  <> "oi1" =: "/tarball/simple",
               EvaluateTask.nixPath =
                 [ EvaluateTask.NixPathElement
                     (Just "simple")
@@ -377,8 +384,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/auto-arg-simple",
-              EvaluateTask.otherInputs = M.singleton "oi1" "/tarball/simple",
+              EvaluateTask.otherInputs = "src" =: "/tarball/auto-arg-simple" <> M.singleton "oi1" "/tarball/simple",
               EvaluateTask.autoArguments =
                 M.singleton "simple" (EvaluateTask.SubPathOf "oi1" Nothing)
             }
@@ -390,6 +396,32 @@ spec = describe "Evaluation" $ do
           toS (AttributeEvent.derivationPath ae)
             `shouldContain` "-myPackage.drv"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
+    it "can add to auto arguments with attributes" $ \srv -> do
+      id <- randomId
+      (s, r) <-
+        runEval
+          srv
+          defaultTask
+            { EvaluateTask.id = id,
+              EvaluateTask.otherInputs = "src" =: "/tarball/auto-arg-meta" <> "oi1" =: "/tarball/identity",
+              EvaluateTask.autoArguments = "identity" =: (EvaluateTask.SubPathOf "oi1" Nothing),
+              EvaluateTask.inputMetadata =
+                "oi1"
+                  =: ( "rev" =: A.String "a5c9b598ab75eb987feb69f" -- weird length though; just an example
+                         <> "yes" =: A.toJSON True
+                         <> "no" =: A.toJSON False
+                         <> "x" =: A.object ["y" A..= A.object ["z" A..= (1234 :: Int)]]
+                     )
+            }
+      s `shouldBe` TaskStatus.Successful ()
+      case attrLike r of
+        [EvaluateEvent.Attribute ae] -> do
+          AttributeEvent.expressionPath ae `shouldBe` ["hello"]
+          toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
+          let expect = "-pkg-a5c9b598ab75eb987feb69f-2468-ok.drv" :: Text
+          T.takeEnd (T.length expect) (AttributeEvent.derivationPath ae)
+            `shouldBe` expect
+        _ -> failWith $ "Events should be a single attribute, not: " <> show r
     it "can refer to nixpkgs" $ \srv -> do
       id <- randomId
       (s, r) <-
@@ -397,8 +429,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/nixpkgs-reference",
-              EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs",
+              EvaluateTask.otherInputs = "src" =: "/tarball/nixpkgs-reference" <> M.singleton "n" "/tarball/nixpkgs",
               EvaluateTask.autoArguments =
                 M.singleton
                   "nixpkgs"
@@ -420,8 +451,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/functor",
-              EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs",
+              EvaluateTask.otherInputs = "src" =: "/tarball/functor" <> M.singleton "n" "/tarball/nixpkgs",
               EvaluateTask.autoArguments =
                 M.singleton
                   "nixpkgs"
@@ -443,8 +473,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/nixpkgs-reference",
-              EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs",
+              EvaluateTask.otherInputs = "src" =: "/tarball/nixpkgs-reference" <> M.singleton "n" "/tarball/nixpkgs",
               EvaluateTask.autoArguments =
                 M.singleton "nixpkgs" (EvaluateTask.SubPathOf "n" Nothing)
             }
@@ -482,8 +511,7 @@ spec = describe "Evaluation" $ do
               srv
               defaultTask
                 { EvaluateTask.id = id,
-                  EvaluateTask.primaryInput = "/tarball/ifd",
-                  EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs",
+                  EvaluateTask.otherInputs = "src" =: "/tarball/ifd" <> M.singleton "n" "/tarball/nixpkgs",
                   EvaluateTask.autoArguments =
                     M.singleton
                       "nixpkgs"
@@ -520,8 +548,7 @@ spec = describe "Evaluation" $ do
           srv
           defaultTask
             { EvaluateTask.id = id,
-              EvaluateTask.primaryInput = "/tarball/ifd-fail",
-              EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs",
+              EvaluateTask.otherInputs = "src" =: "/tarball/ifd-fail" <> M.singleton "n" "/tarball/nixpkgs",
               EvaluateTask.autoArguments =
                 M.singleton
                   "nixpkgs"

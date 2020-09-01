@@ -30,9 +30,10 @@ failWith = throwIO . userError
 defaultEvalTask :: EvaluateTask.EvaluateTask
 defaultEvalTask = EvaluateTask.EvaluateTask
   { id = Prelude.error "override EvaluateTask.id please",
-    primaryInput = Prelude.error "override EvaluateTask.primaryInput please",
+    primaryInput = mempty,
     otherInputs = mempty,
     autoArguments = mempty,
+    inputMetadata = mempty,
     nixPath = mempty,
     logToken = "mock-eval-log-token"
   }
@@ -46,6 +47,9 @@ isAttrLike EvaluateEvent.AttributeError {} = True
 isAttrLike EvaluateEvent.Message {} = True -- this is a bit of a stretch but hey
 isAttrLike _ = False
 
+(=:) :: k -> a -> Map k a
+(=:) = M.singleton
+
 spec :: SpecWith ServerHandle
 spec = describe "Build" $ it "works" $ \srv -> do
   -- Setup: put the drv in the agent's store
@@ -55,8 +59,7 @@ spec = describe "Build" $ it "works" $ \srv -> do
       srv
       defaultEvalTask
         { EvaluateTask.id = id,
-          EvaluateTask.primaryInput = "/tarball/buildable",
-          EvaluateTask.otherInputs = M.singleton "n" "/tarball/nixpkgs",
+          EvaluateTask.otherInputs = "src" =: "/tarball/buildable" <> M.singleton "n" "/tarball/nixpkgs",
           EvaluateTask.autoArguments =
             M.singleton
               "nixpkgs"

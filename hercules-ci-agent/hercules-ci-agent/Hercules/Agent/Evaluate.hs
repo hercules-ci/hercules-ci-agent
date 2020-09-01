@@ -12,6 +12,7 @@ import Conduit
 import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
 import Control.Monad.IO.Unlift
+import qualified Data.Aeson as A
 import Data.Conduit.Process (sourceProcessWithStreams)
 import Data.IORef
   ( atomicModifyIORef,
@@ -94,15 +95,12 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
   logLocM DebugS "Retrieving evaluation task"
   let emitSingle = writeToBatch . Syncable
       sync = syncer writeToBatch
-  projectDir <-
-    fetchSource
-      (tmpdir </> "primary")
-      (EvaluateTask.primaryInput task)
-  withNamedContext "projectDir" projectDir $
-    logLocM DebugS "Determined projectDir"
   inputLocations <-
     flip M.traverseWithKey (EvaluateTask.otherInputs task) $
       \k src -> fetchSource (tmpdir </> ("arg-" <> toS k)) src
+  projectDir <- case M.lookup "src" inputLocations of
+    Nothing -> panic "No primary source provided"
+    Just x -> pure x
   nixPath <-
     EvaluateTask.nixPath task
       & ( traverse
@@ -135,7 +133,16 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
                   <> identifier
         )
   let autoArguments = autoArguments'
-        <&> \sp -> Eval.ExprArg $ toS $ renderSubPath $ toS <$> sp
+        & M.mapWithKey \k sp ->
+          let argPath = toS $ renderSubPath $ toS <$> sp
+           in case do
+                inputId <- EvaluateTask.autoArguments task & M.lookup k
+                EvaluateTask.inputMetadata task & M.lookup (EvaluateTask.path inputId) of
+                Nothing -> Eval.ExprArg $ argPath
+                Just attrs ->
+                  Eval.ExprArg $
+                    -- TODO improve escaping
+                    "builtins.fromJSON ''" <> toS (A.encode attrs) <> "'' // { outPath = " <> argPath <> "; }"
   msgCounter <- liftIO $ newIORef 0
   let fixIndex ::
         MonadIO m =>

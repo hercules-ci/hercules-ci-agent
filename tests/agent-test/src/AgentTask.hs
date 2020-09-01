@@ -13,4 +13,4 @@ import Hercules.API.Prelude
 data AgentTask
   = Evaluate EvaluateTask
   | Build BuildTask
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)

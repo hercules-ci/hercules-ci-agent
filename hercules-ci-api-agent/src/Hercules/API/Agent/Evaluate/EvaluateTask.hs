@@ -6,6 +6,7 @@ module Hercules.API.Agent.Evaluate.EvaluateTask where
 import Data.Aeson
   ( FromJSON,
     ToJSON,
+    Value,
   )
 import Data.Map (Map)
 import Data.Swagger (ToSchema)
@@ -18,13 +19,14 @@ import Prelude
 data EvaluateTask
   = EvaluateTask
       { id :: Id (Task EvaluateTask),
-        primaryInput :: Text, -- HTTP URL
+        primaryInput :: Text, -- Obsolete since >= 0.8
         otherInputs :: Map Identifier Text, -- identifier -> HTTP URL
+        inputMetadata :: Map Identifier (Map Text Value),
         autoArguments :: Map Text (SubPathOf Identifier), -- argument name -> identifier
         nixPath :: [NixPathElement (SubPathOf Identifier)], -- NIX_PATH element -> identifier
         logToken :: Text
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 type Identifier = Text
 
