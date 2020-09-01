@@ -71,6 +71,7 @@ import Protolude hiding (finally, newChan, writeChan)
 import qualified Servant.Client
 import qualified System.Directory as Dir
 import System.FilePath
+import System.IO.Error (isPermissionError)
 import System.IO.Temp (withTempDirectory)
 import System.Process
 
@@ -96,8 +97,26 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
   let emitSingle = writeToBatch . Syncable
       sync = syncer writeToBatch
   inputLocations <-
-    flip M.traverseWithKey (EvaluateTask.otherInputs task) $
-      \k src -> fetchSource (tmpdir </> ("arg-" <> toS k)) src
+    EvaluateTask.otherInputs task
+      & M.traverseWithKey \k src -> do
+        let fetchName = tmpdir </> ("fetch-" <> toS k)
+            argName = tmpdir </> ("arg-" <> toS k)
+            metaName = do
+              meta <- EvaluateTask.inputMetadata task & M.lookup k
+              nameValue <- meta & M.lookup "name"
+              name <- case A.fromJSON nameValue of
+                A.Success a -> pure a
+                _ -> Nothing
+              guard (isValidName name)
+              pure name
+            destName
+              | Just sourceName <- metaName = argName </> sourceName
+              | otherwise = argName
+        fetched <- fetchSource fetchName src
+        liftIO do
+          Dir.createDirectoryIfMissing True (takeDirectory destName)
+          renamePathTryHarder fetched destName
+        pure destName
   projectDir <- case M.lookup "src" inputLocations of
     Nothing -> panic "No primary source provided"
     Just x -> pure x
@@ -229,6 +248,34 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
                 recurse -- asynchronously
               emit $ EvaluateEvent.DerivationInfo drvInfo
        in doIt
+
+renamePathTryHarder :: FilePath -> FilePath -> IO ()
+renamePathTryHarder source dest = do
+  catchJust
+    ( \case
+        e | isPermissionError e -> Just e
+        _ -> Nothing
+    )
+    doIt
+    (const tryHarder)
+  where
+    doIt = Dir.renamePath source dest
+    modifyPermissions f p = Dir.getPermissions p >>= Dir.setPermissions p . f
+    tryHarder = do
+      modifyPermissions (Dir.setOwnerWritable True) (takeDirectory source)
+      modifyPermissions (Dir.setOwnerWritable True) (source)
+      modifyPermissions (Dir.setOwnerWritable True) (takeDirectory dest)
+      doIt
+
+isValidName :: FilePath -> Bool
+isValidName "" = False
+isValidName cs@(c0 : _) = all isValidNameChar cs && c0 /= '.'
+  where
+    isValidNameChar c =
+      (c >= 'A' && c <= 'Z')
+        || (c >= 'a' && c <= 'z')
+        || (c >= '0' && c <= '9')
+        || c `elem` ("+-._?=" :: [Char])
 
 runEvalProcess ::
   FilePath ->

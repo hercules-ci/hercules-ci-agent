@@ -413,6 +413,7 @@ spec = describe "Evaluation" $ do
                          <> "yes" =: A.toJSON True
                          <> "no" =: A.toJSON False
                          <> "x" =: A.object ["y" A..= A.object ["z" A..= (1234 :: Int)]]
+                         <> "name" =: A.String "identity-core" -- repo name
                      )
             }
       s `shouldBe` TaskStatus.Successful ()
