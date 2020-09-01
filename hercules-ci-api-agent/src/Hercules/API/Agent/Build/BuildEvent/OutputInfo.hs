@@ -17,4 +17,4 @@ data OutputInfo
         -- | nar size in bytes
         size :: Integer
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)

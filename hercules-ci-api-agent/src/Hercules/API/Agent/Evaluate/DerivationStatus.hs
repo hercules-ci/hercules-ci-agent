@@ -11,4 +11,4 @@ data DerivationStatus
   | BuildFailure
   | DependencyFailure
   | BuildSuccess
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)

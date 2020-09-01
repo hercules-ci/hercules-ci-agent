@@ -77,9 +77,6 @@ library
     , memory
     , servant >=0.14.1
     , servant-auth
-    , servant-auth-swagger
-    , servant-swagger
-    , servant-swagger-ui-core
     , string-conv
     , swagger2
     , text
@@ -120,9 +117,6 @@ test-suite hercules-api-agent-unit-tests
     , profunctors
     , servant >=0.14.1
     , servant-auth
-    , servant-auth-swagger
-    , servant-swagger
-    , servant-swagger-ui-core
     , string-conv
     , swagger2
     , text

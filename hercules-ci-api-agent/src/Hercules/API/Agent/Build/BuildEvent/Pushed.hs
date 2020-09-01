@@ -8,4 +8,4 @@ data Pushed
   = Pushed
       { cache :: Text
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)

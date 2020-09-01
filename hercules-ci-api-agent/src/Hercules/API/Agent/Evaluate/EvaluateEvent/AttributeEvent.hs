@@ -16,7 +16,7 @@ data AttributeType
   | MayFail
   | DependenciesOnly
   | Effect
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, ToJSON, FromJSON)
 
 data AttributeEvent
   = AttributeEvent
@@ -25,7 +25,7 @@ data AttributeEvent
         typ :: AttributeType
         -- TODO: meta attributes
       }
-  deriving (Generic, Show, Eq, ToJSON, ToSchema)
+  deriving (Generic, Show, Eq, ToJSON)
 
 instance FromJSON AttributeEvent where
   parseJSON v = A.genericParseJSON A.defaultOptions (fixup v)

@@ -9,7 +9,6 @@ import Data.Aeson
     Value,
   )
 import Data.Map (Map)
-import Data.Swagger (ToSchema)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Hercules.API.Id
@@ -38,8 +37,6 @@ data NixPathElement a
       }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, Functor, Foldable, Traversable)
 
-deriving instance ToSchema a => ToSchema (NixPathElement a)
-
 -- | For using a path inside a source
 data SubPathOf a
   = SubPathOf
@@ -47,5 +44,3 @@ data SubPathOf a
         subPath :: Maybe Text
       }
   deriving (Generic, Show, Eq, ToJSON, FromJSON, Functor, Foldable, Traversable)
-
-deriving instance ToSchema a => ToSchema (SubPathOf a)
