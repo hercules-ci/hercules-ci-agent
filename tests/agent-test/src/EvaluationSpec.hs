@@ -60,6 +60,7 @@ spec = describe "Evaluation" $ do
   context "when the source tarball cannot be fetched"
     $ it "crashes with an error message"
     $ \srv -> do
+      pendingWith "slow test"
       id <- randomId
       (s, r) <-
         runEval
@@ -79,6 +80,7 @@ spec = describe "Evaluation" $ do
   context "when the source download is not a valid tarball"
     $ it "crashes with an error message"
     $ \srv -> do
+      pendingWith "slow test"
       id <- randomId
       (s, r) <-
         runEval
