@@ -282,7 +282,9 @@ logSocket _server conn = do
         send [Frame.Ack number]
 
 processLogPayload :: LogMessage -> Handler ()
-processLogPayload _ = pass
+processLogPayload _m = do
+  -- print _m
+  pass
 
 socket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
 socket server conn = do

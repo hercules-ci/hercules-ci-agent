@@ -16,6 +16,8 @@ let
 
   agentStartTimeoutSec = 5 * 60;
 
+  runnerArgs = '''';
+
 in
 {
   name = "agent-test";
@@ -59,7 +61,7 @@ in
 
       # Run the test code + api
       api.succeed(
-          "(cd ${testdata} && hercules-ci-agent-test >/dev/console 2>/dev/console)"
+          """(cd ${testdata} && hercules-ci-agent-test ${runnerArgs} >/dev/console 2>/dev/console)"""
       )
     '';
 }
