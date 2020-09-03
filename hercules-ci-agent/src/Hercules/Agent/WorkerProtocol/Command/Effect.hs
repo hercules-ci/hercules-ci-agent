@@ -11,6 +11,7 @@ data Effect
       { drvPath :: Text,
         logSettings :: LogSettings,
         inputDerivationOutputPaths :: [ByteString],
-        materializeDerivation :: Bool
+        materializeDerivation :: Bool,
+        secretsPath :: FilePath
       }
   deriving (Generic, Binary, Show, Eq)

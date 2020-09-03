@@ -21,13 +21,13 @@ import System.Process.ByteString
 
 data BindMount
   = BindMount
-      { source :: Text,
-        destination :: Text,
+      { pathInContainer :: Text,
+        pathInHost :: Text,
         readOnly :: Bool
       }
 
 defaultBindMount :: Text -> BindMount
-defaultBindMount path = BindMount {source = path, destination = path, readOnly = True}
+defaultBindMount path = BindMount {pathInContainer = path, pathInHost = path, readOnly = True}
 
 data Config
   = Config
@@ -56,8 +56,8 @@ effectToRuncSpec config spec =
           ( \bindMount ->
               pure $
                 object
-                  [ ("destination", String $ source bindMount),
-                    ("source", String $ destination bindMount),
+                  [ ("destination", String $ pathInContainer bindMount),
+                    ("source", String $ pathInHost bindMount),
                     ("type", "bind"),
                     ( "options",
                       toJSON $
@@ -72,11 +72,12 @@ effectToRuncSpec config spec =
         & key "mounts" . _Array %~ (<> mounts)
         & key "process" . key "terminal" .~ toJSON True
         & key "process" . key "env" .~ toJSON (config & environment & M.toList <&> \(k, v) -> k <> "=" <> v)
+        & key "process" . key "cwd" .~ toJSON (config & workingDirectory)
 
 run :: Config -> IO ExitCode
 run config = do
   withTempDirectory "." "runc-state" $ \dir -> do
-    let runcExe = "/nix/store/k9xvz1w5q6c5pfrw81fnrjf6mfsi4b1y-runc-1.0.0-rc10-bin/bin/runc"
+    let runcExe = "runc"
         createConfigJsonSpec =
           (System.Process.proc runcExe ["spec", "--rootless"])
             { cwd = Just dir
@@ -94,7 +95,6 @@ run config = do
       Left e -> throwIO (FatalError $ "decoding runc config.json template: " <> show e)
     let configJson = effectToRuncSpec config template
     BS.writeFile (dir </> "config.json") (toS $ encode configJson)
-    putErrLn $ encode configJson
     createDirectory (dir </> "rootfs")
     name <- do
       uuid <- UUID.nextRandom
@@ -125,9 +125,11 @@ run config = do
               let shovel =
                     handleEOF (BS.hGetLine masterHandle) >>= \case
                       "" -> pass
+                      someBytes | "@nix" `BS.isPrefixOf` someBytes -> do
+                        -- TODO use it (example @nix { "action": "setPhase", "phase": "effectPhase" })
+                        shovel
                       someBytes -> do
-                        -- TODO improve printing
-                        BS.hPut stderr ("STDERR: " <> someBytes <> "\n")
+                        BS.hPut stderr (someBytes <> "\n")
                         shovel
                   handleEOF = handle \e -> if (ioeGetErrorType e) == HardwareFault then pure "" else throwIO e
               shovel

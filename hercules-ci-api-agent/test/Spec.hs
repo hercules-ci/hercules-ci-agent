@@ -3,6 +3,7 @@ module Spec where
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfoSpec
 import qualified Hercules.API.Agent.LifeCycle.AgentInfoSpec
 import qualified Hercules.Formats.CachixCacheSpec
+import qualified Hercules.Formats.SecretSpec
 import Test.Hspec
 import Prelude
 
@@ -14,3 +15,5 @@ spec = describe "hercules-ci-api" $ do
     Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfoSpec.spec
   describe "Hercules.Formats.CachixCache" $
     Hercules.Formats.CachixCacheSpec.spec
+  describe "Hercules.Formats.Secret" $
+    Hercules.Formats.SecretSpec.spec

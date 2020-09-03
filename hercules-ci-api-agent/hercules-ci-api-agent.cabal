@@ -56,6 +56,7 @@ library
       Hercules.Formats.CachixCache
       Hercules.Formats.Common
       Hercules.Formats.NixCache
+      Hercules.Formats.Secret
   hs-source-dirs:
       src
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
@@ -94,6 +95,7 @@ test-suite hercules-api-agent-unit-tests
       Hercules.API.Agent.LifeCycle.AgentInfoSpec
       Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfoSpec
       Hercules.Formats.CachixCacheSpec
+      Hercules.Formats.SecretSpec
   hs-source-dirs:
       test
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
@@ -114,6 +116,7 @@ test-suite hercules-api-agent-unit-tests
     , memory
     , network-uri
     , QuickCheck
+    , quickcheck-classes
     , profunctors
     , servant >=0.14.1
     , servant-auth
@@ -122,4 +125,5 @@ test-suite hercules-api-agent-unit-tests
     , text
     , time
     , uuid
+    , vector
   default-language: Haskell2010

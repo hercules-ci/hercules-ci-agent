@@ -11,7 +11,6 @@ import CNix (withStore)
 import Conduit
 import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
-import Control.Monad.IO.Unlift
 import qualified Data.Aeson as A
 import Data.Conduit.Process (sourceProcessWithStreams)
 import Data.IORef
@@ -40,10 +39,10 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Servant (noContent)
 import qualified Hercules.Agent.Cache as Agent.Cache
 import qualified Hercules.Agent.Client
-import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
 import qualified Hercules.Agent.Env as Env
 import qualified Hercules.Agent.Evaluate.TraversalQueue as TraversalQueue
+import Hercules.Agent.Files
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
 import Hercules.Agent.Nix.RetrieveDerivationInfo
@@ -71,8 +70,6 @@ import Protolude hiding (finally, newChan, writeChan)
 import qualified Servant.Client
 import qualified System.Directory as Dir
 import System.FilePath
-import System.IO.Error (isPermissionError)
-import System.IO.Temp (withTempDirectory)
 import System.Process
 
 eventLimit :: Int
@@ -92,7 +89,7 @@ produceEvaluationTaskEvents ::
   EvaluateTask.EvaluateTask ->
   (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
   App ()
-produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
+produceEvaluationTaskEvents task writeToBatch = withWorkDir "eval" $ \tmpdir -> do
   logLocM DebugS "Retrieving evaluation task"
   let emitSingle = writeToBatch . Syncable
       sync = syncer writeToBatch
@@ -248,24 +245,6 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
                 recurse -- asynchronously
               emit $ EvaluateEvent.DerivationInfo drvInfo
        in doIt
-
-renamePathTryHarder :: FilePath -> FilePath -> IO ()
-renamePathTryHarder source dest = do
-  catchJust
-    ( \case
-        e | isPermissionError e -> Just e
-        _ -> Nothing
-    )
-    doIt
-    (const tryHarder)
-  where
-    doIt = Dir.renamePath source dest
-    modifyPermissions f p = Dir.getPermissions p >>= Dir.setPermissions p . f
-    tryHarder = do
-      modifyPermissions (Dir.setOwnerWritable True) (takeDirectory source)
-      modifyPermissions (Dir.setOwnerWritable True) (source)
-      modifyPermissions (Dir.setOwnerWritable True) (takeDirectory dest)
-      doIt
 
 isValidName :: FilePath -> Bool
 isValidName "" = False
@@ -511,15 +490,3 @@ postBatch task events =
           (EvaluateTask.id task)
           events
       )
-
--- TODO: configurable temp directory
-withWorkDir :: (FilePath -> App b) -> App b
-withWorkDir f = do
-  UnliftIO {unliftIO = unlift} <- askUnliftIO
-  workDir <- asks (Config.workDirectory . config)
-  liftIO $ withTempDirectory workDir "eval" $ unlift . f
-
-readFileMaybe :: MonadIO m => FilePath -> m (Maybe Text)
-readFileMaybe fp = liftIO do
-  exists <- Dir.doesFileExist fp
-  guard exists & traverse \_ -> readFile fp

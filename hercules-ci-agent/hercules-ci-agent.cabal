@@ -166,6 +166,7 @@ executable hercules-ci-agent
       Hercules.Agent.EnvironmentInfo
       Hercules.Agent.Evaluate
       Hercules.Agent.Evaluate.TraversalQueue
+      Hercules.Agent.Files
       Hercules.Agent.Init
       Hercules.Agent.Log
       Hercules.Agent.Nix

@@ -5,8 +5,9 @@ import qualified Hercules.API.Agent.Effect.EffectTask as EffectTask
 import Hercules.API.TaskStatus (TaskStatus)
 import qualified Hercules.API.TaskStatus as TaskStatus
 import qualified Hercules.Agent.Config as Config
-import Hercules.Agent.Env
+import Hercules.Agent.Env hiding (config)
 import qualified Hercules.Agent.Env as Env
+import Hercules.Agent.Files
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
 import qualified Hercules.Agent.ServiceInfo as ServiceInfo
@@ -18,11 +19,12 @@ import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import qualified Network.URI
 import Protolude
+import System.FilePath ((</>))
 import qualified System.Posix.Signals as PS
 import System.Process
 
 performEffect :: EffectTask.EffectTask -> App TaskStatus
-performEffect effectTask = do
+performEffect effectTask = withWorkDir "effect" $ \workDir -> do
   workerExe <- getWorkerExe
   commandChan <- liftIO newChan
   extraNixOptions <- Nix.askExtraOptions
@@ -33,17 +35,17 @@ performEffect effectTask = do
         (System.Process.proc workerExe opts)
           { env = Just workerEnv,
             close_fds = True,
-            cwd = Just "/"
+            cwd = Just workDir
           }
       writeEvent :: Event.Event -> App ()
       writeEvent event = case event of
         Event.EffectResult e -> do
           liftIO $ writeIORef effectResult (Just e)
         Event.Exception e -> do
-          logLocM DebugS $ show e
           panic e
         _ -> pass
-  materialize <- asks (not . Config.nixUserIsTrusted . Env.config)
+  config <- asks Env.config
+  let materialize = not (Config.nixUserIsTrusted config)
   baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   liftIO $ writeChan commandChan $ Just $ Command.Effect $ Command.Effect.Effect
     { drvPath = EffectTask.derivationPath effectTask,
@@ -53,7 +55,8 @@ performEffect effectTask = do
           path = "/api/v1/logs/build/socket",
           baseURL = toS $ Network.URI.uriToString identity baseURL ""
         },
-      materializeDerivation = materialize
+      materializeDerivation = materialize,
+      secretsPath = toS $ Config.staticSecretsDirectory config </> "secrets.json"
     }
   exitCode <- runWorker procSpec (stderrLineHandler "Effect worker") commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> show exitCode

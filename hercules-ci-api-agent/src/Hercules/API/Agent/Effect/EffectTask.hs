@@ -2,15 +2,8 @@
 
 module Hercules.API.Agent.Effect.EffectTask where
 
-import Data.Aeson
-  ( FromJSON,
-    ToJSON,
-  )
-import Data.Text (Text)
-import GHC.Generics (Generic)
-import Hercules.API.Id
+import Hercules.API.Prelude
 import Hercules.API.Task (Task)
-import Prelude
 
 data EffectTask
   = EffectTask
