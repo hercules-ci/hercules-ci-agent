@@ -7,13 +7,20 @@ module Hercules.API.Id
   )
 where
 
+import Control.Lens ((?~))
 import Data.Aeson
 import Data.Aeson.Types (toJSONKeyText)
+import Data.Function ((&))
 import Data.Hashable (Hashable (..))
-import Data.Proxy
 import Data.Swagger
-  ( ToParamSchema (..),
+  ( NamedSchema (NamedSchema),
+    ParamSchema,
+    SwaggerType (SwaggerString),
+    ToParamSchema (..),
     ToSchema (..),
+    format,
+    paramSchemaToSchema,
+    type_,
   )
 import Data.Text (Text)
 import qualified Data.UUID as UUID
@@ -68,10 +75,10 @@ instance FromHttpApiData (Id a) where
   parseUrlPiece = fmap Id . parseUrlPiece
 
 instance ToSchema (Id a) where
-  declareNamedSchema = declareNamedSchema . invmap idText
+  declareNamedSchema = pure . NamedSchema Nothing . paramSchemaToSchema
 
 instance ToParamSchema (Id a) where
-  toParamSchema = toParamSchema . invmap idText
-
-invmap :: (a -> b) -> proxy a -> Proxy b
-invmap _ _ = Proxy
+  toParamSchema _ =
+    (mempty :: ParamSchema t)
+      & type_ ?~ SwaggerString
+      & format ?~ "uuid"
