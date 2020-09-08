@@ -66,7 +66,8 @@ runEffect store command = do
     exitCode <- Container.run Container.Config
       { extraBindMounts =
           [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
-            BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True}
+            BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
+            BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = True}
           ],
         executable = toS drvBuilder,
         arguments = map toS drvArgs,
