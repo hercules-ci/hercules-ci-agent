@@ -22,12 +22,12 @@ import Hercules.API.Servant (useApi)
 import Protolude
 import Servant.API.Generic
 import Servant.Auth.Client ()
-import qualified Servant.Client
-import Servant.Client (ClientM)
 import Servant.Client.Generic (AsClientT)
+import qualified Servant.Client.Streaming
+import Servant.Client.Streaming (ClientM)
 
 client :: AgentAPI ClientAuth (AsClientT ClientM)
-client = fromServant $ Servant.Client.client (servantApi @ClientAuth)
+client = fromServant $ Servant.Client.Streaming.client (servantApi @ClientAuth)
 
 tasksClient :: TasksAPI ClientAuth (AsClientT ClientM)
 tasksClient = useApi tasks $ Hercules.Agent.Client.client
@@ -43,5 +43,5 @@ lifeCycleClient = useApi lifeCycle $ Hercules.Agent.Client.client
 
 logsClient :: LogsAPI () (AsClientT ClientM)
 logsClient =
-  fromServant $ Servant.Client.client $
+  fromServant $ Servant.Client.Streaming.client $
     (Proxy @(AddAPIVersion (ToServantApi (LogsAPI ()))))

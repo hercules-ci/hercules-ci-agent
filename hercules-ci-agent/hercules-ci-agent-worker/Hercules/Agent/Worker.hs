@@ -34,6 +34,7 @@ import Hercules.API.Logs.LogEntry (LogEntry)
 import qualified Hercules.API.Logs.LogEntry as LogEntry
 import Hercules.API.Logs.LogMessage (LogMessage)
 import qualified Hercules.API.Logs.LogMessage as LogMessage
+import Hercules.Agent.Sensitive
 import qualified Hercules.Agent.Socket as Socket
 import Hercules.Agent.Worker.Build (runBuild)
 import qualified Hercules.Agent.Worker.Build.Logger as Logger
@@ -313,7 +314,7 @@ makeSocketConfig l = do
       checkVersion = Socket.checkVersion',
       baseURL = baseURL,
       path = LogSettings.path l,
-      token = toSL $ LogSettings.reveal $ LogSettings.token l
+      token = toSL $ reveal $ LogSettings.token l
     }
 
 -- TODO: test

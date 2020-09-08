@@ -23,6 +23,7 @@ import Hercules.Agent.Env
 import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
+import Hercules.Agent.Sensitive (Sensitive (Sensitive))
 import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import Hercules.Agent.WorkerProcess
 import qualified Hercules.Agent.WorkerProcess as WorkerProcess
@@ -63,7 +64,7 @@ performBuild buildTask = do
     { drvPath = BuildTask.derivationPath buildTask,
       inputDerivationOutputPaths = toS <$> BuildTask.inputDerivationOutputPaths buildTask,
       logSettings = LogSettings.LogSettings
-        { token = LogSettings.Sensitive $ BuildTask.logToken buildTask,
+        { token = Sensitive $ BuildTask.logToken buildTask,
           path = "/api/v1/logs/build/socket",
           baseURL = toS $ Network.URI.uriToString identity baseURL ""
         },

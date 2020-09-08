@@ -10,6 +10,7 @@ import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Files
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
+import Hercules.Agent.Sensitive (Sensitive (Sensitive))
 import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import Hercules.Agent.WorkerProcess
 import qualified Hercules.Agent.WorkerProcess as WorkerProcess
@@ -51,12 +52,14 @@ performEffect effectTask = withWorkDir "effect" $ \workDir -> do
     { drvPath = EffectTask.derivationPath effectTask,
       inputDerivationOutputPaths = toS <$> EffectTask.inputDerivationOutputPaths effectTask,
       logSettings = LogSettings.LogSettings
-        { token = LogSettings.Sensitive $ EffectTask.logToken effectTask,
+        { token = Sensitive $ EffectTask.logToken effectTask,
           path = "/api/v1/logs/build/socket",
           baseURL = toS $ Network.URI.uriToString identity baseURL ""
         },
       materializeDerivation = materialize,
-      secretsPath = toS $ Config.staticSecretsDirectory config </> "secrets.json"
+      secretsPath = toS $ Config.staticSecretsDirectory config </> "secrets.json",
+      token = Sensitive (EffectTask.token effectTask),
+      apiBaseURL = Config.herculesApiBaseURL config
     }
   exitCode <- runWorker procSpec (stderrLineHandler "Effect worker") commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> show exitCode

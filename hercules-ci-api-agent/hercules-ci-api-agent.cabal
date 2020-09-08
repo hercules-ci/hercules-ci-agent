@@ -46,6 +46,7 @@ library
       Hercules.API.Agent.Socket.Frame
       Hercules.API.Agent.Socket.AgentPayload
       Hercules.API.Agent.Socket.ServicePayload
+      Hercules.API.Agent.State
       Hercules.API.Agent.Tasks
       Hercules.API.Agent
       Hercules.API.Logs
@@ -68,6 +69,7 @@ library
     , base64-bytestring-type
     , containers
     , cookie
+    , deepseq
     , exceptions
     , hashable
     , hercules-ci-api-core

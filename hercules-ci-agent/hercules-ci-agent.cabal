@@ -27,6 +27,7 @@ library
       Data.Fixed.Extras
       Data.Time.Extras
       Hercules.Agent.Producer
+      Hercules.Agent.Sensitive
       Hercules.Agent.Socket
       Hercules.Agent.STM
       Hercules.Agent.WorkerProtocol.Command

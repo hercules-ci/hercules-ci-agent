@@ -10,6 +10,7 @@ data EffectTask
       { id :: Id (Task EffectTask),
         derivationPath :: Text,
         logToken :: Text,
-        inputDerivationOutputPaths :: [Text]
+        inputDerivationOutputPaths :: [Text],
+        token :: Text
       }
   deriving (Generic, Show, Eq, ToJSON, FromJSON)

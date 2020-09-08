@@ -52,6 +52,7 @@ import Hercules.Agent.NixPath
   ( renderSubPath,
   )
 import Hercules.Agent.Producer
+import Hercules.Agent.Sensitive (Sensitive (Sensitive))
 import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import Hercules.Agent.WorkerProcess ()
 import qualified Hercules.Agent.WorkerProcess as WorkerProcess
@@ -278,7 +279,7 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
           Eval.autoArguments = autoArguments,
           Eval.extraNixOptions = extraOpts,
           Eval.logSettings = LogSettings.LogSettings
-            { token = LogSettings.Sensitive logToken,
+            { token = Sensitive logToken,
               path = "/api/v1/logs/build/socket",
               baseURL = toS $ Network.URI.uriToString identity baseURL ""
             }

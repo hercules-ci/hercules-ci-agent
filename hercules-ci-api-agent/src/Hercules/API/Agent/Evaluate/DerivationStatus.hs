@@ -2,6 +2,7 @@
 
 module Hercules.API.Agent.Evaluate.DerivationStatus where
 
+import Control.DeepSeq (NFData)
 import Hercules.API.Prelude
 
 -- TODO simplify
@@ -11,4 +12,4 @@ data DerivationStatus
   | BuildFailure
   | DependencyFailure
   | BuildSuccess
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
