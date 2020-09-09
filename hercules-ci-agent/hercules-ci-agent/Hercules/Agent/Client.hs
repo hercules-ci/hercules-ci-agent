@@ -1,5 +1,9 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -O0 #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 -- TODO https://github.com/haskell-servant/servant/issues/986
 module Hercules.Agent.Client
@@ -16,15 +20,29 @@ import Hercules.API.Agent (AddAPIVersion, AgentAPI, ClientAuth, build, eval, lif
 import Hercules.API.Agent.Build (BuildAPI)
 import Hercules.API.Agent.Evaluate (EvalAPI)
 import Hercules.API.Agent.LifeCycle (LifeCycleAPI)
+import Hercules.API.Agent.State (ContentLength)
 import Hercules.API.Agent.Tasks (TasksAPI)
 import Hercules.API.Logs (LogsAPI)
 import Hercules.API.Servant (useApi)
 import Protolude
+import Servant.API
 import Servant.API.Generic
 import Servant.Auth.Client ()
 import Servant.Client.Generic (AsClientT)
 import qualified Servant.Client.Streaming
 import Servant.Client.Streaming (ClientM)
+
+-- | Bad instance to make it the client for State api compile. GHC seems to pick
+-- the wrong overlappable instance.
+instance
+  FromSourceIO
+    ByteString
+    ( Headers
+        '[Hercules.API.Agent.State.ContentLength]
+        (SourceIO ByteString)
+    )
+  where
+  fromSourceIO = addHeader (-1) . fromSourceIO
 
 client :: AgentAPI ClientAuth (AsClientT ClientM)
 client = fromServant $ Servant.Client.Streaming.client (servantApi @ClientAuth)
