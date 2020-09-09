@@ -5,7 +5,6 @@ module Hercules.API.Agent.LifeCycle.ServiceInfo
   )
 where
 
-import Control.DeepSeq (NFData)
 import Hercules.API.Prelude
 
 data ServiceInfo

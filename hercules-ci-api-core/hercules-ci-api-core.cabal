@@ -42,7 +42,7 @@ library
     , http-api-data
     , http-media
     , lens
-    , katip
+    , katip >= 0.7.0.0
     , memory
     , lifted-base
     , monad-control

@@ -9,7 +9,6 @@ import Control.Monad.Trans.Control (MonadBaseControl)
 import GHC.Conc (threadDelay)
 import Hercules.API.Prelude
 import Katip
-import Katip.Monadic (logLocM)
 
 escalate :: (Exception exc, MonadThrow m) => Either exc a -> m a
 escalate = escalateAs id
