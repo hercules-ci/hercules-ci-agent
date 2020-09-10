@@ -21,7 +21,7 @@ data AgentInfo
         substituters :: [Text],
         concurrentTasks :: Int
       }
-  deriving (Generic, Show, Eq, ToJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON)
 
 instance FromJSON AgentInfo where
   parseJSON = A.genericParseJSON A.defaultOptions . fixup

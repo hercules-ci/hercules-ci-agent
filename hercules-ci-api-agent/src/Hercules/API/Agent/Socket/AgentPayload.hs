@@ -12,10 +12,10 @@ data AgentPayload
   | Ping
   | Started Started
   | Cancelled Cancelled
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 data Started = MkStarted {taskId :: Id (Task Task.Any)}
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 data Cancelled = MkCancelled {taskId :: Id (Task Task.Any)}
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

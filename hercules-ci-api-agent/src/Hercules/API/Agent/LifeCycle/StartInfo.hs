@@ -16,7 +16,7 @@ data Hello
         startInfo :: StartInfo,
         tasksInProgress :: [Id (Task Any)]
       }
-  deriving (Generic, Show, Eq, ToJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON)
 
 instance FromJSON Hello where
   parseJSON = A.genericParseJSON A.defaultOptions . fixup
@@ -29,4 +29,4 @@ data StartInfo
       { id :: Id StartInfo,
         startTime :: UTCTime
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

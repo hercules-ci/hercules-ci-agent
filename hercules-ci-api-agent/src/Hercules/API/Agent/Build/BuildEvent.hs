@@ -15,4 +15,4 @@ data BuildEvent
   | Pushed Pushed
   | -- | legacy
     Done Bool
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

@@ -9,4 +9,4 @@ data PushedAll
   = PushedAll
       { cache :: Text
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

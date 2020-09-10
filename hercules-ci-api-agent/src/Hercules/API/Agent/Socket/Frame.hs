@@ -17,7 +17,7 @@ data Frame o a
     Ack {n :: Integer}
   | -- | Exception
     Exception {message :: Text}
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 mapOob :: (a -> b) -> Frame a c -> Frame b c
 mapOob f (Oob a) = Oob (f a)

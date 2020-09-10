@@ -10,7 +10,7 @@ import Hercules.API.Prelude
 import Hercules.API.Task
 
 data Cancel = MkCancel {taskId :: Id (Task Any)}
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 data ServicePayload
   = ServiceInfo ServiceInfo
@@ -18,4 +18,4 @@ data ServicePayload
   | StartBuild BuildTask
   | StartEffect EffectTask
   | Cancel Cancel
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

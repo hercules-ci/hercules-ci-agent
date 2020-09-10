@@ -33,4 +33,4 @@ data EvaluateEvent
   | PushedAll PushedAll
   | BuildRequired BuildRequired
   | BuildRequest BuildRequest
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

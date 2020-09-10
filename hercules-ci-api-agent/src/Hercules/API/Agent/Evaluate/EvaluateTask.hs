@@ -3,17 +3,9 @@
 
 module Hercules.API.Agent.Evaluate.EvaluateTask where
 
-import Data.Aeson
-  ( FromJSON,
-    ToJSON,
-    Value,
-  )
-import Data.Map (Map)
-import Data.Text (Text)
-import GHC.Generics (Generic)
-import Hercules.API.Id
+import Data.Aeson (Value)
+import Hercules.API.Prelude
 import Hercules.API.Task (Task)
-import Prelude
 
 data EvaluateTask
   = EvaluateTask
@@ -25,7 +17,7 @@ data EvaluateTask
         nixPath :: [NixPathElement (SubPathOf Identifier)], -- NIX_PATH element -> identifier
         logToken :: Text
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 type Identifier = Text
 
@@ -35,7 +27,7 @@ data NixPathElement a
         prefix :: Maybe Text,
         value :: a
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, Functor, Foldable, Traversable)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, Functor, Foldable, Traversable)
 
 -- | For using a path inside a source
 data SubPathOf a
@@ -43,4 +35,4 @@ data SubPathOf a
       { path :: a,
         subPath :: Maybe Text
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, Functor, Foldable, Traversable)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, Functor, Foldable, Traversable)

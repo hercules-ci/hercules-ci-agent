@@ -2,15 +2,8 @@
 
 module Hercules.API.Task where
 
-import Data.Aeson
-  ( FromJSON,
-    ToJSON,
-  )
-import Data.Text (Text)
-import GHC.Generics (Generic)
-import Hercules.API.Id (Id)
 import qualified Hercules.API.Id as Id
-import Prelude hiding (id)
+import Hercules.API.Prelude hiding (id)
 
 -- | A task, typically performed by the agent.
 --
@@ -20,7 +13,7 @@ data Task a
       { typ :: Text,
         id :: Id (Task a)
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 -- | @'Task' 'Any' represents tasks whose type has not yet been
 -- read.

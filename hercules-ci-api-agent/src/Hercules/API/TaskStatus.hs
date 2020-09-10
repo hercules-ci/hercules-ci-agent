@@ -2,13 +2,7 @@
 
 module Hercules.API.TaskStatus where
 
-import Data.Aeson
-  ( FromJSON,
-    ToJSON,
-  )
-import Data.Text (Text)
-import GHC.Generics (Generic)
-import Prelude
+import Hercules.API.Prelude
 
 -- | Similar to a process exit code.
 --
@@ -20,4 +14,4 @@ data TaskStatus
     Terminated ()
   | -- | Some assumption in the software failed.
     Exceptional Text
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

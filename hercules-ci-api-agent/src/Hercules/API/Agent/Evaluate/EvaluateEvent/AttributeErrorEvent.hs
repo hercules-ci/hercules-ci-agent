@@ -12,7 +12,7 @@ data AttributeErrorEvent
         errorDerivation :: Maybe Text,
         errorType :: Maybe Text
       }
-  deriving (Generic, Show, Eq)
+  deriving (Generic, Show, Eq, NFData)
 
 instance ToJSON AttributeErrorEvent where
 
