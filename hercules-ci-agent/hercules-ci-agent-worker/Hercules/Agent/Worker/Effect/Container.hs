@@ -114,7 +114,7 @@ run config = do
               terminalHandle <- fdToHandle terminal
               let createProcSpec =
                     (System.Process.proc runcExe ["run", name])
-                      { std_in = UseHandle terminalHandle,
+                      { std_in = UseHandle terminalHandle, -- can't pass /dev/null :(
                         std_out = UseHandle terminalHandle,
                         std_err = UseHandle terminalHandle,
                         cwd = Just dir
