@@ -69,7 +69,8 @@ runEffect store command = do
           [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
             BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
             BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
-            BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = True}
+            BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = True},
+            BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = "/nix/var/nix/daemon-socket/socket", readOnly = True}
           ],
         executable = toS drvBuilder,
         arguments = map toS drvArgs,
