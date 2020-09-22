@@ -29,6 +29,7 @@ runEffect store command = do
   dir <- liftIO $ getCurrentDirectory
   let mkDir d = let newDir = dir </> d in toS newDir <$ liftIO (createDirectory newDir)
   buildDir <- mkDir "build"
+  etcDir <- mkDir "etc"
   secretsDir <- mkDir "secrets"
   let extraSecrets = M.singleton "hercules-ci" (M.singleton "token" . A.String <$> Command.Effect.token command)
   writeSecrets (Command.Effect.secretsPath command) drvSecretsMap extraSecrets (toS secretsDir)
@@ -66,6 +67,7 @@ runEffect store command = do
     exitCode <- Container.run Container.Config
       { extraBindMounts =
           [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
+            BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
             BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
             BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = True}
           ],
