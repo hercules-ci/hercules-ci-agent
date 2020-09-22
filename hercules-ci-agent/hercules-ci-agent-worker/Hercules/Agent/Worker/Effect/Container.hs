@@ -35,7 +35,8 @@ data Config
         executable :: Text,
         arguments :: [Text],
         environment :: Map Text Text,
-        workingDirectory :: Text
+        workingDirectory :: Text,
+        hostname :: Text
       }
 
 -- /nix/var/nix/daemon-socket/socket
@@ -45,7 +46,8 @@ testConfig = Config
     executable = "/nix/store/9pqfirjppd91mzhkgh8xnn66iwh53zk2-hello-2.10/bin/hello",
     arguments = [],
     environment = mempty,
-    workingDirectory = "/"
+    workingDirectory = "/",
+    hostname = "hercules-ci"
   }
 
 effectToRuncSpec :: Config -> Value -> Value
@@ -73,6 +75,7 @@ effectToRuncSpec config spec =
         & key "process" . key "terminal" .~ toJSON True
         & key "process" . key "env" .~ toJSON (config & environment & M.toList <&> \(k, v) -> k <> "=" <> v)
         & key "process" . key "cwd" .~ toJSON (config & workingDirectory)
+        & key "hostname" .~ toJSON (config & hostname)
 
 run :: Config -> IO ExitCode
 run config = do

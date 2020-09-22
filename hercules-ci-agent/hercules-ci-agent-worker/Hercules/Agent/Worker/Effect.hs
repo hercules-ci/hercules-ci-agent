@@ -78,7 +78,8 @@ runEffect store command = do
           (overridableEnv // drvEnv // onlyImpureOverridableEnv // impureEnvVars // fixedEnv)
             & M.mapKeys toSL
             & M.map toSL,
-        workingDirectory = "/build"
+        workingDirectory = "/build",
+        hostname = "hercules-ci"
       }
     pure exitCode
 
