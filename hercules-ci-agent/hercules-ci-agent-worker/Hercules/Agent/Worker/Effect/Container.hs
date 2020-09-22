@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE NumericUnderscores #-}
 
 module Hercules.Agent.Worker.Effect.Container where
 
@@ -121,6 +122,15 @@ run config = do
                       }
               r <- withCreateProcess createProcSpec \_subStdin _noOut _noErr processHandle -> do
                 waitForProcess processHandle
+                  `onException` ( do
+                                    putErrText "Terminating effect process..."
+                                    System.Process.withCreateProcess (System.Process.proc runcExe ["kill", name]) \_ _ _ kh ->
+                                      waitForProcess kh
+                                    threadDelay 3_000_000
+                                    System.Process.withCreateProcess (System.Process.proc runcExe ["kill", name, "KILL"]) \_ _ _ kh ->
+                                      waitForProcess kh
+                                    putErrText "Killed effect process."
+                                )
               pure r
           )
           ( do

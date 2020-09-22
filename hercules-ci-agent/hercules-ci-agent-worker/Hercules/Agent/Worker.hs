@@ -11,6 +11,7 @@ import CNix
 import qualified CNix.Internal.Raw
 import Conduit
 import Control.Concurrent.STM
+import qualified Control.Exception
 import qualified Control.Exception.Lifted as EL
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control
@@ -65,6 +66,7 @@ import Protolude hiding (bracket, catch, evalState, wait, withAsync)
 import qualified System.Environment as Environment
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.Posix.IO (dup, fdToHandle, stdError)
+import System.Posix.Signals (Handler (Catch), installHandler, raiseSignal, sigINT, sigTERM)
 import System.Timeout (timeout)
 import UnliftIO.Async (wait, withAsync)
 import UnliftIO.Exception (bracket, catch)
@@ -93,6 +95,7 @@ main :: IO ()
 main = do
   hSetBuffering stderr LineBuffering
   CNix.init
+  _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
   Logger.initLogger
   [options] <- Environment.getArgs
   let allOptions =
