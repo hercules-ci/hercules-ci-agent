@@ -11,7 +11,6 @@ import CNix
 import qualified CNix.Internal.Raw
 import Conduit
 import Control.Concurrent.STM
-import qualified Control.Exception
 import qualified Control.Exception.Lifted as EL
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control

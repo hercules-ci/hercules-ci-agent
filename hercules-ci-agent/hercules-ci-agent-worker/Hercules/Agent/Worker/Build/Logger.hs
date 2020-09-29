@@ -10,7 +10,6 @@ import Conduit (MonadUnliftIO, filterC)
 import qualified Data.ByteString.Char8 as BSC
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Data.Conduit (ConduitT, Flush (..), await, awaitForever, yield)
-import qualified Data.Text as T
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Foreign (alloca, nullPtr, peek)
