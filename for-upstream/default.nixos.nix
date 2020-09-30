@@ -40,6 +40,8 @@ in
         Restart = "on-failure";
         RestartSec = 120;
         StartLimitBurst = 30 * 1000000; # practically infinite
+        RuntimeDirectory = "runc";
+        RuntimeDirectoryPreserve = "yes";
       };
     };
 
