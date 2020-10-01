@@ -40,17 +40,6 @@ data Config
         hostname :: Text
       }
 
--- /nix/var/nix/daemon-socket/socket
-testConfig :: Config
-testConfig = Config
-  { extraBindMounts = [],
-    executable = "/nix/store/9pqfirjppd91mzhkgh8xnn66iwh53zk2-hello-2.10/bin/hello",
-    arguments = [],
-    environment = mempty,
-    workingDirectory = "/",
-    hostname = "hercules-ci"
-  }
-
 effectToRuncSpec :: Config -> Value -> Value
 effectToRuncSpec config spec =
   let defaultMounts = [defaultBindMount "/nix/store"]

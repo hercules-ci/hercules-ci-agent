@@ -158,7 +158,7 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir "eval" $ \tmpdir -> 
                 Nothing -> Eval.ExprArg $ argPath
                 Just attrs ->
                   Eval.ExprArg $
-                    -- TODO improve escaping
+                    -- TODO pass directly to avoid having to escape (or just escape properly)
                     "builtins.fromJSON ''" <> toS (A.encode attrs) <> "'' // { outPath = " <> argPath <> "; }"
   msgCounter <- liftIO $ newIORef 0
   let fixIndex ::

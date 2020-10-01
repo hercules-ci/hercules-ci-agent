@@ -10,7 +10,7 @@ import Hercules.Formats.Common
   )
 import Prelude
 
--- | Credentials and keys for a cache.
+-- | Arbitrary secret like keys, tokens, passwords etc.
 data Secret
   = Secret
       { data_ :: Map Text Value
