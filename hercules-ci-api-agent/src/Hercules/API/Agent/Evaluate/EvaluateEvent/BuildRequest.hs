@@ -14,7 +14,7 @@ data BuildRequest
       { derivationPath :: Text,
         forceRebuild :: Bool -- FIXME: API compatibility
       }
-  deriving (Generic, Show, Eq, ToJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON)
 
 instance FromJSON BuildRequest where
   parseJSON = A.genericParseJSON A.defaultOptions . fixup

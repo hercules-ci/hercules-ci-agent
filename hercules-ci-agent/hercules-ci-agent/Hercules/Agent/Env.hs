@@ -26,14 +26,14 @@ import qualified Katip as K
 import qualified Network.HTTP.Client
 import Protolude
 import qualified Servant.Auth.Client
-import qualified Servant.Client
+import qualified Servant.Client.Streaming
 
 data Env
   = Env
       { manager :: Network.HTTP.Client.Manager,
         config :: FinalConfig,
-        herculesBaseUrl :: Servant.Client.BaseUrl,
-        herculesClientEnv :: Servant.Client.ClientEnv,
+        herculesBaseUrl :: Servant.Client.Streaming.BaseUrl,
+        herculesClientEnv :: Servant.Client.Streaming.ClientEnv,
         serviceInfo :: ServiceInfo.Env,
         -- TODO: The implicit limitation here is that we can
         --       only have one token at a time. I wouldn't be surprised if this becomes
@@ -71,16 +71,17 @@ runApp :: Env -> App a -> IO a
 runApp env (App m) = runReaderT m env
 
 runHerculesClient ::
-  (Servant.Auth.Client.Token -> Servant.Client.ClientM a) ->
+  NFData a =>
+  (Servant.Auth.Client.Token -> Servant.Client.Streaming.ClientM a) ->
   App a
 runHerculesClient f = do
   tok <- asks currentToken
   runHerculesClient' (f tok)
 
-runHerculesClient' :: Servant.Client.ClientM a -> App a
+runHerculesClient' :: NFData a => Servant.Client.Streaming.ClientM a -> App a
 runHerculesClient' m = do
   clientEnv <- asks herculesClientEnv
-  escalate =<< liftIO (Servant.Client.runClientM m clientEnv)
+  escalate =<< liftIO (Servant.Client.Streaming.runClientM m clientEnv)
 
 instance K.Katip App where
 

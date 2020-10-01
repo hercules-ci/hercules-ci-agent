@@ -17,5 +17,6 @@ data Event
   | Error Text
   | Build Text Text (Maybe UUID)
   | BuildResult BuildResult
+  | EffectResult Int
   | Exception Text
   deriving (Generic, Binary, Show, Eq)

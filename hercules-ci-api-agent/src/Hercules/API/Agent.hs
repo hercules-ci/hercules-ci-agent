@@ -12,6 +12,9 @@ import Hercules.API.Agent.Evaluate
 import Hercules.API.Agent.LifeCycle
   ( LifeCycleAPI,
   )
+import Hercules.API.Agent.State
+  ( StateAPI,
+  )
 import Hercules.API.Agent.Tasks
   ( TasksAPI,
   )
@@ -25,7 +28,8 @@ data AgentAPI auth f
       { tasks :: f :- ToServantApi (TasksAPI auth),
         eval :: f :- ToServantApi (EvalAPI auth),
         build :: f :- ToServantApi (BuildAPI auth),
-        lifeCycle :: f :- ToServantApi (LifeCycleAPI auth)
+        lifeCycle :: f :- ToServantApi (LifeCycleAPI auth),
+        state :: f :- ToServantApi (StateAPI auth)
       }
   deriving (Generic)
 

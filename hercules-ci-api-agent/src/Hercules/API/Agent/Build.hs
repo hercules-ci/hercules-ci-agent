@@ -9,7 +9,6 @@ import Hercules.API.Prelude
 import qualified Hercules.API.Task as Task
 import Servant.API
 import Servant.API.Generic
-import Servant.Auth.Swagger ()
 
 data BuildAPI auth f
   = BuildAPI

@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PolyKinds #-}
 
 module Hercules.API.Id
@@ -7,6 +8,7 @@ module Hercules.API.Id
   )
 where
 
+import Control.DeepSeq (NFData)
 import Control.Lens ((?~))
 import Data.Aeson
 import Data.Aeson.Types (toJSONKeyText)
@@ -30,7 +32,7 @@ import Web.HttpApiData
 import Prelude
 
 newtype Id (a :: k) = Id {idUUID :: UUID}
-  deriving (Generic, Eq, Ord)
+  deriving (Generic, Eq, Ord, NFData)
 
 instance Hashable (Id a) where
   hashWithSalt s (Id uuid) =

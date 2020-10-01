@@ -1,15 +1,16 @@
 {-# LANGUAGE DeriveAnyClass #-}
 
-module Hercules.API.Agent.Build.BuildTask where
+module Hercules.API.Agent.Effect.EffectTask where
 
 import Hercules.API.Prelude
 import Hercules.API.Task (Task)
 
-data BuildTask
-  = BuildTask
-      { id :: Id (Task BuildTask),
+data EffectTask
+  = EffectTask
+      { id :: Id (Task EffectTask),
         derivationPath :: Text,
         logToken :: Text,
-        inputDerivationOutputPaths :: [Text]
+        inputDerivationOutputPaths :: [Text],
+        token :: Text
       }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

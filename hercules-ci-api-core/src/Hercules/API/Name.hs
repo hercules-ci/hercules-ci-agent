@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PolyKinds #-}
 
 module Hercules.API.Name
@@ -6,6 +7,7 @@ module Hercules.API.Name
   )
 where
 
+import Control.DeepSeq (NFData)
 import Data.Aeson
 import Data.Hashable (Hashable (..))
 import Data.Proxy
@@ -20,7 +22,7 @@ import Prelude
 
 -- | A slug. Display names are simply 'Text'.
 newtype Name (a :: k) = Name {nameText :: Text}
-  deriving (Generic, Eq, Ord)
+  deriving (Generic, Eq, Ord, NFData)
 
 instance Hashable (Name a)
 

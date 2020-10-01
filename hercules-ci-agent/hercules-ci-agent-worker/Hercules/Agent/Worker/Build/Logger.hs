@@ -314,9 +314,6 @@ tapper s = do
     Left _ -> pass
     Right "__%%hercules terminate log%%__" -> pass
     Right ln -> do
-      katipAddContext (sl "line" (toSL ln :: Text))
-        $ logLocM DebugS
-        $ "Intercepted stderr"
       liftIO
         [C.throwBlock| void {
           std::string s = $bs-cstr:ln;

@@ -9,4 +9,4 @@ data CreateAgentSession
   = CreateAgentSession
       { agentInfo :: AgentInfo
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

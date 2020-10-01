@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           hercules-ci-agent
-version:        0.7.4
+version:        0.8.0
 synopsis:       Runs Continuous Integration tasks on your machines
 category:       Nix, CI, Testing, DevOps
 homepage:       https://docs.hercules-ci.com
@@ -27,11 +27,13 @@ library
       Data.Fixed.Extras
       Data.Time.Extras
       Hercules.Agent.Producer
+      Hercules.Agent.Sensitive
       Hercules.Agent.Socket
       Hercules.Agent.STM
       Hercules.Agent.WorkerProtocol.Command
       Hercules.Agent.WorkerProtocol.Command.Build
       Hercules.Agent.WorkerProtocol.Command.BuildResult
+      Hercules.Agent.WorkerProtocol.Command.Effect
       Hercules.Agent.WorkerProtocol.Command.Eval
       Hercules.Agent.WorkerProtocol.Event
       Hercules.Agent.WorkerProtocol.Event.Attribute
@@ -160,10 +162,12 @@ executable hercules-ci-agent
       Hercules.Agent.Config
       Hercules.Agent.Config.BinaryCaches
       Hercules.Agent.Compat
+      Hercules.Agent.Effect
       Hercules.Agent.Env
       Hercules.Agent.EnvironmentInfo
       Hercules.Agent.Evaluate
       Hercules.Agent.Evaluate.TraversalQueue
+      Hercules.Agent.Files
       Hercules.Agent.Init
       Hercules.Agent.Log
       Hercules.Agent.Nix
@@ -220,6 +224,7 @@ executable hercules-ci-agent
     , network
     , optparse-applicative
     , process
+    , process-extras
     , protolude
     , safe-exceptions
     , servant >=0.14.1
@@ -249,6 +254,8 @@ executable hercules-ci-agent-worker
       Hercules.Agent.Worker.Build
       Hercules.Agent.Worker.Build.Prefetched
       Hercules.Agent.Worker.Build.Logger
+      Hercules.Agent.Worker.Effect
+      Hercules.Agent.Worker.Effect.Container
       Paths_hercules_ci_agent
   autogen-modules:
       Paths_hercules_ci_agent
@@ -289,7 +296,9 @@ executable hercules-ci-agent-worker
     , cnix
     , conduit
     , containers
+    , directory
     , exceptions
+    , filepath
     , hercules-ci-agent
     , hercules-ci-api-agent
     , hercules-ci-api-core
@@ -297,15 +306,21 @@ executable hercules-ci-agent-worker
     , inline-c
     , inline-c-cpp
     , katip
+    , lens
+    , lens-aeson
     , lifted-async
     , lifted-base
     , monad-control
     , network-uri
     , optparse-applicative
     , protolude
+    , process
+    , process-extras
     , safe-exceptions
     , stm
     , text
+    , temporary
+    , transformers
     , transformers-base
     , unix
     , unliftio

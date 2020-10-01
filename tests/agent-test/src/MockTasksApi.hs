@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -138,20 +139,18 @@ toServicePayload = \case
   AgentTask.Build t -> SP.StartBuild t
 
 fixup :: AgentTask.AgentTask -> IO AgentTask.AgentTask
-fixup (AgentTask.Evaluate t)
-  | "/" `T.isPrefixOf` EvaluateTask.primaryInput t =
-    do
-      env <- getEnvironment
-      let base = fromMaybe "http://api" $ L.lookup "BASE_URL" env
-      pure $
-        AgentTask.Evaluate
-          t
-            { EvaluateTask.primaryInput = toS base <> (EvaluateTask.primaryInput t),
-              EvaluateTask.otherInputs =
-                fmap
-                  (toS base <>)
-                  (EvaluateTask.otherInputs t)
-            }
+fixup (AgentTask.Evaluate t) = do
+  env <- getEnvironment
+  let base = maybe "http://api" toS $ L.lookup "BASE_URL" env
+      otherInputs' = t & EvaluateTask.otherInputs & map \input ->
+        if "/" `T.isPrefixOf` input
+          then base <> input
+          else input
+  pure $
+    AgentTask.Evaluate
+      t
+        { EvaluateTask.otherInputs = otherInputs'
+        }
 fixup x = pure x
 
 await :: ServerHandle -> Text -> IO TaskStatus.TaskStatus
@@ -283,7 +282,9 @@ logSocket _server conn = do
         send [Frame.Ack number]
 
 processLogPayload :: LogMessage -> Handler ()
-processLogPayload _ = pass
+processLogPayload _m = do
+  -- print _m
+  pass
 
 socket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
 socket server conn = do

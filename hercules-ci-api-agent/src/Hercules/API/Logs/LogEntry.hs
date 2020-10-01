@@ -12,19 +12,19 @@ import Data.Word (Word64)
 import Hercules.API.Prelude
 
 newtype ActivityId = ActivityId Word64
-  deriving newtype (ToJSON, FromJSON, Show, Eq)
+  deriving newtype (ToJSON, FromJSON, Show, Eq, NFData)
 
 newtype ActivityType = ActivityType Word64
-  deriving newtype (ToJSON, FromJSON, Show, Eq)
+  deriving newtype (ToJSON, FromJSON, Show, Eq, NFData)
 
 newtype ResultType = ResultType Word64
-  deriving newtype (ToJSON, FromJSON, Show, Eq)
+  deriving newtype (ToJSON, FromJSON, Show, Eq, NFData)
 
 pattern ResultTypeProgress :: ResultType
 pattern ResultTypeProgress = ResultType 105
 
 data Field = Int !Word64 | String !Text
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic, NFData)
 
 instance ToJSON Field where
   toJSON (Int int) = A.toJSON int
@@ -64,4 +64,4 @@ data LogEntry
         rtype :: !ResultType,
         fields :: !(Vector Field)
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

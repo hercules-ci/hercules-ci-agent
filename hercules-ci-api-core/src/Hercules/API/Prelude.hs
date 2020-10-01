@@ -14,6 +14,7 @@ module Hercules.API.Prelude
 
     -- * Type classes
     Generic,
+    NFData (..),
     ToJSON,
     FromJSON,
     ToSchema,
@@ -21,6 +22,7 @@ module Hercules.API.Prelude
   )
 where
 
+import Control.DeepSeq (NFData (..))
 import Data.Aeson
   ( FromJSON,
     ToJSON,

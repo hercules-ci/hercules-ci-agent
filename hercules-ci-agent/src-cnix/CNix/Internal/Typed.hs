@@ -1,14 +1,55 @@
 {-# LANGUAGE EmptyDataDecls #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module CNix.Internal.Typed where
 
 import CNix.Internal.Context
 import CNix.Internal.Raw
+import qualified Language.C.Inline.Cpp as C
 import Protolude hiding
   ( evalState,
     throwIO,
   )
 import Prelude (userError)
+
+C.context context
+
+C.include "<stdio.h>"
+
+C.include "<cstring>"
+
+C.include "<math.h>"
+
+C.include "<nix/config.h>"
+
+C.include "<nix/shared.hh>"
+
+C.include "<nix/eval.hh>"
+
+C.include "<nix/eval-inline.hh>"
+
+C.include "<nix/store-api.hh>"
+
+C.include "<nix/common-eval-args.hh>"
+
+C.include "<nix/get-drvs.hh>"
+
+C.include "<nix/derivations.hh>"
+
+C.include "<nix/affinity.hh>"
+
+C.include "<nix/globals.hh>"
+
+C.include "aliases.h"
+
+C.include "<gc/gc.h>"
+
+C.include "<gc/gc_cpp.h>"
+
+C.include "<gc/gc_allocator.h>"
+
+C.using "namespace nix"
 
 -- | Runtime-Typed Value. This implies that it has been forced,
 -- because otherwise the type would not be known.
@@ -75,3 +116,8 @@ match es v = forceValue es v >>= \case
     Float -> pure $ IsFloat $ unsafeAssertType v
     Other ->
       Left $ SomeException $ userError "Unknown runtime type in Nix value"
+
+getBool :: Value Bool -> IO Bool
+getBool (Value (RawValue v)) =
+  (0 /=)
+    <$> [C.exp| int { $(Value *v)->boolean ? 1 : 0 }|]

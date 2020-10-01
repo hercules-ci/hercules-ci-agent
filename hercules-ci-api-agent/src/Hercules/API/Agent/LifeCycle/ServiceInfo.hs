@@ -13,4 +13,4 @@ data ServiceInfo
         agentSocketBaseURL :: Text,
         bulkSocketBaseURL :: Text
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

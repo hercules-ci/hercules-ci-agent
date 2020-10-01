@@ -23,12 +23,11 @@ import CNix.Internal.Store
 import CNix.Internal.Typed
 import Conduit
 import qualified Data.Map as M
+import Foreign (nullPtr)
 import qualified Foreign.C.String
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude hiding (evalState, throwIO)
-
-newtype Bindings = Bindings (Ptr Bindings')
 
 C.context context
 
@@ -113,9 +112,6 @@ logInfo t = do
     printInfo($bs-cstr:bstr);
   }|]
 
-mkBindings :: Ptr Bindings' -> IO Bindings
-mkBindings p = pure $ Bindings p
-
 withEvalState ::
   MonadResource m =>
   Ptr (Ref NixStore) ->
@@ -148,15 +144,15 @@ newStrings = [C.exp| Strings* { new (NoGC) Strings() }|]
 appendString :: Ptr Strings -> ByteString -> IO ()
 appendString ss s =
   [C.block| void {
-    $(Strings *ss)->push_back($bs-ptr:s);
+    $(Strings *ss)->push_back(std::string($bs-ptr:s, $bs-len:s));
   }|]
 
-evalArgs :: Ptr EvalState -> [ByteString] -> IO Bindings
+evalArgs :: Ptr EvalState -> [ByteString] -> IO (Value NixAttrs)
 evalArgs evalState args = do
   argsStrings <- newStrings
   forM_ args $ appendString argsStrings
-  mkBindings
-    =<< [C.throwBlock| Bindings * {
+  fmap unsafeAssertType . mkRawValue
+    =<< [C.throwBlock| Value * {
       Strings *args = $(Strings *argsStrings);
       struct MixEvalArgs evalArgs;
       Bindings *autoArgs;
@@ -164,25 +160,22 @@ evalArgs evalState args = do
 
       evalArgs.parseCmdline(*args);
       autoArgs = evalArgs.getAutoArgs(state);
-      if (autoArgs == NULL) {
-        //cerr << "Could not evaluate automatic arguments" << endl;
-        abort(); // FIXME
+      if (!autoArgs) {
+        throw nix::Error("Could not evaluate automatic arguments");
       }
-      return autoArgs;
-
-      // catch (EvalError & e) {
-      // catch (Error & e) {
-      // catch (std::exception & e) {
-
+      Value *r = new (NoGC) Value ();
+      r->type = tAttrs;
+      r->attrs = autoArgs;
+      return r;
     }|]
 
-autoCallFunction :: Ptr EvalState -> RawValue -> Bindings -> IO RawValue
-autoCallFunction evalState (RawValue fun) (Bindings autoArgs) =
+autoCallFunction :: Ptr EvalState -> RawValue -> Value NixAttrs -> IO RawValue
+autoCallFunction evalState (RawValue fun) (Value (RawValue autoArgs)) =
   mkRawValue
     =<< [C.throwBlock| Value* {
           Value result;
           $(EvalState *evalState)->autoCallFunction(
-                  *$(Bindings *autoArgs),
+                  *$(Value *autoArgs)->attrs,
                   *$(Value *fun),
                   result);
           return new (NoGC) Value (result);
@@ -226,8 +219,25 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
           }
         } |]
 
-getAttrBindings :: Value NixAttrs -> IO Bindings
-getAttrBindings (Value (RawValue v)) = mkBindings =<< [C.exp| Bindings *{ $(Value *v)->attrs } |]
+getAttr :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Maybe RawValue)
+getAttr evalState (Value (RawValue v)) k =
+  mkNullableRawValue
+    =<< [C.throwBlock| Value *{
+      Value &v = *$(Value *v);
+      EvalState &evalState = *$(EvalState *evalState);
+      Symbol k = evalState.symbols.create($bs-cstr:k);
+      Bindings::iterator iter = v.attrs->find(k);
+      if (iter == v.attrs->end()) {
+        return nullptr;
+      } else {
+        return iter->value;
+      }
+    }|]
+
+-- | Converts 'nullPtr' to 'Nothing'; actual values to @Just (a :: 'RawValue')@
+mkNullableRawValue :: Ptr Value' -> IO (Maybe RawValue)
+mkNullableRawValue p | p == nullPtr = pure Nothing
+mkNullableRawValue p = Just <$> mkRawValue p
 
 getAttrs :: Value NixAttrs -> IO (Map ByteString RawValue)
 getAttrs (Value (RawValue v)) = do

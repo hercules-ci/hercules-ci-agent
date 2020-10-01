@@ -2,14 +2,7 @@
 
 module Hercules.API.Agent.Evaluate.EvaluateEvent.Message where
 
-import Data.Aeson
-  ( FromJSON,
-    ToJSON,
-  )
-import Data.Swagger (ToSchema)
-import Data.Text (Text)
-import GHC.Generics (Generic)
-import Prelude
+import Hercules.API.Prelude
 
 data Message
   = Message
@@ -17,7 +10,7 @@ data Message
         typ :: Type,
         message :: Text
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 data Type
   = -- | Something went wrong, inform user about possible
@@ -32,4 +25,4 @@ data Type
     -- @trace@. Indeed side effecting evaluation breaks the
     -- abstraction.
     Trace
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

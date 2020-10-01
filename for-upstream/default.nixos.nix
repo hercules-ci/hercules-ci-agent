@@ -34,12 +34,18 @@ in
       wantedBy = [ "multi-user.target" ];
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
+      # Allow agent to continue running as long as possible during restart.
+      # NOTE: ExecStop commands will be taken from the new configuration,
+      #       but we don't currently have any.
+      stopIfChanged = false;
       serviceConfig = {
         User = cfg.user;
         ExecStart = command;
         Restart = "on-failure";
         RestartSec = 120;
         StartLimitBurst = 30 * 1000000; # practically infinite
+        RuntimeDirectory = "runc";
+        RuntimeDirectoryPreserve = "yes";
       };
     };
 

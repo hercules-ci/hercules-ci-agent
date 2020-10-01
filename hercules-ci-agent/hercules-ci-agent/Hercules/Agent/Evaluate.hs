@@ -11,7 +11,7 @@ import CNix (withStore)
 import Conduit
 import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
-import Control.Monad.IO.Unlift
+import qualified Data.Aeson as A
 import Data.Conduit.Process (sourceProcessWithStreams)
 import Data.IORef
   ( atomicModifyIORef,
@@ -39,10 +39,10 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Servant (noContent)
 import qualified Hercules.Agent.Cache as Agent.Cache
 import qualified Hercules.Agent.Client
-import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
 import qualified Hercules.Agent.Env as Env
 import qualified Hercules.Agent.Evaluate.TraversalQueue as TraversalQueue
+import Hercules.Agent.Files
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Nix as Nix
 import Hercules.Agent.Nix.RetrieveDerivationInfo
@@ -52,6 +52,7 @@ import Hercules.Agent.NixPath
   ( renderSubPath,
   )
 import Hercules.Agent.Producer
+import Hercules.Agent.Sensitive (Sensitive (Sensitive))
 import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import Hercules.Agent.WorkerProcess ()
 import qualified Hercules.Agent.WorkerProcess as WorkerProcess
@@ -70,7 +71,6 @@ import Protolude hiding (finally, newChan, writeChan)
 import qualified Servant.Client
 import qualified System.Directory as Dir
 import System.FilePath
-import System.IO.Temp (withTempDirectory)
 import System.Process
 
 eventLimit :: Int
@@ -90,19 +90,34 @@ produceEvaluationTaskEvents ::
   EvaluateTask.EvaluateTask ->
   (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
   App ()
-produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
+produceEvaluationTaskEvents task writeToBatch = withWorkDir "eval" $ \tmpdir -> do
   logLocM DebugS "Retrieving evaluation task"
   let emitSingle = writeToBatch . Syncable
       sync = syncer writeToBatch
-  projectDir <-
-    fetchSource
-      (tmpdir </> "primary")
-      (EvaluateTask.primaryInput task)
-  withNamedContext "projectDir" projectDir $
-    logLocM DebugS "Determined projectDir"
   inputLocations <-
-    flip M.traverseWithKey (EvaluateTask.otherInputs task) $
-      \k src -> fetchSource (tmpdir </> ("arg-" <> toS k)) src
+    EvaluateTask.otherInputs task
+      & M.traverseWithKey \k src -> do
+        let fetchName = tmpdir </> ("fetch-" <> toS k)
+            argName = tmpdir </> ("arg-" <> toS k)
+            metaName = do
+              meta <- EvaluateTask.inputMetadata task & M.lookup k
+              nameValue <- meta & M.lookup "name"
+              name <- case A.fromJSON nameValue of
+                A.Success a -> pure a
+                _ -> Nothing
+              guard (isValidName name)
+              pure name
+            destName
+              | Just sourceName <- metaName = argName </> sourceName
+              | otherwise = argName
+        fetched <- fetchSource fetchName src
+        liftIO do
+          Dir.createDirectoryIfMissing True (takeDirectory destName)
+          renamePathTryHarder fetched destName
+        pure destName
+  projectDir <- case M.lookup "src" inputLocations of
+    Nothing -> panic "No primary source provided"
+    Just x -> pure x
   nixPath <-
     EvaluateTask.nixPath task
       & ( traverse
@@ -135,7 +150,16 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
                   <> identifier
         )
   let autoArguments = autoArguments'
-        <&> \sp -> Eval.ExprArg $ toS $ renderSubPath $ toS <$> sp
+        & M.mapWithKey \k sp ->
+          let argPath = toS $ renderSubPath $ toS <$> sp
+           in case do
+                inputId <- EvaluateTask.autoArguments task & M.lookup k
+                EvaluateTask.inputMetadata task & M.lookup (EvaluateTask.path inputId) of
+                Nothing -> Eval.ExprArg $ argPath
+                Just attrs ->
+                  Eval.ExprArg $
+                    -- TODO pass directly to avoid having to escape (or just escape properly)
+                    "builtins.fromJSON ''" <> toS (A.encode attrs) <> "'' // { outPath = " <> argPath <> "; }"
   msgCounter <- liftIO $ newIORef 0
   let fixIndex ::
         MonadIO m =>
@@ -223,6 +247,16 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
               emit $ EvaluateEvent.DerivationInfo drvInfo
        in doIt
 
+isValidName :: FilePath -> Bool
+isValidName "" = False
+isValidName cs@(c0 : _) = all isValidNameChar cs && c0 /= '.'
+  where
+    isValidNameChar c =
+      (c >= 'A' && c <= 'Z')
+        || (c >= 'a' && c <= 'z')
+        || (c >= '0' && c <= '9')
+        || c `elem` ("+-._?=" :: [Char])
+
 runEvalProcess ::
   FilePath ->
   FilePath ->
@@ -245,7 +279,7 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
           Eval.autoArguments = autoArguments,
           Eval.extraNixOptions = extraOpts,
           Eval.logSettings = LogSettings.LogSettings
-            { token = LogSettings.Sensitive logToken,
+            { token = Sensitive logToken,
               path = "/api/v1/logs/build/socket",
               baseURL = toS $ Network.URI.uriToString identity baseURL ""
             }
@@ -262,7 +296,13 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
               Event.Attribute a -> do
                 emit $ EvaluateEvent.Attribute $ AttributeEvent.AttributeEvent
                   { AttributeEvent.expressionPath = toSL <$> WorkerAttribute.path a,
-                    AttributeEvent.derivationPath = toSL $ WorkerAttribute.drv a
+                    AttributeEvent.derivationPath = toSL $ WorkerAttribute.drv a,
+                    AttributeEvent.typ = case WorkerAttribute.typ a of
+                      WorkerAttribute.Regular -> AttributeEvent.Regular
+                      WorkerAttribute.MustFail -> AttributeEvent.MustFail
+                      WorkerAttribute.MayFail -> AttributeEvent.MayFail
+                      WorkerAttribute.Effect -> AttributeEvent.Effect
+                      WorkerAttribute.DependenciesOnly -> AttributeEvent.DependenciesOnly
                   }
                 continue
               Event.AttributeError e -> do
@@ -311,9 +351,10 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                     return status
                 writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drv) status
                 continue
+              Event.Exception e -> panic e
               -- Unused during eval
               Event.BuildResult {} -> pass
-              Event.Exception e -> panic e
+              Event.EffectResult {} -> pass
           )
           ( \case
               ExitSuccess -> logLocM DebugS "Clean worker exit"
@@ -450,15 +491,3 @@ postBatch task events =
           (EvaluateTask.id task)
           events
       )
-
--- TODO: configurable temp directory
-withWorkDir :: (FilePath -> App b) -> App b
-withWorkDir f = do
-  UnliftIO {unliftIO = unlift} <- askUnliftIO
-  workDir <- asks (Config.workDirectory . config)
-  liftIO $ withTempDirectory workDir "eval" $ unlift . f
-
-readFileMaybe :: MonadIO m => FilePath -> m (Maybe Text)
-readFileMaybe fp = liftIO do
-  exists <- Dir.doesFileExist fp
-  guard exists & traverse \_ -> readFile fp

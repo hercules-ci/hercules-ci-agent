@@ -6,7 +6,7 @@ import qualified Hercules.Agent.Client as Client
 import Hercules.Error (escalate)
 import Network.URI
 import Protolude
-import qualified Servant.Client
+import qualified Servant.Client.Streaming
 
 data Env
   = Env
@@ -14,9 +14,9 @@ data Env
         bulkSocketBaseURL :: URI
       }
 
-newEnv :: Servant.Client.ClientEnv -> IO Env
+newEnv :: Servant.Client.Streaming.ClientEnv -> IO Env
 newEnv clientEnv = do
-  serviceInfo <- escalate =<< Servant.Client.runClientM (API.LifeCycle.getServiceInfo Client.lifeCycleClient) clientEnv
+  serviceInfo <- escalate =<< Servant.Client.Streaming.runClientM (API.LifeCycle.getServiceInfo Client.lifeCycleClient) clientEnv
   let parse varName text = case parseURI (toS text) of
         Nothing -> panic $ varName <> " invalid: " <> ServiceInfo.agentSocketBaseURL serviceInfo
         Just uri -> uri <$ do

@@ -104,7 +104,7 @@ in
       };
     extraOptions = mkOption {
       description = ''
-        This lets you can add extra options to the agent's config file, in case
+        This lets you add extra options to the agent's config file, in case
         you are using an upstreamed module with a newer version of the package.
 
         These will override the other options in this module.

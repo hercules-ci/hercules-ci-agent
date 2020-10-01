@@ -41,6 +41,7 @@ let
                     callPkg super "hercules-ci-agent" ../hercules-ci-agent {
                       bdw-gc = pkgs.boehmgc-hercules;
                     };
+                  bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git nix ] ++ lib.optional (pkgs.stdenv.isLinux) pkgs.runc;
 
                 in
                   buildFromSdist (
@@ -52,7 +53,7 @@ let
                           postInstall =
                             o.postInstall or ""
                             + ''
-                              wrapProgram $out/bin/hercules-ci-agent --prefix PATH : ${makeBinPath [ pkgs.gnutar pkgs.gzip pkgs.git nix ]}
+                              wrapProgram $out/bin/hercules-ci-agent --prefix PATH : ${makeBinPath bundledBins}
                             ''
                           ;
                           passthru =
