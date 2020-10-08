@@ -1,8 +1,13 @@
 module Hercules.Agent.Nix where
 
+import Control.Monad.Trans.Maybe
+import qualified Data.ByteString as BS
+import qualified Data.Text as T
 import Hercules.Agent.Env as Agent.Env
+import Hercules.Agent.EnvironmentInfo (getNixInfo, nixNetrcFile)
 import Hercules.Agent.Nix.Env as Nix.Env
 import Protolude
+import System.Directory (doesFileExist)
 import System.Process (readProcess)
 import qualified System.Process
 
@@ -42,3 +47,17 @@ nixProc :: Text -> [Text] -> [Text] -> App System.Process.CreateProcess
 nixProc exe opts args = do
   extraOpts <- getExtraOptionArguments
   pure $ System.Process.proc (toSL exe) (map toSL (opts <> extraOpts <> ["--"] <> args))
+
+getNetrcLines :: App [Text]
+getNetrcLines = liftIO $ do
+  info <- getNixInfo
+  let fm = toS <$> nixNetrcFile info
+  fmap (foldMap identity) <$> runMaybeT $ do
+    f <- MaybeT $ pure fm
+    exs <- lift $ doesFileExist f
+    guard exs
+    bs <- liftIO $ BS.readFile f
+    pure $
+      bs
+        & decodeUtf8
+        & T.lines

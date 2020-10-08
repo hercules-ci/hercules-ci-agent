@@ -52,7 +52,8 @@ data NixInfo
         nixSystemFeatures :: [Text],
         nixSubstituters :: [Text],
         nixTrustedPublicKeys :: [Text],
-        nixNarinfoCacheNegativeTTL :: Maybe Integer
+        nixNarinfoCacheNegativeTTL :: Maybe Integer,
+        nixNetrcFile :: Maybe Text
       }
 
 getNixInfo :: IO NixInfo
@@ -103,7 +104,12 @@ getNixInfo = do
           ^? key "narinfo-cache-negative-ttl"
           . key "value"
           . _Number
-          . to floor
+          . to floor,
+      nixNetrcFile =
+        cfg
+          ^? key "netrc-file"
+          . key "value"
+          . _String
     }
 
 cleanUrl :: Text -> Text
