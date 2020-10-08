@@ -52,7 +52,7 @@ getNetrcLines :: App [Text]
 getNetrcLines = liftIO $ do
   info <- getNixInfo
   let fm = toS <$> nixNetrcFile info
-  fmap (foldMap identity) <$> runMaybeT $ do
+  fmap fold <$> runMaybeT $ do
     f <- MaybeT $ pure fm
     exs <- lift $ doesFileExist f
     guard exs
