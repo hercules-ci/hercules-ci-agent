@@ -22,7 +22,7 @@ import qualified Unsafe.Coerce
 
 withCaches :: App a -> App a
 withCaches m = do
-  netrcLns <- Cachix.getNetrcLines
+  netrcLns <- (<>) <$> Cachix.getNetrcLines <*> Nix.getNetrcLines
   csubsts <- Cachix.getSubstituters
   cpubkeys <- Cachix.getTrustedPublicKeys
   nixCaches <- asks (Config.nixCaches . Env.binaryCaches)
