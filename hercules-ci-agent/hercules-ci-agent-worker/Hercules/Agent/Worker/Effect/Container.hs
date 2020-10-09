@@ -37,7 +37,8 @@ data Config
         arguments :: [Text],
         environment :: Map Text Text,
         workingDirectory :: Text,
-        hostname :: Text
+        hostname :: Text,
+        rootReadOnly :: Bool
       }
 
 effectToRuncSpec :: Config -> Value -> Value
@@ -66,6 +67,7 @@ effectToRuncSpec config spec =
         & key "process" . key "env" .~ toJSON (config & environment & M.toList <&> \(k, v) -> k <> "=" <> v)
         & key "process" . key "cwd" .~ toJSON (config & workingDirectory)
         & key "hostname" .~ toJSON (config & hostname)
+        & key "root" . key "readonly" .~ toJSON (config & rootReadOnly)
 
 run :: Config -> IO ExitCode
 run config = do

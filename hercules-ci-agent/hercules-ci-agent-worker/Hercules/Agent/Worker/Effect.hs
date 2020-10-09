@@ -79,7 +79,8 @@ runEffect store command = do
             & M.mapKeys toSL
             & M.map toSL,
         workingDirectory = "/build",
-        hostname = "hercules-ci"
+        hostname = "hercules-ci",
+        rootReadOnly = False
       }
     pure exitCode
 
