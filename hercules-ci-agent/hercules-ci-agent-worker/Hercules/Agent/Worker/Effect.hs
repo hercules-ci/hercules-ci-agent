@@ -45,6 +45,7 @@ runEffect store command = do
               ("HOME", "/homeless-shelter"),
               ("NIX_STORE", "/nix/store"), -- TODO store.storeDir
               ("NIX_BUILD_CORES", "1"), -- not great
+              ("NIX_REMOTE", "daemon"),
               ("IN_HERCULES_CI_EFFECT", "true"),
               ("HERCULES_CI_API_BASE_URL", toSL $ Command.Effect.apiBaseURL command)
             ]
