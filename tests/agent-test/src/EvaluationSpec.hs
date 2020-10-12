@@ -1,3 +1,5 @@
+{-# LANGUAGE BlockArguments #-}
+
 module EvaluationSpec where
 
 import qualified Data.Aeson as A
@@ -169,6 +171,39 @@ spec = describe "Evaluation" $ do
           toS (AttributeEvent.derivationPath ae)
             `shouldContain` "-myPackage.drv"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
+  context "when specific attributes are set on the derivation attrset"
+    $ it "returns an attribute of the correct type"
+    $ \srv -> do
+      id <- randomId
+      (s, r) <-
+        runEval
+          srv
+          defaultTask
+            { EvaluateTask.id = id,
+              EvaluateTask.otherInputs = "src" =: "/tarball/attribute-types"
+            }
+      s `shouldBe` TaskStatus.Successful ()
+      case attrLike r of
+        [ EvaluateEvent.Attribute depsOnly,
+          EvaluateEvent.Attribute effect,
+          EvaluateEvent.Attribute ignoreFail,
+          EvaluateEvent.Attribute regular,
+          EvaluateEvent.Attribute requireFail,
+          EvaluateEvent.Attribute shell
+          ] -> do
+            AttributeEvent.expressionPath depsOnly `shouldBe` ["deps-only"]
+            AttributeEvent.expressionPath effect `shouldBe` ["effect"]
+            AttributeEvent.expressionPath ignoreFail `shouldBe` ["ignore-fail"]
+            AttributeEvent.expressionPath regular `shouldBe` ["regular"]
+            AttributeEvent.expressionPath requireFail `shouldBe` ["require-fail"]
+            AttributeEvent.expressionPath shell `shouldBe` ["shell"]
+            AttributeEvent.typ depsOnly `shouldBe` AttributeEvent.DependenciesOnly
+            AttributeEvent.typ effect `shouldBe` AttributeEvent.Effect
+            AttributeEvent.typ ignoreFail `shouldBe` AttributeEvent.MayFail
+            AttributeEvent.typ regular `shouldBe` AttributeEvent.Regular
+            AttributeEvent.typ requireFail `shouldBe` AttributeEvent.MustFail
+            AttributeEvent.typ shell `shouldBe` AttributeEvent.DependenciesOnly
+        _ -> failWith $ "Events should be six attributes, not: " <> show r
   context "when the nix expression is a naked derivation"
     $ it "returns that attribute"
     $ \srv -> do

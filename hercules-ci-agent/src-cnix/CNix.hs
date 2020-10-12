@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -271,3 +272,36 @@ getDrvFile evalState (RawValue v) =
 
       return strdup(drvPath.c_str());
     }|]
+
+getAttrBool :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Either SomeException (Maybe Bool))
+getAttrBool evalState attrset attrName = do
+  attrMaybe <- getAttr evalState attrset attrName
+  attrMaybe & maybe (pure (Right Nothing)) \attr -> do
+    match evalState attr >>= \case
+      Left e -> do
+        pure $ Left e
+      Right (IsBool r) -> do
+        b <- getBool r
+        pure $ Right (Just b)
+      Right _ -> do
+        pure $ Right Nothing
+
+getList :: Value NixList -> IO [RawValue]
+getList (Value (RawValue nixList)) = do
+  len <- [C.exp| int { $(Value *nixList)->listSize() }|]
+  let getElem i = mkRawValue =<< [C.exp| Value * { $(Value *nixList)->listElems()[$(int i)] }|]
+  for [0 .. (len - 1)] \i -> do
+    getElem i
+
+getAttrList :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Either SomeException (Maybe [RawValue]))
+getAttrList evalState attrset attrName = do
+  attrMaybe <- getAttr evalState attrset attrName
+  attrMaybe & maybe (pure (Right Nothing)) \attr -> do
+    match evalState attr >>= \case
+      Left e -> do
+        pure $ Left e
+      Right (IsList r) -> do
+        b <- getList r
+        pure $ Right (Just b)
+      Right _ -> do
+        pure $ Right Nothing

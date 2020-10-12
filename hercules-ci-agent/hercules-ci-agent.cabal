@@ -311,6 +311,7 @@ executable hercules-ci-agent-worker
     , lifted-async
     , lifted-base
     , monad-control
+    , mtl
     , network-uri
     , optparse-applicative
     , protolude
