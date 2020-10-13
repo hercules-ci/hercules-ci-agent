@@ -4,7 +4,6 @@ module Hercules.Frontend where
 
 import qualified Data.Text as T
 import Hercules.API.Accounts.Account (Account)
-import Hercules.API.Name (Name)
 import Hercules.API.Prelude
 import Hercules.API.Projects.Project (Project)
 import Hercules.API.SourceHostingSite.SourceHostingSite
@@ -56,14 +55,15 @@ herculesLinks :: FrontendRoutes Raw (AsLink Text)
 herculesLinks = mkLinks base
   where
     base :: URI
-    base = URI
-      { uriPath = "",
-        uriQuery = "",
-        uriFragment = "",
-        uriScheme = "https:",
-        uriAuthority = Just URIAuth
-          { uriUserInfo = "",
-            uriRegName = "hercules-ci.com",
-            uriPort = ""
-          }
-      }
+    base =
+      URI
+        { uriPath = "",
+          uriQuery = "",
+          uriFragment = "",
+          uriScheme = "https:",
+          uriAuthority = Just URIAuth
+            { uriUserInfo = "",
+              uriRegName = "hercules-ci.com",
+              uriPort = ""
+            }
+        }

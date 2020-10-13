@@ -12,7 +12,7 @@ data Graph
   = Graph
       { nodes :: [Node]
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
 -- | A derivation and any dependencies that caused it to fail, if applicable.
 data Node
@@ -22,4 +22,4 @@ data Node
         --   DependencyFailure for this derivation.
         failedDependencies :: [Text]
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

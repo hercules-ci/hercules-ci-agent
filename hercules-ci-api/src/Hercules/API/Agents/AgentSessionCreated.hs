@@ -21,4 +21,4 @@ data AgentSessionCreated
         architectures :: [Text],
         creation :: UTCTime
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

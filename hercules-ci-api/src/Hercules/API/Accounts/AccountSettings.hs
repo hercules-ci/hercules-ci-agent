@@ -9,4 +9,4 @@ data AccountSettings
       { -- | When a new repo is created/installed, enable building it?
         enableNewRepos :: Bool
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

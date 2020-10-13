@@ -21,6 +21,7 @@ data DerivationInfo
         outputs :: [DerivationOutput],
         usedInProjects :: [Project],
         events :: [[DerivationEvent]],
+        mayRestart :: Bool,
         dummy :: Maybe DerivationEvent -- TODO: remove and update/fix codegen
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

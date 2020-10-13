@@ -7,6 +7,7 @@ module Hercules.API.Organizations
 where
 
 import Hercules.API.Accounts.Account (Account)
+import Hercules.API.Organizations.BillingInfo (BillingInfo)
 import Hercules.API.Organizations.CreateOrganization (CreateOrganization)
 import Hercules.API.Organizations.Organization (Organization)
 import Hercules.API.Organizations.PaymentLink (PaymentLink)
@@ -49,6 +50,14 @@ data OrganizationsAPI auth f
             :> "organizations"
             :> Capture "organizationId" (Id Organization)
             :> "paymentLink"
-            :> Post '[JSON] PaymentLink
+            :> Post '[JSON] PaymentLink,
+        getOrganizationActiveUsers ::
+          f :- Summary "List the active users in an organization's accounts."
+            :> auth
+            :> "api"
+            :> "organizations"
+            :> Capture "organizationId" (Id Organization)
+            :> "billing"
+            :> Get '[JSON] BillingInfo
       }
   deriving (Generic)

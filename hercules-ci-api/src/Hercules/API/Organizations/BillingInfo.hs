@@ -1,13 +1,13 @@
 {-# LANGUAGE DeriveAnyClass #-}
 
-module Hercules.API.Organizations.CreateOrganization where
+module Hercules.API.Organizations.BillingInfo where
 
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Prelude
 
-data CreateOrganization
-  = CreateOrganization
-      { displayName :: Text,
-        primaryAccountId :: Id Account
+data BillingInfo
+  = BillingInfo
+      { nextPayment :: Maybe UTCTime,
+        activeUsers :: [Account]
       }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

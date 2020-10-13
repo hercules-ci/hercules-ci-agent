@@ -5,6 +5,8 @@ module Hercules.API.Accounts where
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Accounts.AccountSettings (AccountSettings)
 import Hercules.API.Accounts.AccountSettingsPatch (AccountSettingsPatch)
+import Hercules.API.Accounts.CLIAuthorizationRequest (CLIAuthorizationRequest)
+import Hercules.API.Accounts.CLIAuthorizationRequestStatus (CLIAuthorizationRequestStatus)
 import Hercules.API.Prelude
 import Hercules.API.SourceHostingSite.SourceHostingSite
   ( SourceHostingSite,
@@ -45,6 +47,21 @@ data AccountsAPI auth f
             :> ReqBody '[JSON] AccountSettingsPatch
             :> auth
             :> Patch '[JSON] AccountSettings,
+        postCLIAuthorizationRequest ::
+          f :- Summary "Create a request to authorize the CLI."
+            :> "auth"
+            :> "cli"
+            :> "authorization"
+            :> "request"
+            :> Post '[JSON] CLIAuthorizationRequest,
+        getCLIAuthorizationRequestStatus ::
+          f :- Summary "Check the request status"
+            :> "auth"
+            :> "cli"
+            :> "authorization"
+            :> "request"
+            :> Capture "temporaryToken" Text
+            :> Get '[JSON] CLIAuthorizationRequestStatus,
         postDisableAllProjects ::
           f :- Summary "Disable all projects in the account."
             :> "accounts"

@@ -32,19 +32,27 @@ library
     Hercules.API.Auth
     Hercules.API.BillingStatus
     Hercules.API.Build
+    Hercules.API.Build.AgentRequirements
     Hercules.API.Build.DerivationEvent
+    Hercules.API.Build.DerivationEvent.BuiltOutput
     Hercules.API.Build.DerivationInfo
     Hercules.API.Build.DerivationInfo.DerivationInput
     Hercules.API.Build.DerivationInfo.DerivationOutput
     Hercules.API.Build.EvaluationDependency
     Hercules.API.Build.EvaluationDetail
     Hercules.API.Build.FailureGraph
+    Hercules.API.Build.Log
+    Hercules.API.Build.LogLine
     Hercules.API.Derivation
+    Hercules.API.Effects
+    Hercules.API.Effects.EffectEvent
+    Hercules.API.Effects.EffectInfo
     Hercules.API.Evaluation.AttributeError
     Hercules.API.Evaluation.Evaluation
     Hercules.API.Health
     Hercules.API.Message
     Hercules.API.Organizations
+    Hercules.API.Organizations.BillingInfo
     Hercules.API.Organizations.CreateOrganization
     Hercules.API.Organizations.Organization
     Hercules.API.Organizations.PaymentLink
@@ -54,11 +62,16 @@ library
     Hercules.API.Projects.Job
     Hercules.API.Projects.PatchProject
     Hercules.API.Projects.Project
+    Hercules.API.Projects.SimpleJob
     Hercules.API.Repos
     Hercules.API.Repos.Repo
     Hercules.API.Result
     Hercules.API.Servant.Status
     Hercules.API.SourceHostingSite.SourceHostingSite
+    Hercules.API.State
+    Hercules.API.State.ProjectState
+    Hercules.API.State.StateFile
+    Hercules.API.State.StateVersion
     Hercules.Frontend
 
   hs-source-dirs:     src

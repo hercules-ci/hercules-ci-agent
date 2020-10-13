@@ -4,12 +4,13 @@ module Hercules.API.Accounts.Account where
 
 import qualified Hercules.API.Organizations.Organization as Organization
 import Hercules.API.Prelude
+import Hercules.API.SourceHostingSite.SourceHostingSite (SourceHostingSite)
 
 data AccountType = User | Organization
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
 data MembershipRole = Member | Admin
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
 data Account
   = Account
@@ -34,6 +35,7 @@ data Account
         -- | Whether the current user has permission in the to installing
         -- Hercules CI on this account.
         isInstallable :: Bool,
-        membershipRole :: Maybe MembershipRole
+        membershipRole :: Maybe MembershipRole,
+        sourceHostingSites :: Maybe (Map Text SourceHostingSite)
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
