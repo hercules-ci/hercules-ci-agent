@@ -17,3 +17,12 @@ Live unit tests:
     $ stack --nix test --file-watch
 
 Ghcide: not currently included in shell. Install ghcide for GHC 8.6.5 in your profile.
+
+
+Live install into home:
+
+    stack install --work-dir .stack-work-for-install --fast --no-haddock --file-watch
+
+Start installed agent
+
+    hercules_ci_agent_bindir=$HOME/.local/bin ~/.local/bin/hercules-ci-agent

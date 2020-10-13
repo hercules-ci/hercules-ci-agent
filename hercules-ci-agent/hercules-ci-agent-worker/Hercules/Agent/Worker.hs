@@ -12,6 +12,7 @@ import qualified CNix.Internal.Raw
 import Conduit
 import Control.Concurrent.STM
 import qualified Control.Exception.Lifted as EL
+import Control.Monad.Except
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control
 import qualified Data.ByteString as BS
@@ -476,15 +477,32 @@ walk evalState = walk' True [] 10
                   then do
                     drvPath <- getDrvFile evalState v
                     typE <- runExceptT do
-                      liftIO (getAttr evalState attrValue "isEffect") >>= traverse \attr -> do
-                        isEffect <- liftIO (match evalState attr) >>= \case
-                          Left e -> do
-                            throwE $ Left e
-                          Right (IsBool r) -> do
-                            liftIO $ getBool r
-                          Right _ -> do
-                            pure False
-                        when isEffect (throwE $ Right Attribute.Effect)
+                      isEffect <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "isEffect")
+                      case isEffect of
+                        Just True -> throwE $ Right Attribute.Effect
+                        _ -> pass
+                      isDependenciesOnly <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "buildDependenciesOnly")
+                      case isDependenciesOnly of
+                        Just True -> throwE $ Right Attribute.DependenciesOnly
+                        _ -> pass
+                      phases <- liftEitherAs Left =<< liftIO (getAttrList evalState attrValue "phases")
+                      case phases of
+                        Just [aSingularPhase] -> do
+                          liftIO (match evalState aSingularPhase) >>= liftEitherAs Left >>= \case
+                            IsString phaseNameValue -> do
+                              phaseName <- liftIO (getStringIgnoreContext phaseNameValue)
+                              when (phaseName == "nobuildPhase") do
+                                throwE $ Right Attribute.DependenciesOnly
+                            _ -> pass
+                        _ -> pass
+                      mayFail <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "ignoreFailure")
+                      case mayFail of
+                        Just True -> throwE $ Right Attribute.MayFail
+                        _ -> pass
+                      mustFail <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "requireFailure")
+                      case mustFail of
+                        Just True -> throwE $ Right Attribute.MustFail
+                        _ -> pass
                     let yieldAttribute typ = yield $
                           Event.Attribute Attribute.Attribute
                             { Attribute.path = path,
@@ -536,3 +554,9 @@ walk evalState = walk' True [] 10
                     <> " : "
                     <> (show vt :: Text)
                 pass
+
+liftEitherAs :: MonadError e m => (e0 -> e) -> Either e0 a -> m a
+liftEitherAs f = liftEither . rmap
+  where
+    rmap (Left e) = Left (f e)
+    rmap (Right a) = Right a

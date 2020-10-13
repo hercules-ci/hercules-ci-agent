@@ -121,3 +121,11 @@ getBool :: Value Bool -> IO Bool
 getBool (Value (RawValue v)) =
   (0 /=)
     <$> [C.exp| int { $(Value *v)->boolean ? 1 : 0 }|]
+
+-- NOT coerceToString
+getStringIgnoreContext :: Value NixString -> IO ByteString
+getStringIgnoreContext (Value (RawValue v)) =
+  unsafeMallocBS
+    [C.exp| const char *{
+    strdup($(Value *v)->string.s)
+  }|]
