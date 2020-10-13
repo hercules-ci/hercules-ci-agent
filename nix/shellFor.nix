@@ -7,6 +7,7 @@ pkgs.hercules-ci-agent-packages.internal.haskellPackages.shellFor {
     p.hercules-ci-api-agent
     p.hercules-ci-agent
     p.hercules-ci-agent-test
+    p.hercules-ci-cli
   ];
   buildInputs = [
     pkgs.boost
