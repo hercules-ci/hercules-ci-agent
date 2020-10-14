@@ -14,7 +14,7 @@ import Servant.API
 import Servant.API.Generic
 
 -- | A newtype wrapper for servant-swagger
-newtype RawBytes = RawBytes ByteString
+newtype RawBytes = RawBytes {fromRawBytes :: ByteString}
   deriving newtype (MimeUnrender OctetStream, MimeRender OctetStream)
 
 instance ToSchema RawBytes where

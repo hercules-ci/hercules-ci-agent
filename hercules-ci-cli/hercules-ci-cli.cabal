@@ -22,7 +22,9 @@ library
       Hercules.CLI.Credentials
       Hercules.CLI.Login
       Hercules.CLI.Main
+      Hercules.CLI.Project
       Hercules.CLI.State
+      Hercules.CLI.Options
   hs-source-dirs:
       src
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
@@ -30,9 +32,11 @@ library
   build-depends:
       aeson
     , aeson-pretty
+    , attoparsec
     , base >=4.7 && <5
     , bytestring
     , containers
+    , conduit
     , data-has
     , directory
     , exceptions
@@ -42,6 +46,7 @@ library
     , hostname
     , http-client
     , http-client-tls
+    , http-types
     , katip
     , lifted-base
     , monad-control
@@ -52,6 +57,7 @@ library
     , safe-exceptions
     , servant
     , servant-auth-client
+    , servant-conduit
     , servant-client
     , servant-client-core
     , text

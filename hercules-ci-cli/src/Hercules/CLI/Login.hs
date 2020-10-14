@@ -24,7 +24,6 @@ commandParser :: Optparse.Parser (IO ())
 commandParser = pure do
   hostname <- liftIO $ getHostName
   username <- getLoginName
-  print hostname
   clientEnv <- Hercules.CLI.Client.init
   runRIO ((), clientEnv) do
     r <- runHerculesClient' do
