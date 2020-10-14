@@ -4,25 +4,18 @@ import qualified Hercules.CLI.Login as Login
 import qualified Hercules.CLI.State as State
 import qualified Options.Applicative as Optparse
 import Protolude
-import RIO (RIO, runRIO)
 
 main :: IO ()
 main = do
-  app <- init
-  runRIO app =<< Optparse.execParser opts
+  join $ Optparse.execParser opts
 
-data MainEnv = MainEnv
-
-init :: IO MainEnv
-init = pure MainEnv
-
-opts :: Optparse.ParserInfo (RIO MainEnv ())
+opts :: Optparse.ParserInfo (IO ())
 opts =
   Optparse.info
     (commands <**> Optparse.helper)
     (Optparse.fullDesc <> Optparse.header "Command line interface to Hercules CI")
 
-commands :: Optparse.Parser (RIO MainEnv ())
+commands :: Optparse.Parser (IO ())
 commands =
   Optparse.subparser
     ( mkCommand

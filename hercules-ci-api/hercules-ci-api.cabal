@@ -21,6 +21,10 @@ library
     Hercules.API.Accounts.Account
     Hercules.API.Accounts.AccountSettings
     Hercules.API.Accounts.AccountSettingsPatch
+    Hercules.API.Accounts.CLIAuthorizationRequest
+    Hercules.API.Accounts.CLIAuthorizationRequestCreate
+    Hercules.API.Accounts.CLIAuthorizationRequestCreateResponse
+    Hercules.API.Accounts.CLIAuthorizationRequestStatus
     Hercules.API.Agents
     Hercules.API.Agents.AgentInfo
     Hercules.API.Agents.AgentSession

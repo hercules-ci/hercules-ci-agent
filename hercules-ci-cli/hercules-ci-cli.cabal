@@ -18,6 +18,8 @@ source-repository head
 
 library
   exposed-modules:
+      Hercules.CLI.Client
+      Hercules.CLI.Credentials
       Hercules.CLI.Login
       Hercules.CLI.Main
       Hercules.CLI.State
@@ -27,19 +29,34 @@ library
   ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns
   build-depends:
       aeson
+    , aeson-pretty
     , base >=4.7 && <5
     , bytestring
     , containers
+    , data-has
+    , directory
     , exceptions
+    , filepath
+    , hercules-ci-api
+    , hercules-ci-api-core
+    , hostname
+    , http-client
+    , http-client-tls
     , katip
     , lifted-base
     , monad-control
+    , network-uri
     , optparse-applicative
     , protolude
     , rio
     , safe-exceptions
+    , servant
+    , servant-auth-client
+    , servant-client
+    , servant-client-core
     , text
     , transformers-base
+    , unix
   default-language: Haskell2010
 
 executable hci
@@ -59,6 +76,7 @@ test-suite hercules-ci-cli-test
   main-is: Main.hs
   other-modules:
       Spec
+      Hercules.CLI.CredentialsSpec
   hs-source-dirs:
       test
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
@@ -66,6 +84,8 @@ test-suite hercules-ci-cli-test
   build-depends:
       aeson
     , base >=4.7 && <5
+    , containers
     , hercules-ci-cli
     , hspec
+    , QuickCheck
   default-language: Haskell2010

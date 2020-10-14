@@ -27,6 +27,10 @@ data FrontendRoutes view f
             :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
             :> Capture' [Required, Strict] "account" (Name Account)
             :> view,
+        cliAuthorize ::
+          f :- "settings" :> "cli" :> "authorize"
+            :> QueryParam' [Required, Strict] "token" Text
+            :> view,
         project ::
           f
             :- Capture' [Required, Strict] "site" (Name SourceHostingSite)

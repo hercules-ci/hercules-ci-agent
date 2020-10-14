@@ -5,11 +5,13 @@
 module Hercules.API
   ( api,
     servantApi,
+    servantClientApi,
     swagger,
     useApi,
     API,
     ClientAuth,
     HerculesAPI (..),
+    ClientAPI (..),
     HerculesServantAPI,
     AddAPIVersion,
     Id,
