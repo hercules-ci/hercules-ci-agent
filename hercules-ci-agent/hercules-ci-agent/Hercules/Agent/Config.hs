@@ -84,8 +84,9 @@ keyBaseDirectory = "baseDirectory"
 
 determineDefaultApiBaseUrl :: IO Text
 determineDefaultApiBaseUrl = do
-  maybeEnv <- System.Environment.lookupEnv "HERCULES_API_BASE_URL"
-  pure $ maybe defaultApiBaseUrl toS maybeEnv
+  maybeEnv <- System.Environment.lookupEnv "HERCULES_CI_API_BASE_URL"
+  maybeEnv' <- System.Environment.lookupEnv "HERCULES_API_BASE_URL"
+  pure $ maybe defaultApiBaseUrl toS (maybeEnv <|> maybeEnv')
 
 defaultApiBaseUrl :: Text
 defaultApiBaseUrl = "https://hercules-ci.com"
