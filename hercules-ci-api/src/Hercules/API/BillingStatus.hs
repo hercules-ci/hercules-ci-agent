@@ -15,17 +15,20 @@ data BillingStatus
   | Trial
   | Active
   | Cancelled
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  | External
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
 toText :: BillingStatus -> Text
 toText Community = "Community"
 toText Trial = "Trial"
 toText Active = "Active"
 toText Cancelled = "Cancelled"
+toText External = "External"
 
 fromText :: Text -> Maybe BillingStatus
 fromText "Community" = Just Community
 fromText "Cancelled" = Just Cancelled
 fromText "Trial" = Just Trial
 fromText "Active" = Just Active
+fromText "External" = Just External
 fromText _ = Nothing

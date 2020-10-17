@@ -1,14 +1,17 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Hercules.API
   ( api,
     servantApi,
+    servantClientApi,
     swagger,
     useApi,
     API,
     ClientAuth,
     HerculesAPI (..),
+    ClientAPI (..),
     HerculesServantAPI,
     AddAPIVersion,
     Id,
@@ -27,19 +30,21 @@ import Control.Lens
 import Control.Monad
 import Data.Proxy (Proxy (..))
 import Data.Swagger hiding (Header)
-import GHC.Generics (Generic)
 import Hercules.API.Accounts (AccountsAPI)
 import Hercules.API.Agents (AgentsAPI)
 import Hercules.API.Build as Client
   ( BuildAPI,
   )
+import Hercules.API.Effects (EffectsAPI)
 import Hercules.API.Health (HealthAPI)
 import Hercules.API.Id (Id)
 import Hercules.API.Name (Name)
 import Hercules.API.Organizations (OrganizationsAPI)
+import Hercules.API.Orphans ()
 import Hercules.API.Projects (ProjectsAPI)
 import Hercules.API.Repos (ReposAPI)
 import Hercules.API.Result (Result (..))
+import Hercules.API.State (StateAPI)
 import Servant.API
 import Servant.API.Generic
 import Servant.Auth
@@ -56,8 +61,10 @@ data HerculesAPI auth f
         projects :: f :- ToServantApi (ProjectsAPI auth),
         agents :: f :- ToServantApi (AgentsAPI auth),
         build :: f :- ToServantApi (Client.BuildAPI auth),
+        effects :: f :- ToServantApi (EffectsAPI auth),
         health :: f :- ToServantApi (HealthAPI auth),
-        organizations :: f :- ToServantApi (OrganizationsAPI auth)
+        organizations :: f :- ToServantApi (OrganizationsAPI auth),
+        state :: f :- ToServantApi (StateAPI auth)
       }
   deriving (Generic)
 
@@ -68,7 +75,9 @@ data ClientAPI auth f
         clientProjects :: f :- ToServantApi (ProjectsAPI auth),
         clientAgents :: f :- ToServantApi (AgentsAPI auth),
         clientBuild :: f :- ToServantApi (Client.BuildAPI auth),
-        clientOrganizations :: f :- ToServantApi (OrganizationsAPI auth)
+        clientEffects :: f :- ToServantApi (EffectsAPI auth),
+        clientOrganizations :: f :- ToServantApi (OrganizationsAPI auth),
+        clientState :: f :- ToServantApi (StateAPI auth)
       }
   deriving (Generic)
 

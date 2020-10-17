@@ -6,6 +6,7 @@ packages:
   - hercules-ci-api-core
   - hercules-ci-api-agent
   - hercules-ci-agent
+  - hercules-ci-cli
   - tests/agent-test
 extra-deps:
   # REMINDER: sync with scripts/generate-nix

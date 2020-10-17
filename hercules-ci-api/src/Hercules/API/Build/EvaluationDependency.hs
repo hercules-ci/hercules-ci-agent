@@ -11,4 +11,4 @@ data EvaluationDependency
         derivation :: Derivation,
         outputName :: Text
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

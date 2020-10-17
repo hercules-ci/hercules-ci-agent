@@ -85,6 +85,8 @@ let
               hercules-ci-agent-test =
                 callPkg super "hercules-ci-agent-test" ../tests/agent-test {};
 
+              hercules-ci-cli = callPkg super "hercules-ci-cli" ../hercules-ci-cli {};
+
               inline-c = self.callPackage ./haskell-inline-c.nix {};
 
               # avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
@@ -117,7 +119,7 @@ let
     };
 in
 recurseIntoAttrs {
-  inherit (internal.haskellPackages) hercules-ci-agent;
+  inherit (internal.haskellPackages) hercules-ci-agent hercules-ci-cli;
   inherit (internal) hercules-ci-api-swagger;
   # isx86_64: Don't run the VM tests on aarch64 to save time
   tests = if pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64 then internal.tests else null;

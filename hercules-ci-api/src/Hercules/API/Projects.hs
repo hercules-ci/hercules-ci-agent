@@ -7,6 +7,7 @@ import Hercules.API.Build.EvaluationDetail
   ( EvaluationDetail,
   )
 import qualified Hercules.API.Build.FailureGraph as FailureGraph
+import Hercules.API.Build.Log (Log)
 import Hercules.API.Prelude
 import Hercules.API.Projects.CreateProject
   ( CreateProject,
@@ -118,6 +119,17 @@ data ProjectsAPI auth f
             :> Capture' '[Required, Strict] "jobId" (Id Job)
             :> "cancel"
             :> auth
-            :> Post '[JSON] NoContent
+            :> Post '[JSON] NoContent,
+        getEvaluationLog ::
+          f :- Summary "Read all recorded evaluation log entries"
+            :> "jobs"
+            :> Capture' '[Required, Strict] "jobId" (Id Job)
+            :> "evaluation"
+            :> "log"
+            :> "lines"
+            :> QueryParam' '[Required] "logId" (Id "log")
+            :> QueryParam' '[Optional] "iMin" Int
+            :> auth
+            :> Get '[JSON] Log
       }
   deriving (Generic)

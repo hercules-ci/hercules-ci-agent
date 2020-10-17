@@ -20,15 +20,13 @@ import Data.Profunctor
   ( Profunctor,
     dimap,
   )
-import Data.Swagger (ToSchema)
-import GHC.Generics (Generic)
 import Hercules.API.Prelude hiding (either)
 import Prelude ()
 
 data Result e a
   = Ok a
   | Error e
-  deriving (Generic, Show, Read, Eq, Ord, Functor, Foldable, Traversable)
+  deriving (Generic, Show, Read, Eq, Ord, NFData, Functor, Foldable, Traversable)
 
 deriving instance (ToSchema e, ToSchema a) => ToSchema (Result e a)
 

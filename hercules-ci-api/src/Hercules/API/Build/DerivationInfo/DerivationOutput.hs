@@ -9,4 +9,4 @@ data DerivationOutput
       { outputName :: Text,
         outputPath :: Text
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

@@ -23,6 +23,7 @@ data Job
         jobStatus :: JobStatus,
         evaluationStatus :: JobStatus,
         derivationStatus :: JobStatus,
+        effectsStatus :: JobStatus,
         evaluationId :: Id Evaluation,
         source :: GitCommitSource,
         rerunOf :: Maybe (Id Job),
@@ -32,7 +33,7 @@ data Job
         mayCancel :: Bool,
         mayRerun :: Bool
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
 data GitCommitSource
   = GitCommitSource
@@ -40,22 +41,24 @@ data GitCommitSource
         ref :: Text,
         message :: Text,
         gitCommitterName :: Text,
-        committerSlug :: Maybe (Name Account)
+        committer :: Maybe Account,
+        link :: Text
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
 data JobPhase
   = Queued
   | Evaluating
   | Building
+  | Effects
   | Done
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
 data JobStatus
   = Pending
   | Failure
   | Success
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
 -- | Whichever is "worse": 'Failure' wins out, otherwise 'Pending' wins out, otherwise all are 'Success'.
 instance Semigroup JobStatus where
@@ -79,4 +82,4 @@ data ProjectAndJobs
       { project :: Project,
         jobs :: [Job]
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

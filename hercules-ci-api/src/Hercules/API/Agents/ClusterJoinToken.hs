@@ -13,4 +13,4 @@ data ClusterJoinToken
         -- TODO lastAccessTime :: Maybe UTCTime
         description :: Text
       }
-  deriving (Generic, Show, Eq, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

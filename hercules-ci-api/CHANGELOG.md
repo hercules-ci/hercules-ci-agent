@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+ - Build logs
+ - Evaluation log
+ - Attribute types
+ - Effects
+ - State files
+ - CLI authorization flow
+
+### Changed
+
+ - Adaptations to support servant streaming
+
 ## [0.5.0.0] - 2020-01-30
 
 ### Changed
