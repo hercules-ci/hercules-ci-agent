@@ -1,6 +1,5 @@
-{ sources ? import ./sources.nix
-, nixpkgsSource ? "nixos-20.03"
-, nixpkgs ? sources.${nixpkgsSource}
+{ flake ? (import ./flake-compat.nix).defaultNix
+, nixpkgs ? flake.inputs.nixpkgs
   # Sharing the test suite
 , allTargets ? import ./ci.nix
 , testSuiteTarget ? "nixos-20_03"
@@ -31,7 +30,7 @@ let
       };
   pkgs =
     import nixpkgs {
-      overlays = [ (import ./overlay.nix) dev-and-test-overlay ];
+      overlays = [ (import ./overlay.nix flake.inputs) dev-and-test-overlay ];
       config = {};
       inherit system;
     };

@@ -2,6 +2,7 @@
 , haskell
 , pkgs
 , nix
+, pre-commit-hooks-nix
 , ...
 }:
 
@@ -10,10 +11,7 @@ let
   inherit (pkgs) recurseIntoAttrs lib;
   inherit (pkgs.lib) cleanSource makeBinPath optionalAttrs;
   inherit (haskell.lib) overrideSrc addBuildDepends overrideCabal buildFromSdist doJailbreak disableLibraryProfiling addBuildTool;
-  inherit (import sources.gitignore { inherit lib; }) gitignoreSource;
-  callPkg = super: name: srcPath: args: overrideSrc (super.callCabal2nix name srcPath args) { src = gitignoreSource srcPath; };
-
-  sources = import ./sources.nix;
+  callPkg = super: name: srcPath: args: overrideSrc (super.callCabal2nix name srcPath args) { src = srcPath; };
 
   internal =
     rec {
@@ -115,7 +113,7 @@ let
           module-nixos = pkgs.callPackage ../tests/module-nixos {};
         };
 
-      projectRootSource = gitignoreSource ../.;
+      projectRootSource = ../.;
     };
 in
 recurseIntoAttrs {
@@ -124,7 +122,7 @@ recurseIntoAttrs {
   # isx86_64: Don't run the VM tests on aarch64 to save time
   tests = if pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64 then internal.tests else null;
   pre-commit-check =
-    (import sources."pre-commit-hooks.nix").run {
+    (import pre-commit-hooks-nix).run {
       src = ../.;
       tools = {
         inherit (pkgs) ormolu;
