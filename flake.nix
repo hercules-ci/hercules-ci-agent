@@ -9,13 +9,14 @@
   inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
   inputs.pre-commit-hooks-nix.flake = false;
 
-  outputs = { self, nixpkgs, project-nix, ... }:
+  outputs = inputs@{ self, nixpkgs, project-nix, ... }:
     let
       lib = nixpkgs.lib;
       filterMeta = nixpkgs.lib.filterAttrs (k: v: k != "meta" && k != "recurseForDerivations");
       inherit (import (project-nix + "/lib/dimension.nix") { inherit lib; }) dimension;
 
       defaultTarget = allTargets."nixos-20_03";
+      testSuiteTarget = defaultTarget;
 
       allTargets =
         dimension "Nixpkgs version"
@@ -40,10 +41,32 @@
 
                     lib.optionalAttrs enable (
                       let
-                        pkgs = import ./nix/default.nix {
-                          nixpkgs = nixpkgsSource;
-                          inherit system allTargets;
-                        };
+                        pkgs =
+                          import nixpkgsSource {
+                            overlays = [ (import ./nix/overlay.nix inputs) dev-and-test-overlay ];
+                            config = { };
+                            inherit system;
+                          };
+                        dev-and-test-overlay =
+                          self: pkgs:
+                          {
+                            testSuitePkgs = testSuiteTarget.${system};
+                            devTools =
+                              {
+                                inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
+                                  ghc
+                                  ghcid
+                                  stack
+                                  ;
+                                inherit (pkgs)
+                                  jq
+                                  cabal2nix
+                                  nix-prefetch-git
+                                  niv
+                                  ;
+                                inherit pkgs;
+                              };
+                          };
                       in
                       pkgs.recurseIntoAttrs {
                         internal.pkgs = pkgs;
@@ -66,6 +89,8 @@
     {
       # non-standard attribute
       ciChecks = allTargets;
+
+      internal.pkgs = lib.mapAttrs (_sys: target: target.internal.pkgs) defaultTarget;
 
       packages =
         nixpkgs.lib.mapAttrs
