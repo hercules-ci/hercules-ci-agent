@@ -123,7 +123,7 @@ recurseIntoAttrs {
   # isx86_64: Don't run the VM tests on aarch64 to save time
   tests = if pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64 then internal.tests else null;
   pre-commit-check =
-    (import pre-commit-hooks-nix).run {
+    (import (pre-commit-hooks-nix + "/nix") { inherit (pkgs) system; }).packages.run {
       src = ../.;
       tools = {
         inherit (pkgs) ormolu;
