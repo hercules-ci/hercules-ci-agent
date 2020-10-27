@@ -48,28 +48,11 @@
         "type": "github"
       }
     },
-    "project-nix": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1594742427,
-        "narHash": "sha256-MnWFHyJd56TzNlTMn60GO8fiOnm0Qcax6TeZd/u/f+Y=",
-        "owner": "hercules-ci",
-        "repo": "project.nix",
-        "rev": "2e598501e7fda6993d2a1a281aa296b26d01e10c",
-        "type": "github"
-      },
-      "original": {
-        "owner": "hercules-ci",
-        "repo": "project.nix",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "flake-compat": "flake-compat",
         "nixpkgs": "nixpkgs",
-        "pre-commit-hooks-nix": "pre-commit-hooks-nix",
-        "project-nix": "project-nix"
+        "pre-commit-hooks-nix": "pre-commit-hooks-nix"
       }
     }
   },

@@ -4,16 +4,14 @@
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-20.03";
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
-  inputs.project-nix.url = "github:hercules-ci/project.nix";
-  inputs.project-nix.flake = false;
   inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
   inputs.pre-commit-hooks-nix.flake = false;
 
-  outputs = inputs@{ self, nixpkgs, project-nix, ... }:
+  outputs = inputs@{ self, nixpkgs, ... }:
     let
       lib = nixpkgs.lib;
       filterMeta = nixpkgs.lib.filterAttrs (k: v: k != "meta" && k != "recurseForDerivations");
-      inherit (import (project-nix + "/lib/dimension.nix") { inherit lib; }) dimension;
+      dimension = _name: attrs: f: lib.mapAttrs f attrs;
 
       defaultTarget = allTargets."nixos-20_03";
       testSuiteTarget = defaultTarget;
