@@ -162,12 +162,13 @@ convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \le
         textStr <- peek textStrPtr
         text_ <- unsafePackMallocCString textStr
         level_ <- peek levelPtr
-        pure $ LogEntry.Msg
-          { i = i_,
-            ms = ms_,
-            level = fromIntegral level_,
-            msg = toSL text_
-          }
+        pure $
+          LogEntry.Msg
+            { i = i_,
+              ms = ms_,
+              level = fromIntegral level_,
+              msg = toSL text_
+            }
       2 -> do
         text_ <- unsafePackMallocCString =<< peek textStrPtr
         act_ <- peek activityIdPtr
@@ -175,34 +176,37 @@ convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \le
         parent_ <- peek parentPtr
         typ_ <- peek typePtr
         fields_ <- convertAndDeleteFields =<< peek fieldsPtrPtr
-        pure $ LogEntry.Start
-          { i = i_,
-            ms = ms_,
-            act = LogEntry.ActivityId act_,
-            level = fromIntegral level_,
-            typ = LogEntry.ActivityType typ_,
-            text = toSL text_,
-            parent = LogEntry.ActivityId parent_,
-            fields = fields_
-          }
+        pure $
+          LogEntry.Start
+            { i = i_,
+              ms = ms_,
+              act = LogEntry.ActivityId act_,
+              level = fromIntegral level_,
+              typ = LogEntry.ActivityType typ_,
+              text = toSL text_,
+              parent = LogEntry.ActivityId parent_,
+              fields = fields_
+            }
       3 -> do
         act_ <- peek activityIdPtr
-        pure $ LogEntry.Stop
-          { i = i_,
-            ms = ms_,
-            act = LogEntry.ActivityId act_
-          }
+        pure $
+          LogEntry.Stop
+            { i = i_,
+              ms = ms_,
+              act = LogEntry.ActivityId act_
+            }
       4 -> do
         act_ <- peek activityIdPtr
         typ_ <- peek typePtr
         fields_ <- convertAndDeleteFields =<< peek fieldsPtrPtr
-        pure $ LogEntry.Result
-          { i = i_,
-            ms = ms_,
-            act = LogEntry.ActivityId act_,
-            rtype = LogEntry.ResultType typ_,
-            fields = fields_
-          }
+        pure $
+          LogEntry.Result
+            { i = i_,
+              ms = ms_,
+              act = LogEntry.ActivityId act_,
+              rtype = LogEntry.ResultType typ_,
+              fields = fields_
+            }
       _ -> panic "convertEntry invalid internal type"
 
 convertAndDeleteFields :: Ptr Fields -> IO (Vector LogEntry.Field)
@@ -368,7 +372,8 @@ tapStderrPipe = do
         hSetBuffering h LineBuffering
         pure h
   readableHandle <- mkHandle readable
-  pure TapState
-    { originalStderrCopy = oldStdError,
-      readableStderrEnd = readableHandle
-    }
+  pure
+    TapState
+      { originalStderrCopy = oldStdError,
+        readableStderrEnd = readableHandle
+      }

@@ -65,9 +65,11 @@ herculesLinks = mkLinks base
           uriQuery = "",
           uriFragment = "",
           uriScheme = "https:",
-          uriAuthority = Just URIAuth
-            { uriUserInfo = "",
-              uriRegName = "hercules-ci.com",
-              uriPort = ""
-            }
+          uriAuthority =
+            Just
+              URIAuth
+                { uriUserInfo = "",
+                  uriRegName = "hercules-ci.com",
+                  uriPort = ""
+                }
         }

@@ -122,14 +122,15 @@ finalizeConfig loc input = do
       x | not (x >= 1) -> throwIO $ FatalError "concurrentTasks must be at least 1"
       x -> pure x
   let apiBaseUrl = fromMaybe dabu $ herculesApiBaseURL input
-  pure Config
-    { herculesApiBaseURL = apiBaseUrl,
-      nixUserIsTrusted = fromMaybe False $ nixUserIsTrusted input,
-      binaryCachesPath = binaryCachesP,
-      clusterJoinTokenPath = clusterJoinTokenP,
-      concurrentTasks = validConcurrentTasks,
-      baseDirectory = baseDir,
-      staticSecretsDirectory = staticSecretsDir,
-      workDirectory = workDir,
-      logLevel = logLevel input & fromMaybe InfoS
-    }
+  pure
+    Config
+      { herculesApiBaseURL = apiBaseUrl,
+        nixUserIsTrusted = fromMaybe False $ nixUserIsTrusted input,
+        binaryCachesPath = binaryCachesP,
+        clusterJoinTokenPath = clusterJoinTokenP,
+        concurrentTasks = validConcurrentTasks,
+        baseDirectory = baseDir,
+        staticSecretsDirectory = staticSecretsDir,
+        workDirectory = workDir,
+        logLevel = logLevel input & fromMaybe InfoS
+      }

@@ -115,13 +115,14 @@ main = do
   withStore $ \wrappedStore_ -> withHerculesStore wrappedStore_ $ \herculesStore_ -> withKatip $ do
     liftIO $ setBuilderCallback herculesStore_ mempty
     ch <- liftIO newChan
-    let st = HerculesState
-          { drvsCompleted = drvsCompleted_,
-            drvsInProgress = drvsInProgress_,
-            herculesStore = herculesStore_,
-            wrappedStore = wrappedStore_,
-            shortcutChannel = ch
-          }
+    let st =
+          HerculesState
+            { drvsCompleted = drvsCompleted_,
+              drvsInProgress = drvsInProgress_,
+              herculesStore = herculesStore_,
+              wrappedStore = wrappedStore_,
+              shortcutChannel = ch
+            }
     let runner :: KatipContextT IO ()
         runner =
           ( ( do
@@ -312,13 +313,14 @@ makeSocketConfig l = do
   baseURL <- case Network.URI.parseURI $ toS $ LogSettings.baseURL l of
     Just x -> pure x
     Nothing -> panic "LogSettings: invalid base url"
-  pure Socket.SocketConfig
-    { makeHello = pure (LogMessage.LogEntries mempty),
-      checkVersion = Socket.checkVersion',
-      baseURL = baseURL,
-      path = LogSettings.path l,
-      token = toSL $ reveal $ LogSettings.token l
-    }
+  pure
+    Socket.SocketConfig
+      { makeHello = pure (LogMessage.LogEntries mempty),
+        checkVersion = Socket.checkVersion',
+        baseURL = baseURL,
+        path = LogSettings.path l,
+        token = toSL $ reveal $ LogSettings.token l
+      }
 
 -- TODO: test
 autoArgArgs :: Map Text Eval.Arg -> [ByteString]
@@ -347,22 +349,24 @@ anyAlternative = getAlt . foldMap (Alt . pure)
 yieldAttributeError :: Monad m => [ByteString] -> SomeException -> ConduitT i Event m ()
 yieldAttributeError path e
   | (Just e') <- fromException e =
-    yield $ Event.AttributeError $ AttributeError.AttributeError
-      { AttributeError.path = path,
-        AttributeError.message =
-          "Could not build derivation " <> buildExceptionDerivationPath e'
-            <> ", which is required during evaluation."
-            <> foldMap (" " <>) (buildExceptionDetail e'),
-        AttributeError.errorDerivation = Just (buildExceptionDerivationPath e'),
-        AttributeError.errorType = Just "BuildException"
-      }
+    yield $ Event.AttributeError $
+      AttributeError.AttributeError
+        { AttributeError.path = path,
+          AttributeError.message =
+            "Could not build derivation " <> buildExceptionDerivationPath e'
+              <> ", which is required during evaluation."
+              <> foldMap (" " <>) (buildExceptionDetail e'),
+          AttributeError.errorDerivation = Just (buildExceptionDerivationPath e'),
+          AttributeError.errorType = Just "BuildException"
+        }
 yieldAttributeError path e =
-  yield $ Event.AttributeError $ AttributeError.AttributeError
-    { AttributeError.path = path,
-      AttributeError.message = renderException e,
-      AttributeError.errorDerivation = Nothing,
-      AttributeError.errorType = Just (show (typeOf e))
-    }
+  yield $ Event.AttributeError $
+    AttributeError.AttributeError
+      { AttributeError.path = path,
+        AttributeError.message = renderException e,
+        AttributeError.errorDerivation = Nothing,
+        AttributeError.errorType = Just (show (typeOf e))
+      }
 
 maybeThrowBuildException :: MonadIO m => BuildResult.BuildStatus -> Text -> m ()
 maybeThrowBuildException result plainDrvText =
@@ -503,12 +507,14 @@ walk evalState = walk' True [] 10
                       case mustFail of
                         Just True -> throwE $ Right Attribute.MustFail
                         _ -> pass
-                    let yieldAttribute typ = yield $
-                          Event.Attribute Attribute.Attribute
-                            { Attribute.path = path,
-                              Attribute.drv = drvPath,
-                              Attribute.typ = typ
-                            }
+                    let yieldAttribute typ =
+                          yield $
+                            Event.Attribute
+                              Attribute.Attribute
+                                { Attribute.path = path,
+                                  Attribute.drv = drvPath,
+                                  Attribute.typ = typ
+                                }
                     case typE of
                       Left (Left e) -> yieldAttributeError path e
                       Left (Right t) -> yieldAttribute t

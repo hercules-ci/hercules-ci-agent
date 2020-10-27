@@ -235,10 +235,11 @@ buildDerivation store derivationPath derivation extraInputs =
                 stopTimeValue <- peek stopTimePtr
                 errorMessageValue0 <- peek errorMessagePtr
                 errorMessageValue <- peekCString errorMessageValue0
-                pure $ BuildResult
-                  { isSuccess = successValue /= 0,
-                    status = toBuildStatus statusValue,
-                    startTime = startTimeValue,
-                    stopTime = stopTimeValue,
-                    errorMessage = toS errorMessageValue
-                  }
+                pure $
+                  BuildResult
+                    { isSuccess = successValue /= 0,
+                      status = toBuildStatus statusValue,
+                      startTime = startTimeValue,
+                      stopTime = stopTimeValue,
+                      errorMessage = toS errorMessageValue
+                    }

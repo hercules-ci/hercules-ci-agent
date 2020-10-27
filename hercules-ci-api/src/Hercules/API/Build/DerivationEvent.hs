@@ -25,7 +25,6 @@ instance FromJSON DerivationEvent where
   parseJSON = genericParseJSON schemaCompatibleOptions
 
 instance ToJSON DerivationEvent where
-
   toJSON = genericToJSON schemaCompatibleOptions
 
   toEncoding = genericToEncoding schemaCompatibleOptions

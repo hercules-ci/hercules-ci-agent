@@ -15,7 +15,6 @@ data AttributeErrorEvent
   deriving (Generic, Show, Eq, NFData)
 
 instance ToJSON AttributeErrorEvent where
-
   toJSON = genericToJSON aesonOptions
 
   toEncoding = genericToEncoding aesonOptions

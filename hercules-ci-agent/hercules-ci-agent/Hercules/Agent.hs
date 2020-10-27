@@ -212,11 +212,12 @@ withLifeCycle app = do
   now <- liftIO getCurrentTime
   freshId <- Id <$> liftIO UUID.nextRandom
   let startInfo = StartInfo.StartInfo {id = freshId, startTime = now}
-      hello = StartInfo.Hello
-        { agentInfo = agentInfo,
-          startInfo = startInfo,
-          tasksInProgress = []
-        }
+      hello =
+        StartInfo.Hello
+          { agentInfo = agentInfo,
+            startInfo = startInfo,
+            tasksInProgress = []
+          }
       req r =
         retry (cap 60 exponential)
           $ noContent
@@ -240,10 +241,11 @@ configureLimits = do
 tryIncreaseResourceLimitTo :: (MonadUnliftIO m, KatipContext m) => Resource -> Text -> ResourceLimit -> m ()
 tryIncreaseResourceLimitTo resource resourceName target = katipAddContext (sl "resource" resourceName) do
   lims <- liftIO $ getResourceLimit resource
-  let lims' = ResourceLimits
-        { softLimit = target & atLeast (softLimit lims) & atMost (hardLimit lims),
-          hardLimit = hardLimit lims
-        }
+  let lims' =
+        ResourceLimits
+          { softLimit = target & atLeast (softLimit lims) & atMost (hardLimit lims),
+            hardLimit = hardLimit lims
+          }
       atLeast ResourceLimitInfinity _ = ResourceLimitInfinity
       atLeast _ ResourceLimitInfinity = ResourceLimitInfinity
       atLeast ResourceLimitUnknown r = r

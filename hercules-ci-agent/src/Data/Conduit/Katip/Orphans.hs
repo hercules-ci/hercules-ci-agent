@@ -7,13 +7,11 @@ import Data.Conduit
 import Katip
 
 instance Katip m => Katip (ConduitT i o m) where
-
   getLogEnv = lift getLogEnv
 
   localLogEnv f = transPipe (localLogEnv f)
 
 instance KatipContext m => KatipContext (ConduitT i o m) where
-
   getKatipContext = lift getKatipContext
 
   getKatipNamespace = lift getKatipNamespace

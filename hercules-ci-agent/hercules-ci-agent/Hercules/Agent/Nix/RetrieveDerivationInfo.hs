@@ -29,22 +29,23 @@ retrieveDerivationInfo' drvPath drv = do
   platform <- getDerivationPlatform drv
   let requiredSystemFeatures = maybe [] splitFeatures $ M.lookup "requiredSystemFeatures" env
       splitFeatures = filter (not . T.null) . T.split (== ' ') . toSL
-  pure $ DerivationInfo
-    { derivationPath = drvPath,
-      platform = toSL platform,
-      requiredSystemFeatures = requiredSystemFeatures,
-      inputDerivations = inputDrvPaths & map (\(i, os) -> (toSL i, map toSL os)) & M.fromList,
-      inputSources = map toSL sourcePaths,
-      outputs =
-        outputs
-          & map
-            ( \output ->
-                ( toSL $ derivationOutputName output,
-                  DerivationInfo.OutputInfo
-                    { DerivationInfo.path = toSL $ derivationOutputPath output,
-                      DerivationInfo.isFixed = derivationOutputHashAlgo output /= ""
-                    }
-                )
-            )
-          & M.fromList
-    }
+  pure $
+    DerivationInfo
+      { derivationPath = drvPath,
+        platform = toSL platform,
+        requiredSystemFeatures = requiredSystemFeatures,
+        inputDerivations = inputDrvPaths & map (\(i, os) -> (toSL i, map toSL os)) & M.fromList,
+        inputSources = map toSL sourcePaths,
+        outputs =
+          outputs
+            & map
+              ( \output ->
+                  ( toSL $ derivationOutputName output,
+                    DerivationInfo.OutputInfo
+                      { DerivationInfo.path = toSL $ derivationOutputPath output,
+                        DerivationInfo.isFixed = derivationOutputHashAlgo output /= ""
+                      }
+                  )
+              )
+            & M.fromList
+      }

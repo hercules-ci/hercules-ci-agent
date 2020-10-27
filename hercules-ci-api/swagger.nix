@@ -1,6 +1,7 @@
 { hercules-ci-api, runCommand, ... }:
 
-runCommand "hercules-swagger" {
+runCommand "hercules-swagger"
+{
   LANG = "C.UTF-8";
 } ''
   mkdir $out

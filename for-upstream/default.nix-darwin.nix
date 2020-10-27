@@ -1,7 +1,6 @@
 { config, lib, pkgs, ... }:
 
 with lib;
-
 let
   cfg = config.services.hercules-ci-agent;
   user = config.users.users.hercules-ci-agent;

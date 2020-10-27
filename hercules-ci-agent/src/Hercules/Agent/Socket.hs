@@ -74,15 +74,16 @@ withReliableSocket socketConfig f = do
         writeTVar agentMessageNextN (c + 1)
         pure $ Frame.Msg {n = c, p = p}
       socketThread = runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked
-      socket = Socket
-        { write = tagPayload >=> writeTBQueue writeQueue,
-          serviceChan = serviceMessageChan,
-          sync = do
-            counterAtSyncStart <- (\n -> n - 1) <$> readTVar agentMessageNextN
-            pure do
-              acked <- readTVar highestAcked
-              guard $ acked >= counterAtSyncStart
-        }
+      socket =
+        Socket
+          { write = tagPayload >=> writeTBQueue writeQueue,
+            serviceChan = serviceMessageChan,
+            sync = do
+              counterAtSyncStart <- (\n -> n - 1) <$> readTVar agentMessageNextN
+              pure do
+                acked <- readTVar highestAcked
+                guard $ acked >= counterAtSyncStart
+          }
   race socketThread (f socket) <&> either identity identity
 
 checkVersion' :: Applicative m => ServiceInfo -> m (Either Text ())

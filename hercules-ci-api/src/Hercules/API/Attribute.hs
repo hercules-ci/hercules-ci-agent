@@ -52,7 +52,6 @@ newtype AttributePath = AttributePath {fromAttributePath :: [Text]}
   deriving (Generic, Eq, NFData)
 
 instance FromHttpApiData AttributePath where
-
   -- TODO parse properly
   parseUrlPiece = Right . AttributePath . T.split (== '.')
 

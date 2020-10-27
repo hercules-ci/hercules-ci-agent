@@ -31,17 +31,18 @@ extractAgentInfo = do
   cachixPushCaches <- Cachix.Info.activePushCaches
   pushCaches <- Env.activePushCaches
   concurrentTasks <- asks (Config.concurrentTasks . Env.config)
-  let s = AgentInfo.AgentInfo
-        { hostname = toS hostname,
-          agentVersion = CabalInfo.herculesAgentVersion, -- TODO: Add git revision
-          nixVersion = nixExeVersion nix,
-          platforms = nixPlatforms nix,
-          cachixPushCaches = cachixPushCaches,
-          pushCaches = pushCaches,
-          systemFeatures = nixSystemFeatures nix,
-          substituters = nixSubstituters nix, -- TODO: Add cachix substituters
-          concurrentTasks = fromIntegral concurrentTasks
-        }
+  let s =
+        AgentInfo.AgentInfo
+          { hostname = toS hostname,
+            agentVersion = CabalInfo.herculesAgentVersion, -- TODO: Add git revision
+            nixVersion = nixExeVersion nix,
+            platforms = nixPlatforms nix,
+            cachixPushCaches = cachixPushCaches,
+            pushCaches = pushCaches,
+            systemFeatures = nixSystemFeatures nix,
+            substituters = nixSubstituters nix, -- TODO: Add cachix substituters
+            concurrentTasks = fromIntegral concurrentTasks
+          }
   logLocM DebugS $ "Determined environment info: " <> show s
   pure s
 
@@ -65,52 +66,53 @@ getNixInfo = do
     case Aeson.eitherDecode (toS rawJson) of
       Left e -> panic $ "Could not parse nix show-config --json: " <> show e
       Right r -> pure r
-  pure NixInfo
-    { nixExeVersion = T.dropAround isSpace (toSL version),
-      nixPlatforms =
-        ((cfg :: Aeson.Value) ^.. key "system" . key "value" . _String)
-          <> ( cfg
-                 ^.. key "extra-platforms"
-                 . key "value"
-                 . _Array
-                 . traverse
-                 . _String
-             ),
-      nixSystemFeatures =
-        cfg
-          ^.. key "system-features"
-          . key "value"
-          . _Array
-          . traverse
-          . _String,
-      nixSubstituters =
-        cfg
-          ^.. key "substituters"
-          . key "value"
-          . _Array
-          . traverse
-          . _String
-          . to cleanUrl,
-      nixTrustedPublicKeys =
-        cfg
-          ^.. key "trusted-public-keys"
-          . key "value"
-          . _Array
-          . traverse
-          . _String
-          . to cleanUrl,
-      nixNarinfoCacheNegativeTTL =
-        cfg
-          ^? key "narinfo-cache-negative-ttl"
-          . key "value"
-          . _Number
-          . to floor,
-      nixNetrcFile =
-        cfg
-          ^? key "netrc-file"
-          . key "value"
-          . _String
-    }
+  pure
+    NixInfo
+      { nixExeVersion = T.dropAround isSpace (toSL version),
+        nixPlatforms =
+          ((cfg :: Aeson.Value) ^.. key "system" . key "value" . _String)
+            <> ( cfg
+                   ^.. key "extra-platforms"
+                   . key "value"
+                   . _Array
+                   . traverse
+                   . _String
+               ),
+        nixSystemFeatures =
+          cfg
+            ^.. key "system-features"
+            . key "value"
+            . _Array
+            . traverse
+            . _String,
+        nixSubstituters =
+          cfg
+            ^.. key "substituters"
+            . key "value"
+            . _Array
+            . traverse
+            . _String
+            . to cleanUrl,
+        nixTrustedPublicKeys =
+          cfg
+            ^.. key "trusted-public-keys"
+            . key "value"
+            . _Array
+            . traverse
+            . _String
+            . to cleanUrl,
+        nixNarinfoCacheNegativeTTL =
+          cfg
+            ^? key "narinfo-cache-negative-ttl"
+            . key "value"
+            . _Number
+            . to floor,
+        nixNetrcFile =
+          cfg
+            ^? key "netrc-file"
+            . key "value"
+            . _String
+      }
 
 cleanUrl :: Text -> Text
 cleanUrl t | "@" `T.isInfixOf` t = "<URI censored; might contain secret>"

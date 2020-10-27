@@ -28,15 +28,16 @@ failWith :: [Char] -> IO a
 failWith = throwIO . userError
 
 defaultEvalTask :: EvaluateTask.EvaluateTask
-defaultEvalTask = EvaluateTask.EvaluateTask
-  { id = Prelude.error "override EvaluateTask.id please",
-    primaryInput = mempty,
-    otherInputs = mempty,
-    autoArguments = mempty,
-    inputMetadata = mempty,
-    nixPath = mempty,
-    logToken = "mock-eval-log-token"
-  }
+defaultEvalTask =
+  EvaluateTask.EvaluateTask
+    { id = Prelude.error "override EvaluateTask.id please",
+      primaryInput = mempty,
+      otherInputs = mempty,
+      autoArguments = mempty,
+      inputMetadata = mempty,
+      nixPath = mempty,
+      logToken = "mock-eval-log-token"
+    }
 
 attrLike :: [EvaluateEvent] -> [EvaluateEvent]
 attrLike = filter isAttrLike

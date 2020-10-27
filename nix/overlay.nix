@@ -11,7 +11,7 @@ self: pkgs:
 
   inherit (self.hercules-ci-agent-packages) pre-commit-check;
 
-  toTOML-test = pkgs.callPackage ../for-upstream/to-toml/test-run.nix {};
+  toTOML-test = pkgs.callPackage ../for-upstream/to-toml/test-run.nix { };
 
   boehmgc-hercules = (
     pkgs.boehmgc.override {
@@ -19,9 +19,9 @@ self: pkgs:
     }
   ).overrideAttrs (
     attrs: attrs
-    // {
-      patches = (attrs.patches or [])
-      ++ [
+      // {
+      patches = (attrs.patches or [ ])
+        ++ [
         ./boehmgc-8.0.2-min-heap-incr-1mb.patch
       ]
       ;
@@ -30,10 +30,10 @@ self: pkgs:
 
   nix = pkgs.nix.override (
     args:
-      args
-      // {
-        boehmgc = self.boehmgc-hercules;
-      }
+    args
+    // {
+      boehmgc = self.boehmgc-hercules;
+    }
   );
 
 }

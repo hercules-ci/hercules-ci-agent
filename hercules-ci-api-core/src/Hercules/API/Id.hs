@@ -53,7 +53,6 @@ instance Show (Id a) where
   showsPrec n = showsPrec n . idText
 
 instance ToJSON (Id a) where
-
   toEncoding = toEncoding . idText
 
   toJSON = toJSON . idText

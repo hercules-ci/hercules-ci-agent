@@ -72,7 +72,6 @@ instance Semigroup JobStatus where
 --
 -- @mempty@: 'Success'
 instance Monoid JobStatus where
-
   mappend = (<>)
 
   mempty = Success

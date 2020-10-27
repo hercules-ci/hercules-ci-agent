@@ -191,15 +191,16 @@ withServer doIt = do
   bt <- newIORef mempty
   dt <- newIORef mempty
   d <- newTVarIO mempty
-  let st = ServerState
-        { queue = q,
-          evalEvents = ee,
-          evalTasks = et,
-          buildEvents = be,
-          buildTasks = bt,
-          drvTasks = dt,
-          done = d
-        }
+  let st =
+        ServerState
+          { queue = q,
+            evalEvents = ee,
+            evalTasks = et,
+            buildEvents = be,
+            buildTasks = bt,
+            drvTasks = dt,
+            done = d
+          }
       runServer =
         Control.Exception.Safe.handleAny
           ( \e -> do
@@ -420,12 +421,13 @@ handleTasksUpdate st id body _authResult = do
   for_ body $ \ev -> case ev of
     EvaluateEvent.BuildRequest (BuildRequest.BuildRequest {derivationPath = drvPath}) -> do
       buildId <- liftIO randomId
-      liftIO $ enqueue (ServerHandle st) $ AgentTask.Build $ BuildTask.BuildTask
-        { BuildTask.id = buildId,
-          BuildTask.derivationPath = drvPath,
-          BuildTask.logToken = "eyBlurb=",
-          inputDerivationOutputPaths = []
-        }
+      liftIO $ enqueue (ServerHandle st) $ AgentTask.Build $
+        BuildTask.BuildTask
+          { BuildTask.id = buildId,
+            BuildTask.derivationPath = drvPath,
+            BuildTask.logToken = "eyBlurb=",
+            inputDerivationOutputPaths = []
+          }
     _ -> pass
   pure NoContent
 
@@ -485,11 +487,12 @@ lifeCycleEndpoints _server =
     }
 
 serviceInfo :: SI.ServiceInfo
-serviceInfo = SI.ServiceInfo
-  { SI.version = (2, 0),
-    SI.agentSocketBaseURL = "http://api",
-    SI.bulkSocketBaseURL = "http://api"
-  }
+serviceInfo =
+  SI.ServiceInfo
+    { SI.version = (2, 0),
+      SI.agentSocketBaseURL = "http://api",
+      SI.bulkSocketBaseURL = "http://api"
+    }
 
 handleAgentCreate ::
   CreateAgentSession.CreateAgentSession ->
@@ -527,10 +530,11 @@ handleGetBuild st id _authResult = do
     Just x -> pure x
 
 logsEndpoints :: ServerState -> LogsAPI Session AsServer
-logsEndpoints _server = LogsAPI
-  { writeLog = \_authResult logBytes -> NoContent <$ do
-      hPutStrLn stderr $ "Got log: " <> logBytes
-  }
+logsEndpoints _server =
+  LogsAPI
+    { writeLog = \_authResult logBytes -> NoContent <$ do
+        hPutStrLn stderr $ "Got log: " <> logBytes
+    }
 
 randomId :: IO (Id a)
 randomId = Id <$> UUID.nextRandom

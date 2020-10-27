@@ -84,13 +84,11 @@ runHerculesClient' m = do
   escalate =<< liftIO (Servant.Client.Streaming.runClientM m clientEnv)
 
 instance K.Katip App where
-
   getLogEnv = asks kLogEnv
 
   localLogEnv f (App m) = App (local (\s -> s {kLogEnv = f (kLogEnv s)}) m)
 
 instance K.KatipContext App where
-
   getKatipContext = asks kContext
 
   localKatipContext f (App m) = App (local (\s -> s {kContext = f (kContext s)}) m)

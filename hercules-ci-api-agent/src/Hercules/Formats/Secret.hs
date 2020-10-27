@@ -17,7 +17,6 @@ data Secret
       }
 
 instance ToJSON Secret where
-
   toJSON a =
     object $
       ["kind" .= String "Secret", "data" .= data_ a]

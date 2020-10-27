@@ -1,12 +1,11 @@
 { pkgs ? import ../nix }:
-
 let
   inherit (pkgs) runCommand stdenv lib nix;
   inherit (pkgs.lib) concatMapStrings attrValues;
   inherit (pkgs.hercules-ci-agent-packages.internal) projectRootSource;
 in
-
-runCommand "test-module-nixos" {
+runCommand "test-module-nixos"
+{
   src = projectRootSource;
   buildInputs = [ nix ];
   nixpkgs = pkgs.path;
