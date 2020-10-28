@@ -86,7 +86,7 @@
     in
     {
       # non-standard attribute
-      ciChecks = allTargets;
+      ciChecks = lib.mapAttrs (k: v: v // { recurseForDerivations = true; }) allTargets;
 
       internal.pkgs = lib.mapAttrs (_sys: target: target.internal.pkgs) defaultTarget;
 
