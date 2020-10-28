@@ -30,12 +30,16 @@
             _name: { nixpkgsSource }:
               dimension "System"
                 {
-                  "aarch64-linux" = { enable = true; };
+                  "aarch64-linux" = {
+                    enable = true;
+                    # shellcheck was broken https://hercules-ci.com/github/hercules-ci/hercules-ci-agent/jobs/826
+                    isDevSystem = false;
+                  };
                   "x86_64-linux" = { enable = true; };
                   "x86_64-darwin" = { enable = true; };
                 }
                 (
-                  system: { enable }:
+                  system: { enable, isDevSystem ? true }:
 
                     lib.optionalAttrs enable (
                       let
@@ -66,17 +70,21 @@
                               };
                           };
                       in
-                      pkgs.recurseIntoAttrs {
-                        internal.pkgs = pkgs;
-                        inherit (pkgs.hercules-ci-agent-packages)
-                          hercules-ci-cli
-                          ;
+                      pkgs.recurseIntoAttrs
+                        {
+                          internal.pkgs = pkgs;
+                          inherit (pkgs.hercules-ci-agent-packages)
+                            hercules-ci-cli
+                            ;
+                          inherit (pkgs)
+                            hercules-ci-agent
+                            hercules-ci-agent-packages
+                            toTOML-test
+                            ;
+                        } // lib.optionalAttrs isDevSystem {
                         inherit (pkgs)
-                          hercules-ci-agent
-                          hercules-ci-agent-packages
-                          devTools
-                          toTOML-test
                           pre-commit-check
+                          devTools
                           ;
                       }
                     )
