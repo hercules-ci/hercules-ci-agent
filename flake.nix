@@ -75,10 +75,10 @@
                           internal.pkgs = pkgs;
                           inherit (pkgs.hercules-ci-agent-packages)
                             hercules-ci-cli
+                            hercules-ci-api-swagger
                             ;
                           inherit (pkgs)
                             hercules-ci-agent
-                            hercules-ci-agent-packages
                             toTOML-test
                             ;
                         } // lib.optionalAttrs isDevSystem {
