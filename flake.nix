@@ -103,6 +103,9 @@
           )
           (filterMeta defaultTarget);
 
+      overlay =
+        final: prev: (import ./nix/overlay.nix inputs) final prev;
+
       # TODO
       # nixosModules.agent-service = { imports = [ ./module.nix ]; };
       nixosModules.agent-profile = { imports = [ ./module.nix ]; };
