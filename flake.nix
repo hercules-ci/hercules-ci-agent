@@ -108,7 +108,18 @@
 
       # TODO
       # nixosModules.agent-service = { imports = [ ./module.nix ]; };
-      nixosModules.agent-profile = { imports = [ ./module.nix ]; };
+      nixosModules.agent-profile =
+        { pkgs, ... }:
+        {
+          imports = [ ./for-upstream/default.nixos.nix ];
+
+          # This module replaces what's provided by NixOS
+          disabledModules = [ "services/continuous-integration/hercules-ci-agent/default.nix" ];
+
+          config = {
+            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
+          };
+        };
 
       defaultApp = lib.mapAttrs (k: v: v.hercules-ci-cli) self.packages;
 
