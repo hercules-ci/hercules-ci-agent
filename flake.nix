@@ -73,6 +73,7 @@
                       pkgs.recurseIntoAttrs
                         {
                           internal.pkgs = pkgs;
+                          internal.haskellPackages = pkgs.hercules-ci-agent-packages.internal.haskellPackages;
                           inherit (pkgs.hercules-ci-agent-packages)
                             hercules-ci-cli
                             hercules-ci-api-swagger
@@ -141,7 +142,7 @@
 
       devShell = lib.mapAttrs
         (
-          k: { internal, devTools, hercules-ci-agent-packages, ... }:
+          k: { internal, devTools, pre-commit-check, ... }:
             internal.pkgs.mkShell {
               buildInputs =
                 [
@@ -151,10 +152,10 @@
                   devTools.jq
                   devTools.cabal2nix
                   devTools.nix-prefetch-git
-                  hercules-ci-agent-packages.internal.haskellPackages.ghc
-                  hercules-ci-agent-packages.internal.haskellPackages.ghcide
+                  internal.haskellPackages.ghc
+                  internal.haskellPackages.ghcide
                 ];
-              inherit (hercules-ci-agent-packages.pre-commit-check) shellHook;
+              inherit (pre-commit-check) shellHook;
             }
         )
         defaultTarget;
