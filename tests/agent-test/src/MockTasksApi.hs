@@ -28,8 +28,8 @@ import Data.Aeson
   )
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
-import qualified Data.Conduit as Conduit
 import Data.Conduit ((.|))
+import qualified Data.Conduit as Conduit
 import qualified Data.Conduit.Combinators as Conduit
 import qualified Data.Conduit.Tar as Tar
 import Data.Conduit.Zlib (gzip)
@@ -90,32 +90,35 @@ import System.Environment (getEnvironment)
 import System.FilePath ((</>))
 import qualified Prelude
 
-data ServerState
-  = ServerState
-      { queue :: MVar (ServicePayload),
-        done :: TVar (Map Text TaskStatus.TaskStatus),
-        evalTasks ::
-          IORef
-            ( Map (Id (Task EvaluateTask.EvaluateTask))
-                EvaluateTask.EvaluateTask
-            ),
-        evalEvents ::
-          IORef
-            ( Map (Id (Task EvaluateTask.EvaluateTask))
-                [EvaluateEvent.EvaluateEvent]
-            ),
-        buildTasks ::
-          IORef
-            ( Map (Id (Task BuildTask.BuildTask))
-                BuildTask.BuildTask
-            ),
-        buildEvents ::
-          IORef
-            ( Map (Id (Task BuildTask.BuildTask))
-                [BuildEvent.BuildEvent]
-            ),
-        drvTasks :: IORef (Map Text (Id (Task BuildTask.BuildTask)))
-      }
+data ServerState = ServerState
+  { queue :: MVar (ServicePayload),
+    done :: TVar (Map Text TaskStatus.TaskStatus),
+    evalTasks ::
+      IORef
+        ( Map
+            (Id (Task EvaluateTask.EvaluateTask))
+            EvaluateTask.EvaluateTask
+        ),
+    evalEvents ::
+      IORef
+        ( Map
+            (Id (Task EvaluateTask.EvaluateTask))
+            [EvaluateEvent.EvaluateEvent]
+        ),
+    buildTasks ::
+      IORef
+        ( Map
+            (Id (Task BuildTask.BuildTask))
+            BuildTask.BuildTask
+        ),
+    buildEvents ::
+      IORef
+        ( Map
+            (Id (Task BuildTask.BuildTask))
+            [BuildEvent.BuildEvent]
+        ),
+    drvTasks :: IORef (Map Text (Id (Task BuildTask.BuildTask)))
+  }
 
 newtype ServerHandle = ServerHandle ServerState
 
@@ -142,10 +145,11 @@ fixup :: AgentTask.AgentTask -> IO AgentTask.AgentTask
 fixup (AgentTask.Evaluate t) = do
   env <- getEnvironment
   let base = maybe "http://api" toS $ L.lookup "BASE_URL" env
-      otherInputs' = t & EvaluateTask.otherInputs & map \input ->
-        if "/" `T.isPrefixOf` input
-          then base <> input
-          else input
+      otherInputs' =
+        t & EvaluateTask.otherInputs & map \input ->
+          if "/" `T.isPrefixOf` input
+            then base <> input
+            else input
   pure $
     AgentTask.Evaluate
       t
@@ -236,10 +240,10 @@ context = jwtSettings :. cookieSettings :. EmptyContext
 
 jwtSettings :: JWTSettings
 jwtSettings =
-  defaultJWTSettings
-    $ fromRight'
-    $ eitherDecode
-      "{\"crv\":\"P-256\",\"d\":\"BWOmuvMiIPUWR-sPHIxaEKKr59OlVj-C7j24sgtCqA0\",\"x\":\"TTmrmU8p4PO3JGuW-8Fc2EvCBoR5NVoT2N5J3wJzBHg\",\"kty\":\"EC\",\"y\":\"6ATtNfAzjk_I4qf2hDrf2kAOw9IFZK8Y2ECJcs_fjqM\"}"
+  defaultJWTSettings $
+    fromRight' $
+      eitherDecode
+        "{\"crv\":\"P-256\",\"d\":\"BWOmuvMiIPUWR-sPHIxaEKKr59OlVj-C7j24sgtCqA0\",\"x\":\"TTmrmU8p4PO3JGuW-8Fc2EvCBoR5NVoT2N5J3wJzBHg\",\"kty\":\"EC\",\"y\":\"6ATtNfAzjk_I4qf2hDrf2kAOw9IFZK8Y2ECJcs_fjqM\"}"
   where
     fromRight' (Right r) = r
     fromRight' (Left l) = panic $ "test suite static jwk decode error" <> show l
@@ -296,12 +300,13 @@ socket server conn = do
   send [Frame.Oob {o = SP.ServiceInfo serviceInfo}]
   _hello <- recv
   send [Frame.Ack (-1)]
-  _writerThreadId <- liftIO $ flip forkFinally (putErrText . ("Writer died: " <>) . show @(Either SomeException Void)) $ do
-    let doSend msgN = do
-          payload <- takeMVar (queue server)
-          send [Frame.Msg {p = payload, n = msgN}]
-          doSend (msgN + 1)
-    doSend 0
+  _writerThreadId <- liftIO $
+    flip forkFinally (putErrText . ("Writer died: " <>) . show @(Either SomeException Void)) $ do
+      let doSend msgN = do
+            payload <- takeMVar (queue server)
+            send [Frame.Msg {p = payload, n = msgN}]
+            doSend (msgN + 1)
+      doSend 0
   forever $ do
     pl <- recv
     case pl of
@@ -366,10 +371,11 @@ makeRelative fp =
     f fi = fi {Tar.filePath = fixEmpty $ doIt $ Tar.filePath fi}
     doIt :: ByteString -> ByteString
     doIt path =
-      BS.dropWhile (== fromIntegral (ord '/')) $ fromMaybe path $
-        BS.stripPrefix
-          (toS fp)
-          path
+      BS.dropWhile (== fromIntegral (ord '/')) $
+        fromMaybe path $
+          BS.stripPrefix
+            (toS fp)
+            path
     fixEmpty :: ByteString -> ByteString
     fixEmpty "" = "."
     fixEmpty x = x
@@ -416,18 +422,21 @@ handleTasksUpdate ::
   AuthResult Session ->
   Handler NoContent
 handleTasksUpdate st id body _authResult = do
-  liftIO $ atomicModifyIORef_ (evalEvents st) $ \m ->
-    M.alter (\prev -> Just $ fromMaybe mempty prev <> body) id m
+  liftIO $
+    atomicModifyIORef_ (evalEvents st) $ \m ->
+      M.alter (\prev -> Just $ fromMaybe mempty prev <> body) id m
   for_ body $ \ev -> case ev of
     EvaluateEvent.BuildRequest (BuildRequest.BuildRequest {derivationPath = drvPath}) -> do
       buildId <- liftIO randomId
-      liftIO $ enqueue (ServerHandle st) $ AgentTask.Build $
-        BuildTask.BuildTask
-          { BuildTask.id = buildId,
-            BuildTask.derivationPath = drvPath,
-            BuildTask.logToken = "eyBlurb=",
-            inputDerivationOutputPaths = []
-          }
+      liftIO $
+        enqueue (ServerHandle st) $
+          AgentTask.Build $
+            BuildTask.BuildTask
+              { BuildTask.id = buildId,
+                BuildTask.derivationPath = drvPath,
+                BuildTask.logToken = "eyBlurb=",
+                inputDerivationOutputPaths = []
+              }
     _ -> pass
   pure NoContent
 
@@ -514,8 +523,9 @@ handleUpdateBuild ::
   AuthResult Session ->
   Handler NoContent
 handleUpdateBuild st id body _authResult = do
-  liftIO $ atomicModifyIORef_ (buildEvents st) $ \m ->
-    M.alter (\prev -> Just $ fromMaybe mempty prev <> body) id m
+  liftIO $
+    atomicModifyIORef_ (buildEvents st) $ \m ->
+      M.alter (\prev -> Just $ fromMaybe mempty prev <> body) id m
   pure NoContent
 
 handleGetBuild ::
@@ -532,8 +542,9 @@ handleGetBuild st id _authResult = do
 logsEndpoints :: ServerState -> LogsAPI Session AsServer
 logsEndpoints _server =
   LogsAPI
-    { writeLog = \_authResult logBytes -> NoContent <$ do
-        hPutStrLn stderr $ "Got log: " <> logBytes
+    { writeLog = \_authResult logBytes ->
+        NoContent <$ do
+          hPutStrLn stderr $ "Got log: " <> logBytes
     }
 
 randomId :: IO (Id a)

@@ -20,12 +20,11 @@ import Hercules.Formats.NixCache
 import Protolude hiding (catchJust)
 import System.IO.Error (isDoesNotExistError)
 
-data BinaryCaches
-  = BinaryCaches
-      { cachixCaches :: Map Text CachixCache,
-        nixCaches :: Map Text NixCache,
-        unknownKinds :: Map Text UnknownKind
-      }
+data BinaryCaches = BinaryCaches
+  { cachixCaches :: Map Text CachixCache,
+    nixCaches :: Map Text NixCache,
+    unknownKinds :: Map Text UnknownKind
+  }
 
 data UnknownKind = UnknownKind {kind :: Text}
   deriving (Generic, FromJSON)
@@ -48,15 +47,17 @@ parseFile cfg = do
       (mfilter isDoesNotExistError . Just)
       (liftIO (BL.readFile (toS fname)))
       ( \_e ->
-          liftIO $ throwIO $ FatalError $
-            "The binary-caches.json file does not exist.\
-            \\nAccording to the configuration, it should be in\
-            \\n  "
-              <> toS fname
-              <> "\
-                 \\n\
-                 \\nFor more information about binary-caches.json, see\n\
-                 \\nhttps://docs.hercules-ci.com/hercules-ci/reference/binary-caches-json/"
+          liftIO $
+            throwIO $
+              FatalError $
+                "The binary-caches.json file does not exist.\
+                \\nAccording to the configuration, it should be in\
+                \\n  "
+                  <> toS fname
+                  <> "\
+                     \\n\
+                     \\nFor more information about binary-caches.json, see\n\
+                     \\nhttps://docs.hercules-ci.com/hercules-ci/reference/binary-caches-json/"
       )
   bcs <- escalateAs (FatalError . toS) $ eitherDecode bytes
   validate (toS fname) bcs

@@ -23,14 +23,13 @@ import Servant.API
 import Servant.API.Generic
 import Servant.Auth
 
-data AgentAPI auth f
-  = AgentAPI
-      { tasks :: f :- ToServantApi (TasksAPI auth),
-        eval :: f :- ToServantApi (EvalAPI auth),
-        build :: f :- ToServantApi (BuildAPI auth),
-        lifeCycle :: f :- ToServantApi (LifeCycleAPI auth),
-        state :: f :- ToServantApi (StateAPI auth)
-      }
+data AgentAPI auth f = AgentAPI
+  { tasks :: f :- ToServantApi (TasksAPI auth),
+    eval :: f :- ToServantApi (EvalAPI auth),
+    build :: f :- ToServantApi (BuildAPI auth),
+    lifeCycle :: f :- ToServantApi (LifeCycleAPI auth),
+    state :: f :- ToServantApi (StateAPI auth)
+  }
   deriving (Generic)
 
 -- TODO check that we don't have overlapping endpoints and remove cookie

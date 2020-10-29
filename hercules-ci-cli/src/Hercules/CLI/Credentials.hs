@@ -5,8 +5,8 @@
 module Hercules.CLI.Credentials where
 
 import Data.Aeson (FromJSON, ToJSON, eitherDecode)
-import qualified Data.Aeson.Encode.Pretty
 import Data.Aeson.Encode.Pretty (Indent (Spaces), confIndent, confTrailingNewline, defConfig, encodePretty')
+import qualified Data.Aeson.Encode.Pretty
 import qualified Data.ByteString as BS
 import qualified Data.Map as M
 import Hercules.CLI.Client (determineDefaultApiBaseUrl)
@@ -14,43 +14,38 @@ import Hercules.Error
 import qualified Network.URI as URI
 import Protolude
 import System.Directory (XdgDirectory (XdgConfig), createDirectoryIfMissing, doesFileExist, getXdgDirectory)
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath (takeDirectory, (</>))
 
-data Credentials
-  = Credentials
-      { domains :: Map Text DomainCredentials
-      }
+data Credentials = Credentials
+  { domains :: Map Text DomainCredentials
+  }
   deriving (Eq, Generic, FromJSON, ToJSON)
 
-data DomainCredentials
-  = DomainCredentials
-      { personalToken :: Text
-      }
+data DomainCredentials = DomainCredentials
+  { personalToken :: Text
+  }
   deriving (Eq, Generic, FromJSON, ToJSON)
 
-data CredentialsParsingException
-  = CredentialsParsingException
-      { filePath :: FilePath,
-        message :: Text
-      }
+data CredentialsParsingException = CredentialsParsingException
+  { filePath :: FilePath,
+    message :: Text
+  }
   deriving (Show, Eq)
 
 instance Exception CredentialsParsingException where
   displayException e = "Could not parse credentials file " <> filePath e <> ": " <> toS (message e)
 
-data NoCredentialException
-  = NoCredentialException
-      { noCredentialDomain :: Text
-      }
+data NoCredentialException = NoCredentialException
+  { noCredentialDomain :: Text
+  }
   deriving (Show, Eq)
 
 instance Exception NoCredentialException where
   displayException e = "Could not find credentials for domain " <> toS (noCredentialDomain e) <> ". Please run hci login."
 
-data ApiBaseUrlParsingException
-  = ApiBaseUrlParsingException
-      { apiBaseUrlParsingMessage :: Text
-      }
+data ApiBaseUrlParsingException = ApiBaseUrlParsingException
+  { apiBaseUrlParsingMessage :: Text
+  }
   deriving (Show, Eq)
 
 instance Exception ApiBaseUrlParsingException where

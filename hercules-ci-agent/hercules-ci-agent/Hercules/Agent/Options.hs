@@ -10,11 +10,10 @@ import Hercules.Agent.Config (ConfigPath (..))
 import Options.Applicative
 import Protolude hiding (option)
 
-data Options
-  = Options
-      { configFile :: ConfigPath,
-        mode :: Mode
-      }
+data Options = Options
+  { configFile :: ConfigPath,
+    mode :: Mode
+  }
 
 parseOptions :: Parser Options
 parseOptions =

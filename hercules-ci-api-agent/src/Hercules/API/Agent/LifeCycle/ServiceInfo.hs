@@ -7,10 +7,9 @@ where
 
 import Hercules.API.Prelude
 
-data ServiceInfo
-  = ServiceInfo
-      { version :: (Int, Int),
-        agentSocketBaseURL :: Text,
-        bulkSocketBaseURL :: Text
-      }
+data ServiceInfo = ServiceInfo
+  { version :: (Int, Int),
+    agentSocketBaseURL :: Text,
+    bulkSocketBaseURL :: Text
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

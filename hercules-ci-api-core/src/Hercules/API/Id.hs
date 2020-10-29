@@ -25,8 +25,8 @@ import Data.Swagger
     type_,
   )
 import Data.Text (Text)
-import qualified Data.UUID as UUID
 import Data.UUID (UUID)
+import qualified Data.UUID as UUID
 import GHC.Generics (Generic)
 import Web.HttpApiData
 import Prelude

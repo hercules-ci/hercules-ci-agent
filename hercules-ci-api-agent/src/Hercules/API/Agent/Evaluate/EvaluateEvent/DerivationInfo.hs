@@ -15,15 +15,14 @@ type DerivationPathText = Text
 -- | Derivation fields that are relevant to CI, notably excluding the details
 -- that make it buildable and may be sensitive such as the builder script or
 -- output hashes.
-data DerivationInfo
-  = DerivationInfo
-      { derivationPath :: DerivationPathText,
-        platform :: Text,
-        requiredSystemFeatures :: [Text],
-        inputDerivations :: Map DerivationPathText [OutputNameText],
-        inputSources :: [DerivationPathText],
-        outputs :: Map OutputNameText OutputInfo
-      }
+data DerivationInfo = DerivationInfo
+  { derivationPath :: DerivationPathText,
+    platform :: Text,
+    requiredSystemFeatures :: [Text],
+    inputDerivations :: Map DerivationPathText [OutputNameText],
+    inputSources :: [DerivationPathText],
+    outputs :: Map OutputNameText OutputInfo
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON)
 
 instance FromJSON DerivationInfo where
@@ -32,9 +31,8 @@ instance FromJSON DerivationInfo where
       fixup :: A.Value -> A.Value
       fixup = _Object . at "requiredSystemFeatures" %~ (<|> Just (A.Array mempty))
 
-data OutputInfo
-  = OutputInfo
-      { path :: Text,
-        isFixed :: Bool
-      }
+data OutputInfo = OutputInfo
+  { path :: Text,
+    isFixed :: Bool
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

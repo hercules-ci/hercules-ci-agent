@@ -54,31 +54,29 @@ import Servant.Swagger.UI.Core (SwaggerSchemaUI)
 import Prelude
 
 -- TODO remove health so we get clientapi
-data HerculesAPI auth f
-  = HerculesAPI
-      { accounts :: f :- ToServantApi (AccountsAPI auth),
-        repos :: f :- ToServantApi (ReposAPI auth),
-        projects :: f :- ToServantApi (ProjectsAPI auth),
-        agents :: f :- ToServantApi (AgentsAPI auth),
-        build :: f :- ToServantApi (Client.BuildAPI auth),
-        effects :: f :- ToServantApi (EffectsAPI auth),
-        health :: f :- ToServantApi (HealthAPI auth),
-        organizations :: f :- ToServantApi (OrganizationsAPI auth),
-        state :: f :- ToServantApi (StateAPI auth)
-      }
+data HerculesAPI auth f = HerculesAPI
+  { accounts :: f :- ToServantApi (AccountsAPI auth),
+    repos :: f :- ToServantApi (ReposAPI auth),
+    projects :: f :- ToServantApi (ProjectsAPI auth),
+    agents :: f :- ToServantApi (AgentsAPI auth),
+    build :: f :- ToServantApi (Client.BuildAPI auth),
+    effects :: f :- ToServantApi (EffectsAPI auth),
+    health :: f :- ToServantApi (HealthAPI auth),
+    organizations :: f :- ToServantApi (OrganizationsAPI auth),
+    state :: f :- ToServantApi (StateAPI auth)
+  }
   deriving (Generic)
 
-data ClientAPI auth f
-  = ClientAPI
-      { clientAccounts :: f :- ToServantApi (AccountsAPI auth),
-        clientRepos :: f :- ToServantApi (ReposAPI auth),
-        clientProjects :: f :- ToServantApi (ProjectsAPI auth),
-        clientAgents :: f :- ToServantApi (AgentsAPI auth),
-        clientBuild :: f :- ToServantApi (Client.BuildAPI auth),
-        clientEffects :: f :- ToServantApi (EffectsAPI auth),
-        clientOrganizations :: f :- ToServantApi (OrganizationsAPI auth),
-        clientState :: f :- ToServantApi (StateAPI auth)
-      }
+data ClientAPI auth f = ClientAPI
+  { clientAccounts :: f :- ToServantApi (AccountsAPI auth),
+    clientRepos :: f :- ToServantApi (ReposAPI auth),
+    clientProjects :: f :- ToServantApi (ProjectsAPI auth),
+    clientAgents :: f :- ToServantApi (AgentsAPI auth),
+    clientBuild :: f :- ToServantApi (Client.BuildAPI auth),
+    clientEffects :: f :- ToServantApi (EffectsAPI auth),
+    clientOrganizations :: f :- ToServantApi (OrganizationsAPI auth),
+    clientState :: f :- ToServantApi (StateAPI auth)
+  }
   deriving (Generic)
 
 type ClientAuth = Auth '[JWT, Cookie] ()
@@ -107,13 +105,13 @@ swagger :: Swagger
 swagger =
   toSwagger (servantClientApi @(Auth '[JWT] ()))
     & info
-    . title
+      . title
     .~ "Hercules CI API"
     & info
-    . version
+      . version
     .~ "v1"
     & info
-    . description
+      . description
     ?~ "You have reached the Hercules Continuous Integration Application Programming Interface. This user interface provides human friendly access to the various endpoints. To get started with Hercules CI, see hercules-ci.com. Happy building! —the Hercules team"
 
 -- | Postcomposes 'Servant.API.Generic.fromServant' to an accessor,

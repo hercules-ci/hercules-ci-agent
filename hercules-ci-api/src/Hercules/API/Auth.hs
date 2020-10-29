@@ -8,14 +8,13 @@ import Servant.API
 import Servant.API.Generic
 
 -- | Endpoints for authentication
-data AuthAPI f
-  = AuthAPI
-      { initiateGitHubLogin ::
-          f
-            :- "api"
-            :> "auth"
-            :> "github"
-            :> QueryParam' '[Optional, Strict] "redirect" Text
-            :> Get302 '[PlainText, JSON] '[]
-      }
+data AuthAPI f = AuthAPI
+  { initiateGitHubLogin ::
+      f
+        :- "api"
+        :> "auth"
+        :> "github"
+        :> QueryParam' '[Optional, Strict] "redirect" Text
+        :> Get302 '[PlainText, JSON] '[]
+  }
   deriving (Generic)

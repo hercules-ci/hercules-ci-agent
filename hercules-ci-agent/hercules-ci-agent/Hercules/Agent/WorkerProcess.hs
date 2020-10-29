@@ -30,11 +30,10 @@ import System.Process
 import System.Timeout (timeout)
 import Prelude ()
 
-data WorkerException
-  = WorkerException
-      { originalException :: SomeException,
-        exitStatus :: Maybe ExitCode
-      }
+data WorkerException = WorkerException
+  { originalException :: SomeException,
+    exitStatus :: Maybe ExitCode
+  }
   deriving (Show, Typeable)
 
 instance Exception WorkerException where
@@ -44,10 +43,9 @@ instance Exception WorkerException where
         Nothing -> ""
         Just s -> " (worker: " <> show s <> ")"
 
-data WorkerEnvSettings
-  = WorkerEnvSettings
-      { nixPath :: [EvaluateTask.NixPathElement (EvaluateTask.SubPathOf FilePath)]
-      }
+data WorkerEnvSettings = WorkerEnvSettings
+  { nixPath :: [EvaluateTask.NixPathElement (EvaluateTask.SubPathOf FilePath)]
+  }
 
 -- | Filter out impure env vars by wildcard, set NIX_PATH
 modifyEnv :: WorkerEnvSettings -> Map [Char] [Char] -> Map [Char] [Char]
@@ -84,40 +82,41 @@ runWorker baseProcess stderrLineHandler commandChan eventHandler = do
             std_out = CreatePipe,
             std_err = CreatePipe
           }
-  liftIO $ withCreateProcess createProcessSpec $ \mIn mOut mErr processHandle -> do
-    (inHandle, outHandle, errHandle) <-
-      case (,,) <$> mIn <*> mOut <*> mErr of
-        Just x -> pure x
-        Nothing ->
-          throwIO $
-            mkIOError
-              illegalOperationErrorType
-              "Process did not return all handles"
-              Nothing -- no handle
-              Nothing -- no path
-    pidMaybe <- liftIO $ getPid processHandle
-    let pid = case pidMaybe of Just x -> fromIntegral x; Nothing -> 0
-    let stderrPiper =
-          liftIO $
-            runConduit
-              (sourceHandle errHandle .| linesUnboundedAsciiC .| awaitForever (liftIO . unlift . stderrLineHandler pid))
-    let eventConduit = sourceHandle outHandle .| conduitDecode
-        commandConduit =
-          sourceChan commandChan
-            .| conduitEncode
-            .| concatMapC (\x -> [Chunk x, Flush])
-            .| handleC handleEPIPE (sinkHandleFlush inHandle)
-        handleEPIPE e | ioeGetErrorType e == ResourceVanished = pure ()
-        handleEPIPE e = throwIO e
-    let cmdThread = runConduit commandConduit `finally` hClose outHandle
-        eventThread = unlift $ conduitToCallbacks eventConduit eventHandler
-    -- plain forkIO so it can process all of stderr in case of an exception
-    void $ forkIO stderrPiper
-    withAsync (waitForProcess processHandle) $ \exitAsync -> do
-      withAsync cmdThread $ \_ -> do
-        eventThread
-          `Safe.catch` \e -> do
-            let oneSecond = 1000 * 1000
-            maybeStatus <- timeout (5 * oneSecond) (wait exitAsync)
-            throwIO $ WorkerException e maybeStatus
-        wait exitAsync
+  liftIO $
+    withCreateProcess createProcessSpec $ \mIn mOut mErr processHandle -> do
+      (inHandle, outHandle, errHandle) <-
+        case (,,) <$> mIn <*> mOut <*> mErr of
+          Just x -> pure x
+          Nothing ->
+            throwIO $
+              mkIOError
+                illegalOperationErrorType
+                "Process did not return all handles"
+                Nothing -- no handle
+                Nothing -- no path
+      pidMaybe <- liftIO $ getPid processHandle
+      let pid = case pidMaybe of Just x -> fromIntegral x; Nothing -> 0
+      let stderrPiper =
+            liftIO $
+              runConduit
+                (sourceHandle errHandle .| linesUnboundedAsciiC .| awaitForever (liftIO . unlift . stderrLineHandler pid))
+      let eventConduit = sourceHandle outHandle .| conduitDecode
+          commandConduit =
+            sourceChan commandChan
+              .| conduitEncode
+              .| concatMapC (\x -> [Chunk x, Flush])
+              .| handleC handleEPIPE (sinkHandleFlush inHandle)
+          handleEPIPE e | ioeGetErrorType e == ResourceVanished = pure ()
+          handleEPIPE e = throwIO e
+      let cmdThread = runConduit commandConduit `finally` hClose outHandle
+          eventThread = unlift $ conduitToCallbacks eventConduit eventHandler
+      -- plain forkIO so it can process all of stderr in case of an exception
+      void $ forkIO stderrPiper
+      withAsync (waitForProcess processHandle) $ \exitAsync -> do
+        withAsync cmdThread $ \_ -> do
+          eventThread
+            `Safe.catch` \e -> do
+              let oneSecond = 1000 * 1000
+              maybeStatus <- timeout (5 * oneSecond) (wait exitAsync)
+              throwIO $ WorkerException e maybeStatus
+          wait exitAsync

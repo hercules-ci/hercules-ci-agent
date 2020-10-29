@@ -39,57 +39,49 @@ eventTime (Succeeded (DerivationEventSucceeded {time = t})) = t
 eventTime (Cancelled (DerivationEventCancelled {time = t})) = t
 eventTime (Built (DerivationEventBuilt {time = t})) = t
 
-data DerivationEventQueued
-  = DerivationEventQueued
-      { time :: UTCTime,
-        requeuedForEvalOfJob :: Maybe SimpleJob,
-        requeuedForAgent :: Maybe Text
-      }
+data DerivationEventQueued = DerivationEventQueued
+  { time :: UTCTime,
+    requeuedForEvalOfJob :: Maybe SimpleJob,
+    requeuedForAgent :: Maybe Text
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data DerivationEventDependencyFailed
-  = DerivationEventDependencyFailed
-      { time :: UTCTime
-      }
+data DerivationEventDependencyFailed = DerivationEventDependencyFailed
+  { time :: UTCTime
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data DerivationEventStarted
-  = DerivationEventStarted
-      { time :: UTCTime,
-        logId :: Id "log",
-        agentHostname :: Maybe Text,
-        streamable :: Bool
-      }
+data DerivationEventStarted = DerivationEventStarted
+  { time :: UTCTime,
+    logId :: Id "log",
+    agentHostname :: Maybe Text,
+    streamable :: Bool
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data DerivationEventReset
-  = DerivationEventReset
-      { time :: UTCTime
-      }
+data DerivationEventReset = DerivationEventReset
+  { time :: UTCTime
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data DerivationEventFailed
-  = DerivationEventFailed
-      { time :: UTCTime,
-        technicalError :: Maybe Text
-      }
+data DerivationEventFailed = DerivationEventFailed
+  { time :: UTCTime,
+    technicalError :: Maybe Text
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data DerivationEventSucceeded
-  = DerivationEventSucceeded
-      { time :: UTCTime
-      }
+data DerivationEventSucceeded = DerivationEventSucceeded
+  { time :: UTCTime
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data DerivationEventCancelled
-  = DerivationEventCancelled
-      { time :: UTCTime
-      }
+data DerivationEventCancelled = DerivationEventCancelled
+  { time :: UTCTime
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data DerivationEventBuilt
-  = DerivationEventBuilt
-      { time :: UTCTime,
-        outputs :: [BuiltOutput]
-      }
+data DerivationEventBuilt = DerivationEventBuilt
+  { time :: UTCTime,
+    outputs :: [BuiltOutput]
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

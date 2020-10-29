@@ -43,7 +43,7 @@ stderrLineHandler _processRole _ ln
     -- "This is the lowest level function [...] useful when implementing centralised logging services."
     Katip.Core.logKatipItem (Katip.Core.SimpleLogPayload . M.toList . fmap (Katip.Core.AnyLogPayload :: A.Value -> Katip.Core.AnyLogPayload) <$> item)
 stderrLineHandler processRole pid ln =
-  withNamedContext "worker" (pid :: Int)
-    $ logLocM InfoS
-    $ logStr
-    $ processRole <> ": " <> toSL ln
+  withNamedContext "worker" (pid :: Int) $
+    logLocM InfoS $
+      logStr $
+        processRole <> ": " <> toSL ln

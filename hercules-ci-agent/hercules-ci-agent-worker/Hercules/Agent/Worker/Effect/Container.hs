@@ -20,26 +20,24 @@ import System.Posix.Terminal (openPseudoTerminal)
 import System.Process (CreateProcess (..), StdStream (UseHandle), proc, waitForProcess, withCreateProcess)
 import System.Process.ByteString
 
-data BindMount
-  = BindMount
-      { pathInContainer :: Text,
-        pathInHost :: Text,
-        readOnly :: Bool
-      }
+data BindMount = BindMount
+  { pathInContainer :: Text,
+    pathInHost :: Text,
+    readOnly :: Bool
+  }
 
 defaultBindMount :: Text -> BindMount
 defaultBindMount path = BindMount {pathInContainer = path, pathInHost = path, readOnly = True}
 
-data Config
-  = Config
-      { extraBindMounts :: [BindMount],
-        executable :: Text,
-        arguments :: [Text],
-        environment :: Map Text Text,
-        workingDirectory :: Text,
-        hostname :: Text,
-        rootReadOnly :: Bool
-      }
+data Config = Config
+  { extraBindMounts :: [BindMount],
+    executable :: Text,
+    arguments :: [Text],
+    environment :: Map Text Text,
+    workingDirectory :: Text,
+    hostname :: Text,
+    rootReadOnly :: Bool
+  }
 
 effectToRuncSpec :: Config -> Value -> Value
 effectToRuncSpec config spec =

@@ -6,8 +6,8 @@ module Hercules.Formats.CachixCacheSpec where
 import qualified AesonSupport as Aeson
 import Data.Aeson (eitherDecode)
 import Data.Either (isLeft)
-import qualified Data.Text as T
 import Data.Text (Text)
+import qualified Data.Text as T
 import Hercules.Formats.CachixCache
 import Test.Hspec
 import Test.QuickCheck

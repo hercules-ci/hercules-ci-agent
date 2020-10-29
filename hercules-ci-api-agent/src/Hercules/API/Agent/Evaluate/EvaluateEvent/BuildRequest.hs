@@ -4,16 +4,15 @@
 module Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest where
 
 import Control.Applicative
-import Control.Lens ((%~), at)
+import Control.Lens (at, (%~))
 import qualified Data.Aeson as A
 import Data.Aeson.Lens (_Object)
 import Hercules.API.Prelude
 
-data BuildRequest
-  = BuildRequest
-      { derivationPath :: Text,
-        forceRebuild :: Bool -- FIXME: API compatibility
-      }
+data BuildRequest = BuildRequest
+  { derivationPath :: Text,
+    forceRebuild :: Bool -- FIXME: API compatibility
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON)
 
 instance FromJSON BuildRequest where

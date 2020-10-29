@@ -1,16 +1,16 @@
 module Hercules.Agent.EnvironmentInfo where
 
 import Control.Lens
-  ( (^..),
+  ( to,
+    (^..),
     (^?),
-    to,
   )
 import qualified Data.Aeson as Aeson
 import Data.Aeson.Lens
-  ( _Array,
+  ( key,
+    _Array,
     _Number,
     _String,
-    key,
   )
 import Data.Char (isSpace)
 import qualified Data.Text as T
@@ -46,16 +46,15 @@ extractAgentInfo = do
   logLocM DebugS $ "Determined environment info: " <> show s
   pure s
 
-data NixInfo
-  = NixInfo
-      { nixExeVersion :: Text,
-        nixPlatforms :: [Text],
-        nixSystemFeatures :: [Text],
-        nixSubstituters :: [Text],
-        nixTrustedPublicKeys :: [Text],
-        nixNarinfoCacheNegativeTTL :: Maybe Integer,
-        nixNetrcFile :: Maybe Text
-      }
+data NixInfo = NixInfo
+  { nixExeVersion :: Text,
+    nixPlatforms :: [Text],
+    nixSystemFeatures :: [Text],
+    nixSubstituters :: [Text],
+    nixTrustedPublicKeys :: [Text],
+    nixNarinfoCacheNegativeTTL :: Maybe Integer,
+    nixNetrcFile :: Maybe Text
+  }
 
 getNixInfo :: IO NixInfo
 getNixInfo = do
@@ -73,45 +72,45 @@ getNixInfo = do
           ((cfg :: Aeson.Value) ^.. key "system" . key "value" . _String)
             <> ( cfg
                    ^.. key "extra-platforms"
-                   . key "value"
-                   . _Array
-                   . traverse
-                   . _String
+                     . key "value"
+                     . _Array
+                     . traverse
+                     . _String
                ),
         nixSystemFeatures =
           cfg
             ^.. key "system-features"
-            . key "value"
-            . _Array
-            . traverse
-            . _String,
+              . key "value"
+              . _Array
+              . traverse
+              . _String,
         nixSubstituters =
           cfg
             ^.. key "substituters"
-            . key "value"
-            . _Array
-            . traverse
-            . _String
-            . to cleanUrl,
+              . key "value"
+              . _Array
+              . traverse
+              . _String
+              . to cleanUrl,
         nixTrustedPublicKeys =
           cfg
             ^.. key "trusted-public-keys"
-            . key "value"
-            . _Array
-            . traverse
-            . _String
-            . to cleanUrl,
+              . key "value"
+              . _Array
+              . traverse
+              . _String
+              . to cleanUrl,
         nixNarinfoCacheNegativeTTL =
           cfg
             ^? key "narinfo-cache-negative-ttl"
-            . key "value"
-            . _Number
-            . to floor,
+              . key "value"
+              . _Number
+              . to floor,
         nixNetrcFile =
           cfg
             ^? key "netrc-file"
-            . key "value"
-            . _String
+              . key "value"
+              . _String
       }
 
 cleanUrl :: Text -> Text

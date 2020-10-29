@@ -17,16 +17,15 @@ data EffectStatus
   | Cancelled
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data EffectInfo
-  = EffectInfo
-      { status :: EffectStatus,
-        jobId :: Id Job,
-        projectId :: Id Project,
-        platform :: Text,
-        requiredSystemFeatures :: [Text],
-        inputDerivations :: [DerivationInput],
-        events :: [[EffectEvent]],
-        mayCancel :: Bool,
-        dummy :: Maybe EffectEvent -- TODO: remove and update/fix codegen
-      }
+data EffectInfo = EffectInfo
+  { status :: EffectStatus,
+    jobId :: Id Job,
+    projectId :: Id Project,
+    platform :: Text,
+    requiredSystemFeatures :: [Text],
+    inputDerivations :: [DerivationInput],
+    events :: [[EffectEvent]],
+    mayCancel :: Bool,
+    dummy :: Maybe EffectEvent -- TODO: remove and update/fix codegen
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

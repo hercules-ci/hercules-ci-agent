@@ -4,15 +4,15 @@ import Data.IORef.Lifted
 import qualified Data.Map as M
 import qualified Hercules.API.Agent.Build as API.Build
 import qualified Hercules.API.Agent.Build.BuildEvent as BuildEvent
-import qualified Hercules.API.Agent.Build.BuildEvent.OutputInfo as OutputInfo
 import Hercules.API.Agent.Build.BuildEvent.OutputInfo
   ( OutputInfo,
   )
+import qualified Hercules.API.Agent.Build.BuildEvent.OutputInfo as OutputInfo
 import qualified Hercules.API.Agent.Build.BuildEvent.Pushed as Pushed
-import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import Hercules.API.Agent.Build.BuildTask
   ( BuildTask,
   )
+import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import Hercules.API.Servant (noContent)
 import Hercules.API.TaskStatus (TaskStatus)
 import qualified Hercules.API.TaskStatus as TaskStatus
@@ -60,18 +60,21 @@ performBuild buildTask = do
         _ -> pass
   baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   materialize <- asks (not . Config.nixUserIsTrusted . Env.config)
-  liftIO $ writeChan commandChan $ Just $ Command.Build $
-    Command.Build.Build
-      { drvPath = BuildTask.derivationPath buildTask,
-        inputDerivationOutputPaths = toS <$> BuildTask.inputDerivationOutputPaths buildTask,
-        logSettings =
-          LogSettings.LogSettings
-            { token = Sensitive $ BuildTask.logToken buildTask,
-              path = "/api/v1/logs/build/socket",
-              baseURL = toS $ Network.URI.uriToString identity baseURL ""
-            },
-        materializeDerivation = materialize
-      }
+  liftIO $
+    writeChan commandChan $
+      Just $
+        Command.Build $
+          Command.Build.Build
+            { drvPath = BuildTask.derivationPath buildTask,
+              inputDerivationOutputPaths = toS <$> BuildTask.inputDerivationOutputPaths buildTask,
+              logSettings =
+                LogSettings.LogSettings
+                  { token = Sensitive $ BuildTask.logToken buildTask,
+                    path = "/api/v1/logs/build/socket",
+                    baseURL = toS $ Network.URI.uriToString identity baseURL ""
+                  },
+              materializeDerivation = materialize
+            }
   exitCode <- runWorker procSpec (stderrLineHandler "Builder") commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> show exitCode
   case exitCode of

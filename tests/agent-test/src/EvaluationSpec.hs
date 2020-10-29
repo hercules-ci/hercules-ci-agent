@@ -7,10 +7,10 @@ import Data.List (last)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.UUID.V4 as UUID
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
 import Hercules.API.Agent.Evaluate.EvaluateEvent
   ( EvaluateEvent,
   )
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent as AttributeErrorEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as BuildRequired
@@ -60,340 +60,340 @@ defaultTask =
 
 spec :: SpecWith ServerHandle
 spec = describe "Evaluation" $ do
-  context "when the source tarball cannot be fetched"
-    $ it "crashes with an error message"
-    $ \srv -> do
-      pendingWith "slow test"
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              -- localhost because it (almost) always resolves and refuses
-              -- to connect quickly and :61 because it's a port number that
-              -- want from assigned to reserved in 2017 and is therefore
-              -- very very rarely used.
-              EvaluateTask.otherInputs = "src" =: "http://localhost:61/problem.tar.gz"
-            }
-      let TaskStatus.Exceptional msg = s
-      toS msg `shouldContain` "HttpExceptionRequest"
-      toS msg `shouldContain` "Connection refused"
-      r `shouldBe` []
-  context "when the source download is not a valid tarball"
-    $ it "crashes with an error message"
-    $ \srv -> do
-      pendingWith "slow test"
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/broken-tarball"
-            }
-      s
-        `shouldBe` TaskStatus.Exceptional
-          "SubprocessFailure {message = \"Extracting tarball\"}"
-      r `shouldBe` []
-  context "when the source download doesn't have a nix expression"
-    $ it "yields an error message"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/no-nix-file"
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case r of
-        [EvaluateEvent.Message msg] ->
-          msg
-            `shouldBe` Message.Message
-              { index = 0,
-                typ = Message.Error,
-                message = "Please provide a Nix expression to build. Could not find any of \"nix/ci.nix\", \"ci.nix\" or \"default.nix\" in your source"
+  context "when the source tarball cannot be fetched" $
+    it "crashes with an error message" $
+      \srv -> do
+        pendingWith "slow test"
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                -- localhost because it (almost) always resolves and refuses
+                -- to connect quickly and :61 because it's a port number that
+                -- want from assigned to reserved in 2017 and is therefore
+                -- very very rarely used.
+                EvaluateTask.otherInputs = "src" =: "http://localhost:61/problem.tar.gz"
               }
-        _ -> failWith $ "Events should be a single message, not: " <> show r
-  context "when a ci.nix is provided"
-    $ it "it is preferred over default.nix"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/ci-dot-nix"
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case attrLike r of
-        [EvaluateEvent.Attribute ae] -> do
-          AttributeEvent.expressionPath ae `shouldBe` ["in-ci-dot-nix"]
-          toS (AttributeEvent.derivationPath ae)
-            `shouldContain` "-this-works.drv"
-        _ ->
-          failWith $ "Events should be a single attribute, not: " <> show r
-  context "when both ci.nix and nix/ci.nix are provided"
-    $ it "an error is raised"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/ambiguous-nix-file"
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case r of
-        [EvaluateEvent.Message msg] ->
-          msg
-            `shouldBe` Message.Message
-              { index = 0,
-                typ = Message.Error,
-                message = "Don't know what to do, expecting only one of \"nix/ci.nix\" or \"ci.nix\""
+        let TaskStatus.Exceptional msg = s
+        toS msg `shouldContain` "HttpExceptionRequest"
+        toS msg `shouldContain` "Connection refused"
+        r `shouldBe` []
+  context "when the source download is not a valid tarball" $
+    it "crashes with an error message" $
+      \srv -> do
+        pendingWith "slow test"
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/broken-tarball"
               }
-        _ -> failWith $ "Events should be a single message, not: " <> show r
-  context "when the nix expression is one derivation in an attrset"
-    $ it "returns that attribute"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/simple"
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case attrLike r of
-        [EvaluateEvent.Attribute ae] -> do
-          AttributeEvent.expressionPath ae `shouldBe` ["hello"]
-          toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
-          toS (AttributeEvent.derivationPath ae)
-            `shouldContain` "-myPackage.drv"
-        _ -> failWith $ "Events should be a single attribute, not: " <> show r
-  context "when specific attributes are set on the derivation attrset"
-    $ it "returns an attribute of the correct type"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/attribute-types"
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case attrLike r of
-        [ EvaluateEvent.Attribute depsOnly,
-          EvaluateEvent.Attribute effect,
-          EvaluateEvent.Attribute ignoreFail,
-          EvaluateEvent.Attribute regular,
-          EvaluateEvent.Attribute requireFail,
-          EvaluateEvent.Attribute shell
-          ] -> do
-            AttributeEvent.expressionPath depsOnly `shouldBe` ["deps-only"]
-            AttributeEvent.expressionPath effect `shouldBe` ["effect"]
-            AttributeEvent.expressionPath ignoreFail `shouldBe` ["ignore-fail"]
-            AttributeEvent.expressionPath regular `shouldBe` ["regular"]
-            AttributeEvent.expressionPath requireFail `shouldBe` ["require-fail"]
-            AttributeEvent.expressionPath shell `shouldBe` ["shell"]
-            AttributeEvent.typ depsOnly `shouldBe` AttributeEvent.DependenciesOnly
-            AttributeEvent.typ effect `shouldBe` AttributeEvent.Effect
-            AttributeEvent.typ ignoreFail `shouldBe` AttributeEvent.MayFail
-            AttributeEvent.typ regular `shouldBe` AttributeEvent.Regular
-            AttributeEvent.typ requireFail `shouldBe` AttributeEvent.MustFail
-            AttributeEvent.typ shell `shouldBe` AttributeEvent.DependenciesOnly
-        _ -> failWith $ "Events should be six attributes, not: " <> show r
-  context "when the nix expression is a naked derivation"
-    $ it "returns that attribute"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/naked-derivation"
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case attrLike r of
-        [EvaluateEvent.Attribute ae] -> do
-          AttributeEvent.expressionPath ae `shouldBe` []
-          toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
-          toS (AttributeEvent.derivationPath ae)
-            `shouldContain` "-myPackage.drv"
-        _ -> failWith $ "Events should be a single attribute, not: " <> show r
-  context "when the nix expression is a list of derivations"
-    $ it "returns no events but succeed"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/list"
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case r of
-        [] -> pass
-        _ -> failWith $ "Events should be empty, not: " <> show r
-  context "when the nix expression is an empty attrset"
-    $ it "returns no events but succeed"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/empty-attrset"
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case r of
-        [] -> pass
-        _ -> failWith $ "Events should be empty, not: " <> show r
+        s
+          `shouldBe` TaskStatus.Exceptional
+            "SubprocessFailure {message = \"Extracting tarball\"}"
+        r `shouldBe` []
+  context "when the source download doesn't have a nix expression" $
+    it "yields an error message" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/no-nix-file"
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case r of
+          [EvaluateEvent.Message msg] ->
+            msg
+              `shouldBe` Message.Message
+                { index = 0,
+                  typ = Message.Error,
+                  message = "Please provide a Nix expression to build. Could not find any of \"nix/ci.nix\", \"ci.nix\" or \"default.nix\" in your source"
+                }
+          _ -> failWith $ "Events should be a single message, not: " <> show r
+  context "when a ci.nix is provided" $
+    it "it is preferred over default.nix" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/ci-dot-nix"
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case attrLike r of
+          [EvaluateEvent.Attribute ae] -> do
+            AttributeEvent.expressionPath ae `shouldBe` ["in-ci-dot-nix"]
+            toS (AttributeEvent.derivationPath ae)
+              `shouldContain` "-this-works.drv"
+          _ ->
+            failWith $ "Events should be a single attribute, not: " <> show r
+  context "when both ci.nix and nix/ci.nix are provided" $
+    it "an error is raised" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/ambiguous-nix-file"
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case r of
+          [EvaluateEvent.Message msg] ->
+            msg
+              `shouldBe` Message.Message
+                { index = 0,
+                  typ = Message.Error,
+                  message = "Don't know what to do, expecting only one of \"nix/ci.nix\" or \"ci.nix\""
+                }
+          _ -> failWith $ "Events should be a single message, not: " <> show r
+  context "when the nix expression is one derivation in an attrset" $
+    it "returns that attribute" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/simple"
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case attrLike r of
+          [EvaluateEvent.Attribute ae] -> do
+            AttributeEvent.expressionPath ae `shouldBe` ["hello"]
+            toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
+            toS (AttributeEvent.derivationPath ae)
+              `shouldContain` "-myPackage.drv"
+          _ -> failWith $ "Events should be a single attribute, not: " <> show r
+  context "when specific attributes are set on the derivation attrset" $
+    it "returns an attribute of the correct type" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/attribute-types"
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case attrLike r of
+          [ EvaluateEvent.Attribute depsOnly,
+            EvaluateEvent.Attribute effect,
+            EvaluateEvent.Attribute ignoreFail,
+            EvaluateEvent.Attribute regular,
+            EvaluateEvent.Attribute requireFail,
+            EvaluateEvent.Attribute shell
+            ] -> do
+              AttributeEvent.expressionPath depsOnly `shouldBe` ["deps-only"]
+              AttributeEvent.expressionPath effect `shouldBe` ["effect"]
+              AttributeEvent.expressionPath ignoreFail `shouldBe` ["ignore-fail"]
+              AttributeEvent.expressionPath regular `shouldBe` ["regular"]
+              AttributeEvent.expressionPath requireFail `shouldBe` ["require-fail"]
+              AttributeEvent.expressionPath shell `shouldBe` ["shell"]
+              AttributeEvent.typ depsOnly `shouldBe` AttributeEvent.DependenciesOnly
+              AttributeEvent.typ effect `shouldBe` AttributeEvent.Effect
+              AttributeEvent.typ ignoreFail `shouldBe` AttributeEvent.MayFail
+              AttributeEvent.typ regular `shouldBe` AttributeEvent.Regular
+              AttributeEvent.typ requireFail `shouldBe` AttributeEvent.MustFail
+              AttributeEvent.typ shell `shouldBe` AttributeEvent.DependenciesOnly
+          _ -> failWith $ "Events should be six attributes, not: " <> show r
+  context "when the nix expression is a naked derivation" $
+    it "returns that attribute" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/naked-derivation"
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case attrLike r of
+          [EvaluateEvent.Attribute ae] -> do
+            AttributeEvent.expressionPath ae `shouldBe` []
+            toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
+            toS (AttributeEvent.derivationPath ae)
+              `shouldContain` "-myPackage.drv"
+          _ -> failWith $ "Events should be a single attribute, not: " <> show r
+  context "when the nix expression is a list of derivations" $
+    it "returns no events but succeed" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/list"
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case r of
+          [] -> pass
+          _ -> failWith $ "Events should be empty, not: " <> show r
+  context "when the nix expression is an empty attrset" $
+    it "returns no events but succeed" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/empty-attrset"
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case r of
+          [] -> pass
+          _ -> failWith $ "Events should be empty, not: " <> show r
   context
     "when the nix expression is a naked derivation behind default arguments"
-    $ it "returns that attribute"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/naked-derivation-default-args"
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case attrLike r of
-        [EvaluateEvent.Attribute ae] -> do
-          AttributeEvent.expressionPath ae `shouldBe` []
-          toS (AttributeEvent.derivationPath ae)
-            `shouldContain` "/nix/store"
-          toS (AttributeEvent.derivationPath ae)
-            `shouldContain` "-myPackage.drv"
-        _ ->
-          failWith $ "Events should be a single attribute, not: " <> show r
-  context "when the nix expression is an attribute set with further functions"
-    $ it "ignores the functions and return the derivations"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs =
-                "src"
-                  =: "/tarball/naked-derivation-default-args-twice"
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case attrLike r of
-        [EvaluateEvent.Attribute ae] -> do
-          AttributeEvent.expressionPath ae `shouldBe` ["bar"]
-          toS (AttributeEvent.derivationPath ae)
-            `shouldContain` "/nix/store"
-          toS (AttributeEvent.derivationPath ae)
-            `shouldContain` "-myPackage.drv"
-        _ ->
-          failWith $ "Events should be a single attribute, not: " <> show r
-  context "when the nix expression is an abort expression"
-    $ it "returns the message as an error"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/abort-at-root"
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case r of
-        [EvaluateEvent.AttributeError ae] -> do
-          AttributeErrorEvent.expressionPath ae `shouldBe` []
-          toS (AttributeErrorEvent.errorMessage ae)
-            `shouldContain` "evaluation aborted with the following error message: 'I refuse to do anything today.'"
-        _ -> failWith $ "Events should be a single attribute, not: " <> show r
-  context "when one of the attributes has an abort expression"
-    $ it "returns the message as an error alongside the successful derivations"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/abort-in-attribute"
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case attrLike r of
-        [EvaluateEvent.AttributeError ae, EvaluateEvent.Attribute a] -> do
-          AttributeEvent.expressionPath a `shouldBe` ["hello"]
-          toS (AttributeEvent.derivationPath a) `shouldContain` "/nix/store"
-          toS (AttributeEvent.derivationPath a)
-            `shouldContain` "-myPackage.drv"
-          AttributeErrorEvent.expressionPath ae
-            `shouldBe` ["a-message-for-you"]
-          toS (AttributeErrorEvent.errorMessage ae)
-            `shouldContain` "evaluation aborted with the following error message: 'I am not doing this today.'"
-        _ -> failWith $ "Wrong. It should not be: " <> show r
-  context "when the source produces too many attributes"
-    $ it "yields an error message"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/too-many-attrs"
-            }
-      s
-        `shouldBe` TaskStatus.Exceptional
-          "FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}"
-      last r
-        `shouldBe` EvaluateEvent.Message
-          ( Message.Message
-              { index = 0,
-                typ = Message.Error,
-                message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than 50000 attributes or messages, please contact info@hercules-ci.com."
+    $ it "returns that attribute" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/naked-derivation-default-args"
               }
-          )
-  context "when the source produces too many messages"
-    $ it "yields an error message"
-    $ \srv -> do
-      pendingWith
-        "This does not produce the right kind of message, because they are still bound to attributes. It seems that we need builtins.trace reporting for this test case to be useful."
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/too-many-errors"
-            }
-      s
-        `shouldBe` TaskStatus.Exceptional
-          "WorkerException {originalException = FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}, exitStatus = Nothing}"
-      last r
-        `shouldBe` EvaluateEvent.Message
-          ( Message.Message
-              { index = 0, -- This is the interesting part.
-                typ = Message.Error,
-                message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than 50000 attributes or messages, please contact info@hercules-ci.com."
+        s `shouldBe` TaskStatus.Successful ()
+        case attrLike r of
+          [EvaluateEvent.Attribute ae] -> do
+            AttributeEvent.expressionPath ae `shouldBe` []
+            toS (AttributeEvent.derivationPath ae)
+              `shouldContain` "/nix/store"
+            toS (AttributeEvent.derivationPath ae)
+              `shouldContain` "-myPackage.drv"
+          _ ->
+            failWith $ "Events should be a single attribute, not: " <> show r
+  context "when the nix expression is an attribute set with further functions" $
+    it "ignores the functions and return the derivations" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs =
+                  "src"
+                    =: "/tarball/naked-derivation-default-args-twice"
               }
-          )
-  context "when multiple messages are emitted"
-    $ it "assigns distinct index numbers to the messages"
-    $ \_env ->
-      pendingWith "Need to emit multiple messages first"
+        s `shouldBe` TaskStatus.Successful ()
+        case attrLike r of
+          [EvaluateEvent.Attribute ae] -> do
+            AttributeEvent.expressionPath ae `shouldBe` ["bar"]
+            toS (AttributeEvent.derivationPath ae)
+              `shouldContain` "/nix/store"
+            toS (AttributeEvent.derivationPath ae)
+              `shouldContain` "-myPackage.drv"
+          _ ->
+            failWith $ "Events should be a single attribute, not: " <> show r
+  context "when the nix expression is an abort expression" $
+    it "returns the message as an error" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/abort-at-root"
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case r of
+          [EvaluateEvent.AttributeError ae] -> do
+            AttributeErrorEvent.expressionPath ae `shouldBe` []
+            toS (AttributeErrorEvent.errorMessage ae)
+              `shouldContain` "evaluation aborted with the following error message: 'I refuse to do anything today.'"
+          _ -> failWith $ "Events should be a single attribute, not: " <> show r
+  context "when one of the attributes has an abort expression" $
+    it "returns the message as an error alongside the successful derivations" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/abort-in-attribute"
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case attrLike r of
+          [EvaluateEvent.AttributeError ae, EvaluateEvent.Attribute a] -> do
+            AttributeEvent.expressionPath a `shouldBe` ["hello"]
+            toS (AttributeEvent.derivationPath a) `shouldContain` "/nix/store"
+            toS (AttributeEvent.derivationPath a)
+              `shouldContain` "-myPackage.drv"
+            AttributeErrorEvent.expressionPath ae
+              `shouldBe` ["a-message-for-you"]
+            toS (AttributeErrorEvent.errorMessage ae)
+              `shouldContain` "evaluation aborted with the following error message: 'I am not doing this today.'"
+          _ -> failWith $ "Wrong. It should not be: " <> show r
+  context "when the source produces too many attributes" $
+    it "yields an error message" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/too-many-attrs"
+              }
+        s
+          `shouldBe` TaskStatus.Exceptional
+            "FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}"
+        last r
+          `shouldBe` EvaluateEvent.Message
+            ( Message.Message
+                { index = 0,
+                  typ = Message.Error,
+                  message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than 50000 attributes or messages, please contact info@hercules-ci.com."
+                }
+            )
+  context "when the source produces too many messages" $
+    it "yields an error message" $
+      \srv -> do
+        pendingWith
+          "This does not produce the right kind of message, because they are still bound to attributes. It seems that we need builtins.trace reporting for this test case to be useful."
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/too-many-errors"
+              }
+        s
+          `shouldBe` TaskStatus.Exceptional
+            "WorkerException {originalException = FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}, exitStatus = Nothing}"
+        last r
+          `shouldBe` EvaluateEvent.Message
+            ( Message.Message
+                { index = 0, -- This is the interesting part.
+                  typ = Message.Error,
+                  message = "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than 50000 attributes or messages, please contact info@hercules-ci.com."
+                }
+            )
+  context "when multiple messages are emitted" $
+    it "assigns distinct index numbers to the messages" $
+      \_env ->
+        pendingWith "Need to emit multiple messages first"
   context "multiple inputs" $ do
     it "can add to NIX_PATH" $ \srv -> do
       id <- randomId
@@ -485,67 +485,67 @@ spec = describe "Evaluation" $ do
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
           toS (AttributeEvent.derivationPath ae) `shouldContain` "-hello"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
-  describe "functor"
-    $ it "is ok"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/functor" <> M.singleton "n" "/tarball/nixpkgs",
-              EvaluateTask.autoArguments =
-                M.singleton
-                  "nixpkgs"
-                  (EvaluateTask.SubPathOf "n" Nothing)
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      case attrLike r of
-        [EvaluateEvent.Attribute ae] -> do
-          AttributeEvent.expressionPath ae `shouldBe` ["foo", "a"]
-          toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
-          toS (AttributeEvent.derivationPath ae) `shouldContain` "-zlib"
-        _ -> failWith $ "Events should be a single attribute, not: " <> show r
-  describe "when derivations are returned"
-    $ it "upload information about the closure under the inputDrv relation"
-    $ \srv -> do
-      id <- randomId
-      (s, r) <-
-        runEval
-          srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/nixpkgs-reference" <> M.singleton "n" "/tarball/nixpkgs",
-              EvaluateTask.autoArguments =
-                M.singleton "nixpkgs" (EvaluateTask.SubPathOf "n" Nothing)
-            }
-      s `shouldBe` TaskStatus.Successful ()
-      let drvMap ::
-            Map
-              DerivationInfo.DerivationPathText
-              DerivationInfo.DerivationInfo
-          drvMap = flip foldMap r $ \case
-            EvaluateEvent.DerivationInfo drvInfo ->
-              M.singleton (DerivationInfo.derivationPath drvInfo) drvInfo
-            _ -> M.empty
-      forM_ (toList drvMap) $ \drvInfo ->
-        forM_ (M.keys $ DerivationInfo.inputDerivations drvInfo) $ \d ->
-          unless (isJust (M.lookup d drvMap))
-            $ panic
-            $ "In drv info for "
-              <> DerivationInfo.derivationPath drvInfo
-              <> ": unknown inputDrv "
-              <> d
-      case attrLike r of
-        [EvaluateEvent.Attribute ae] -> do
-          AttributeEvent.expressionPath ae `shouldBe` ["hello"]
-          let p = AttributeEvent.derivationPath ae
-          toS p `shouldContain` "/nix/store"
-          toS p `shouldContain` "-hello"
-          isJust (M.lookup p drvMap) `shouldBe` True
-        _ ->
-          failWith $ "Events should be a single attribute, not: " <> show r
+  describe "functor" $
+    it "is ok" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/functor" <> M.singleton "n" "/tarball/nixpkgs",
+                EvaluateTask.autoArguments =
+                  M.singleton
+                    "nixpkgs"
+                    (EvaluateTask.SubPathOf "n" Nothing)
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case attrLike r of
+          [EvaluateEvent.Attribute ae] -> do
+            AttributeEvent.expressionPath ae `shouldBe` ["foo", "a"]
+            toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
+            toS (AttributeEvent.derivationPath ae) `shouldContain` "-zlib"
+          _ -> failWith $ "Events should be a single attribute, not: " <> show r
+  describe "when derivations are returned" $
+    it "upload information about the closure under the inputDrv relation" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/nixpkgs-reference" <> M.singleton "n" "/tarball/nixpkgs",
+                EvaluateTask.autoArguments =
+                  M.singleton "nixpkgs" (EvaluateTask.SubPathOf "n" Nothing)
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        let drvMap ::
+              Map
+                DerivationInfo.DerivationPathText
+                DerivationInfo.DerivationInfo
+            drvMap = flip foldMap r $ \case
+              EvaluateEvent.DerivationInfo drvInfo ->
+                M.singleton (DerivationInfo.derivationPath drvInfo) drvInfo
+              _ -> M.empty
+        forM_ (toList drvMap) $ \drvInfo ->
+          forM_ (M.keys $ DerivationInfo.inputDerivations drvInfo) $ \d ->
+            unless (isJust (M.lookup d drvMap)) $
+              panic $
+                "In drv info for "
+                  <> DerivationInfo.derivationPath drvInfo
+                  <> ": unknown inputDrv "
+                  <> d
+        case attrLike r of
+          [EvaluateEvent.Attribute ae] -> do
+            AttributeEvent.expressionPath ae `shouldBe` ["hello"]
+            let p = AttributeEvent.derivationPath ae
+            toS p `shouldContain` "/nix/store"
+            toS p `shouldContain` "-hello"
+            isJust (M.lookup p drvMap) `shouldBe` True
+          _ ->
+            failWith $ "Events should be a single attribute, not: " <> show r
   describe "when builds are required for evaluation" $ do
     let ifdTest srv = do
           id <- randomId

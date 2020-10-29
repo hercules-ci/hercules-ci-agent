@@ -24,8 +24,8 @@ import Servant.Auth.Client (Token)
 import qualified Servant.Client
 import qualified Servant.Client.Core as Client
 import Servant.Client.Generic (AsClientT)
-import qualified Servant.Client.Streaming
 import Servant.Client.Streaming (ClientM, responseStatusCode, showBaseUrl)
+import qualified Servant.Client.Streaming
 import qualified System.Environment
 
 -- | Bad instance to make it the client for State api compile. GHC seems to pick

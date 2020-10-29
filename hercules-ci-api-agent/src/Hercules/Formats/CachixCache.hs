@@ -11,12 +11,11 @@ import Hercules.Formats.Common
 import Prelude
 
 -- | Credentials and keys for a cache.
-data CachixCache
-  = CachixCache
-      { signingKeys :: [Text],
-        authToken :: Maybe Text,
-        publicKeys :: [Text]
-      }
+data CachixCache = CachixCache
+  { signingKeys :: [Text],
+    authToken :: Maybe Text,
+    publicKeys :: [Text]
+  }
 
 instance ToJSON CachixCache where
   toJSON a =

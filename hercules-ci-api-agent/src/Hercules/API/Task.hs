@@ -8,11 +8,10 @@ import Hercules.API.Prelude hiding (id)
 -- | A task, typically performed by the agent.
 --
 -- The phantom represents the type of task. See 'AnyTask'.
-data Task a
-  = Task
-      { typ :: Text,
-        id :: Id (Task a)
-      }
+data Task a = Task
+  { typ :: Text,
+    id :: Id (Task a)
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 -- | @'Task' 'Any' represents tasks whose type has not yet been

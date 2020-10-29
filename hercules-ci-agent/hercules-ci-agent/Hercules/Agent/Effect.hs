@@ -48,21 +48,24 @@ performEffect effectTask = withWorkDir "effect" $ \workDir -> do
   config <- asks Env.config
   let materialize = not (Config.nixUserIsTrusted config)
   baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
-  liftIO $ writeChan commandChan $ Just $ Command.Effect $
-    Command.Effect.Effect
-      { drvPath = EffectTask.derivationPath effectTask,
-        inputDerivationOutputPaths = toS <$> EffectTask.inputDerivationOutputPaths effectTask,
-        logSettings =
-          LogSettings.LogSettings
-            { token = Sensitive $ EffectTask.logToken effectTask,
-              path = "/api/v1/logs/build/socket",
-              baseURL = toS $ Network.URI.uriToString identity baseURL ""
-            },
-        materializeDerivation = materialize,
-        secretsPath = toS $ Config.staticSecretsDirectory config </> "secrets.json",
-        token = Sensitive (EffectTask.token effectTask),
-        apiBaseURL = Config.herculesApiBaseURL config
-      }
+  liftIO $
+    writeChan commandChan $
+      Just $
+        Command.Effect $
+          Command.Effect.Effect
+            { drvPath = EffectTask.derivationPath effectTask,
+              inputDerivationOutputPaths = toS <$> EffectTask.inputDerivationOutputPaths effectTask,
+              logSettings =
+                LogSettings.LogSettings
+                  { token = Sensitive $ EffectTask.logToken effectTask,
+                    path = "/api/v1/logs/build/socket",
+                    baseURL = toS $ Network.URI.uriToString identity baseURL ""
+                  },
+              materializeDerivation = materialize,
+              secretsPath = toS $ Config.staticSecretsDirectory config </> "secrets.json",
+              token = Sensitive (EffectTask.token effectTask),
+              apiBaseURL = Config.herculesApiBaseURL config
+            }
   exitCode <- runWorker procSpec (stderrLineHandler "Effect worker") commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> show exitCode
   let showSig n | n == PS.sigABRT = " (Aborted)"

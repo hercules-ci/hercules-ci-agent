@@ -14,10 +14,9 @@ data AttributeType
   | Effect
   deriving (Generic, Binary, Show, Eq)
 
-data Attribute
-  = Attribute
-      { path :: [ByteString],
-        drv :: ByteString,
-        typ :: AttributeType
-      }
+data Attribute = Attribute
+  { path :: [ByteString],
+    drv :: ByteString,
+    typ :: AttributeType
+  }
   deriving (Generic, Binary, Show, Eq)

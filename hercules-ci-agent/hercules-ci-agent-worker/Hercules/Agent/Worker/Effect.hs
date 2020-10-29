@@ -113,12 +113,15 @@ writeSecrets sourceFile secretsMap extraSecrets destinationDirectory = write . f
               throwIO $ FatalError $ "Could not parse secrets file as configured on agent."
             Right r -> pure (Sensitive r)
           liftIO $ createDirectoryIfMissing True destinationDirectory
-          out <- secretsMap & M.traverseWithKey \destinationName (secretName :: Text) -> do
-            case revealContainer (r <&> M.lookup secretName) of
-              Nothing ->
-                liftIO $ throwIO $ FatalError $
-                  "Secret " <> secretName <> " does not exist, so we can't find a secret for " <> destinationName <> ". Please make sure that the secret name matches a secret on your agents."
-              Just secret -> pure (Secret.data_ <$> secret)
+          out <-
+            secretsMap & M.traverseWithKey \destinationName (secretName :: Text) -> do
+              case revealContainer (r <&> M.lookup secretName) of
+                Nothing ->
+                  liftIO $
+                    throwIO $
+                      FatalError $
+                        "Secret " <> secretName <> " does not exist, so we can't find a secret for " <> destinationName <> ". Please make sure that the secret name matches a secret on your agents."
+                Just secret -> pure (Secret.data_ <$> secret)
           pure out
 
 prepareDerivation :: MonadIO m => Ptr (Ref NixStore) -> Command.Effect.Effect -> m (ForeignPtr Derivation)
