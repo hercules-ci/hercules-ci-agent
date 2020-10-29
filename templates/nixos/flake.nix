@@ -1,8 +1,7 @@
 {
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-20.03";
 
-  # TODO s/flake/stable
-  inputs.hercules-ci-agent.url = "github:hercules-ci/hercules-ci-agent/flake";
+  inputs.hercules-ci-agent.url = "github:hercules-ci/hercules-ci-agent/stable";
 
   outputs = { self, nixpkgs, hercules-ci-agent }: {
 
@@ -10,12 +9,14 @@
       system = "x86_64-linux";
       modules = [
         ./hardware-configuration.nix
-        hercules-ci-agent.nixosModules.recommended
+        hercules-ci-agent.nixosModules.agent-profile
         (
           { pkgs, ... }: {
             services.hercules-ci-agent.enable = true;
             # Number of jobs to run simultaneously
             services.hercules-ci-agent.concurrentTasks = 4;
+            # Automatically apply a required patch for stable Nix if necessary.
+            services.hercules-ci-agent.patchNix = true;
 
             # Let 'nixos-version --json' know about the Git revision
             # of this flake.
