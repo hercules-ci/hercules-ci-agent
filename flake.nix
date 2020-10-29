@@ -1,33 +1,40 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-20.03";
+  inputs.nixos-20_03.url = "github:NixOS/nixpkgs/nixos-20.03";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-20.09";
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
   inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
   inputs.pre-commit-hooks-nix.flake = false;
 
-  outputs = inputs@{ self, nixpkgs, ... }:
+  outputs = inputs@{ self, nixpkgs, nixos-20_03, ... }:
     let
       lib = nixpkgs.lib;
       filterMeta = nixpkgs.lib.filterAttrs (k: v: k != "meta" && k != "recurseForDerivations");
       dimension = _name: attrs: f: lib.mapAttrs f attrs;
 
-      defaultTarget = allTargets."nixos-20_03";
+      defaultTargetName = "nixos-20_09";
+      defaultTarget = allTargets.${defaultTargetName};
       testSuiteTarget = defaultTarget;
 
       allTargets =
         dimension "Nixpkgs version"
           {
             "nixos-20_03" = {
+              nixpkgsSource = nixos-20_03;
+              isCurrent = false;
+            };
+            "nixos-20_09" = {
               nixpkgsSource = nixpkgs;
+              isCurrent = true;
             };
             # "nixos-unstable" = {
             #   nixpkgsSource = "nixos-unstable";
             # };
           }
           (
-            _name: { nixpkgsSource }:
+            _name: { nixpkgsSource, isCurrent }:
               dimension "System"
                 {
                   "aarch64-linux" = {
@@ -37,7 +44,7 @@
                   "x86_64-linux" = { };
                   "x86_64-darwin" = { };
                 }
-                (system: { isDevSystem ? true }:
+                (system: { isDevSystem ? isCurrent }:
                   let
                     pkgs =
                       import nixpkgsSource {
