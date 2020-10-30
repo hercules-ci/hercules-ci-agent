@@ -31,64 +31,59 @@
               dimension "System"
                 {
                   "aarch64-linux" = {
-                    enable = true;
                     # shellcheck was broken https://hercules-ci.com/github/hercules-ci/hercules-ci-agent/jobs/826
                     isDevSystem = false;
                   };
-                  "x86_64-linux" = { enable = true; };
-                  "x86_64-darwin" = { enable = true; };
+                  "x86_64-linux" = { };
+                  "x86_64-darwin" = { };
                 }
-                (
-                  system: { enable, isDevSystem ? true }:
-
-                    lib.optionalAttrs enable (
-                      let
-                        pkgs =
-                          import nixpkgsSource {
-                            overlays = [ (import ./nix/overlay.nix inputs) dev-and-test-overlay ];
-                            config = { };
-                            inherit system;
-                          };
-                        dev-and-test-overlay =
-                          self: pkgs:
+                (system: { isDevSystem ? true }:
+                  let
+                    pkgs =
+                      import nixpkgsSource {
+                        overlays = [ (import ./nix/make-overlay.nix inputs) dev-and-test-overlay ];
+                        config = { };
+                        inherit system;
+                      };
+                    dev-and-test-overlay =
+                      self: pkgs:
+                      {
+                        testSuitePkgs = testSuiteTarget.${system};
+                        devTools =
                           {
-                            testSuitePkgs = testSuiteTarget.${system};
-                            devTools =
-                              {
-                                inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
-                                  ghc
-                                  ghcid
-                                  stack
-                                  ;
-                                inherit (pkgs)
-                                  jq
-                                  cabal2nix
-                                  nix-prefetch-git
-                                  niv
-                                  ;
-                                inherit pkgs;
-                              };
+                            inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
+                              ghc
+                              ghcid
+                              stack
+                              ;
+                            inherit (pkgs)
+                              jq
+                              cabal2nix
+                              nix-prefetch-git
+                              niv
+                              ;
+                            inherit pkgs;
                           };
-                      in
-                      pkgs.recurseIntoAttrs
-                        {
-                          internal.pkgs = pkgs;
-                          internal.haskellPackages = pkgs.hercules-ci-agent-packages.internal.haskellPackages;
-                          inherit (pkgs.hercules-ci-agent-packages)
-                            hercules-ci-cli
-                            hercules-ci-api-swagger
-                            ;
-                          inherit (pkgs)
-                            hercules-ci-agent
-                            toTOML-test
-                            ;
-                        } // lib.optionalAttrs isDevSystem {
-                        inherit (pkgs)
-                          pre-commit-check
-                          devTools
-                          ;
-                      }
-                    )
+                      };
+                  in
+                  pkgs.recurseIntoAttrs
+                    {
+                      internal.pkgs = pkgs;
+                      internal.haskellPackages = pkgs.hercules-ci-agent-packages.internal.haskellPackages;
+                      inherit (pkgs.hercules-ci-agent-packages)
+                        hercules-ci-cli
+                        hercules-ci-api-swagger
+                        ;
+                      inherit (pkgs)
+                        hercules-ci-agent
+                        toTOML-test
+                        ;
+                    } // lib.optionalAttrs isDevSystem {
+                    inherit (pkgs)
+                      pre-commit-check
+                      devTools
+                      ;
+                  }
                 )
           );
 
@@ -102,18 +97,18 @@
       packages =
         nixpkgs.lib.mapAttrs
           (
-            k: v:
+            system: v:
               {
-                inherit (filterMeta v)
+                inherit (v)
                   hercules-ci-agent
                   hercules-ci-cli
                   ;
               }
           )
-          (filterMeta defaultTarget);
+          defaultTarget;
 
       overlay =
-        final: prev: (import ./nix/overlay.nix inputs) final prev;
+        final: prev: (import ./nix/make-overlay.nix inputs) final prev;
 
       # TODO
       # nixosModules.agent-service = { imports = [ ./module.nix ]; };
