@@ -2,7 +2,7 @@
   description = "Hercules CI Agent";
 
   inputs.nixos-20_03.url = "github:NixOS/nixpkgs/nixos-20.03";
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-20.09";
+  inputs.nixpkgs.url = "github:hercules-ci/nixpkgs/lostnet-ghcpr1a-20.09"; # FIXME switch back when channel advances
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
   inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
