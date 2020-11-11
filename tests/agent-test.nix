@@ -1,12 +1,13 @@
 { pkgs, ... }:
 let
-  tarball = x: pkgs.runCommand "${x.name or "tarball"}.tar.gz" {
-    inherit x;
-  } ''
+  tarball = x: pkgs.runCommand "${x.name or "tarball"}.tar.gz"
+    {
+      inherit x;
+    } ''
     cd $x && tar -c . | gzip -1 >$out
   '';
 
-  testdata = pkgs.runCommand "testdata" {} ''
+  testdata = pkgs.runCommand "testdata" { } ''
     mkdir -p $out/testdata
     for p in ${./agent-test/testdata}/*; do
       ln -s $p $out/testdata/$(basename $p);
@@ -29,14 +30,14 @@ in
       ];
       config = {
         # Keep build dependencies around, because we'll be offline
-        environment.etc."reference-stdenv".text = builtins.toJSON (pkgs.runCommand "foo" {} "").drvAttrs;
+        environment.etc."reference-stdenv".text = builtins.toJSON (pkgs.runCommand "foo" { } "").drvAttrs;
         # It's an offline test, so no caches are available
-        nix.binaryCaches = lib.mkForce [];
+        nix.binaryCaches = lib.mkForce [ ];
         services.hercules-ci-agent.enable = true;
         services.hercules-ci-agent.patchNix = true;
         services.hercules-ci-agent.extraOptions.apiBaseUrl = "http://api";
         services.hercules-ci-agent.extraOptions.nixUserIsTrusted = lib.mkForce false;
-        services.hercules-ci-agent.extraOptions.binaryCachesPath = (pkgs.writeText "binary-caches.json" (builtins.toJSON {})).outPath;
+        services.hercules-ci-agent.extraOptions.binaryCachesPath = (pkgs.writeText "binary-caches.json" (builtins.toJSON { })).outPath;
         services.hercules-ci-agent.extraOptions.clusterJoinTokenPath = (pkgs.writeText "pretend-agent-token" "").outPath;
         services.hercules-ci-agent.concurrentTasks = 4; # Decrease on itest memory problems
 

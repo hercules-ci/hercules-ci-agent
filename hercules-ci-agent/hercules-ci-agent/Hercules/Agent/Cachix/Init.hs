@@ -37,13 +37,14 @@ newEnv _config cks = do
   pcs <- liftIO $ toPushCaches cks
   store <- liftIO Cachix.Store.openStore
   httpManager <- newTlsManagerWith customManagerSettings
-  pure Env.Env
-    { pushCaches = pcs,
-      netrcLines = toNetrcLines cks,
-      cacheKeys = cks,
-      nixStore = store,
-      clientEnv = mkClientEnv httpManager defaultCachixBaseUrl
-    }
+  pure
+    Env.Env
+      { pushCaches = pcs,
+        netrcLines = toNetrcLines cks,
+        cacheKeys = cks,
+        nixStore = store,
+        clientEnv = mkClientEnv httpManager defaultCachixBaseUrl
+      }
 
 toNetrcLines :: Map Text CachixCache.CachixCache -> [Text]
 toNetrcLines = concatMap toNetrcLine . M.toList
@@ -61,8 +62,9 @@ toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'
             sk <- head $ CachixCache.signingKeys keys
             Just $ escalateAs FatalError $ do
               k' <- Cachix.Secrets.parseSigningKeyLenient sk
-              pure $ Cachix.Push.PushCache
-                { pushCacheName = name,
-                  pushCacheSigningKey = k',
-                  pushCacheToken = Servant.Auth.Client.Token $ toSL t
-                }
+              pure $
+                Cachix.Push.PushCache
+                  { pushCacheName = name,
+                    pushCacheSigningKey = k',
+                    pushCacheToken = Servant.Auth.Client.Token $ toSL t
+                  }

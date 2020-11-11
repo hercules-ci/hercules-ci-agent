@@ -35,7 +35,6 @@ instance (FromJSON e, FromJSON a) => FromJSON (Result e a) where
   parseJSON = genericParseJSON schemaCompatibleOptions
 
 instance (ToJSON e, ToJSON a) => ToJSON (Result e a) where
-
   toJSON = genericToJSON schemaCompatibleOptions
 
   toEncoding = genericToEncoding schemaCompatibleOptions

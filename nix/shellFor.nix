@@ -1,4 +1,4 @@
-{ pkgs ? import ./default.nix {}
+{ pkgs ? import ./default.nix { }
 }:
 pkgs.hercules-ci-agent-packages.internal.haskellPackages.shellFor {
   packages = p: [

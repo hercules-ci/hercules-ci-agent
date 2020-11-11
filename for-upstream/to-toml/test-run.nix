@@ -3,7 +3,8 @@
 # To iterate:
 # nix-instantiate --json --strict --readonly-mode --eval --expr 'with import <nixpkgs> {}; import ./to-toml.test.nix { src = ./to-toml.nix; inherit lib; }'
 
-runCommand "to-toml-test-run" {
+runCommand "to-toml-test-run"
+{
   NIX_PATH = "nixpkgs=${path}";
   nativeBuildInputs = [ nix ];
 } ''

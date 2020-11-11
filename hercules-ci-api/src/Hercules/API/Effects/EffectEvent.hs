@@ -21,7 +21,6 @@ instance FromJSON EffectEvent where
   parseJSON = genericParseJSON schemaCompatibleOptions
 
 instance ToJSON EffectEvent where
-
   toJSON = genericToJSON schemaCompatibleOptions
 
   toEncoding = genericToEncoding schemaCompatibleOptions

@@ -47,15 +47,16 @@ isAttrLike _ = False
 (=:) = M.singleton
 
 defaultTask :: EvaluateTask.EvaluateTask
-defaultTask = EvaluateTask.EvaluateTask
-  { id = Prelude.error "override EvaluateTask.id please",
-    primaryInput = "",
-    inputMetadata = mempty,
-    otherInputs = mempty,
-    autoArguments = mempty,
-    nixPath = mempty,
-    logToken = "mock-eval-log-token"
-  }
+defaultTask =
+  EvaluateTask.EvaluateTask
+    { id = Prelude.error "override EvaluateTask.id please",
+      primaryInput = "",
+      inputMetadata = mempty,
+      otherInputs = mempty,
+      autoArguments = mempty,
+      nixPath = mempty,
+      logToken = "mock-eval-log-token"
+    }
 
 spec :: SpecWith ServerHandle
 spec = describe "Evaluation" $ do
@@ -108,11 +109,13 @@ spec = describe "Evaluation" $ do
             }
       s `shouldBe` TaskStatus.Successful ()
       case r of
-        [EvaluateEvent.Message msg] -> msg `shouldBe` Message.Message
-          { index = 0,
-            typ = Message.Error,
-            message = "Please provide a Nix expression to build. Could not find any of \"nix/ci.nix\", \"ci.nix\" or \"default.nix\" in your source"
-          }
+        [EvaluateEvent.Message msg] ->
+          msg
+            `shouldBe` Message.Message
+              { index = 0,
+                typ = Message.Error,
+                message = "Please provide a Nix expression to build. Could not find any of \"nix/ci.nix\", \"ci.nix\" or \"default.nix\" in your source"
+              }
         _ -> failWith $ "Events should be a single message, not: " <> show r
   context "when a ci.nix is provided"
     $ it "it is preferred over default.nix"
@@ -146,11 +149,13 @@ spec = describe "Evaluation" $ do
             }
       s `shouldBe` TaskStatus.Successful ()
       case r of
-        [EvaluateEvent.Message msg] -> msg `shouldBe` Message.Message
-          { index = 0,
-            typ = Message.Error,
-            message = "Don't know what to do, expecting only one of \"nix/ci.nix\" or \"ci.nix\""
-          }
+        [EvaluateEvent.Message msg] ->
+          msg
+            `shouldBe` Message.Message
+              { index = 0,
+                typ = Message.Error,
+                message = "Don't know what to do, expecting only one of \"nix/ci.nix\" or \"ci.nix\""
+              }
         _ -> failWith $ "Events should be a single message, not: " <> show r
   context "when the nix expression is one derivation in an attrset"
     $ it "returns that attribute"

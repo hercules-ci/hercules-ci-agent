@@ -33,7 +33,6 @@ instance Show (Name a) where
   showsPrec n = showsPrec n . nameText
 
 instance ToJSON (Name a) where
-
   toEncoding = toEncoding . nameText
 
   toJSON = toJSON . nameText

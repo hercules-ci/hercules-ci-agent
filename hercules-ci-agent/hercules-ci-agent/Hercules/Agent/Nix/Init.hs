@@ -28,6 +28,7 @@ newEnv = do
     throwIO $ FatalError "Please configure your system's Nix with:  narinfo-cache-negative-ttl = 0  "
   -- Might want to take stuff from Config and put it in
   -- extraOptions here.
-  pure Env
-    { extraOptions = []
-    }
+  pure
+    Env
+      { extraOptions = []
+      }

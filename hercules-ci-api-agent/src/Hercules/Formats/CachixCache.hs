@@ -19,7 +19,6 @@ data CachixCache
       }
 
 instance ToJSON CachixCache where
-
   toJSON a =
     object $
       ["kind" .= String "CachixCache", "signingKeys" .= signingKeys a]

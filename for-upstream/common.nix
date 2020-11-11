@@ -1,8 +1,7 @@
 { config, lib, pkgs, ... }:
-
 let
   inherit (lib) mkOption mkIf types filterAttrs;
-  inherit (pkgs.callPackage ./to-toml {}) toTOML;
+  inherit (pkgs.callPackage ./to-toml { }) toTOML;
 
   cfg =
     config.services.hercules-ci-agent;
@@ -12,44 +11,46 @@ let
     then ""
     else if lib.versionAtLeast config.nix.package.version "2.4.0"
     then ""
-    else pkgs.stdenv.mkDerivation {
-      name = "hercules-ci-check-system-nix-src";
-      inherit (config.nix.package) src patches;
-      configurePhase = ":";
-      buildPhase = ''
-        echo "Checking in-memory pathInfoCache expiry"
-        if ! grep 'struct PathInfoCacheValue' src/libstore/store-api.hh >/dev/null; then
-          cat 1>&2 <<EOF
+    else
+      pkgs.stdenv.mkDerivation {
+        name = "hercules-ci-check-system-nix-src";
+        inherit (config.nix.package) src patches;
+        configurePhase = ":";
+        buildPhase = ''
+          echo "Checking in-memory pathInfoCache expiry"
+          if ! grep 'struct PathInfoCacheValue' src/libstore/store-api.hh >/dev/null; then
+            cat 1>&2 <<EOF
 
-          You are deploying Hercules CI Agent on a system with an incompatible
-          nix-daemon. Please
-           - either upgrade Nix to version 2.4.0 (when released),
-           - or set option services.hercules-ci-agent.patchNix = true;
-           - or set option nix.package to a build of Nix 2.3 with this patch applied:
-               https://github.com/NixOS/nix/pull/3405
+            You are deploying Hercules CI Agent on a system with an incompatible
+            nix-daemon. Please
+             - either upgrade Nix to version 2.4.0 (when released),
+             - or set option services.hercules-ci-agent.patchNix = true;
+             - or set option nix.package to a build of Nix 2.3 with this patch applied:
+                 https://github.com/NixOS/nix/pull/3405
 
-          The patch is required for Nix-daemon clients that expect a change in binary
-          cache contents while running, like the agent's evaluator. Without it, import
-          from derivation will fail if your cluster has more than one machine.
-          We are conservative with changes to the overall system, which is why we
-          keep changes to a minimum and why we ask for confirmation in the form of
-          services.hercules-ci-agent.patchNix = true before applying.
+            The patch is required for Nix-daemon clients that expect a change in binary
+            cache contents while running, like the agent's evaluator. Without it, import
+            from derivation will fail if your cluster has more than one machine.
+            We are conservative with changes to the overall system, which is why we
+            keep changes to a minimum and why we ask for confirmation in the form of
+            services.hercules-ci-agent.patchNix = true before applying.
 
-        EOF
-          exit 1
-        fi
-      '';
-      installPhase = "echo ok > $out";
-    };
+          EOF
+            exit 1
+          fi
+        '';
+        installPhase = "echo ok > $out";
+      };
 
   patchedNix = lib.mkIf (!lib.versionAtLeast pkgs.nix.version "2.4.0") (
     if lib.versionAtLeast pkgs.nix.version "2.4pre"
     then lib.warn "Hercules CI Agent module will not patch 2.4 pre-release. Make sure it includes (equivalently) PR #3043, commit d048577909 or is no older than 2020-03-13." pkgs.nix
-    else pkgs.nix.overrideAttrs (
-      o: {
-        patches = (o.patches or []) ++ [ ./issue-3398-path-info-cache-ttls-backport-2.3.patch ];
-      }
-    )
+    else
+      pkgs.nix.overrideAttrs (
+        o: {
+          patches = (o.patches or [ ]) ++ [ ./issue-3398-path-info-cache-ttls-backport-2.3.patch ];
+        }
+      )
   );
 in
 {
@@ -93,13 +94,14 @@ in
       description = "Unix system user that runs the agent service";
       type = types.str;
     };
-    package = let
-      agentVersion = "0.7.4";
-    in
+    package =
+      let
+        agentVersion = "0.7.4";
+      in
       mkOption {
         description = "Package containing the bin/hercules-ci-agent program";
         type = types.package;
-        default = (import (builtins.fetchTarball "https://github.com/hercules-ci/hercules-ci-agent/archive/hercules-ci-agent-${agentVersion}.tar.gz") {}).hercules-ci-agent;
+        default = (import (builtins.fetchTarball "https://github.com/hercules-ci/hercules-ci-agent/archive/hercules-ci-agent-${agentVersion}.tar.gz") { inherit (pkgs) system; }).hercules-ci-agent;
         defaultText = "hercules-ci-agent-${agentVersion}";
       };
     extraOptions = mkOption {
@@ -114,7 +116,7 @@ in
         fields.
       '';
       type = types.attrsOf types.unspecified;
-      default = {};
+      default = { };
     };
 
     concurrentTasks = mkOption {
@@ -191,7 +193,7 @@ in
             binaryCachesPath = effectiveConfig.staticSecretsDirectory + "/binary-caches.json";
           };
         in
-          effectiveConfig;
+        effectiveConfig;
     };
   };
 }

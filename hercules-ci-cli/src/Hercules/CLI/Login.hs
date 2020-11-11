@@ -27,9 +27,11 @@ commandParser = pure do
   clientEnv <- Hercules.CLI.Client.init
   runRIO ((), clientEnv) do
     r <- runHerculesClient' do
-      Accounts.postCLIAuthorizationRequest accountsClient CLIAuthorizationRequestCreate
-        { description = toS username <> "@" <> toS hostname
-        }
+      Accounts.postCLIAuthorizationRequest
+        accountsClient
+        CLIAuthorizationRequestCreate
+          { description = toS username <> "@" <> toS hostname
+          }
     putErrText $ "Please confirm your login at "
     putErrText $ "  " <> CLIAuthorizationRequestCreateResponse.browserURL r
     putErrText "Waiting for confirmation..."

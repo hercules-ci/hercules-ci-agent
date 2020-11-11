@@ -18,7 +18,6 @@ data NixCache
       }
 
 instance ToJSON NixCache where
-
   toJSON a =
     object $
       [ "kind" .= String "NixCache",

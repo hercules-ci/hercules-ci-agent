@@ -42,16 +42,16 @@ instance Functor (Partitioner a) where
   fmap f (Partitioner ing dig) = (Partitioner ing (f . dig))
 
 instance Applicative (Partitioner a) where
-
   pure a =
     Partitioner {ingest = const (Nothing :: Maybe ()), digest = pure a}
 
-  (Partitioner ingp digp) <*> (Partitioner ingq digq) = Partitioner
-    { ingest = \a -> case ingp a of
-        Just mp -> Just (mp, mempty)
-        Nothing -> (mempty,) <$> ingq a,
-      digest = \(mp, mq) -> digp mp (digq mq)
-    }
+  (Partitioner ingp digp) <*> (Partitioner ingq digq) =
+    Partitioner
+      { ingest = \a -> case ingp a of
+          Just mp -> Just (mp, mempty)
+          Nothing -> (mempty,) <$> ingq a,
+        digest = \(mp, mq) -> digp mp (digq mq)
+      }
 
 -- instance Profunctor Partitioner
 -- ...
@@ -71,22 +71,24 @@ partWithKey ::
   Ord k =>
   (k -> v -> Maybe a) ->
   Partitioner (WithKey k v) (Map k a)
-partWithKey f = Partitioner
-  { ingest = \(WithKey (k, v)) -> M.singleton k <$> f k v,
-    digest = identity
-  }
+partWithKey f =
+  Partitioner
+    { ingest = \(WithKey (k, v)) -> M.singleton k <$> f k v,
+      digest = identity
+    }
 
 traversePartWithKey ::
   (Ord k, Applicative f) =>
   (k -> v -> Maybe (f a)) ->
   Partitioner (WithKey k v) (f (Map k a))
-traversePartWithKey f = Partitioner
-  { ingest = \(WithKey (k, v)) -> do
-      -- Maybe
-      x <- f k v
-      pure $ Ap $ (M.singleton k <$> x),
-    digest = getAp
-  }
+traversePartWithKey f =
+  Partitioner
+    { ingest = \(WithKey (k, v)) -> do
+        -- Maybe
+        x <- f k v
+        pure $ Ap $ (M.singleton k <$> x),
+      digest = getAp
+    }
 
 -- | Use with 'partWithKey' to match on the key.
 --

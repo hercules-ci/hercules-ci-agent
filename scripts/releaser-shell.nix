@@ -1,4 +1,4 @@
-{ pkgs ? (import ../default.nix {}).hercules-ci-agent-packages.internal.pkgs }:
+{ pkgs ? (import ../nix { }) }:
 let
   inherit (pkgs) haskellPackages lib;
   ghc = haskellPackages.ghcWithPackages (p: [ p.releaser p.protolude ]);

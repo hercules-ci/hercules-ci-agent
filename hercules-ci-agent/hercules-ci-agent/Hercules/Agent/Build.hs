@@ -60,16 +60,18 @@ performBuild buildTask = do
         _ -> pass
   baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   materialize <- asks (not . Config.nixUserIsTrusted . Env.config)
-  liftIO $ writeChan commandChan $ Just $ Command.Build $ Command.Build.Build
-    { drvPath = BuildTask.derivationPath buildTask,
-      inputDerivationOutputPaths = toS <$> BuildTask.inputDerivationOutputPaths buildTask,
-      logSettings = LogSettings.LogSettings
-        { token = Sensitive $ BuildTask.logToken buildTask,
-          path = "/api/v1/logs/build/socket",
-          baseURL = toS $ Network.URI.uriToString identity baseURL ""
-        },
-      materializeDerivation = materialize
-    }
+  liftIO $ writeChan commandChan $ Just $ Command.Build $
+    Command.Build.Build
+      { drvPath = BuildTask.derivationPath buildTask,
+        inputDerivationOutputPaths = toS <$> BuildTask.inputDerivationOutputPaths buildTask,
+        logSettings =
+          LogSettings.LogSettings
+            { token = Sensitive $ BuildTask.logToken buildTask,
+              path = "/api/v1/logs/build/socket",
+              baseURL = toS $ Network.URI.uriToString identity baseURL ""
+            },
+        materializeDerivation = materialize
+      }
   exitCode <- runWorker procSpec (stderrLineHandler "Builder") commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> show exitCode
   case exitCode of

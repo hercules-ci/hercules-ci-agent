@@ -45,57 +45,59 @@ in
     # This normal conditional works because (most of) options can be evaluated
     # before config.
     if options ? deployment.keys
-    then mkIf (cfg.enable && cfg.enableKeyDeployment) {
-      assertions = [
+    then
+      mkIf (cfg.enable && cfg.enableKeyDeployment)
         {
-          assertion = cfg.binaryCachesFile == null;
-          message = ''
-            The option services.hercules-ci-agent.binaryCachesFile has been removed,
-              because the binary-caches.json does not need special treatment during
-              deployment anymore. You're using the builtin key deployment.
+          assertions = [
+            {
+              assertion = cfg.binaryCachesFile == null;
+              message = ''
+                The option services.hercules-ci-agent.binaryCachesFile has been removed,
+                  because the binary-caches.json does not need special treatment during
+                  deployment anymore. You're using the builtin key deployment.
 
-              Please rename your definition of:
-                services.hercules-ci-agent.binaryCachesFile = ...;
-              to:
-                deployment.keys."binary-caches.json".keyFile = ...;
+                  Please rename your definition of:
+                    services.hercules-ci-agent.binaryCachesFile = ...;
+                  to:
+                    deployment.keys."binary-caches.json".keyFile = ...;
 
-          '';
+              '';
+            }
+
+
+            {
+              assertion = (binaryCachesPath != null) -> binaryCachesCorrect;
+              message = ''
+                The Hercules CI Agent's NixOps keys integration module does not
+                currently support arbitrary file names for the binary-caches.json
+                deployment, because we have had issues with the NixOps keys "path"
+                attribute.
+              '';
+            }
+            {
+              assertion = (clusterJoinTokenPath != null) -> clusterJoinTokenCorrect;
+              message = ''
+                The Hercules CI Agent's NixOps keys integration module does not
+                currently support arbitrary file names for the cluster-join-token.key
+                deployment, because we have had issues with the NixOps keys "path"
+                attribute.
+              '';
+            }
+          ];
+
+          users.extraUsers.hercules-ci-agent.extraGroups = [ "keys" ];
+
+          deployment.keys."cluster-join-token.key" = {
+            user = config.services.hercules-ci-agent.user;
+            destDir = clusterJoinTokenDir;
+          };
+
+          deployment.keys."binary-caches.json" = {
+            user = config.services.hercules-ci-agent.user;
+            destDir = binaryCachesDir;
+          };
+
         }
-
-
-        {
-          assertion = (binaryCachesPath != null) -> binaryCachesCorrect;
-          message = ''
-            The Hercules CI Agent's NixOps keys integration module does not
-            currently support arbitrary file names for the binary-caches.json
-            deployment, because we have had issues with the NixOps keys "path"
-            attribute.
-          '';
-        }
-        {
-          assertion = (clusterJoinTokenPath != null) -> clusterJoinTokenCorrect;
-          message = ''
-            The Hercules CI Agent's NixOps keys integration module does not
-            currently support arbitrary file names for the cluster-join-token.key
-            deployment, because we have had issues with the NixOps keys "path"
-            attribute.
-          '';
-        }
-      ];
-
-      users.extraUsers.hercules-ci-agent.extraGroups = [ "keys" ];
-
-      deployment.keys."cluster-join-token.key" = {
-        user = config.services.hercules-ci-agent.user;
-        destDir = clusterJoinTokenDir;
-      };
-
-      deployment.keys."binary-caches.json" = {
-        user = config.services.hercules-ci-agent.user;
-        destDir = binaryCachesDir;
-      };
-
-    }
     else {
       assertions = [
         {

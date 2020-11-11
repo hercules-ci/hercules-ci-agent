@@ -45,20 +45,22 @@ runBuild store build = do
 
 -- TODO: case distinction on BuildStatus enumeration
 enrichResult :: Ptr (Ref NixStore) -> ForeignPtr Derivation -> Build.BuildResult -> IO Event.BuildResult.BuildResult
-enrichResult _ _ result@Build.BuildResult {isSuccess = False} = pure $
-  Event.BuildResult.BuildFailure {errorMessage = Build.errorMessage result}
+enrichResult _ _ result@Build.BuildResult {isSuccess = False} =
+  pure $
+    Event.BuildResult.BuildFailure {errorMessage = Build.errorMessage result}
 enrichResult store derivation _ = do
   drvOuts <- getDerivationOutputs derivation
   outputInfos <- for drvOuts $ \drvOut -> do
     vpi <- queryPathInfo (coerceStore store) (derivationOutputPath drvOut)
     hash_ <- validPathInfoNarHash vpi
     let size = validPathInfoNarSize vpi
-    pure Event.BuildResult.OutputInfo
-      { name = derivationOutputName drvOut,
-        path = derivationOutputPath drvOut,
-        hash = hash_,
-        size = size
-      }
+    pure
+      Event.BuildResult.OutputInfo
+        { name = derivationOutputName drvOut,
+          path = derivationOutputPath drvOut,
+          hash = hash_,
+          size = size
+        }
   pure $ Event.BuildResult.BuildSuccess outputInfos
 
 -- TODO factor out cnix library and avoid unsafeCoerce https://github.com/hercules-ci/hercules-ci-agent/issues/223

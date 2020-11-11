@@ -26,7 +26,8 @@ newEnv clientEnv = do
             x -> panic $ varName <> " has invalid uri scheme" <> toS x
   agentSocketBaseURL_ <- parse "agentSocketBaseURL" $ ServiceInfo.agentSocketBaseURL serviceInfo
   bulkSocketBaseURL_ <- parse "bulkSocketBaseURL" $ ServiceInfo.bulkSocketBaseURL serviceInfo
-  pure Env
-    { agentSocketBaseURL = agentSocketBaseURL_,
-      bulkSocketBaseURL = bulkSocketBaseURL_
-    }
+  pure
+    Env
+      { agentSocketBaseURL = agentSocketBaseURL_,
+        bulkSocketBaseURL = bulkSocketBaseURL_
+      }

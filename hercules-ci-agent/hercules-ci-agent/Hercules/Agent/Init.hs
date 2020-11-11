@@ -34,21 +34,22 @@ newEnv config logEnv = do
   cachix <- withLogging $ Hercules.Agent.Cachix.Init.newEnv config (BC.cachixCaches bcs)
   nix <- Hercules.Agent.Nix.Init.newEnv
   serviceInfo <- ServiceInfo.newEnv clientEnv
-  pure Env
-    { manager = manager,
-      config = config,
-      herculesBaseUrl = baseUrl,
-      herculesClientEnv = clientEnv,
-      serviceInfo = serviceInfo,
-      currentToken = Servant.Auth.Client.Token $ encodeUtf8 token,
-      binaryCaches = bcs,
-      cachixEnv = cachix,
-      socket = panic "Socket not defined yet.", -- Hmm, needs different monad?
-      kNamespace = emptyNamespace,
-      kContext = mempty,
-      kLogEnv = logEnv,
-      nixEnv = nix
-    }
+  pure
+    Env
+      { manager = manager,
+        config = config,
+        herculesBaseUrl = baseUrl,
+        herculesClientEnv = clientEnv,
+        serviceInfo = serviceInfo,
+        currentToken = Servant.Auth.Client.Token $ encodeUtf8 token,
+        binaryCaches = bcs,
+        cachixEnv = cachix,
+        socket = panic "Socket not defined yet.", -- Hmm, needs different monad?
+        kNamespace = emptyNamespace,
+        kContext = mempty,
+        kLogEnv = logEnv,
+        nixEnv = nix
+      }
 
 setupLogging :: Config.FinalConfig -> (K.LogEnv -> IO ()) -> IO ()
 setupLogging cfg f = do

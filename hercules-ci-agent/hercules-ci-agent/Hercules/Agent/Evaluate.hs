@@ -178,14 +178,15 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir "eval" $ \tmpdir -> 
           then do
             truncMsg <-
               fixIndex $
-                EvaluateEvent.Message Message.Message
-                  { index = -1,
-                    typ = Message.Error,
-                    message =
-                      "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than "
-                        <> show eventLimit
-                        <> " attributes or messages, please contact info@hercules-ci.com."
-                  }
+                EvaluateEvent.Message
+                  Message.Message
+                    { index = -1,
+                      typ = Message.Error,
+                      message =
+                        "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than "
+                          <> show eventLimit
+                          <> " attributes or messages, please contact info@hercules-ci.com."
+                    }
             emitSingle truncMsg
             panic "Evaluation limit reached."
           else emitSingle =<< fixIndex update
@@ -194,11 +195,12 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir "eval" $ \tmpdir -> 
   liftIO (findNixFile projectDir) >>= \case
     Left e ->
       emit $
-        EvaluateEvent.Message Message.Message
-          { Message.index = -1, -- will be set by emit
-            Message.typ = Message.Error,
-            Message.message = e
-          }
+        EvaluateEvent.Message
+          Message.Message
+            { Message.index = -1, -- will be set by emit
+              Message.typ = Message.Error,
+              Message.message = e
+            }
     Right file -> TraversalQueue.with $ \derivationQueue ->
       let doIt = do
             Async.Lifted.concurrently_ evaluation emitDrvs
@@ -273,17 +275,19 @@ runEvalProcess ::
 runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush logToken = do
   extraOpts <- Nix.askExtraOptions
   baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
-  let eval = Eval.Eval
-        { Eval.cwd = projectDir,
-          Eval.file = toS file,
-          Eval.autoArguments = autoArguments,
-          Eval.extraNixOptions = extraOpts,
-          Eval.logSettings = LogSettings.LogSettings
-            { token = Sensitive logToken,
-              path = "/api/v1/logs/build/socket",
-              baseURL = toS $ Network.URI.uriToString identity baseURL ""
-            }
-        }
+  let eval =
+        Eval.Eval
+          { Eval.cwd = projectDir,
+            Eval.file = toS file,
+            Eval.autoArguments = autoArguments,
+            Eval.extraNixOptions = extraOpts,
+            Eval.logSettings =
+              LogSettings.LogSettings
+                { token = Sensitive logToken,
+                  path = "/api/v1/logs/build/socket",
+                  baseURL = toS $ Network.URI.uriToString identity baseURL ""
+                }
+          }
   buildRequiredIndex <- liftIO $ newIORef (0 :: Int)
   commandChan <- newChan
   writeChan commandChan $ Just $ Command.Eval eval
@@ -294,45 +298,49 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
           workerEventsP
           ( \case
               Event.Attribute a -> do
-                emit $ EvaluateEvent.Attribute $ AttributeEvent.AttributeEvent
-                  { AttributeEvent.expressionPath = toSL <$> WorkerAttribute.path a,
-                    AttributeEvent.derivationPath = toSL $ WorkerAttribute.drv a,
-                    AttributeEvent.typ = case WorkerAttribute.typ a of
-                      WorkerAttribute.Regular -> AttributeEvent.Regular
-                      WorkerAttribute.MustFail -> AttributeEvent.MustFail
-                      WorkerAttribute.MayFail -> AttributeEvent.MayFail
-                      WorkerAttribute.Effect -> AttributeEvent.Effect
-                      WorkerAttribute.DependenciesOnly -> AttributeEvent.DependenciesOnly
-                  }
+                emit $ EvaluateEvent.Attribute $
+                  AttributeEvent.AttributeEvent
+                    { AttributeEvent.expressionPath = toSL <$> WorkerAttribute.path a,
+                      AttributeEvent.derivationPath = toSL $ WorkerAttribute.drv a,
+                      AttributeEvent.typ = case WorkerAttribute.typ a of
+                        WorkerAttribute.Regular -> AttributeEvent.Regular
+                        WorkerAttribute.MustFail -> AttributeEvent.MustFail
+                        WorkerAttribute.MayFail -> AttributeEvent.MayFail
+                        WorkerAttribute.Effect -> AttributeEvent.Effect
+                        WorkerAttribute.DependenciesOnly -> AttributeEvent.DependenciesOnly
+                    }
                 continue
               Event.AttributeError e -> do
-                emit $ EvaluateEvent.AttributeError $ AttributeErrorEvent.AttributeErrorEvent
-                  { AttributeErrorEvent.expressionPath = toSL <$> WorkerAttributeError.path e,
-                    AttributeErrorEvent.errorMessage = toSL $ WorkerAttributeError.message e,
-                    AttributeErrorEvent.errorType = toSL <$> WorkerAttributeError.errorType e,
-                    AttributeErrorEvent.errorDerivation = toSL <$> WorkerAttributeError.errorDerivation e
-                  }
+                emit $ EvaluateEvent.AttributeError $
+                  AttributeErrorEvent.AttributeErrorEvent
+                    { AttributeErrorEvent.expressionPath = toSL <$> WorkerAttributeError.path e,
+                      AttributeErrorEvent.errorMessage = toSL $ WorkerAttributeError.message e,
+                      AttributeErrorEvent.errorType = toSL <$> WorkerAttributeError.errorType e,
+                      AttributeErrorEvent.errorDerivation = toSL <$> WorkerAttributeError.errorDerivation e
+                    }
                 continue
               Event.EvaluationDone ->
                 writeChan commandChan Nothing
               Event.Error e -> do
                 emit $
-                  EvaluateEvent.Message Message.Message
-                    { Message.index = -1, -- will be set by emit
-                      Message.typ = Message.Error,
-                      Message.message = e
-                    }
+                  EvaluateEvent.Message
+                    Message.Message
+                      { Message.index = -1, -- will be set by emit
+                        Message.typ = Message.Error,
+                        Message.message = e
+                      }
                 continue
               Event.Build drv outputName notAttempt -> do
                 status <-
                   withNamedContext "derivation" drv $ do
                     currentIndex <- liftIO $ atomicModifyIORef buildRequiredIndex (\i -> (i + 1, i))
                     emit $
-                      EvaluateEvent.BuildRequired BuildRequired.BuildRequired
-                        { BuildRequired.derivationPath = drv,
-                          BuildRequired.index = currentIndex,
-                          BuildRequired.outputName = outputName
-                        }
+                      EvaluateEvent.BuildRequired
+                        BuildRequired.BuildRequired
+                          { BuildRequired.derivationPath = drv,
+                            BuildRequired.index = currentIndex,
+                            BuildRequired.outputName = outputName
+                          }
                     let pushDerivations = do
                           caches <- activePushCaches
                           forM_ caches $ \cache -> do
@@ -341,10 +349,12 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                     Async.Lifted.concurrently_
                       (uploadDerivationInfos drv)
                       pushDerivations
-                    emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest
-                      { derivationPath = drv,
-                        forceRebuild = isJust notAttempt
-                      }
+                    emit $
+                      EvaluateEvent.BuildRequest
+                        BuildRequest.BuildRequest
+                          { derivationPath = drv,
+                            forceRebuild = isJust notAttempt
+                          }
                     flush
                     status <- drvPoller notAttempt drv
                     logLocM DebugS $ "Got derivation status " <> show status
