@@ -9,14 +9,15 @@ packages:
   - tests/agent-test
 extra-deps:
   # REMINDER: sync with scripts/generate-nix
-  - cachix-0.3.8
+  - cachix-0.5.1
   # REMINDER: sync with scripts/generate-nix
-  - cachix-api-0.4.0@sha256:6f356eb0d5324cdddbb9911b473fd20bb37481e96481699ca1927afd41f4bb59,2983
+  - cachix-api-0.5.0
   - inline-c-0.9.0.0
   - inline-c-cpp-0.4.0.2
   - nix-derivation-1.0.2@sha256:dc1f13f89d37d4dcc7a46dbac7f6b4e8cd2877f4af99e35b9cb8255d08179bd4,3123
   - servant-auth-client-0.4.0.0@sha256:2875edeb95854422b87188d8385c5cf04333afcb92d8643f3af2b3a4642bddb8,3426
   - servant-websockets-2.0.0@sha256:6e9e3600bced90fd52ed3d1bf632205cb21479075b20d6637153cc4567000234,2253
+  - nix-narinfo-0.1.0.1@sha256:53d9ee364e14815b058c14e3056157f0245ba97972806ae3916a50f035955ea9,2111
 
 install-ghc: false  # we're using nixpkgs' ghc
 system-ghc: true    # nixpkgs ghc is perceived as 'system ghc'
