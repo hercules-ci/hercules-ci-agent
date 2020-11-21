@@ -70,3 +70,12 @@ toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'
                         (Servant.Auth.Client.Token $ toSL t)
                         k'
                   }
+            <|> do
+              token <- head $ CachixCache.authToken keys
+              Just $
+                pure
+                  Cachix.Push.PushCache
+                    { pushCacheName = name,
+                      pushCacheSecret =
+                        Cachix.Push.PushToken (Servant.Auth.Client.Token $ toSL token)
+                    }
