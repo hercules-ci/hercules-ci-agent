@@ -15,6 +15,7 @@
 , jose
 , lens
 , memory
+, nix-narinfo
 , protolude
 , resourcet
 , servant
@@ -28,14 +29,13 @@
 , string-conv
 , swagger2
 , text
+, time
 , transformers
 }:
 mkDerivation {
   pname = "cachix-api";
-  version = "0.4.0";
-  sha256 = "5d8a2c8ec4b86c5199216ae85c7ee0cc1dcc349b8482e3dfe7d72b9b6db21c92";
-  isLibrary = true;
-  isExecutable = true;
+  version = "0.5.0";
+  sha256 = "9eeb6b8403f702a5983d558b29b67788a7bab9a09518b8dcec7f9ecdcddb6491";
   libraryHaskellDepends = [
     aeson
     base
@@ -51,20 +51,19 @@ mkDerivation {
     jose
     lens
     memory
+    nix-narinfo
     protolude
     resourcet
     servant
     servant-auth
     servant-auth-server
-    servant-auth-swagger
     servant-client
-    servant-swagger
     string-conv
     swagger2
     text
+    time
     transformers
   ];
-  executableHaskellDepends = [ aeson base protolude ];
   testHaskellDepends = [
     aeson
     base

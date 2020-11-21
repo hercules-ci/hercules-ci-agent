@@ -1,6 +1,6 @@
 { ghc }:
 let
-  pkgs = (import ../. { }).devTools.pkgs;
+  pkgs = import ./default.nix { };
 in
 pkgs.haskell.lib.buildStackProject {
   inherit ghc;

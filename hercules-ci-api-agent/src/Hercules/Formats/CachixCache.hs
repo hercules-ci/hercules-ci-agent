@@ -42,8 +42,7 @@ instance FromJSON CachixCache where
       withVersions
         [ noVersion $ \o ->
             CachixCache
-              <$> o
-              .: "signingKeys"
+              <$> (fold <$> o .:? "signingKeys")
               <*> o
               .:? "authToken"
               <*> o
