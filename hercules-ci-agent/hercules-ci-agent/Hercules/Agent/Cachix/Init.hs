@@ -61,8 +61,10 @@ toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'
             sk <- head $ CachixCache.signingKeys keys
             Just $ escalateAs FatalError $ do
               k' <- Cachix.Secrets.parseSigningKeyLenient sk
-              pure $ Cachix.Push.PushCache
+              pure Cachix.Push.PushCache
                 { pushCacheName = name,
-                  pushCacheSigningKey = k',
-                  pushCacheToken = Servant.Auth.Client.Token $ toSL t
+                  pushCacheSecret =
+                    Cachix.Push.PushSigningKey
+                      (Servant.Auth.Client.Token $ toSL t)
+                      k'
                 }

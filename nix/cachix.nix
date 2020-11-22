@@ -52,8 +52,8 @@
 }:
 mkDerivation {
   pname = "cachix";
-  version = "0.3.8";
-  sha256 = "469470df9e2383a4bcdf04c2c96a371bb4b5befd25c320c21c2e9a2f81f60558";
+  version = "0.5.1";
+  sha256 = "ab224ffddb6749296898957d949b563a368b2ef5cda07cefe33aa8fbe441b48f";
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
@@ -113,6 +113,7 @@ mkDerivation {
     here
     hspec
     protolude
+    servant-auth-client
     temporary
   ];
   homepage = "https://github.com/cachix/cachix#readme";
