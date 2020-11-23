@@ -9,11 +9,25 @@ let
   haskellPackages_ = haskellPackages;
   inherit (pkgs) recurseIntoAttrs lib;
   inherit (pkgs.lib) cleanSource makeBinPath optionalAttrs;
-  inherit (haskell.lib) overrideSrc addBuildDepends overrideCabal buildFromSdist doJailbreak disableLibraryProfiling addBuildTool;
+  inherit (haskell.lib)
+    addBuildDepends
+    addBuildTool
+    appendPatch
+    buildFromSdist
+    disableLibraryProfiling
+    doJailbreak
+    overrideCabal
+    overrideSrc
+    ;
   inherit (import sources.gitignore { inherit lib; }) gitignoreSource;
   callPkg = super: name: srcPath: args: overrideSrc (super.callCabal2nix name srcPath args) { src = gitignoreSource srcPath; };
 
   sources = import ./sources.nix;
+
+  updateTo = v: stdPkg: altPkg:
+    if lib.versionAtLeast stdPkg.version v
+    then stdPkg
+    else altPkg;
 
   internal =
     rec {
@@ -24,13 +38,46 @@ let
         haskellPackages_.extend (
           self: super:
             {
+              # 2020-11-21: cachix + chachix-api needs a patch for ghc 8.10 compat
+              # https://github.com/cachix/cachix/pull/331
               cachix =
-                # avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
-                haskell.lib.disableLibraryProfiling (
-                  self.callPackage ./cachix.nix {}
+                appendPatch (
+                  haskell.lib.disableLibraryProfiling (
+                    self.callPackage ./cachix.nix {}
+                  )
+                ) (
+                  pkgs.fetchpatch {
+                    url = https://github.com/cachix/cachix/commit/bfeec151a03afad72401815fe8bbb1b0d5d63b0d.patch;
+                    sha256 = "06jmpz8l5vh9cch5aqdbrln7bm3fghxsicwy1m93avli320kp8pp";
+                    stripLen = 2;
+                    extraPrefix = "";
+                    excludes = [ "stack.yaml" "sources.json" "src/Cachix/Types/Session.hs" "src/Cachix/API/Signing.hs" "cachix-api.cabal" "workflows/test.yml" ];
+                  }
                 );
-              cachix-api = self.callPackage ./cachix-api.nix {};
+              cachix-api = appendPatch (self.callPackage ./cachix-api.nix {}) (
+                pkgs.fetchpatch {
+                  url = https://github.com/cachix/cachix/commit/bfeec151a03afad72401815fe8bbb1b0d5d63b0d.patch;
+                  sha256 = "0rglyd77g4j72l5g0sj9zpq2hy3v992bm6nhj58pmj4j2aj67y74";
+                  stripLen = 2;
+                  extraPrefix = "";
+                  includes = [ "src/Cachix/Types/Session.hs" "src/Cachix/API/Signing.hs" ];
+                }
+              );
+
               nix-narinfo = self.callPackage ./nix-narinfo.nix {};
+
+              protolude_0_3_plus =
+                updateTo "0.3" super.protolude (super.callPackage ./protolude-0.3.nix {});
+              servant-auth =
+                updateTo "0.4" super.servant-auth (super.callPackage ./servant-auth-0.4.nix {});
+              servant-auth-client =
+                updateTo "0.4.1" super.servant-auth-client (super.callPackage ./servant-auth-client-0.4.1.nix {});
+              servant-auth-server =
+                updateTo "0.4.6" super.servant-auth-server (super.callPackage ./servant-auth-server-0.4.6.nix {});
+              servant-auth-swagger =
+                updateTo "0.2.10.1" super.servant-auth-swagger (super.callPackage ./servant-auth-swagger-0.2.10.1.nix {});
+              dhall =
+                updateTo "1.28" super.dhall (super.callPackage ./dhall-1.28.nix {});
 
               hercules-ci-api = callPkg super "hercules-ci-api" ../hercules-ci-api {};
               hercules-ci-api-agent = callPkg super "hercules-ci-api-agent" ../hercules-ci-api-agent {};
@@ -41,6 +88,7 @@ let
                   basePkg =
                     callPkg super "hercules-ci-agent" ../hercules-ci-agent {
                       bdw-gc = pkgs.boehmgc-hercules;
+                      protolude = self.protolude_0_3_plus;
                     };
 
                 in

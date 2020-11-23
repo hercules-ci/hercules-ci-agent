@@ -68,7 +68,7 @@ library
     , mtl
     , network-uri
     , optparse-applicative
-    , protolude
+    , protolude >= 0.3
     , process
     , safe-exceptions
     , stm
