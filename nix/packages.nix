@@ -135,7 +135,7 @@ recurseIntoAttrs {
           "Hercules/Agent/Compat.hs"
           "Hercules/Agent/StoreFFI.hs"
         ];
-        shellcheck.enable = true;
+        # shellcheck.enable = true;
         nixpkgs-fmt.enable = true;
         nixpkgs-fmt.excludes = [ "tests/agent-test/testdata/" ];
       };
