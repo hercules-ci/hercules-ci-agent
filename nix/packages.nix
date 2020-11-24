@@ -12,6 +12,7 @@ let
   inherit (haskell.lib)
     addBuildDepends
     addBuildTool
+    addSetupDepends
     appendPatch
     buildFromSdist
     disableLibraryProfiling
@@ -40,33 +41,33 @@ let
             {
               # 2020-11-21: cachix + chachix-api needs a patch for ghc 8.10 compat
               # https://github.com/cachix/cachix/pull/331
-              cachix =
-                appendPatch (
-                  haskell.lib.disableLibraryProfiling (
-                    self.callPackage ./cachix.nix {}
-                  )
-                ) (
-                  pkgs.fetchpatch {
-                    url = https://github.com/cachix/cachix/commit/bfeec151a03afad72401815fe8bbb1b0d5d63b0d.patch;
-                    sha256 = "06jmpz8l5vh9cch5aqdbrln7bm3fghxsicwy1m93avli320kp8pp";
-                    stripLen = 2;
-                    extraPrefix = "";
-                    excludes = [ "stack.yaml" "sources.json" "src/Cachix/Types/Session.hs" "src/Cachix/API/Signing.hs" "cachix-api.cabal" "workflows/test.yml" ];
-                  }
-                );
-              cachix-api = appendPatch (self.callPackage ./cachix-api.nix {}) (
-                pkgs.fetchpatch {
-                  url = https://github.com/cachix/cachix/commit/bfeec151a03afad72401815fe8bbb1b0d5d63b0d.patch;
-                  sha256 = "0rglyd77g4j72l5g0sj9zpq2hy3v992bm6nhj58pmj4j2aj67y74";
-                  stripLen = 2;
-                  extraPrefix = "";
-                  includes = [ "src/Cachix/Types/Session.hs" "src/Cachix/API/Signing.hs" ];
-                }
-              );
+              # cachix =
+              #   appendPatch (
+              #     haskell.lib.disableLibraryProfiling (
+              #       self.callPackage ./cachix.nix {}
+              #     )
+              #   ) (
+              #     pkgs.fetchpatch {
+              #       url = https://github.com/cachix/cachix/commit/bfeec151a03afad72401815fe8bbb1b0d5d63b0d.patch;
+              #       sha256 = "1gma92966film44wfvb9dz86y82bih2ag6c5gj84dh1879ipmpdr";
+              #       stripLen = 2;
+              #       extraPrefix = "";
+              #       excludes = [ "stack.yaml" "sources.json" "cachix.cabal" "src/Cachix/Types/Session.hs" "src/Cachix/API/Signing.hs" "cachix-api.cabal" "workflows/test.yml" ];
+              #     }
+              #   );
+              # cachix-api = appendPatch (self.callPackage ./cachix-api.nix {}) (
+              #   pkgs.fetchpatch {
+              #     url = https://github.com/cachix/cachix/commit/bfeec151a03afad72401815fe8bbb1b0d5d63b0d.patch;
+              #     sha256 = "0rglyd77g4j72l5g0sj9zpq2hy3v992bm6nhj58pmj4j2aj67y74";
+              #     stripLen = 2;
+              #     extraPrefix = "";
+              #     includes = [ "src/Cachix/Types/Session.hs" "src/Cachix/API/Signing.hs" ];
+              #   }
+              # );
 
               nix-narinfo = self.callPackage ./nix-narinfo.nix {};
 
-              protolude_0_3_plus =
+              protolude =
                 updateTo "0.3" super.protolude (super.callPackage ./protolude-0.3.nix {});
               servant-auth =
                 updateTo "0.4" super.servant-auth (super.callPackage ./servant-auth-0.4.nix {});
@@ -80,6 +81,8 @@ let
                 updateTo "1.28" super.dhall (super.callPackage ./dhall-1.28.nix {});
 
               hercules-ci-api = callPkg super "hercules-ci-api" ../hercules-ci-api {};
+              # hercules-ci-api-agent = (callPkg super "hercules-ci-api-agent" ../hercules-ci-api-agent {}).overrideScope (self: super: { Cabal = self.Cabal_3_2_1_0; });
+              # hercules-ci-api-agent = lib.addBuildDepends (callPkg super "hercules-ci-api-agent" ../hercules-ci-api-agent {}) [self.Cabal_3_2_1_0];
               hercules-ci-api-agent = callPkg super "hercules-ci-api-agent" ../hercules-ci-api-agent {};
               hercules-ci-api-core = callPkg super "hercules-ci-api-core" ../hercules-ci-api-core {};
 
@@ -88,16 +91,25 @@ let
                   basePkg =
                     callPkg super "hercules-ci-agent" ../hercules-ci-agent {
                       bdw-gc = pkgs.boehmgc-hercules;
-                      protolude = self.protolude_0_3_plus;
                     };
 
                 in
                   buildFromSdist (
                     overrideCabal (
-                      addBuildDepends basePkg [ pkgs.makeWrapper pkgs.boost pkgs.boehmgc ]
+                      addBuildDepends
+                        (addSetupDepends basePkg [ self.Cabal_3_2_1_0 ])
+                        [ pkgs.makeWrapper pkgs.boost pkgs.boehmgc ]
                     ) (
                       o:
                         {
+                          preCompileBuildDriver = ''
+                            # setupCompileFlags+=" -clear-package-db -package-db ${self.ghcWithPackages (p: [self.Cabal_3_2_1_0])}/lib/*/package.conf.d"
+                          '';
+                          postCompileBuildDriver = ''
+                            echo Setup version:
+                            ./Setup --version
+                          '';
+                          
                           postInstall =
                             o.postInstall or ""
                             + ''
@@ -145,7 +157,7 @@ let
                   }
                 );
 
-              websockets = self.callPackage ./websockets.nix {};
+              websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix {});
 
               servant-websockets = self.callPackage ./servant-websockets.nix {};
 
@@ -177,14 +189,14 @@ recurseIntoAttrs {
       };
       hooks = {
         # TODO: hlint.enable = true;
-        ormolu.enable = true;
+        #ormolu.enable = true;
         ormolu.excludes = [
           # CPP
           "Hercules/Agent/Compat.hs"
           "Hercules/Agent/StoreFFI.hs"
         ];
-        shellcheck.enable = true;
-        nixpkgs-fmt.enable = true;
+        #shellcheck.enable = true;
+        #nixpkgs-fmt.enable = true;
         nixpkgs-fmt.excludes = [ "tests/agent-test/testdata/" ];
       };
       settings.ormolu.defaultExtensions = [ "TypeApplications" ];

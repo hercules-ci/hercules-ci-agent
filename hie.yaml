@@ -1,2 +1,10 @@
 ---
-cradle: {bios: {program: ".hie-bios"}}
+cradle:
+  stack:
+    components:
+      - path: ./hercules-ci-agent/src
+        component: hercules-ci-agent:lib
+      - path: ./hercules-ci-agent/hercules-ci-agent
+        component: hercules-ci-agent:exe:hercules-ci-agent
+      - path: ./hercules-ci-agent/hercules-ci-agent-worker
+        component: hercules-ci-agent:exe:hercules-ci-agent-worker
