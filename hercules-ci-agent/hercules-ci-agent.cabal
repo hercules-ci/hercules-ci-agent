@@ -13,7 +13,7 @@ license:        Apache-2.0
 build-type:     Simple
 extra-source-files:
     CHANGELOG.md
-    cbits/aliases.h
+    cbits/hercules-aliases.h
     cbits/hercules-store.hh
     cbits/hercules-logger.hh
     testdata/vm-test-run-agent-test.drv
@@ -104,8 +104,8 @@ library cnix
   include-dirs:
       cbits
   cxx-sources:
-     cbits/hercules-store.cc
-     cbits/hercules-logger.cc
+     cbits/hercules-store.cxx
+     cbits/hercules-logger.cxx
   build-depends:
       base
     , inline-c

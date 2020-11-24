@@ -38,7 +38,7 @@ C.include "<nix/shared.hh>"
 
 C.include "<nix/globals.hh>"
 
-C.include "aliases.h"
+C.include "hercules-aliases.h"
 
 C.include "hercules-logger.hh"
 
