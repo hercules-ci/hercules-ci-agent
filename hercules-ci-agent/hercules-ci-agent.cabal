@@ -23,28 +23,26 @@ source-repository head
   location: https://github.com/hercules-ci/hercules-ci-agent
 
 -- match the C++ language standard Nix is using
-
 common cxx-opts
-  ghc-options:
-    -optcxx-std=c++17
   cxx-options:
     -std=c++17
+    -Wall
+  extra-libraries: stdc++
 
--- common cxx-opts
---   ghc-options: -optc-Wall
---   if impl(ghc >= 8.10)
---     ghc-options:
---       -optcxx-std=c++17
---       -optcxx-Wall
---   else
---     ghc-options:
---       -optc-std=c++17
---     if os(darwin)
---       ghc-options: -pgmc=clang++
---   cxx-options: -Wall -std=c++17
---   if os(darwin)
---     -- avoid https://gitlab.haskell.org/ghc/ghc/issues/11829
---     ld-options:  -Wl,-keep_dwarf_unwind
+  if os(darwin)
+    -- avoid https://gitlab.haskell.org/ghc/ghc/issues/11829
+    ld-options:  -Wl,-keep_dwarf_unwind
+
+  if impl(ghc >= 8.10)
+    ghc-options:
+      -optcxx-std=c++17
+      -optcxx-Wall
+  else
+    ghc-options:
+      -optc-std=c++17
+      -optc-Wall
+    if os(darwin)
+      ghc-options: -pgmc=clang++
 
 
 library
@@ -147,7 +145,6 @@ library cnix
     , nix-main >= 2.0
     , bdw-gc
   extra-libraries:
-      stdc++
       boost_context
   default-language: Haskell2010
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
@@ -159,10 +156,6 @@ library cnix
     -fwarn-missing-signatures
     -fwarn-name-shadowing
     -fwarn-incomplete-patterns
-    -- match what Nix is using
-  --   -optc-std=c++17
-    -optcxx-std=c++17
-  -- cxx-options: -Wall -std=c++17
 
 executable hercules-ci-agent
   main-is: Main.hs
@@ -293,7 +286,6 @@ executable hercules-ci-agent-worker
   include-dirs:
       cbits
   extra-libraries:
-      stdc++
       boost_context
   build-depends:
       aeson
