@@ -42,7 +42,7 @@ let
       installPhase = "echo ok > $out";
     };
 
-  patchedNix = lib.mkIf (!lib.versionAtLeast pkgs.nix.version "2.4.0") (
+  patchedNix = lib.mkIf (!lib.versionAtLeast pkgs.nix.version "2.3.9") (
     if lib.versionAtLeast pkgs.nix.version "2.4pre"
     then lib.warn "Hercules CI Agent module will not patch 2.4 pre-release. Make sure it includes (equivalently) PR #3043, commit d048577909 or is no older than 2020-03-13." pkgs.nix
     else pkgs.nix.overrideAttrs (
