@@ -41,29 +41,32 @@ let
             {
               # 2020-11-21: cachix + chachix-api needs a patch for ghc 8.10 compat
               # https://github.com/cachix/cachix/pull/331
-              # cachix =
-              #   appendPatch (
-              #     haskell.lib.disableLibraryProfiling (
-              #       self.callPackage ./cachix.nix {}
-              #     )
-              #   ) (
-              #     pkgs.fetchpatch {
-              #       url = https://github.com/cachix/cachix/commit/bfeec151a03afad72401815fe8bbb1b0d5d63b0d.patch;
-              #       sha256 = "1gma92966film44wfvb9dz86y82bih2ag6c5gj84dh1879ipmpdr";
-              #       stripLen = 2;
-              #       extraPrefix = "";
-              #       excludes = [ "stack.yaml" "sources.json" "cachix.cabal" "src/Cachix/Types/Session.hs" "src/Cachix/API/Signing.hs" "cachix-api.cabal" "workflows/test.yml" ];
-              #     }
-              #   );
-              # cachix-api = appendPatch (self.callPackage ./cachix-api.nix {}) (
-              #   pkgs.fetchpatch {
-              #     url = https://github.com/cachix/cachix/commit/bfeec151a03afad72401815fe8bbb1b0d5d63b0d.patch;
-              #     sha256 = "0rglyd77g4j72l5g0sj9zpq2hy3v992bm6nhj58pmj4j2aj67y74";
-              #     stripLen = 2;
-              #     extraPrefix = "";
-              #     includes = [ "src/Cachix/Types/Session.hs" "src/Cachix/API/Signing.hs" ];
-              #   }
-              # );
+              cachix =
+                updateTo "0.5.1" super.cachix (
+                appendPatch (
+                  haskell.lib.disableLibraryProfiling (
+                    self.callPackage ./cachix.nix {}
+                  )
+                ) (
+                  pkgs.fetchpatch {
+                    url = https://github.com/cachix/cachix/commit/bfeec151a03afad72401815fe8bbb1b0d5d63b0d.patch;
+                    sha256 = "1gma92966film44wfvb9dz86y82bih2ag6c5gj84dh1879ipmpdr";
+                    stripLen = 2;
+                    extraPrefix = "";
+                    excludes = [ "stack.yaml" "sources.json" "cachix.cabal" "src/Cachix/Types/Session.hs" "src/Cachix/API/Signing.hs" "cachix-api.cabal" "workflows/test.yml" ];
+                  }
+                ));
+              cachix-api =
+                updateTo "0.5.0" super.cachix-api (
+                appendPatch (self.callPackage ./cachix-api.nix {}) (
+                pkgs.fetchpatch {
+                  url = https://github.com/cachix/cachix/commit/bfeec151a03afad72401815fe8bbb1b0d5d63b0d.patch;
+                  sha256 = "0rglyd77g4j72l5g0sj9zpq2hy3v992bm6nhj58pmj4j2aj67y74";
+                  stripLen = 2;
+                  extraPrefix = "";
+                  includes = [ "src/Cachix/Types/Session.hs" "src/Cachix/API/Signing.hs" ];
+                }
+                ));
 
               nix-narinfo = self.callPackage ./nix-narinfo.nix {};
 
