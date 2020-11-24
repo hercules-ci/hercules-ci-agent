@@ -1,0 +1,6 @@
+packages:
+  ./hercules-ci-api-core
+  ./hercules-ci-api-agent
+  ./hercules-ci-api
+  ./hercules-ci-agent
+  ./tests/agent-test
