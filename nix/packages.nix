@@ -84,8 +84,6 @@ let
                 updateTo "1.28" super.dhall (super.callPackage ./dhall-1.28.nix {});
 
               hercules-ci-api = callPkg super "hercules-ci-api" ../hercules-ci-api {};
-              # hercules-ci-api-agent = (callPkg super "hercules-ci-api-agent" ../hercules-ci-api-agent {}).overrideScope (self: super: { Cabal = self.Cabal_3_2_1_0; });
-              # hercules-ci-api-agent = lib.addBuildDepends (callPkg super "hercules-ci-api-agent" ../hercules-ci-api-agent {}) [self.Cabal_3_2_1_0];
               hercules-ci-api-agent = callPkg super "hercules-ci-api-agent" ../hercules-ci-api-agent {};
               hercules-ci-api-core = callPkg super "hercules-ci-api-core" ../hercules-ci-api-core {};
 
@@ -100,14 +98,11 @@ let
                   buildFromSdist (
                     overrideCabal (
                       addBuildDepends
-                        (addSetupDepends basePkg [ self.Cabal_3_2_1_0 ])
+                        (addSetupDepends basePkg (lib.optional (lib.versionAtLeast super.ghc.version "8.10") self.Cabal_3_2_1_0))
                         [ pkgs.makeWrapper pkgs.boost pkgs.boehmgc ]
                     ) (
                       o:
                         {
-                          preCompileBuildDriver = ''
-                            # setupCompileFlags+=" -clear-package-db -package-db ${self.ghcWithPackages (p: [self.Cabal_3_2_1_0])}/lib/*/package.conf.d"
-                          '';
                           postCompileBuildDriver = ''
                             echo Setup version:
                             ./Setup --version
