@@ -6,7 +6,11 @@ pkgs.haskell.lib.buildStackProject {
   inherit ghc;
   name = "hercules-ci-stack-shell";
   buildInputs = [
-    pkgs.lzma
+
+    # Static linking avoids the error
+    # error: undefined reference to 'pthread_sigmask', version 'GLIBC_2.32'
+    (pkgs.lzma.override { enableStatic = true; })
+
     pkgs.zlib
     pkgs.openssl
     pkgs.nix
