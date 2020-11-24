@@ -168,7 +168,6 @@ let
       tests =
         recurseIntoAttrs {
           agent-functional-test = pkgs.nixosTest ../tests/agent-test.nix;
-          module-nixos = pkgs.callPackage ../tests/module-nixos {};
         };
 
       projectRootSource = gitignoreSource ../.;
