@@ -322,12 +322,12 @@ send' conn msgs = do
 recv' :: forall ap m. (FromJSON ap, Show ap, MonadIO m) => WS.Connection -> m (Frame ap ap)
 recv' conn = do
   (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
-    Left e -> liftIO $ throwIO (FatalError $ "Error decoding agent message: " <> toSL e)
+    Left e -> liftIO $ throwIO (FatalError $ "Error decoding agent message: " <> toS e)
     Right (Frame.Exception e) -> do
-      putErrText $ "Agent exception message: " <> toSL e
+      putErrText $ "Agent exception message: " <> toS e
       recv' conn
     Right r -> do
-      putErrText $ "Agent message: " <> (toSL (show r :: Text))
+      putErrText $ "Agent message: " <> (toS (show r :: Text))
       pure r
 
 relativePathConduit ::
