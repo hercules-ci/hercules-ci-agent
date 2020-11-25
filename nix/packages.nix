@@ -15,6 +15,11 @@ let
 
   sources = import ./sources.nix;
 
+  updateTo = v: stdPkg: altPkg:
+    if lib.versionAtLeast stdPkg.version v
+    then stdPkg
+    else altPkg;
+
   internal =
     rec {
       inherit pkgs;
