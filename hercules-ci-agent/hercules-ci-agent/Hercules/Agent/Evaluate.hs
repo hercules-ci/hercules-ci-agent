@@ -135,7 +135,7 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir $ \tmpdir -> do
                   <> identifier
         )
   let autoArguments = autoArguments'
-        <&> \sp -> Eval.ExprArg $ toS $ renderSubPath $ toS <$> sp
+        <&> \sp -> Eval.ExprArg $ encodeUtf8 $ renderSubPath $ toS <$> sp
   msgCounter <- liftIO $ newIORef 0
   let fixIndex ::
         MonadIO m =>
@@ -253,6 +253,7 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
   buildRequiredIndex <- liftIO $ newIORef (0 :: Int)
   commandChan <- newChan
   writeChan commandChan $ Just $ Command.Eval eval
+  let decode = decodeUtf8With lenientDecode
   withProducer (produceWorkerEvents eval nixPath commandChan) $
     \workerEventsP -> fix $ \continue ->
       joinSTM $
@@ -261,16 +262,16 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
           ( \case
               Event.Attribute a -> do
                 emit $ EvaluateEvent.Attribute $ AttributeEvent.AttributeEvent
-                  { AttributeEvent.expressionPath = toSL <$> WorkerAttribute.path a,
-                    AttributeEvent.derivationPath = toSL $ WorkerAttribute.drv a
+                  { AttributeEvent.expressionPath = decode <$> WorkerAttribute.path a,
+                    AttributeEvent.derivationPath = decode $ WorkerAttribute.drv a
                   }
                 continue
               Event.AttributeError e -> do
                 emit $ EvaluateEvent.AttributeError $ AttributeErrorEvent.AttributeErrorEvent
-                  { AttributeErrorEvent.expressionPath = toSL <$> WorkerAttributeError.path e,
-                    AttributeErrorEvent.errorMessage = toSL $ WorkerAttributeError.message e,
-                    AttributeErrorEvent.errorType = toSL <$> WorkerAttributeError.errorType e,
-                    AttributeErrorEvent.errorDerivation = toSL <$> WorkerAttributeError.errorDerivation e
+                  { AttributeErrorEvent.expressionPath = decode <$> WorkerAttributeError.path e,
+                    AttributeErrorEvent.errorMessage = WorkerAttributeError.message e,
+                    AttributeErrorEvent.errorType = WorkerAttributeError.errorType e,
+                    AttributeErrorEvent.errorDerivation = WorkerAttributeError.errorDerivation e
                   }
                 continue
               Event.EvaluationDone ->
@@ -307,7 +308,7 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                       }
                     flush
                     status <- drvPoller notAttempt drv
-                    logLocM DebugS $ "Got derivation status " <> show status
+                    logLocM DebugS $ "Got derivation status " <> logStr (show status :: Text)
                     return status
                 writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drv) status
                 continue

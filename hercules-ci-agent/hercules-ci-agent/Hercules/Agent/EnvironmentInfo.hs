@@ -12,6 +12,7 @@ import Data.Aeson.Lens
     _String,
     key,
   )
+import qualified Data.ByteString.Lazy as LBS
 import Data.Char (isSpace)
 import qualified Data.Text as T
 import qualified Hercules.API.Agent.LifeCycle.AgentInfo as AgentInfo
@@ -42,7 +43,7 @@ extractAgentInfo = do
           substituters = nixSubstituters nix, -- TODO: Add cachix substituters
           concurrentTasks = fromIntegral concurrentTasks
         }
-  logLocM DebugS $ "Determined environment info: " <> show s
+  logLocM DebugS $ "Determined environment info: " <> logStr (show s :: Text)
   pure s
 
 data NixInfo
@@ -61,11 +62,11 @@ getNixInfo = do
   version <- Process.readProcess "nix" ["--version"] stdinEmpty
   rawJson <- Process.readProcess "nix" ["show-config", "--json"] stdinEmpty
   cfg <-
-    case Aeson.eitherDecode (toS rawJson) of
+    case Aeson.eitherDecode (LBS.fromStrict $ encodeUtf8 $ toS $ rawJson) of
       Left e -> panic $ "Could not parse nix show-config --json: " <> show e
       Right r -> pure r
   pure NixInfo
-    { nixExeVersion = T.dropAround isSpace (toSL version),
+    { nixExeVersion = T.dropAround isSpace (toS version),
       nixPlatforms =
         ((cfg :: Aeson.Value) ^.. key "system" . key "value" . _String)
           <> ( cfg

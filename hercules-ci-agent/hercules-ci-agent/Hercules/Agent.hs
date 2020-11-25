@@ -173,7 +173,7 @@ launchTask tasks socket taskId doWork = withNamedContext "task" taskId do
       report' (Left e) = withNamedContext "message" (displayException e) $
         withNamedContext "exception" (show e :: Text) do
           logLocM ErrorS "Exception in task"
-          report $ TaskStatus.Exceptional $ toSL $ displayException e
+          report $ TaskStatus.Exceptional $ toS $ displayException e
       -- TODO use socket
       report status =
         retry (cap 60 exponential)

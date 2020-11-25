@@ -58,7 +58,7 @@ import Hercules.Error
 import Katip
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import qualified Network.URI
-import Protolude hiding (bracket, catch, evalState, wait, withAsync)
+import Protolude hiding (bracket, catch, evalState, wait, withAsync, yield)
 import qualified System.Environment as Environment
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.Posix.IO (dup, fdToHandle, stdError)
@@ -162,10 +162,10 @@ printCommands =
     )
 
 renderException :: SomeException -> Text
-renderException e | Just (C.CppStdException msg) <- fromException e = toSL msg
+renderException e | Just (C.CppStdException msg) <- fromException e = toS msg
 renderException e
   | Just (C.CppOtherException maybeType) <- fromException e =
-    "Unexpected C++ exception" <> foldMap (\t -> " of type " <> toSL t) maybeType
+    "Unexpected C++ exception" <> foldMap (\t -> " of type " <> toS t) maybeType
 renderException e | Just (FatalError msg) <- fromException e = msg
 renderException e = toS $ displayException e
 
@@ -305,7 +305,7 @@ makeSocketConfig l = do
       checkVersion = Socket.checkVersion',
       baseURL = baseURL,
       path = LogSettings.path l,
-      token = toSL $ LogSettings.reveal $ LogSettings.token l
+      token = encodeUtf8 $ LogSettings.reveal $ LogSettings.token l
     }
 
 -- TODO: test
@@ -313,8 +313,8 @@ autoArgArgs :: Map Text Eval.Arg -> [ByteString]
 autoArgArgs kvs = do
   (k, v) <- M.toList kvs
   case v of
-    Eval.LiteralArg s -> ["--argstr", toS k, s]
-    Eval.ExprArg s -> ["--arg", toS k, s]
+    Eval.LiteralArg s -> ["--argstr", encodeUtf8 k, s]
+    Eval.ExprArg s -> ["--arg", encodeUtf8 k, s]
 
 withDrvInProgress :: MonadUnliftIO m => HerculesState -> Text -> m a -> m a
 withDrvInProgress HerculesState {drvsInProgress = ref} drvPath =
@@ -371,16 +371,17 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
   let store = nixStore hStore
   s <- storeUri store
   UnliftIO unlift <- lift askUnliftIO
-  liftIO $ setBuilderCallback hStore $ \path -> unlift $ katipAddContext (sl "fullpath" (toSL path :: Text)) $ do
+  let decode = decodeUtf8With lenientDecode
+  liftIO $ setBuilderCallback hStore $ \path -> unlift $ katipAddContext (sl "fullpath" (decode path)) $ do
     logLocM DebugS "Building"
     let (plainDrv, bangOut) = BS.span (/= fromIntegral (ord '!')) path
         outputName = BS.dropWhile (== fromIntegral (ord '!')) bangOut
-        plainDrvText = toS plainDrv
+        plainDrvText = decode plainDrv
     withDrvInProgress st plainDrvText $ do
-      liftIO $ writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName) Nothing
+      liftIO $ writeChan shortcutChan $ Just $ Event.Build plainDrvText (decode outputName) Nothing
       derivation <- liftIO $ getDerivation store plainDrv
       outputPath <- liftIO $ getDerivationOutputPath derivation outputName
-      katipAddContext (sl "outputPath" (toSL outputPath :: Text)) $ do
+      katipAddContext (sl "outputPath" (decode outputPath)) $ do
         logLocM DebugS "Naively calling ensurePath"
       liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e0 -> do
         katipAddContext (sl "message" (show (e0 :: SomeException) :: Text)) $
@@ -395,7 +396,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
         liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e1 -> do
           katipAddContext (sl "message" (show (e1 :: SomeException) :: Text)) $
             logLocM DebugS "Recovering from fresh ensurePath"
-          liftIO $ writeChan shortcutChan $ Just $ Event.Build plainDrvText (toSL outputName) (Just attempt0)
+          liftIO $ writeChan shortcutChan $ Just $ Event.Build plainDrvText (decode outputName) (Just attempt0)
           -- TODO sync
           result' <-
             liftIO $ atomically $ do
@@ -416,7 +417,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                 )
     logLocM DebugS ("Built")
   withEvalState store $ \evalState -> do
-    katipAddContext (sl "storeURI" (toSL s :: Text)) $
+    katipAddContext (sl "storeURI" (decode s)) $
       logLocM DebugS "EvalState loaded."
     args <-
       liftIO $

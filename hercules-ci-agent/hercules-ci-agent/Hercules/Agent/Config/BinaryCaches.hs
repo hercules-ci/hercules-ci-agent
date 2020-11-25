@@ -75,8 +75,8 @@ validate fname bcs = do
   forM_ (M.toList (unknownKinds bcs)) $ \(k, v) ->
     logLocM WarningS $
       "In file "
-        <> show fname
+        <> logStr fname
         <> " in entry "
-        <> show k
+        <> logStr k
         <> ": unknown kind "
-        <> show (kind v)
+        <> logStr (kind v)

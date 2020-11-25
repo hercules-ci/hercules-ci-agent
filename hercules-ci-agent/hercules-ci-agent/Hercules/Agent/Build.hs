@@ -54,14 +54,14 @@ performBuild buildTask = do
       writeEvent event = case event of
         Event.BuildResult r -> writeIORef statusRef $ Just r
         Event.Exception e -> do
-          logLocM DebugS $ show e
+          logLocM DebugS $ logStr (show e :: Text)
           panic e
         _ -> pass
   baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   materialize <- asks (not . Config.nixUserIsTrusted . Env.config)
   liftIO $ writeChan commandChan $ Just $ Command.Build $ Command.Build.Build
     { drvPath = BuildTask.derivationPath buildTask,
-      inputDerivationOutputPaths = toS <$> BuildTask.inputDerivationOutputPaths buildTask,
+      inputDerivationOutputPaths = encodeUtf8 <$> BuildTask.inputDerivationOutputPaths buildTask,
       logSettings = LogSettings.LogSettings
         { token = LogSettings.Sensitive $ BuildTask.logToken buildTask,
           path = "/api/v1/logs/build/socket",
@@ -70,7 +70,7 @@ performBuild buildTask = do
       materializeDerivation = materialize
     }
   exitCode <- runWorker procSpec (stderrLineHandler "Builder") commandChan writeEvent
-  logLocM DebugS $ "Worker exit: " <> show exitCode
+  logLocM DebugS $ "Worker exit: " <> logStr (show exitCode :: Text)
   case exitCode of
     ExitSuccess -> pass
     _ -> panic $ "Worker failed: " <> show exitCode
@@ -87,13 +87,13 @@ performBuild buildTask = do
 
 convertOutputs :: Text -> [BuildResult.OutputInfo] -> Map Text OutputInfo
 convertOutputs deriver = foldMap $ \oi ->
-  M.singleton (toS $ BuildResult.name oi) $
+  M.singleton (decodeUtf8With lenientDecode $ BuildResult.name oi) $
     OutputInfo.OutputInfo
       { OutputInfo.deriver = deriver,
-        name = toSL $ BuildResult.name oi,
-        path = toSL $ BuildResult.path oi,
+        name = decodeUtf8With lenientDecode $ BuildResult.name oi,
+        path = decodeUtf8With lenientDecode $ BuildResult.path oi,
         size = fromIntegral $ BuildResult.size oi,
-        hash = toSL $ BuildResult.hash oi
+        hash = decodeUtf8With lenientDecode $ BuildResult.hash oi
       }
 
 push :: BuildTask -> Map Text OutputInfo -> App ()

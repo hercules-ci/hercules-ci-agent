@@ -17,7 +17,7 @@ retrieveDerivationInfo ::
   DerivationInfo.DerivationPathText ->
   m DerivationInfo
 retrieveDerivationInfo store drvPath = liftIO $ do
-  drv <- getDerivation store (toSL drvPath)
+  drv <- getDerivation store (encodeUtf8 drvPath)
   retrieveDerivationInfo' drvPath drv
 
 retrieveDerivationInfo' :: Text -> ForeignPtr Derivation -> IO DerivationInfo
@@ -28,20 +28,21 @@ retrieveDerivationInfo' drvPath drv = do
   env <- getDerivationEnv drv
   platform <- getDerivationPlatform drv
   let requiredSystemFeatures = maybe [] splitFeatures $ M.lookup "requiredSystemFeatures" env
-      splitFeatures = filter (not . T.null) . T.split (== ' ') . toSL
+      splitFeatures = filter (not . T.null) . T.split (== ' ') . decode
+      decode = decodeUtf8With lenientDecode
   pure $ DerivationInfo
     { derivationPath = drvPath,
-      platform = toSL platform,
+      platform = decodeUtf8With lenientDecode platform,
       requiredSystemFeatures = requiredSystemFeatures,
-      inputDerivations = inputDrvPaths & map (\(i, os) -> (toSL i, map toSL os)) & M.fromList,
-      inputSources = map toSL sourcePaths,
+      inputDerivations = inputDrvPaths & map (\(i, os) -> (decode i, map decode os)) & M.fromList,
+      inputSources = map decode sourcePaths,
       outputs =
         outputs
           & map
             ( \output ->
-                ( toSL $ derivationOutputName output,
+                ( decode $ derivationOutputName output,
                   DerivationInfo.OutputInfo
-                    { DerivationInfo.path = toSL $ derivationOutputPath output,
+                    { DerivationInfo.path = decode $ derivationOutputPath output,
                       DerivationInfo.isFixed = derivationOutputHashAlgo output /= ""
                     }
                 )

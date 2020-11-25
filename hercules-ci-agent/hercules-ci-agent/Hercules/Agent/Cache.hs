@@ -33,7 +33,7 @@ withCaches m = do
       T.hPutStrLn netrcHandle (T.unlines netrcLns)
       hClose netrcHandle
     Nix.withExtraOptions
-      [ ("netrc-file", toSL netrcPath),
+      [ ("netrc-file", toS netrcPath),
         ("substituters", T.intercalate " " (substs <> csubsts)),
         ("trusted-public-keys", T.intercalate " " (pubkeys <> cpubkeys))
       ]
@@ -66,7 +66,7 @@ nixPush cacheConf pathsText _concurrency = do
   CNix.withStore $ \store -> do
     (Sum total, Sum signed) <-
       mconcat <$> for keys \key -> liftIO $ do
-        pathSet <- paths & map toS & newPathSetWith
+        pathSet <- paths & newPathSetWith
         signClosure store key pathSet
     katipAddContext (sl "num-signatures" signed <> sl "num-paths" total) $
       logLocM DebugS "Signed"

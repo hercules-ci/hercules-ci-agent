@@ -37,6 +37,9 @@ let
               cachix-api = self.callPackage ./cachix-api.nix {};
               nix-narinfo = self.callPackage ./nix-narinfo.nix {};
 
+              protolude =
+                updateTo "0.3" super.protolude (super.callPackage ./protolude-0.3.nix {});
+
               hercules-ci-api = callPkg super "hercules-ci-api" ../hercules-ci-api {};
               hercules-ci-api-agent = callPkg super "hercules-ci-api-agent" ../hercules-ci-api-agent {};
               hercules-ci-api-core = callPkg super "hercules-ci-api-core" ../hercules-ci-api-core {};
