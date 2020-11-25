@@ -136,7 +136,7 @@ library cnix
     , inline-c-cpp
     , internal-ffi
     , bytestring
-    , cachix >= 0.3.8
+    , cachix >= 0.5.1
     , conduit
     , containers
     , protolude

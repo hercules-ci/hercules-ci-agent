@@ -1,7 +1,7 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-20.03";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-20.09";
   inputs.nixos-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
@@ -19,13 +19,13 @@
       filterMeta = nixpkgs.lib.filterAttrs (k: v: k != "meta" && k != "recurseForDerivations");
       dimension = _name: attrs: f: lib.mapAttrs f attrs;
 
-      defaultTarget = allTargets."nixos-20_03";
+      defaultTarget = allTargets."nixos-20_09";
       testSuiteTarget = defaultTarget;
 
       allTargets =
         dimension "Nixpkgs version"
           {
-            "nixos-20_03" = {
+            "nixos-20_09" = {
               nixpkgsSource = nixpkgs;
             };
             "nixos-unstable" = {
