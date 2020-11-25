@@ -12,6 +12,11 @@ let
   inherit (haskell.lib) overrideSrc addBuildDepends overrideCabal buildFromSdist doJailbreak disableLibraryProfiling addBuildTool;
   callPkg = super: name: srcPath: args: overrideSrc (super.callCabal2nix name srcPath args) { src = srcPath; };
 
+  updateTo = v: stdPkg: altPkg:
+    if lib.versionAtLeast stdPkg.version v
+    then stdPkg
+    else altPkg;
+
   internal =
     rec {
       inherit pkgs;
