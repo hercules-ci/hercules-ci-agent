@@ -1,5 +1,5 @@
 { sources ? import ./nix/sources.nix
-, nixpkgsSource ? "nixos-20.03"
+, nixpkgsSource ? "nixos-unstable"
 , nixpkgs ? sources."${nixpkgsSource}"
 }:
 

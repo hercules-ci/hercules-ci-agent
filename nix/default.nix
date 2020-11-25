@@ -1,9 +1,9 @@
 { sources ? import ./sources.nix
-, nixpkgsSource ? "nixos-20.03"
+, nixpkgsSource ? "nixos-unstable"
 , nixpkgs ? sources.${nixpkgsSource}
   # Sharing the test suite
 , allTargets ? import ./ci.nix
-, testSuiteTarget ? "nixos-20_03"
+, testSuiteTarget ? "nixos-unstable"
 , testSuitePkgs ? allTargets.${testSuiteTarget}.${system}
 , system ? builtins.currentSystem
 }:
