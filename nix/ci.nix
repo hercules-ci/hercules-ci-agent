@@ -1,6 +1,6 @@
 let
   sources = import ./sources.nix;
-  defaultNixpkgsSource = "nixos-unstable";
+  defaultNixpkgsSource = "nixos-20.09";
 
   lib = import (sources.${defaultNixpkgsSource} + "/lib");
   inherit (import sources."project.nix" { inherit lib; }) dimension;
