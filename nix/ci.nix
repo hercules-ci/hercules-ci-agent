@@ -14,11 +14,12 @@ let
       nixpkgsSource = "nixos-unstable";
     };
   } (
-    _name: { nixpkgsSource }:
+    name: { nixpkgsSource }:
 
 
       dimension "System" {
-        "aarch64-linux" = { enable = true; };
+        # TODO https://github.com/hercules-ci/hercules-ci-agent/issues/256
+        "aarch64-linux" = { enable = name != "nixos-unstable"; };
         "x86_64-linux" = { enable = true; };
         "x86_64-darwin" = { enable = true; };
       } (
