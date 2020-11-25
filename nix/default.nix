@@ -18,7 +18,6 @@ let
             inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
               ghc
               ghcid
-              stack
               ;
             inherit (pkgs)
               jq
