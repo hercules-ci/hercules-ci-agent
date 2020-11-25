@@ -26,7 +26,7 @@ customManagerSettings =
   tlsManagerSettings
     { managerResponseTimeout = responseTimeoutNone,
       -- managerModifyRequest :: Request -> IO Request
-      managerModifyRequest = return . setRequestHeader "User-Agent" [toS cachixVersion]
+      managerModifyRequest = return . setRequestHeader "User-Agent" [encodeUtf8 cachixVersion]
     }
 
 newEnv :: Config.FinalConfig -> Map Text CachixCache.CachixCache -> K.KatipContextT IO Env.Env
@@ -67,7 +67,7 @@ toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'
                   { pushCacheName = name,
                     pushCacheSecret =
                       Cachix.Push.PushSigningKey
-                        (Servant.Auth.Client.Token $ toSL t)
+                        (Servant.Auth.Client.Token $ toS t)
                         k'
                   }
             <|> do
@@ -77,5 +77,5 @@ toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'
                   Cachix.Push.PushCache
                     { pushCacheName = name,
                       pushCacheSecret =
-                        Cachix.Push.PushToken (Servant.Auth.Client.Token $ toSL token)
+                        Cachix.Push.PushToken (Servant.Auth.Client.Token $ toS token)
                     }

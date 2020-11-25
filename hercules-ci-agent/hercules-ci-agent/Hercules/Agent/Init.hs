@@ -22,7 +22,7 @@ newEnv :: Config.FinalConfig -> K.LogEnv -> IO Env
 newEnv config logEnv = do
   let withLogging :: K.KatipContextT IO a -> IO a
       withLogging = K.runKatipContextT logEnv () "Init"
-  withLogging $ K.logLocM K.DebugS $ "Config: " <> show config
+  withLogging $ K.logLocM K.DebugS $ "Config: " <> K.logStr (show config :: Text)
   System.Directory.createDirectoryIfMissing True (Config.workDirectory config)
   SecureDirectory.init config
   bcs <- withLogging $ BC.parseFile config

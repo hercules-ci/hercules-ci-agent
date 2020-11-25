@@ -132,7 +132,7 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
       recv conn = do
         withTimeout ackTimeout (FatalError "Hercules.Agent.Socket.recv timed out") $
           (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
-            Left e -> liftIO $ throwIO (FatalError $ "Error decoding service message: " <> toSL e)
+            Left e -> liftIO $ throwIO (FatalError $ "Error decoding service message: " <> toS e)
             Right r -> pure r
       handshake conn = katipAddNamespace "Handshake" do
         siMsg <- recv conn

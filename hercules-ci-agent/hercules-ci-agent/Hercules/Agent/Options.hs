@@ -44,7 +44,7 @@ parserInfo =
     (parseOptions <**> helper)
     ( fullDesc <> progDesc "Accepts tasks from Hercules CI and runs them."
         <> header
-          ("hercules-ci-agent " <> toSL herculesAgentVersion)
+          ("hercules-ci-agent " <> toS herculesAgentVersion)
     )
 
 parse :: IO Options

@@ -18,7 +18,7 @@ import qualified Hercules.API.Logs.LogEntry as LogEntry
 import Katip
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
-import Protolude hiding (bracket, finally, mask_, onException, tryJust, wait, withAsync)
+import Protolude hiding (bracket, finally, mask_, onException, tryJust, wait, withAsync, yield)
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.IO.Error (isEOFError)
 import System.Posix.IO (closeFd, createPipe, dup, dupTo, fdToHandle, stdError)
@@ -167,7 +167,7 @@ convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \le
             { i = i_,
               ms = ms_,
               level = fromIntegral level_,
-              msg = toSL text_
+              msg = decode text_
             }
       2 -> do
         text_ <- unsafePackMallocCString =<< peek textStrPtr
@@ -183,7 +183,7 @@ convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \le
               act = LogEntry.ActivityId act_,
               level = fromIntegral level_,
               typ = LogEntry.ActivityType typ_,
-              text = toSL text_,
+              text = decode text_,
               parent = LogEntry.ActivityId parent_,
               fields = fields_
             }
@@ -235,8 +235,11 @@ convertAndDeleteFields fieldsPtr = flip
       }|]
                 >>= \case
                   0 -> LogEntry.Int <$> peek uintPtr
-                  1 -> LogEntry.String . toSL <$> unsafeMallocBS (peek stringPtr)
+                  1 -> LogEntry.String . decode <$> unsafeMallocBS (peek stringPtr)
                   _ -> panic "convertAndDeleteFields invalid internal type"
+
+decode :: ByteString -> Text
+decode = decodeUtf8With lenientDecode
 
 close :: IO ()
 close =
