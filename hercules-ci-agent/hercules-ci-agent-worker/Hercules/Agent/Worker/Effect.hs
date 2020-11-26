@@ -7,6 +7,7 @@ import CNix
 import CNix.Internal.Context (Derivation)
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import GHC.ForeignPtr (ForeignPtr)
 import Hercules.Agent.Sensitive (Sensitive (Sensitive), reveal, revealContainer)
@@ -39,7 +40,8 @@ runEffect store command = do
     --
     -- TODO: what if we have structuredAttrs?
     -- TODO: implement passAsFile?
-    let overridableEnv =
+    let overridableEnv, onlyImpureOverridableEnv, fixedEnv :: Map Text Text
+        overridableEnv =
           M.fromList
             [ ("PATH", "/path-not-set"),
               ("HOME", "/homeless-shelter"),
@@ -47,8 +49,10 @@ runEffect store command = do
               ("NIX_BUILD_CORES", "1"), -- not great
               ("NIX_REMOTE", "daemon"),
               ("IN_HERCULES_CI_EFFECT", "true"),
-              ("HERCULES_CI_API_BASE_URL", toSL $ Command.Effect.apiBaseURL command)
+              ("HERCULES_CI_API_BASE_URL", Command.Effect.apiBaseURL command)
             ]
+        -- NB: this is lossy. Consider using ByteString-based process functions
+        drvEnv' = drvEnv & M.mapKeys (decodeUtf8With lenientDecode) & fmap (decodeUtf8With lenientDecode)
         impureEnvVars = mempty -- TODO
         fixedEnv =
           M.fromList
@@ -75,12 +79,9 @@ runEffect store command = do
                 BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = True},
                 BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = "/nix/var/nix/daemon-socket/socket", readOnly = True}
               ],
-            executable = toS drvBuilder,
-            arguments = map toS drvArgs,
-            environment =
-              (overridableEnv // drvEnv // onlyImpureOverridableEnv // impureEnvVars // fixedEnv)
-                & M.mapKeys toSL
-                & M.map toSL,
+            executable = decodeUtf8With lenientDecode drvBuilder,
+            arguments = map (decodeUtf8With lenientDecode) drvArgs,
+            environment = overridableEnv // drvEnv' // onlyImpureOverridableEnv // impureEnvVars // fixedEnv,
             workingDirectory = "/build",
             hostname = "hercules-ci",
             rootReadOnly = False
@@ -91,7 +92,7 @@ parseDrvSecretsMap :: MonadIO m => Map ByteString ByteString -> m (Map Text Text
 parseDrvSecretsMap drvEnv =
   case drvEnv & M.lookup "secretsMap" of
     Nothing -> pure mempty
-    Just secretsMapText -> case A.eitherDecode (toSL $ secretsMapText) of
+    Just secretsMapText -> case A.eitherDecode (BL.fromStrict $ secretsMapText) of
       Left _ -> throwIO $ FatalError "Could not parse secretsMap variable in derivation. It must be a JSON dictionary of strings referencing agent secret names."
       Right r -> pure r
 
@@ -101,30 +102,33 @@ writeSecrets :: (MonadIO m, KatipContext m) => FilePath -> Map Text Text -> Map 
 writeSecrets sourceFile secretsMap extraSecrets destinationDirectory = write . fmap reveal . addExtra =<< gather
   where
     addExtra = flip M.union extraSecrets
-    write = liftIO . BS.writeFile (destinationDirectory </> "secrets.json") . toS . A.encode
+    write = liftIO . BS.writeFile (destinationDirectory </> "secrets.json") . BL.toStrict . A.encode
     gather =
       if null secretsMap
         then pure mempty
         else do
           secretsBytes <- liftIO $ BS.readFile sourceFile
-          r <- case A.eitherDecode $ toS secretsBytes of
+          r <- case A.eitherDecode $ BL.fromStrict secretsBytes of
             Left e -> do
               logLocM ErrorS $ "Could not parse secrets file " <> logStr sourceFile <> ": " <> logStr e
               throwIO $ FatalError $ "Could not parse secrets file as configured on agent."
             Right r -> pure (Sensitive r)
           liftIO $ createDirectoryIfMissing True destinationDirectory
-          out <- secretsMap & M.traverseWithKey \destinationName (secretName :: Text) -> do
-            case revealContainer (r <&> M.lookup secretName) of
-              Nothing ->
-                liftIO $ throwIO $ FatalError $
-                  "Secret " <> secretName <> " does not exist, so we can't find a secret for " <> destinationName <> ". Please make sure that the secret name matches a secret on your agents."
-              Just secret -> pure (Secret.data_ <$> secret)
+          out <-
+            secretsMap & M.traverseWithKey \destinationName (secretName :: Text) -> do
+              case revealContainer (r <&> M.lookup secretName) of
+                Nothing ->
+                  liftIO $
+                    throwIO $
+                      FatalError $
+                        "Secret " <> secretName <> " does not exist, so we can't find a secret for " <> destinationName <> ". Please make sure that the secret name matches a secret on your agents."
+                Just secret -> pure (Secret.data_ <$> secret)
           pure out
 
 prepareDerivation :: MonadIO m => Ptr (Ref NixStore) -> Command.Effect.Effect -> m (ForeignPtr Derivation)
 prepareDerivation store command = do
   let extraPaths = Command.Effect.inputDerivationOutputPaths command
-      drvPath = toS $ Command.Effect.drvPath command
+      drvPath = encodeUtf8 $ Command.Effect.drvPath command
   for_ extraPaths $ \input ->
     liftIO $ CNix.ensurePath store input
   derivationMaybe <- liftIO $ Build.getDerivation store drvPath

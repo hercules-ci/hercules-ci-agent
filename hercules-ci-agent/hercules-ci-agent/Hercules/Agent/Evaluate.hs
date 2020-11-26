@@ -12,6 +12,7 @@ import Conduit
 import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
 import qualified Data.Aeson as A
+import qualified Data.ByteString.Lazy as BL
 import Data.Conduit.Process (sourceProcessWithStreams)
 import Data.IORef
   ( atomicModifyIORef,
@@ -126,10 +127,10 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir "eval" $ \tmpdir -> 
             $ \identifier -> case M.lookup identifier inputLocations of
               Just x -> pure x
               Nothing ->
-                throwIO
-                  $ FatalError
-                  $ "Nix path references undefined input "
-                    <> identifier
+                throwIO $
+                  FatalError $
+                    "Nix path references undefined input "
+                      <> identifier
         )
   autoArguments' <-
     EvaluateTask.autoArguments task
@@ -137,29 +138,30 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir "eval" $ \tmpdir -> 
         ( \identifier -> case M.lookup identifier inputLocations of
             Just x | "/" `isPrefixOf` x -> pure x
             Just x ->
-              throwIO
-                $ FatalError
-                $ "input "
-                  <> identifier
-                  <> " was not resolved to an absolute path: "
-                  <> toS x
+              throwIO $
+                FatalError $
+                  "input "
+                    <> identifier
+                    <> " was not resolved to an absolute path: "
+                    <> toS x
             Nothing ->
-              throwIO
-                $ FatalError
-                $ "auto argument references undefined input "
-                  <> identifier
+              throwIO $
+                FatalError $
+                  "auto argument references undefined input "
+                    <> identifier
         )
-  let autoArguments = autoArguments'
-        & M.mapWithKey \k sp ->
-          let argPath = toS $ renderSubPath $ toS <$> sp
-           in case do
-                inputId <- EvaluateTask.autoArguments task & M.lookup k
-                EvaluateTask.inputMetadata task & M.lookup (EvaluateTask.path inputId) of
-                Nothing -> Eval.ExprArg $ argPath
-                Just attrs ->
-                  Eval.ExprArg $
-                    -- TODO pass directly to avoid having to escape (or just escape properly)
-                    "builtins.fromJSON ''" <> toS (A.encode attrs) <> "'' // { outPath = " <> argPath <> "; }"
+  let autoArguments =
+        autoArguments'
+          & M.mapWithKey \k sp ->
+            let argPath = encodeUtf8 $ renderSubPath $ toS <$> sp
+             in case do
+                  inputId <- EvaluateTask.autoArguments task & M.lookup k
+                  EvaluateTask.inputMetadata task & M.lookup (EvaluateTask.path inputId) of
+                  Nothing -> Eval.ExprArg $ argPath
+                  Just attrs ->
+                    Eval.ExprArg $
+                      -- TODO pass directly to avoid having to escape (or just escape properly)
+                      "builtins.fromJSON ''" <> BL.toStrict (A.encode attrs) <> "'' // { outPath = " <> argPath <> "; }"
   msgCounter <- liftIO $ newIORef 0
   let fixIndex ::
         MonadIO m =>
@@ -299,26 +301,28 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
           workerEventsP
           ( \case
               Event.Attribute a -> do
-                emit $ EvaluateEvent.Attribute $
-                  AttributeEvent.AttributeEvent
-                    { AttributeEvent.expressionPath = toSL <$> WorkerAttribute.path a,
-                      AttributeEvent.derivationPath = toSL $ WorkerAttribute.drv a,
-                      AttributeEvent.typ = case WorkerAttribute.typ a of
-                        WorkerAttribute.Regular -> AttributeEvent.Regular
-                        WorkerAttribute.MustFail -> AttributeEvent.MustFail
-                        WorkerAttribute.MayFail -> AttributeEvent.MayFail
-                        WorkerAttribute.Effect -> AttributeEvent.Effect
-                        WorkerAttribute.DependenciesOnly -> AttributeEvent.DependenciesOnly
-                    }
+                emit $
+                  EvaluateEvent.Attribute $
+                    AttributeEvent.AttributeEvent
+                      { AttributeEvent.expressionPath = decode <$> WorkerAttribute.path a,
+                        AttributeEvent.derivationPath = decode $ WorkerAttribute.drv a,
+                        AttributeEvent.typ = case WorkerAttribute.typ a of
+                          WorkerAttribute.Regular -> AttributeEvent.Regular
+                          WorkerAttribute.MustFail -> AttributeEvent.MustFail
+                          WorkerAttribute.MayFail -> AttributeEvent.MayFail
+                          WorkerAttribute.Effect -> AttributeEvent.Effect
+                          WorkerAttribute.DependenciesOnly -> AttributeEvent.DependenciesOnly
+                      }
                 continue
               Event.AttributeError e -> do
-                emit $ EvaluateEvent.AttributeError $
-                  AttributeErrorEvent.AttributeErrorEvent
-                    { AttributeErrorEvent.expressionPath = toSL <$> WorkerAttributeError.path e,
-                      AttributeErrorEvent.errorMessage = toSL $ WorkerAttributeError.message e,
-                      AttributeErrorEvent.errorType = toSL <$> WorkerAttributeError.errorType e,
-                      AttributeErrorEvent.errorDerivation = toSL <$> WorkerAttributeError.errorDerivation e
-                    }
+                emit $
+                  EvaluateEvent.AttributeError $
+                    AttributeErrorEvent.AttributeErrorEvent
+                      { AttributeErrorEvent.expressionPath = decode <$> WorkerAttributeError.path e,
+                        AttributeErrorEvent.errorMessage = WorkerAttributeError.message e,
+                        AttributeErrorEvent.errorType = WorkerAttributeError.errorType e,
+                        AttributeErrorEvent.errorDerivation = WorkerAttributeError.errorDerivation e
+                      }
                 continue
               Event.EvaluationDone ->
                 writeChan commandChan Nothing
@@ -398,10 +402,11 @@ produceWorkerEvents eval nixPath commandChan writeEvent = do
 drvPoller :: Maybe UUID -> Text -> App (UUID, BuildResult.BuildStatus)
 drvPoller notAttempt drvPath = do
   resp <-
-    defaultRetry $ runHerculesClient $
-      getDerivationStatus2
-        Hercules.Agent.Client.evalClient
-        drvPath
+    defaultRetry $
+      runHerculesClient $
+        getDerivationStatus2
+          Hercules.Agent.Client.evalClient
+          drvPath
   let oneSecond = 1000 * 1000
       again = do
         liftIO $ threadDelay oneSecond
@@ -428,18 +433,18 @@ fetchSource targetDir url = do
   -- Fewer retries in order to speed up the tests.
   quickRetry $ do
     (x, _, _) <-
-      liftIO
-        $ (`runReaderT` Servant.Client.manager clientEnv)
-        $ HTTP.Conduit.withResponse request
-        $ \response -> do
-          let tarball = HTTP.Conduit.responseBody response
-              procSpec =
-                (System.Process.proc "tar" ["-xz"]) {cwd = Just targetDir}
-          sourceProcessWithStreams
-            procSpec
-            tarball
-            Conduit.stderrC
-            Conduit.stderrC
+      liftIO $
+        (`runReaderT` Servant.Client.manager clientEnv) $
+          HTTP.Conduit.withResponse request $
+            \response -> do
+              let tarball = HTTP.Conduit.responseBody response
+                  procSpec =
+                    (System.Process.proc "tar" ["-xz"]) {cwd = Just targetDir}
+              sourceProcessWithStreams
+                procSpec
+                tarball
+                Conduit.stderrC
+                Conduit.stderrC
     case x of
       ExitSuccess -> pass
       ExitFailure {} -> throwIO $ SubprocessFailure "Extracting tarball"
@@ -453,9 +458,10 @@ findTarballDir :: FilePath -> IO FilePath
 findTarballDir fp = do
   nodes <- Dir.listDirectory fp
   case nodes of
-    [x] -> Dir.doesDirectoryExist (fp </> x) >>= \case
-      True -> pure $ fp </> x
-      False -> pure fp
+    [x] ->
+      Dir.doesDirectoryExist (fp </> x) >>= \case
+        True -> pure $ fp </> x
+        False -> pure fp
     _ -> pure fp
 
 type Ambiguity = [FilePath]
@@ -466,24 +472,25 @@ searchPath = [["nix/ci.nix", "ci.nix"], ["default.nix"]]
 findNixFile :: FilePath -> IO (Either Text FilePath)
 findNixFile projectDir = do
   searchResult <-
-    for searchPath $ traverse $ \relPath ->
-      let path = projectDir </> relPath
-       in Dir.doesFileExist path >>= \case
-            True -> pure $ Just (relPath, path)
-            False -> pure Nothing
+    for searchPath $
+      traverse $ \relPath ->
+        let path = projectDir </> relPath
+         in Dir.doesFileExist path >>= \case
+              True -> pure $ Just (relPath, path)
+              False -> pure Nothing
   case filter (not . null) $ map catMaybes searchResult of
     [(_relPath, unambiguous)] : _ -> pure (pure unambiguous)
     ambiguous : _ ->
-      pure
-        $ Left
-        $ "Don't know what to do, expecting only one of "
-          <> englishConjunction "or" (map fst ambiguous)
+      pure $
+        Left $
+          "Don't know what to do, expecting only one of "
+            <> englishConjunction "or" (map fst ambiguous)
     [] ->
-      pure
-        $ Left
-        $ "Please provide a Nix expression to build. Could not find any of "
-          <> englishConjunction "or" (concat searchPath)
-          <> " in your source"
+      pure $
+        Left $
+          "Please provide a Nix expression to build. Could not find any of "
+            <> englishConjunction "or" (concat searchPath)
+            <> " in your source"
 
 englishConjunction :: Show a => Text -> [a] -> Text
 englishConjunction _ [] = "none"
@@ -495,10 +502,11 @@ englishConjunction connective (a : as) =
 
 postBatch :: EvaluateTask.EvaluateTask -> [EvaluateEvent.EvaluateEvent] -> App ()
 postBatch task events =
-  noContent $ defaultRetry $
-    runHerculesClient
-      ( tasksUpdateEvaluation
-          Hercules.Agent.Client.evalClient
-          (EvaluateTask.id task)
-          events
-      )
+  noContent $
+    defaultRetry $
+      runHerculesClient
+        ( tasksUpdateEvaluation
+            Hercules.Agent.Client.evalClient
+            (EvaluateTask.id task)
+            events
+        )

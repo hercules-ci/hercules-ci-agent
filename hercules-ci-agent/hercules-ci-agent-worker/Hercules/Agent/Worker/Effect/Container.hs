@@ -7,6 +7,7 @@ import Control.Lens
 import Data.Aeson (Value (String), eitherDecode, encode, object, toJSON)
 import Data.Aeson.Lens
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import qualified Data.UUID.V4 as UUID
 import GHC.IO.Exception (IOErrorType (HardwareFault))
@@ -20,26 +21,24 @@ import System.Posix.Terminal (openPseudoTerminal)
 import System.Process (CreateProcess (..), StdStream (UseHandle), proc, waitForProcess, withCreateProcess)
 import System.Process.ByteString
 
-data BindMount
-  = BindMount
-      { pathInContainer :: Text,
-        pathInHost :: Text,
-        readOnly :: Bool
-      }
+data BindMount = BindMount
+  { pathInContainer :: Text,
+    pathInHost :: Text,
+    readOnly :: Bool
+  }
 
 defaultBindMount :: Text -> BindMount
 defaultBindMount path = BindMount {pathInContainer = path, pathInHost = path, readOnly = True}
 
-data Config
-  = Config
-      { extraBindMounts :: [BindMount],
-        executable :: Text,
-        arguments :: [Text],
-        environment :: Map Text Text,
-        workingDirectory :: Text,
-        hostname :: Text,
-        rootReadOnly :: Bool
-      }
+data Config = Config
+  { extraBindMounts :: [BindMount],
+    executable :: Text,
+    arguments :: [Text],
+    environment :: Map Text Text,
+    workingDirectory :: Text,
+    hostname :: Text,
+    rootReadOnly :: Bool
+  }
 
 effectToRuncSpec :: Config -> Value -> Value
 effectToRuncSpec config spec =
@@ -82,14 +81,14 @@ run config = do
     case exit of
       ExitSuccess -> pass
       ExitFailure e -> do
-        putErrText (toSL err)
+        putErrText (decodeUtf8With lenientDecode err)
         panic $ "Could not create container configuration template. runc terminated with exit code " <> show e
     templateBytes <- BS.readFile configJsonPath
-    template <- case eitherDecode (toS templateBytes) of
+    template <- case eitherDecode (BL.fromStrict templateBytes) of
       Right a -> pure a
       Left e -> throwIO (FatalError $ "decoding runc config.json template: " <> show e)
     let configJson = effectToRuncSpec config template
-    BS.writeFile (dir </> "config.json") (toS $ encode configJson)
+    BS.writeFile (dir </> "config.json") (BL.toStrict $ encode configJson)
     createDirectory (dir </> "rootfs")
     name <- do
       uuid <- UUID.nextRandom
