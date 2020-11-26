@@ -147,18 +147,6 @@ let
 
               hercules-ci-cli = callPkg super "hercules-ci-cli" ../hercules-ci-cli { };
 
-              inline-c = self.callPackage ./haskell-inline-c.nix { };
-
-              # avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
-              inline-c-cpp = overrideCabal (haskell.lib.disableLibraryProfiling (self.callPackage ./haskell-inline-c-cpp.nix { }))
-                (
-                  o: {
-                    preConfigure = ''
-                      substituteInPlace inline-c-cpp.cabal --replace " c++ " stdc++ 
-                    '';
-                  }
-                );
-
               websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });
 
               servant-websockets = self.callPackage ./servant-websockets.nix { };
