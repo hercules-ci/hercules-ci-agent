@@ -145,6 +145,7 @@
         (
           k: { internal, devTools, pre-commit-check, ... }:
             internal.pkgs.mkShell {
+              NIX_PATH = "nixpkgs=${internal.pkgs.path}";
               nativeBuildInputs =
                 [
                   devTools.niv
