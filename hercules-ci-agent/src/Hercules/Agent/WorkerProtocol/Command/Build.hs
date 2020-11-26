@@ -6,11 +6,10 @@ import Data.Binary
 import Hercules.Agent.WorkerProtocol.LogSettings
 import Protolude
 
-data Build
-  = Build
-      { drvPath :: Text,
-        inputDerivationOutputPaths :: [ByteString],
-        logSettings :: LogSettings,
-        materializeDerivation :: Bool
-      }
+data Build = Build
+  { drvPath :: Text,
+    inputDerivationOutputPaths :: [ByteString],
+    logSettings :: LogSettings,
+    materializeDerivation :: Bool
+  }
   deriving (Generic, Binary, Show, Eq)

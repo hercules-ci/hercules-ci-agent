@@ -4,12 +4,11 @@ module Hercules.API.Agent.Evaluate.EvaluateEvent.Message where
 
 import Hercules.API.Prelude
 
-data Message
-  = Message
-      { index :: Int,
-        typ :: Type,
-        message :: Text
-      }
+data Message = Message
+  { index :: Int,
+    typ :: Type,
+    message :: Text
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 data Type

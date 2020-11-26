@@ -10,12 +10,11 @@ import Hercules.Formats.Common
 import Prelude
 
 -- | Credentials and keys for a cache.
-data NixCache
-  = NixCache
-      { storeURI :: Text,
-        signingKeys :: [Text],
-        publicKeys :: [Text]
-      }
+data NixCache = NixCache
+  { storeURI :: Text,
+    signingKeys :: [Text],
+    publicKeys :: [Text]
+  }
 
 instance ToJSON NixCache where
   toJSON a =
@@ -30,9 +29,12 @@ instance ToJSON NixCache where
     pairs
       ( "kind"
           .= String "NixCache"
-          <> "storeURI" .= storeURI a
-          <> "signingKeys" .= signingKeys a
-          <> "publicKeys" .= publicKeys a
+          <> "storeURI"
+          .= storeURI a
+          <> "signingKeys"
+          .= signingKeys a
+          <> "publicKeys"
+          .= publicKeys a
       )
 
 instance FromJSON NixCache where

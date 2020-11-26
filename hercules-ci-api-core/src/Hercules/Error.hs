@@ -48,9 +48,10 @@ retry delaysSeconds io = loop delaysSeconds
     loop [] = io
     loop (delay : delays) = safeLiftedCatch io $ \e -> do
       logLocM WarningS $ "Retrying on exception: " <> logStr (show e)
-      when (delay >= 0.000001) $ liftIO $
-        threadDelay
-          (floor $ delay * 1000 * 1000)
+      when (delay >= 0.000001) $
+        liftIO $
+          threadDelay
+            (floor $ delay * 1000 * 1000)
       loop delays
 
 -- | ~5 minute exponential backoff

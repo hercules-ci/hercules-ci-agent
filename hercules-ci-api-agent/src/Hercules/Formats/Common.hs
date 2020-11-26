@@ -27,10 +27,9 @@ withKind k f = withObject (T.unpack k) $ \o -> do
   when (k' /= k) $ fail $ "kind field must be " <> show k <> ", not " <> show k'
   f o
 
-newtype VersionParser a
-  = VersionParser
-      { fromVersionParser :: (Maybe Text, Object -> Parser a)
-      }
+newtype VersionParser a = VersionParser
+  { fromVersionParser :: (Maybe Text, Object -> Parser a)
+  }
   deriving (Functor)
 
 noVersion :: (Object -> Parser a) -> VersionParser a

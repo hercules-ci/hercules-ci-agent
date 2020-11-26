@@ -28,27 +28,26 @@ import Protolude
 import qualified Servant.Auth.Client
 import qualified Servant.Client.Streaming
 
-data Env
-  = Env
-      { manager :: Network.HTTP.Client.Manager,
-        config :: FinalConfig,
-        herculesBaseUrl :: Servant.Client.Streaming.BaseUrl,
-        herculesClientEnv :: Servant.Client.Streaming.ClientEnv,
-        serviceInfo :: ServiceInfo.Env,
-        -- TODO: The implicit limitation here is that we can
-        --       only have one token at a time. I wouldn't be surprised if this becomes
-        --       problematic at some point. Perhaps we should switch to a polymorphic
-        --       reader monad like RIO when we hit that limitation.
-        currentToken :: Servant.Auth.Client.Token,
-        binaryCaches :: Config.BinaryCaches.BinaryCaches,
-        cachixEnv :: Cachix.Env,
-        nixEnv :: Nix.Env,
-        socket :: AgentSocket,
-        -- katip
-        kNamespace :: K.Namespace,
-        kContext :: K.LogContexts,
-        kLogEnv :: K.LogEnv
-      }
+data Env = Env
+  { manager :: Network.HTTP.Client.Manager,
+    config :: FinalConfig,
+    herculesBaseUrl :: Servant.Client.Streaming.BaseUrl,
+    herculesClientEnv :: Servant.Client.Streaming.ClientEnv,
+    serviceInfo :: ServiceInfo.Env,
+    -- TODO: The implicit limitation here is that we can
+    --       only have one token at a time. I wouldn't be surprised if this becomes
+    --       problematic at some point. Perhaps we should switch to a polymorphic
+    --       reader monad like RIO when we hit that limitation.
+    currentToken :: Servant.Auth.Client.Token,
+    binaryCaches :: Config.BinaryCaches.BinaryCaches,
+    cachixEnv :: Cachix.Env,
+    nixEnv :: Nix.Env,
+    socket :: AgentSocket,
+    -- katip
+    kNamespace :: K.Namespace,
+    kContext :: K.LogContexts,
+    kLogEnv :: K.LogEnv
+  }
 
 activePushCaches :: App [Text]
 activePushCaches = do

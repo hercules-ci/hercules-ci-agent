@@ -4,8 +4,7 @@ module Hercules.API.Agent.Build.BuildEvent.Pushed where
 
 import Hercules.API.Prelude
 
-data Pushed
-  = Pushed
-      { cache :: Text
-      }
+data Pushed = Pushed
+  { cache :: Text
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

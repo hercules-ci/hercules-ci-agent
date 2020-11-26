@@ -23,8 +23,8 @@ import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import qualified Hercules.API.Agent.Effect.EffectTask as EffectTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import qualified Hercules.API.Agent.LifeCycle as LifeCycle
-import qualified Hercules.API.Agent.LifeCycle.StartInfo as StartInfo
 import Hercules.API.Agent.LifeCycle.StartInfo (tasksInProgress)
+import qualified Hercules.API.Agent.LifeCycle.StartInfo as StartInfo
 import qualified Hercules.API.Agent.Socket.AgentPayload as AgentPayload
 import qualified Hercules.API.Agent.Socket.ServicePayload as ServicePayload
 import Hercules.API.Agent.Tasks
@@ -45,19 +45,19 @@ import Hercules.Agent.Client
   )
 import qualified Hercules.Agent.Config as Config
 import qualified Hercules.Agent.Effect as Effect
-import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Env
   ( App,
     runHerculesClient,
   )
+import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.EnvironmentInfo (extractAgentInfo)
 import qualified Hercules.Agent.Evaluate as Evaluate
 import qualified Hercules.Agent.Init as Init
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Options as Options
 import Hercules.Agent.STM
-import Hercules.Agent.Socket as Socket
 import Hercules.Agent.Socket (serviceChan)
+import Hercules.Agent.Socket as Socket
 import Hercules.Agent.Token (withAgentToken)
 import Hercules.Error
   ( cap,
@@ -105,32 +105,32 @@ configChecks = do
 
 run :: Env.Env -> Config.FinalConfig -> IO ()
 run env _cfg = do
-  Env.runApp env
-    $ katipAddContext (sl "agent-version" (A.String herculesAgentVersion))
-    $ (configureLimits >>)
-    $ (configChecks >>)
-    $ withAgentToken
-    $ withLifeCycle \hello -> withTaskState \tasks ->
-      withAgentSocket hello tasks \socket ->
-        withApplicationLevelPinger socket $ do
-          logLocM InfoS "Agent online."
-          forever $ do
-            (liftIO $ atomically $ readTChan $ serviceChan socket) >>= \case
-              ServicePayload.ServiceInfo _ -> pass
-              ServicePayload.StartEvaluation evalTask ->
-                launchTask tasks socket (Task.upcastId $ EvaluateTask.id evalTask) do
-                  Cache.withCaches do
-                    Evaluate.performEvaluation evalTask
-                    pure $ TaskStatus.Successful ()
-              ServicePayload.StartBuild buildTask ->
-                launchTask tasks socket (Task.upcastId $ BuildTask.id buildTask) do
-                  Cache.withCaches $
-                    Build.performBuild buildTask
-              ServicePayload.StartEffect effectTask ->
-                launchTask tasks socket (Task.upcastId $ EffectTask.id effectTask) do
-                  Cache.withCaches $
-                    Effect.performEffect effectTask
-              ServicePayload.Cancel cancellation -> cancelTask tasks socket cancellation
+  Env.runApp env $
+    katipAddContext (sl "agent-version" (A.String herculesAgentVersion)) $
+      (configureLimits >>) $
+        (configChecks >>) $
+          withAgentToken $
+            withLifeCycle \hello -> withTaskState \tasks ->
+              withAgentSocket hello tasks \socket ->
+                withApplicationLevelPinger socket $ do
+                  logLocM InfoS "Agent online."
+                  forever $ do
+                    (liftIO $ atomically $ readTChan $ serviceChan socket) >>= \case
+                      ServicePayload.ServiceInfo _ -> pass
+                      ServicePayload.StartEvaluation evalTask ->
+                        launchTask tasks socket (Task.upcastId $ EvaluateTask.id evalTask) do
+                          Cache.withCaches do
+                            Evaluate.performEvaluation evalTask
+                            pure $ TaskStatus.Successful ()
+                      ServicePayload.StartBuild buildTask ->
+                        launchTask tasks socket (Task.upcastId $ BuildTask.id buildTask) do
+                          Cache.withCaches $
+                            Build.performBuild buildTask
+                      ServicePayload.StartEffect effectTask ->
+                        launchTask tasks socket (Task.upcastId $ EffectTask.id effectTask) do
+                          Cache.withCaches $
+                            Effect.performEffect effectTask
+                      ServicePayload.Cancel cancellation -> cancelTask tasks socket cancellation
 
 withTaskState :: (TVar (Map (Id (Task Task.Any)) ThreadId) -> App a) -> App a
 withTaskState f = do
@@ -182,10 +182,10 @@ launchTask tasks socket taskId doWork = withNamedContext "task" taskId do
           report $ TaskStatus.Exceptional $ toS $ displayException e
       -- TODO use socket
       report status =
-        retry (cap 60 exponential)
-          $ noContent
-          $ runHerculesClient
-          $ tasksSetStatus tasksClient taskId status
+        retry (cap 60 exponential) $
+          noContent $
+            runHerculesClient $
+              tasksSetStatus tasksClient taskId status
   void @_ @ThreadId $
     flip forkFinally done do
       insertSelf
@@ -219,10 +219,10 @@ withLifeCycle app = do
             tasksInProgress = []
           }
       req r =
-        retry (cap 60 exponential)
-          $ noContent
-          $ runHerculesClient
-          $ r
+        retry (cap 60 exponential) $
+          noContent $
+            runHerculesClient $
+              r
       sayGoodbye = req $ LifeCycle.goodbye lifeCycleClient startInfo
   bracket pass (\() -> sayGoodbye) (\() -> app hello)
 

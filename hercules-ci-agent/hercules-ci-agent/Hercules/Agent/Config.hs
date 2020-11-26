@@ -37,19 +37,18 @@ type family Item purpose sort a where
 
 type FinalConfig = Config 'Final
 
-data Config purpose
-  = Config
-      { herculesApiBaseURL :: Item purpose 'Required Text,
-        nixUserIsTrusted :: Item purpose 'Required Bool,
-        concurrentTasks :: Item purpose 'Required Integer,
-        baseDirectory :: Item purpose 'Required FilePath,
-        -- | Read-only
-        staticSecretsDirectory :: Item purpose 'Required FilePath,
-        workDirectory :: Item purpose 'Required FilePath,
-        clusterJoinTokenPath :: Item purpose 'Required FilePath,
-        binaryCachesPath :: Item purpose 'Required FilePath,
-        logLevel :: Item purpose 'Required Severity
-      }
+data Config purpose = Config
+  { herculesApiBaseURL :: Item purpose 'Required Text,
+    nixUserIsTrusted :: Item purpose 'Required Bool,
+    concurrentTasks :: Item purpose 'Required Integer,
+    baseDirectory :: Item purpose 'Required FilePath,
+    -- | Read-only
+    staticSecretsDirectory :: Item purpose 'Required FilePath,
+    workDirectory :: Item purpose 'Required FilePath,
+    clusterJoinTokenPath :: Item purpose 'Required FilePath,
+    binaryCachesPath :: Item purpose 'Required FilePath,
+    logLevel :: Item purpose 'Required Severity
+  }
   deriving (Generic)
 
 deriving instance Show (Config 'Final)

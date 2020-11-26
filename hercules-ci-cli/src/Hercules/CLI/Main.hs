@@ -13,8 +13,9 @@ import qualified Options.Applicative as Optparse
 import Protolude
 
 main :: IO ()
-main = prettyPrintErrors $ prettyPrintHttpErrors $ do
-  join $ Optparse.execParser opts
+main = prettyPrintErrors $
+  prettyPrintHttpErrors $ do
+    join $ Optparse.execParser opts
 
 prettyPrintErrors :: IO a -> IO a
 prettyPrintErrors = handle \e ->

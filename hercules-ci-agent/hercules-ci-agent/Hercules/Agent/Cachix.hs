@@ -25,9 +25,9 @@ push cache paths workers = withNamedContext "cache" cache $ do
     } <-
     asks $ Agent.Cachix.getEnv
   pushCache <-
-    escalate
-      $ maybeToEither (FatalError $ "Cache not found " <> cache)
-      $ M.lookup cache pushCaches
+    escalate $
+      maybeToEither (FatalError $ "Cache not found " <> cache) $
+        M.lookup cache pushCaches
   ul <- askUnliftIO
   void $
     Cachix.Push.pushClosure
@@ -42,10 +42,10 @@ push cache paths workers = withNamedContext "cache" cache $ do
            in Cachix.Push.PushStrategy
                 { onAlreadyPresent = pass,
                   onAttempt = \retryStatus size ->
-                    ctx
-                      $ withNamedContext "size" size
-                      $ withNamedContext "retry" (show retryStatus :: Text)
-                      $ logLocM DebugS "pushing",
+                    ctx $
+                      withNamedContext "size" size $
+                        withNamedContext "retry" (show retryStatus :: Text) $
+                          logLocM DebugS "pushing",
                   on401 = throwIO $ FatalError $ "Cachix push is unauthorized",
                   onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
                   onDone = ctx $ logLocM DebugS "push done",

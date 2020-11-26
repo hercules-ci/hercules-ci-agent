@@ -33,48 +33,41 @@ eventTime (Failed (EffectEventFailed {time = t})) = t
 eventTime (Succeeded (EffectEventSucceeded {time = t})) = t
 eventTime (Cancelled (EffectEventCancelled {time = t})) = t
 
-data EffectEventQueued
-  = EffectEventQueued
-      { time :: UTCTime
-      }
+data EffectEventQueued = EffectEventQueued
+  { time :: UTCTime
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data EffectEventDependencyFailed
-  = EffectEventDependencyFailed
-      { time :: UTCTime
-      }
+data EffectEventDependencyFailed = EffectEventDependencyFailed
+  { time :: UTCTime
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data EffectEventStarted
-  = EffectEventStarted
-      { time :: UTCTime,
-        logId :: Id "log",
-        agentHostname :: Text,
-        agentVersion :: Text
-      }
+data EffectEventStarted = EffectEventStarted
+  { time :: UTCTime,
+    logId :: Id "log",
+    agentHostname :: Text,
+    agentVersion :: Text
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data EffectEventReset
-  = EffectEventReset
-      { time :: UTCTime
-      }
+data EffectEventReset = EffectEventReset
+  { time :: UTCTime
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data EffectEventFailed
-  = EffectEventFailed
-      { time :: UTCTime,
-        technicalError :: Maybe Text
-      }
+data EffectEventFailed = EffectEventFailed
+  { time :: UTCTime,
+    technicalError :: Maybe Text
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data EffectEventSucceeded
-  = EffectEventSucceeded
-      { time :: UTCTime
-      }
+data EffectEventSucceeded = EffectEventSucceeded
+  { time :: UTCTime
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
-data EffectEventCancelled
-  = EffectEventCancelled
-      { time :: UTCTime
-      }
+data EffectEventCancelled = EffectEventCancelled
+  { time :: UTCTime
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

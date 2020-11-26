@@ -11,10 +11,9 @@ import Hercules.Formats.Common
 import Prelude
 
 -- | Arbitrary secret like keys, tokens, passwords etc.
-data Secret
-  = Secret
-      { data_ :: Map Text Value
-      }
+data Secret = Secret
+  { data_ :: Map Text Value
+  }
 
 instance ToJSON Secret where
   toJSON a =

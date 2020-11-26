@@ -14,18 +14,18 @@ import Prelude
 checkLaws :: forall a. (ToJSON a, FromJSON a, Eq a) => Gen a -> Spec
 checkLaws gen =
   describe "ToJSON/FromJSON laws" $ do
-    it "obey partial isomorphism"
-      $ property
-      $ do
-        a <- gen
-        pure $ counterexample (T.unpack . T.decodeUtf8 . BL.toStrict . encode $ a) (fromJSON (toJSON a) == Data.Aeson.Success a)
-    it "obey toJSON/toEncoding equivalence"
-      $ property
-      $ do
-        a <- gen
-        pure $
-          counterexample
-            (T.unpack . T.decodeUtf8 . BL.toStrict . encode $ a)
-            ( Right (toJSON a)
-                == eitherDecode (BB.toLazyByteString (fromEncoding (toEncoding a)))
-            )
+    it "obey partial isomorphism" $
+      property $
+        do
+          a <- gen
+          pure $ counterexample (T.unpack . T.decodeUtf8 . BL.toStrict . encode $ a) (fromJSON (toJSON a) == Data.Aeson.Success a)
+    it "obey toJSON/toEncoding equivalence" $
+      property $
+        do
+          a <- gen
+          pure $
+            counterexample
+              (T.unpack . T.decodeUtf8 . BL.toStrict . encode $ a)
+              ( Right (toJSON a)
+                  == eitherDecode (BB.toLazyByteString (fromEncoding (toEncoding a)))
+              )

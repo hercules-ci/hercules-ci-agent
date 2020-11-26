@@ -7,18 +7,17 @@ import Hercules.API.Projects (findProjects)
 import qualified Hercules.API.Projects.Project as Project
 import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, projectsClient, runHerculesClient)
 import Hercules.CLI.Options (attoparsecReader, packSome)
-import qualified Options.Applicative as Optparse
 import Options.Applicative (bashCompleter, completer, help, long, metavar, option, strOption)
+import qualified Options.Applicative as Optparse
 import Protolude hiding (option)
 import RIO (RIO)
 import qualified Prelude
 
-data ProjectPath
-  = ProjectPath
-      { projectPathSite :: Text,
-        projectPathOwner :: Text,
-        projectPathProject :: Text
-      }
+data ProjectPath = ProjectPath
+  { projectPathSite :: Text,
+    projectPathOwner :: Text,
+    projectPathProject :: Text
+  }
 
 instance Prelude.Show ProjectPath where
   show = s projectPathSite <> const "/" <> s projectPathOwner <> const "/" <> s projectPathProject

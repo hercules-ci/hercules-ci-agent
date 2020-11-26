@@ -18,13 +18,12 @@ data AttributeType
   | Effect
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
-data AttributeEvent
-  = AttributeEvent
-      { expressionPath :: [Text],
-        derivationPath :: Text,
-        typ :: AttributeType
-        -- TODO: meta attributes
-      }
+data AttributeEvent = AttributeEvent
+  { expressionPath :: [Text],
+    derivationPath :: Text,
+    typ :: AttributeType
+    -- TODO: meta attributes
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON)
 
 instance FromJSON AttributeEvent where

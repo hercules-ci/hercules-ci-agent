@@ -7,9 +7,8 @@ import Hercules.API.Agents.ClusterJoinToken
   )
 import Hercules.API.Prelude
 
-data FullClusterJoinToken
-  = FullClusterJoinToken
-      { metadata :: ClusterJoinToken,
-        token :: Text
-      }
+data FullClusterJoinToken = FullClusterJoinToken
+  { metadata :: ClusterJoinToken,
+    token :: Text
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

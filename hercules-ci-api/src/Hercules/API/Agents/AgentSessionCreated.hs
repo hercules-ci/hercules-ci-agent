@@ -10,15 +10,14 @@ import Hercules.API.Agents.ClusterJoinToken
   )
 import Hercules.API.Prelude
 
-data AgentSessionCreated
-  = AgentSessionCreated
-      { hostname :: Text,
-        id :: Id AgentSession,
-        tokenId :: Id ClusterJoinToken,
-        description :: Text,
-        agentVersion :: Text,
-        nixVersion :: Text,
-        architectures :: [Text],
-        creation :: UTCTime
-      }
+data AgentSessionCreated = AgentSessionCreated
+  { hostname :: Text,
+    id :: Id AgentSession,
+    tokenId :: Id ClusterJoinToken,
+    description :: Text,
+    agentVersion :: Text,
+    nixVersion :: Text,
+    architectures :: [Text],
+    creation :: UTCTime
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

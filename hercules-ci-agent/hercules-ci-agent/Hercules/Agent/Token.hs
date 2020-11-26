@@ -2,7 +2,7 @@ module Hercules.Agent.Token where
 
 import Control.Lens ((^?))
 import qualified Data.Aeson as Aeson
-import Data.Aeson.Lens (_String, key)
+import Data.Aeson.Lens (key, _String)
 import qualified Data.ByteString.Base64.Lazy as B64L
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
@@ -50,26 +50,27 @@ readAgentSessionKey = do
     False -> pure Nothing
 
 ensureAgentSession :: App Text
-ensureAgentSession = readAgentSessionKey >>= \case
-  Just sessKey -> do
-    logLocM DebugS "Found agent session key"
-    let handler e = do
-          logLocM WarningS $ "Failed to check whether session token matches cluster join token. Using old session. Remove session.key if you need to force a session update. Exception: " <> logStr (displayException e)
-          pure sessKey
-    safeLiftedHandle handler $ do
-      cjt <- getClusterJoinTokenId
-      logLocM DebugS $ "Found clusterJoinTokenId " <> logStr cjt
-      scjt <- getSessionClusterJoinTokenId sessKey
-      logLocM DebugS $ "Found sessionClusterJoinTokenId " <> logStr scjt
-      if cjt == scjt
-        then pure sessKey
-        else do
-          logLocM DebugS "Getting new session key to match cluster join token..."
-          updateAgentSession
-  Nothing -> do
-    writeAgentSessionKey "x" -- Sanity check
-    logLocM DebugS "Creating agent session"
-    updateAgentSession
+ensureAgentSession =
+  readAgentSessionKey >>= \case
+    Just sessKey -> do
+      logLocM DebugS "Found agent session key"
+      let handler e = do
+            logLocM WarningS $ "Failed to check whether session token matches cluster join token. Using old session. Remove session.key if you need to force a session update. Exception: " <> logStr (displayException e)
+            pure sessKey
+      safeLiftedHandle handler $ do
+        cjt <- getClusterJoinTokenId
+        logLocM DebugS $ "Found clusterJoinTokenId " <> logStr cjt
+        scjt <- getSessionClusterJoinTokenId sessKey
+        logLocM DebugS $ "Found sessionClusterJoinTokenId " <> logStr scjt
+        if cjt == scjt
+          then pure sessKey
+          else do
+            logLocM DebugS "Getting new session key to match cluster join token..."
+            updateAgentSession
+    Nothing -> do
+      writeAgentSessionKey "x" -- Sanity check
+      logLocM DebugS "Creating agent session"
+      updateAgentSession
 
 updateAgentSession :: App Text
 updateAgentSession = do

@@ -5,8 +5,8 @@ import qualified Hercules.Agent.Cachix.Init
 import qualified Hercules.Agent.Compat as Compat
 import qualified Hercules.Agent.Config as Config
 import qualified Hercules.Agent.Config.BinaryCaches as BC
-import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Env (Env (Env))
+import qualified Hercules.Agent.Env as Env
 import qualified Hercules.Agent.Nix.Init
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 import qualified Hercules.Agent.ServiceInfo as ServiceInfo

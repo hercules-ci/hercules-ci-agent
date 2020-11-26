@@ -20,13 +20,12 @@ import qualified Data.Map as M
 import Protolude
 
 -- TODO: Profunctor
-data Partitioner a b
-  = forall m.
-    (Monoid m) =>
-    Partitioner
-      { ingest :: a -> Maybe m,
-        digest :: m -> b
-      }
+data Partitioner a b = forall m.
+  (Monoid m) =>
+  Partitioner
+  { ingest :: a -> Maybe m,
+    digest :: m -> b
+  }
 
 partitionList :: Partitioner a b -> [a] -> b
 partitionList (Partitioner ing dig) = dig . fold . mapMaybe ing

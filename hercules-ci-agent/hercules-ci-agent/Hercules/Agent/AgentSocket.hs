@@ -2,10 +2,10 @@ module Hercules.Agent.AgentSocket (withAgentSocket) where
 
 import qualified Data.Map as M
 import Hercules.API.Agent.LifeCycle.StartInfo (Hello, tasksInProgress)
-import qualified Hercules.API.Agent.Socket.AgentPayload as AgentPayload
 import Hercules.API.Agent.Socket.AgentPayload (AgentPayload)
-import qualified Hercules.API.Agent.Socket.ServicePayload as ServicePayload
+import qualified Hercules.API.Agent.Socket.AgentPayload as AgentPayload
 import Hercules.API.Agent.Socket.ServicePayload (ServicePayload)
+import qualified Hercules.API.Agent.Socket.ServicePayload as ServicePayload
 import Hercules.API.Id (Id)
 import Hercules.API.Task (Task)
 import qualified Hercules.API.Task as Task
