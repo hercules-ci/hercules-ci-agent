@@ -163,6 +163,7 @@
                   devTools.nix-prefetch-git
                   internal.haskellPackages.ghc
                   internal.haskellPackages.ghcide
+                  internal.haskellPackages.haskell-language-server
                 ];
               inherit (pre-commit-check) shellHook;
             }
