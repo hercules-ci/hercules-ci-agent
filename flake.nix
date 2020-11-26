@@ -2,12 +2,18 @@
   description = "Hercules CI Agent";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-20.03";
+  inputs.nixos-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
   inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
   inputs.pre-commit-hooks-nix.flake = false;
 
-  outputs = inputs@{ self, nixpkgs, ... }:
+  outputs =
+    inputs@{ self
+    , nixpkgs
+    , nixos-unstable
+    , ...
+    }:
     let
       lib = nixpkgs.lib;
       filterMeta = nixpkgs.lib.filterAttrs (k: v: k != "meta" && k != "recurseForDerivations");
@@ -22,9 +28,9 @@
             "nixos-20_03" = {
               nixpkgsSource = nixpkgs;
             };
-            # "nixos-unstable" = {
-            #   nixpkgsSource = "nixos-unstable";
-            # };
+            "nixos-unstable" = {
+              nixpkgsSource = nixos-unstable;
+            };
           }
           (
             _name: { nixpkgsSource }:
