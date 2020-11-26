@@ -148,7 +148,6 @@
               NIX_PATH = "nixpkgs=${internal.pkgs.path}";
               nativeBuildInputs =
                 [
-                  devTools.niv
                   devTools.stack
                   devTools.ghcid
                   devTools.jq
