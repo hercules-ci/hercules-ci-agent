@@ -145,7 +145,7 @@
         (
           k: { internal, devTools, pre-commit-check, ... }:
             internal.pkgs.mkShell {
-              buildInputs =
+              nativeBuildInputs =
                 [
                   devTools.niv
                   devTools.stack
