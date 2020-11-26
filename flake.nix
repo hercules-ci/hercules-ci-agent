@@ -148,7 +148,15 @@
               NIX_PATH = "nixpkgs=${internal.pkgs.path}";
               nativeBuildInputs =
                 [
-                  devTools.stack
+                  (internal.pkgs.writeScriptBin "stack" ''
+                    #!/bin/sh
+                    export PATH="${internal.haskellPackages.stack}/bin:$PATH"
+                    if test -n "''${HIE_BIOS_OUTPUT:-}"; then
+                        echo | stack "$@" | tee /dev/stderr | grep -v z-hercules-ci-agent-z-cnix
+                    else
+                        exec stack "$@"
+                    fi
+                  '')
                   devTools.ghcid
                   devTools.jq
                   devTools.cabal2nix
