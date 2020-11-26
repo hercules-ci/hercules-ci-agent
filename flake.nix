@@ -27,13 +27,14 @@
           {
             "nixos-20_09" = {
               nixpkgsSource = nixpkgs;
+              isDevVersion = true;
             };
             "nixos-unstable" = {
               nixpkgsSource = nixos-unstable;
             };
           }
           (
-            _name: { nixpkgsSource }:
+            _name: { nixpkgsSource, isDevVersion ? false }:
               dimension "System"
                 {
                   "aarch64-linux" = {
@@ -84,7 +85,7 @@
                         hercules-ci-agent
                         toTOML-test
                         ;
-                    } // lib.optionalAttrs isDevSystem {
+                    } // lib.optionalAttrs (isDevSystem && isDevVersion) {
                     inherit (pkgs)
                       pre-commit-check
                       devTools
