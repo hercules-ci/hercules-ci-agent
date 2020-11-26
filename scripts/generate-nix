@@ -13,9 +13,7 @@ cabal2nix cabal://websockets-0.12.6.1 > nix/websockets.nix
 pre-commit run --files \
   nix/cachix.nix \
   nix/cachix-api.nix \
-  nix/websockets.nix \
-  nix/servant-websockets.nix \
-  nix/cachix.nix \
-  nix/websockets.nix \
   nix/nix-narinfo.nix \
+  nix/servant-websockets.nix \
+  nix/websockets.nix \
   ;
