@@ -147,7 +147,7 @@ cabalWriteVersion :: FilePath -> String -> IO ()
 cabalWriteVersion dir versionStr = do
   if validCabalVersion versionStr
   then do
-    cabalFile <- tryFindPackageDesc dir
+    cabalFile <- tryFindPackageDesc silent dir
     cabalinfo <- cabalRead dir
     cabal <- T.readFile cabalFile
     case cabal =~ ("version:[ \t]*" ++ version cabalinfo) of
