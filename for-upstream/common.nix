@@ -1,5 +1,4 @@
 { config, lib, pkgs, ... }:
-
 let
   inherit (lib) mkOption mkIf types filterAttrs;
   inherit (pkgs.callPackage ./to-toml {}) toTOML;
@@ -94,7 +93,7 @@ in
       type = types.str;
     };
     package = let
-      agentVersion = "0.7.4";
+      agentVersion = "0.7.5";
     in
       mkOption {
         description = "Package containing the bin/hercules-ci-agent program";

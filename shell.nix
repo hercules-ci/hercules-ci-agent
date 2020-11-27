@@ -19,7 +19,7 @@ in hs.shellFor {
     pkgs.yaml2json
     pkgs.jq
     # hs.stack
-    (hs.cabal-install.overrideScope (self: super: { Cabal = self.Cabal_3_2_1_0; }))
+    (hs.cabal-install.overrideScope (self: super: { Cabal = self.Cabal_3_2_1_0 or super.Cabal; }))
     hs.haskell-language-server
 
     devTools.niv
