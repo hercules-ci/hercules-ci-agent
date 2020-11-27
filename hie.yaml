@@ -1,2 +1,29 @@
 ---
-cradle: {bios: {program: ".hie-bios"}}
+cradle:
+  cabal:
+    components:
+      - path: ./hercules-ci-api-core/src
+        component: lib:hercules-ci-api-core
+
+      - path: ./hercules-ci-api-agent/src
+        component: lib:hercules-ci-api-agent
+      - path: ./hercules-ci-api-agent/test
+        component: test:hercules-api-agent-unit-tests
+
+      - path: ./hercules-ci-api/src
+        component: lib:hercules-ci-api
+      - path: ./hercules-ci-api/src
+        component: exe:hercules-gen-swagger
+
+      - path: ./hercules-ci-agent/src
+        component: lib:hercules-ci-agent
+      - path: ./hercules-ci-agent/src-cnix
+        component: lib:cnix
+      - path: ./hercules-ci-agent/hercules-ci-agent
+        component: exe:hercules-ci-agent
+      - path: ./hercules-ci-agent/hercules-ci-agent-worker
+        component: exe:hercules-ci-agent-worker
+
+      - path: ./tests/agent-test/src
+        component: exe:hercules-ci-agent-test
+      

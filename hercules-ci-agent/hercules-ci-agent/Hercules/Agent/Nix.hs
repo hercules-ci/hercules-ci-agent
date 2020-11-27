@@ -36,9 +36,9 @@ readNixProcess ::
   App Text
 readNixProcess cmd opts paths stdinText = do
   extraOpts <- getExtraOptionArguments
-  toSL <$> liftIO (readProcess (toSL cmd) (map toSL (opts <> extraOpts <> ["--"] <> paths)) (toSL stdinText))
+  toS <$> liftIO (readProcess (toS cmd) (map toS (opts <> extraOpts <> ["--"] <> paths)) (toS stdinText))
 
 nixProc :: Text -> [Text] -> [Text] -> App System.Process.CreateProcess
 nixProc exe opts args = do
   extraOpts <- getExtraOptionArguments
-  pure $ System.Process.proc (toSL exe) (map toSL (opts <> extraOpts <> ["--"] <> args))
+  pure $ System.Process.proc (toS exe) (map toS (opts <> extraOpts <> ["--"] <> args))

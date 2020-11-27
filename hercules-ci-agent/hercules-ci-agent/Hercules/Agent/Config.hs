@@ -95,7 +95,7 @@ defaultConcurrentTasks = 4
 
 readConfig :: ConfigPath -> IO (Config 'Input)
 readConfig loc = case loc of
-  TomlPath fp -> Toml.decodeFile tomlCodec (toSL fp)
+  TomlPath fp -> Toml.decodeFile tomlCodec (toS fp)
 
 finalizeConfig :: ConfigPath -> Config 'Input -> IO (Config 'Final)
 finalizeConfig loc input = do

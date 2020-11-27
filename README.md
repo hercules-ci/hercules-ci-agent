@@ -11,9 +11,4 @@ for your [Hercules CI](https://hercules-ci.com/) account.
 
 ## Hacking
 
-Live unit tests:
-
-    $ nix-shell
-    $ stack --nix test --file-watch
-
-Ghcide: not currently included in shell. Install ghcide for GHC 8.6.5 in your profile.
+Haskell Language Server is configured with cabal. Use the v2-* family of commands.

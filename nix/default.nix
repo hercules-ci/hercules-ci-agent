@@ -1,9 +1,9 @@
 { sources ? import ./sources.nix
-, nixpkgsSource ? "nixos-20.03"
+, nixpkgsSource ? "nixos-20.09"
 , nixpkgs ? sources.${nixpkgsSource}
   # Sharing the test suite
 , allTargets ? import ./ci.nix
-, testSuiteTarget ? "nixos-20_03"
+, testSuiteTarget ? "nixos-20_09"
 , testSuitePkgs ? allTargets.${testSuiteTarget}.${system}
 , system ? builtins.currentSystem
 }:
@@ -18,7 +18,6 @@ let
             inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
               ghc
               ghcid
-              stack
               ;
             inherit (pkgs)
               jq

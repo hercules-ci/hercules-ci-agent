@@ -497,15 +497,15 @@ spec = describe "Evaluation" $ do
               EvaluateEvent.Attribute ae2
               ] -> do
                 BuildRequired.index br1 `shouldBe` 0
-                toSL (BuildRequired.derivationPath br1) `shouldContain` "/nix/store/"
-                toSL (BuildRequired.derivationPath br1) `shouldContain` "-ifd-2.nix"
+                toS (BuildRequired.derivationPath br1) `shouldContain` "/nix/store/"
+                toS (BuildRequired.derivationPath br1) `shouldContain` "-ifd-2.nix"
                 BuildRequired.outputName br1 `shouldBe` "out"
                 AttributeEvent.expressionPath ae1 `shouldBe` ["figletIfd"]
                 toS (AttributeEvent.derivationPath ae1) `shouldContain` "/nix/store"
                 toS (AttributeEvent.derivationPath ae1) `shouldContain` "-figlet"
                 BuildRequired.index br2 `shouldBe` 1
-                toSL (BuildRequired.derivationPath br2) `shouldContain` "/nix/store/"
-                toSL (BuildRequired.derivationPath br2) `shouldContain` "-ifd-1.nix"
+                toS (BuildRequired.derivationPath br2) `shouldContain` "/nix/store/"
+                toS (BuildRequired.derivationPath br2) `shouldContain` "-ifd-1.nix"
                 BuildRequired.outputName br2 `shouldBe` "out"
                 AttributeEvent.expressionPath ae2 `shouldBe` ["helloIfd"]
                 toS (AttributeEvent.derivationPath ae2) `shouldContain` "/nix/store"
@@ -535,8 +535,8 @@ spec = describe "Evaluation" $ do
           EvaluateEvent.Attribute ae2
           ] -> do
             BuildRequired.index br1 `shouldBe` 0
-            toSL (BuildRequired.derivationPath br1) `shouldContain` "/nix/store/"
-            toSL (BuildRequired.derivationPath br1) `shouldContain` "-ifd-2.nix"
+            toS (BuildRequired.derivationPath br1) `shouldContain` "/nix/store/"
+            toS (BuildRequired.derivationPath br1) `shouldContain` "-ifd-2.nix"
             BuildRequired.outputName br1 `shouldBe` "out"
             AttributeErrorEvent.expressionPath ae1 `shouldBe` ["figletIfd"]
             length (AttributeErrorEvent.errorDerivation ae1) `shouldBe` 1
@@ -547,8 +547,8 @@ spec = describe "Evaluation" $ do
             toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "Could not build derivation"
             toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "evaluat"
             BuildRequired.index br2 `shouldBe` 1
-            toSL (BuildRequired.derivationPath br2) `shouldContain` "/nix/store/"
-            toSL (BuildRequired.derivationPath br2) `shouldContain` "-ifd-1.nix"
+            toS (BuildRequired.derivationPath br2) `shouldContain` "/nix/store/"
+            toS (BuildRequired.derivationPath br2) `shouldContain` "-ifd-1.nix"
             BuildRequired.outputName br2 `shouldBe` "out"
             AttributeEvent.expressionPath ae2 `shouldBe` ["helloIfd"]
             toS (AttributeEvent.derivationPath ae2) `shouldContain` "/nix/store"

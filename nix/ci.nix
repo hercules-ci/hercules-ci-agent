@@ -1,18 +1,18 @@
 let
   sources = import ./sources.nix;
-  defaultNixpkgsSource = "nixos-20.03";
+  defaultNixpkgsSource = "nixos-20.09";
 
   lib = import (sources.${defaultNixpkgsSource} + "/lib");
   inherit (import sources."project.nix" { inherit lib; }) dimension;
 
   # nix-build doesn't traverse names with periods...
   allTargets = dimension "Nixpkgs version" {
-    "nixos-20_03" = {
-      nixpkgsSource = "nixos-20.03";
+    "nixos-20_09" = {
+      nixpkgsSource = "nixos-20.09";
     };
-    # "nixos-unstable" = {
-    #   nixpkgsSource = "nixos-unstable";
-    # };
+    "nixos-unstable" = {
+      nixpkgsSource = "nixos-unstable";
+    };
   } (
     _name: { nixpkgsSource }:
 

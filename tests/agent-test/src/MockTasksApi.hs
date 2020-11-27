@@ -73,7 +73,7 @@ import Network.Wai.Handler.Warp (run)
 import qualified Network.WebSockets as WS
 import qualified Network.WebSockets.Connection
 import Orphans ()
-import Protolude
+import Protolude hiding (Handler)
 import Servant.API
 import Servant.API.Generic
 import Servant.API.WebSocket
@@ -88,6 +88,7 @@ import System.Directory
 import System.Environment (getEnvironment)
 import System.FilePath ((</>))
 import qualified Prelude
+import qualified Data.ByteString.Lazy as BL
 
 data ServerState
   = ServerState
@@ -316,18 +317,18 @@ processPayload _ap = pass
 send' :: forall sp m. (ToJSON sp, MonadIO m) => WS.Connection -> [Frame sp sp] -> m ()
 send' conn msgs = do
   let bs = A.encode <$> msgs
-  forM_ bs $ putErrText . ("Service message: " <>) . toS
+  forM_ bs $ putErrText . ("Service message: " <>) . decodeUtf8With lenientDecode . BL.toStrict
   liftIO $ WS.sendDataMessages conn (WS.Binary <$> bs)
 
 recv' :: forall ap m. (FromJSON ap, Show ap, MonadIO m) => WS.Connection -> m (Frame ap ap)
 recv' conn = do
   (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
-    Left e -> liftIO $ throwIO (FatalError $ "Error decoding agent message: " <> toSL e)
+    Left e -> liftIO $ throwIO (FatalError $ "Error decoding agent message: " <> toS e)
     Right (Frame.Exception e) -> do
-      putErrText $ "Agent exception message: " <> toSL e
+      putErrText $ "Agent exception message: " <> toS e
       recv' conn
     Right r -> do
-      putErrText $ "Agent message: " <> (toSL (show r :: Text))
+      putErrText $ "Agent message: " <> (toS (show r :: Text))
       pure r
 
 relativePathConduit ::
@@ -366,7 +367,7 @@ makeRelative fp =
     doIt path =
       BS.dropWhile (== fromIntegral (ord '/')) $ fromMaybe path $
         BS.stripPrefix
-          (toS fp)
+          (encodeUtf8 $ toS fp)
           path
     fixEmpty :: ByteString -> ByteString
     fixEmpty "" = "."

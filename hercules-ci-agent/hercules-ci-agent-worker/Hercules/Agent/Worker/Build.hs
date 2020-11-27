@@ -16,13 +16,13 @@ import Hercules.Agent.WorkerProtocol.Event (Event)
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.BuildResult as Event.BuildResult
 import Katip
-import Protolude
+import Protolude hiding (yield)
 import Unsafe.Coerce
 
 runBuild :: (MonadIO m, KatipContext m) => Ptr (Ref NixStore) -> Command.Build.Build -> ConduitT i Event m ()
 runBuild store build = do
   let extraPaths = Command.Build.inputDerivationOutputPaths build
-      drvPath = toS $ Command.Build.drvPath build
+      drvPath = encodeUtf8 $ Command.Build.drvPath build
   x <- for extraPaths $ \input -> do
     liftIO $ try $ CNix.ensurePath store input
   materialize <- case sequenceA x of
