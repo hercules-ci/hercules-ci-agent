@@ -1,4 +1,4 @@
-resolver: lts-16.23
+resolver: nightly-2020-12-07
 
 # paths to local packages
 packages:
@@ -13,9 +13,9 @@ extra-deps:
   - git: https://github.com/hercules-ci/cachix.git
     commit:
       # ghc >=8.10:
-      # 7e076540e500feb07be8bb2510bb8e0cfd71892a
+      9cfe586a9ed173f87d741063bced024335e394ba
       # ghc < 8.10:
-      33a040faa8c5c0d7d27b8147fd95245b3808bd98
+      # 33a040faa8c5c0d7d27b8147fd95245b3808bd98
     subdirs:
       - cachix
       - cachix-api

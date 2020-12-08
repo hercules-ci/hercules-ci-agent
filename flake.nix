@@ -15,11 +15,12 @@
     , ...
     }:
     let
-      lib = nixpkgs.lib;
-      filterMeta = nixpkgs.lib.filterAttrs (k: v: k != "meta" && k != "recurseForDerivations");
+      lib = defaultNixpkgs.lib;
+      filterMeta = defaultNixpkgs.lib.filterAttrs (k: v: k != "meta" && k != "recurseForDerivations");
       dimension = _name: attrs: f: lib.mapAttrs f attrs;
 
-      defaultTarget = allTargets."nixos-20_09";
+      defaultNixpkgs = nixos-unstable;
+      defaultTarget = allTargets."nixos-unstable";
       testSuiteTarget = defaultTarget;
 
       allTargets =
@@ -27,10 +28,10 @@
           {
             "nixos-20_09" = {
               nixpkgsSource = nixpkgs;
-              isDevVersion = true;
             };
             "nixos-unstable" = {
               nixpkgsSource = nixos-unstable;
+              isDevVersion = true;
             };
           }
           (
@@ -102,7 +103,7 @@
       internal.pkgs = lib.mapAttrs (_sys: target: target.internal.pkgs) defaultTarget;
 
       packages =
-        nixpkgs.lib.mapAttrs
+        defaultNixpkgs.lib.mapAttrs
           (
             system: v:
               {
@@ -144,7 +145,7 @@
 
       devShell = lib.mapAttrs
         (
-          k: { internal, devTools, pre-commit-check, ... }:
+          system: { internal, devTools, pre-commit-check, ... }:
             internal.pkgs.mkShell {
               NIX_PATH = "nixpkgs=${internal.pkgs.path}";
               nativeBuildInputs =
@@ -153,7 +154,19 @@
                     #!/bin/sh
                     export PATH="${internal.haskellPackages.stack}/bin:$PATH"
                     if test -n "''${HIE_BIOS_OUTPUT:-}"; then
-                        echo | stack "$@" | tee /dev/stderr | grep -v z-hercules-ci-agent-z-cnix
+                        echo | stack "$@"
+
+                        # Internal packages appear in -package flags for some
+                        # reason, unlike normal packages. This filters them out.
+                        sed -e 's/^-package=z-.*-z-.*$//' \
+                            -e 's/^-package-id=hercules-ci-agent.*$//' \
+                            -i $HIE_BIOS_OUTPUT
+
+                        # To support the CPP in Hercules.Agent.StoreFFI
+                        echo '-DGHCIDE=1' >>$HIE_BIOS_OUTPUT
+
+                        # Hack to include the correct snapshot directory
+                        echo "-package-db=$(dirname $(stack path --snapshot-doc-root))/pkgdb" >> $HIE_BIOS_OUTPUT
                     else
                         exec stack "$@"
                     fi

@@ -3,7 +3,11 @@ let
   pkgs = import ./default.nix { };
 in
 pkgs.haskell.lib.buildStackProject {
-  inherit ghc;
+  # Override ghc to get a working cabal with GHC 8.10.2
+  # See https://github.com/commercialhaskell/stackage/issues/5762
+  # TODO: when updating GHC, revert this to
+  # inherit ghc;
+  ghc = pkgs.haskell.packages.ghc8102.ghcWithPackages (p: [ p.Cabal_3_2_1_0 ]);
   name = "hercules-ci-stack-shell";
   buildInputs = [
     # Static linking avoids the error
