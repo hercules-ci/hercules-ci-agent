@@ -18,7 +18,6 @@ import Conduit
     ResourceT,
     mapC,
   )
-import Control.Concurrent (newEmptyMVar)
 import Control.Concurrent.STM
 import qualified Control.Exception.Safe
 import Data.Aeson
@@ -92,7 +91,7 @@ import System.FilePath ((</>))
 import qualified Prelude
 
 data ServerState = ServerState
-  { queue :: MVar (ServicePayload),
+  { queue :: MVar ServicePayload,
     done :: TVar (Map Text TaskStatus.TaskStatus),
     evalTasks ::
       IORef
@@ -161,9 +160,7 @@ fixup x = pure x
 await :: ServerHandle -> Text -> IO TaskStatus.TaskStatus
 await (ServerHandle st) t = atomically $ do
   d <- readTVar (done st)
-  case M.lookup t d of
-    Just s -> pure s
-    Nothing -> retry
+  maybe retry pure (M.lookup t d)
 
 runEval ::
   ServerHandle ->
@@ -263,8 +260,8 @@ endpoints server =
       :<|> toServant (logsEndpoints server)
       :<|> toServant (lifeCycleEndpoints server)
   )
-    :<|> (socket server)
-    :<|> (logSocket server)
+    :<|> socket server
+    :<|> logSocket server
     :<|> (toSourceIO & liftA & liftA & ($ sourceball))
 
 logSocket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
@@ -329,13 +326,13 @@ send' conn msgs = do
 
 recv' :: forall ap m. (FromJSON ap, Show ap, MonadIO m) => WS.Connection -> m (Frame ap ap)
 recv' conn = do
-  (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
+  liftIO (A.eitherDecode <$> WS.receiveData conn) >>= \case
     Left e -> liftIO $ throwIO (FatalError $ "Error decoding agent message: " <> toS e)
     Right (Frame.Exception e) -> do
       putErrText $ "Agent exception message: " <> toS e
       recv' conn
     Right r -> do
-      putErrText $ "Agent message: " <> (toS (show r :: Text))
+      putErrText $ "Agent message: " <> toS (show r :: Text)
       pure r
 
 relativePathConduit ::
@@ -364,7 +361,7 @@ makeRelative ::
     ()
 makeRelative fp =
   mapC
-    ( \c -> case c of
+    ( \case
         Left fi -> Left $ f fi
         x -> x
     )
@@ -426,8 +423,8 @@ handleTasksUpdate st id body _authResult = do
   liftIO $
     atomicModifyIORef_ (evalEvents st) $ \m ->
       M.alter (\prev -> Just $ fromMaybe mempty prev <> body) id m
-  for_ body $ \ev -> case ev of
-    EvaluateEvent.BuildRequest (BuildRequest.BuildRequest {derivationPath = drvPath}) -> do
+  for_ body $ \case
+    EvaluateEvent.BuildRequest BuildRequest.BuildRequest {derivationPath = drvPath} -> do
       buildId <- liftIO randomId
       liftIO $
         enqueue (ServerHandle st) $
@@ -477,7 +474,7 @@ handleGetDerivationStatus server drv _auth = do
 atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_ r = atomicModifyIORef r . ((,()) .)
 
-data Session = Session (Id "AgentSession")
+newtype Session = Session (Id "AgentSession")
   deriving (Generic, ToJSON, FromJSON)
 
 instance FromJWT Session

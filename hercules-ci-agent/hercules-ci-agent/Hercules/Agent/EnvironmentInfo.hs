@@ -13,7 +13,6 @@ import Data.Aeson.Lens
     _String,
   )
 import qualified Data.ByteString.Lazy as LBS
-import Data.Char (isSpace)
 import qualified Data.Text as T
 import qualified Hercules.API.Agent.LifeCycle.AgentInfo as AgentInfo
 import Hercules.Agent.CabalInfo as CabalInfo
@@ -63,7 +62,7 @@ getNixInfo = do
   version <- Process.readProcess "nix" ["--version"] stdinEmpty
   rawJson <- Process.readProcess "nix" ["show-config", "--json"] stdinEmpty
   cfg <-
-    case Aeson.eitherDecode (LBS.fromStrict $ encodeUtf8 $ toS $ rawJson) of
+    case Aeson.eitherDecode (LBS.fromStrict $ encodeUtf8 $ toS rawJson) of
       Left e -> panic $ "Could not parse nix show-config --json: " <> show e
       Right r -> pure r
   pure

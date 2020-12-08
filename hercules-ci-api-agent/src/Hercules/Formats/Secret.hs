@@ -17,7 +17,7 @@ data Secret = Secret
 
 instance ToJSON Secret where
   toJSON a =
-    object $
+    object
       ["kind" .= String "Secret", "data" .= data_ a]
 
   toEncoding a =

@@ -18,7 +18,7 @@ data NixCache = NixCache
 
 instance ToJSON NixCache where
   toJSON a =
-    object $
+    object
       [ "kind" .= String "NixCache",
         "storeURI" .= storeURI a,
         "signingKeys" .= signingKeys a,

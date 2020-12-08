@@ -13,6 +13,7 @@ import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy as BL
+import Data.Char (isAsciiLower, isAsciiUpper)
 import Data.Conduit.Process (sourceProcessWithStreams)
 import Data.IORef
   ( atomicModifyIORef,
@@ -157,7 +158,7 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir "eval" $ \tmpdir -> 
              in case do
                   inputId <- EvaluateTask.autoArguments task & M.lookup k
                   EvaluateTask.inputMetadata task & M.lookup (EvaluateTask.path inputId) of
-                  Nothing -> Eval.ExprArg $ argPath
+                  Nothing -> Eval.ExprArg argPath
                   Just attrs ->
                     Eval.ExprArg $
                       -- TODO pass directly to avoid having to escape (or just escape properly)
@@ -256,9 +257,9 @@ isValidName "" = False
 isValidName cs@(c0 : _) = all isValidNameChar cs && c0 /= '.'
   where
     isValidNameChar c =
-      (c >= 'A' && c <= 'Z')
-        || (c >= 'a' && c <= 'z')
-        || (c >= '0' && c <= '9')
+      isAsciiUpper c
+        || isAsciiLower c
+        || isDigit c
         || c `elem` ("+-._?=" :: [Char])
 
 runEvalProcess ::
@@ -390,13 +391,12 @@ produceWorkerEvents eval nixPath commandChan writeEvent = do
   -- NiceToHave: replace renderNixPath by something structured like -I
   -- to support = and : in paths
   workerEnv <- liftIO $ WorkerProcess.prepareEnv (WorkerProcess.WorkerEnvSettings {nixPath = nixPath})
-  wps <-
-    pure
-      (System.Process.proc workerExe opts)
-        { env = Just workerEnv,
-          close_fds = True, -- Disable on Windows?
-          cwd = Just (Eval.cwd eval)
-        }
+  let wps =
+        (System.Process.proc workerExe opts)
+          { env = Just workerEnv,
+            close_fds = True, -- Disable on Windows?
+            cwd = Just (Eval.cwd eval)
+          }
   WorkerProcess.runWorker wps (stderrLineHandler "evaluator") commandChan writeEvent
 
 drvPoller :: Maybe UUID -> Text -> App (UUID, BuildResult.BuildStatus)

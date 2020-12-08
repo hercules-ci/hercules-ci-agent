@@ -1,5 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
 
 module Hercules.Agent.Worker
@@ -26,7 +27,6 @@ import Data.Conduit.Serialization.Binary
 import Data.IORef
 import qualified Data.Map as M
 import qualified Data.Set as S
-import Data.Typeable (typeOf)
 import Data.UUID (UUID)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
@@ -152,7 +152,7 @@ main = do
                 .| concatMapC (\x -> [Chunk x, Flush])
                 .| transPipe liftIO (sinkHandleFlush stdout)
             )
-    void $ do
+    void $
       withAsync runner $ \runnerAsync -> do
         writer -- runner can stop writer only by passing Nothing in channel (finally)
         logLocM DebugS "Writer done"
@@ -162,7 +162,7 @@ printCommands :: KatipContext m => ConduitT Command Command m ()
 printCommands =
   mapMC
     ( \x -> do
-        katipAddContext (sl "command" (show x :: Text)) $ do
+        katipAddContext (sl "command" (show x :: Text)) $
           logLocM DebugS "Received command"
         pure x
     )
@@ -193,7 +193,7 @@ runCommand :: (MonadUnliftIO m, MonadBaseControl IO m, KatipContext m, MonadThro
 -- runCommand' :: HerculesState -> Command -> ConduitM Command Event (ResourceT IO) ()
 runCommand herculesState ch command = do
   -- TODO don't do this
-  mainThread <- liftIO $ myThreadId
+  mainThread <- liftIO myThreadId
   UnliftIO unlift <- askUnliftIO
   case command of
     Command.Eval eval -> Logger.withLoggerConduit (logger $ Eval.logSettings eval) $
@@ -203,10 +203,7 @@ runCommand herculesState ch command = do
             liftIO $
               flip
                 forkFinally
-                ( \eeu -> case eeu of
-                    Left e -> throwIO $ FatalError $ "Failed to fork: " <> show e
-                    Right _ -> pure ()
-                )
+                (escalateAs \e -> FatalError $ "Failed to fork: " <> show e)
                 $ unlift $
                   runConduitRes
                     ( Data.Conduit.handleC
@@ -223,19 +220,20 @@ runCommand herculesState ch command = do
           awaitForever $ \case
             Command.BuildResult (BuildResult.BuildResult path attempt result) -> do
               katipAddContext (sl "path" path <> sl "result" (show result :: Text)) $
-                logLocM DebugS $
+                logLocM
+                  DebugS
                   "Received remote build result"
               liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (M.insert path (attempt, result))
             _ -> pass
     Command.Build build ->
       katipAddNamespace "Build" $
         Logger.withLoggerConduit (logger $ Build.logSettings build) $
-          Logger.withTappedStderr Logger.tapper $ do
+          Logger.withTappedStderr Logger.tapper $
             connectCommand ch $ runBuild (wrappedStore herculesState) build
     Command.Effect effect ->
       katipAddNamespace "Effect" $
         Logger.withLoggerConduit (logger $ Effect.logSettings effect) $
-          Logger.withTappedStderr Logger.tapper $ do
+          Logger.withTappedStderr Logger.tapper $
             connectCommand ch $ do
               runEffect (wrappedStore herculesState) effect >>= \case
                 ExitSuccess -> yield $ Event.EffectResult 0
@@ -265,10 +263,9 @@ logger logSettings_ entriesSource = do
             .| socketSink socket
         batch = Logger.batch .| mapC (LogMessage.LogEntries . V.fromList)
         batchAndEnd =
-          ( (foldMapTap (Last . ims) `fuseUpstream` batch) >>= \case
-              Last (Just (i, ms)) -> yield $ LogMessage.End {i = i + 1, ms = ms}
-              Last Nothing -> yield $ LogMessage.End 0 0
-          )
+          (foldMapTap (Last . ims) `fuseUpstream` batch) >>= \case
+            Last (Just (i, ms)) -> yield $ LogMessage.End {i = i + 1, ms = ms}
+            Last Nothing -> yield $ LogMessage.End 0 0
           where
             ims (Chunk logEntry) = Just (LogEntry.i logEntry, LogEntry.ms logEntry)
             ims _ = Nothing
@@ -278,9 +275,9 @@ logger logSettings_ entriesSource = do
             Chunk e -> do
               yield $ Chunk e {LogEntry.i = i}
               renumber (i + 1)
-    runConduit $ conduit
+    runConduit conduit
     logLocM DebugS "Syncing"
-    liftIO (timeout 600_000_000 $ Socket.syncIO $ socket) >>= \case
+    liftIO (timeout 600_000_000 $ Socket.syncIO socket) >>= \case
       Just _ -> pass
       Nothing -> panic "Could not push logs within 10 minutes after completion"
     logLocM DebugS "Logger done"
@@ -412,7 +409,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
           liftIO $ writeChan shortcutChan $ Just $ Event.Build plainDrvText (decode outputName) Nothing
           derivation <- liftIO $ getDerivation store plainDrv
           outputPath <- liftIO $ getDerivationOutputPath derivation outputName
-          katipAddContext (sl "outputPath" (decode outputPath)) $ do
+          katipAddContext (sl "outputPath" (decode outputPath)) $
             logLocM DebugS "Naively calling ensurePath"
           liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e0 -> do
             katipAddContext (sl "message" (show (e0 :: SomeException) :: Text)) $
@@ -423,7 +420,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                   c <- readTVar drvsCompl
                   anyAlternative $ M.lookup plainDrvText c
             liftIO $ maybeThrowBuildException result plainDrvText
-            liftIO $ clearSubstituterCaches
+            liftIO clearSubstituterCaches
             liftIO $ clearPathInfoCache store
             liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e1 -> do
               katipAddContext (sl "message" (show (e1 :: SomeException) :: Text)) $
@@ -438,9 +435,9 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                     guard (attempt1 /= attempt0)
                     pure r
               liftIO $ maybeThrowBuildException result' plainDrvText
-              liftIO $ clearSubstituterCaches
+              liftIO clearSubstituterCaches
               liftIO $ clearPathInfoCache store
-              liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e2 -> do
+              liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e2 ->
                 liftIO $
                   throwIO $
                     BuildException
@@ -449,7 +446,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                           "It could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
                             <> show (e2 :: SomeException)
                       )
-        logLocM DebugS ("Built")
+        logLocM DebugS "Built"
   withEvalState store $ \evalState -> do
     katipAddContext (sl "storeURI" (decode s)) $
       logLocM DebugS "EvalState loaded."
@@ -510,7 +507,7 @@ walk evalState = walk' True [] 10
                         _ -> pass
                       phases <- liftEitherAs Left =<< liftIO (getAttrList evalState attrValue "phases")
                       case phases of
-                        Just [aSingularPhase] -> do
+                        Just [aSingularPhase] ->
                           liftIO (match evalState aSingularPhase) >>= liftEitherAs Left >>= \case
                             IsString phaseNameValue -> do
                               phaseName <- liftIO (getStringIgnoreContext phaseNameValue)

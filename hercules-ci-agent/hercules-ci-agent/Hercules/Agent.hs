@@ -10,9 +10,7 @@ import Control.Concurrent.Async.Lifted
     withAsync,
   )
 import Control.Concurrent.Lifted (forkFinally, killThread)
-import Control.Concurrent.STM (TVar, readTVar)
 import Control.Concurrent.STM.TChan
-import Control.Exception (displayException)
 import Control.Exception.Lifted (bracket)
 import Control.Monad.IO.Unlift (MonadUnliftIO)
 import qualified Data.Aeson as A
@@ -56,7 +54,6 @@ import qualified Hercules.Agent.Init as Init
 import Hercules.Agent.Log
 import qualified Hercules.Agent.Options as Options
 import Hercules.Agent.STM
-import Hercules.Agent.Socket (serviceChan)
 import Hercules.Agent.Socket as Socket
 import Hercules.Agent.Token (withAgentToken)
 import Hercules.Error
@@ -115,7 +112,7 @@ run env _cfg = do
                 withApplicationLevelPinger socket $ do
                   logLocM InfoS "Agent online."
                   forever $ do
-                    (liftIO $ atomically $ readTChan $ serviceChan socket) >>= \case
+                    liftIO (atomically $ readTChan $ serviceChan socket) >>= \case
                       ServicePayload.ServiceInfo _ -> pass
                       ServicePayload.StartEvaluation evalTask ->
                         launchTask tasks socket (Task.upcastId $ EvaluateTask.id evalTask) do
@@ -221,8 +218,7 @@ withLifeCycle app = do
       req r =
         retry (cap 60 exponential) $
           noContent $
-            runHerculesClient $
-              r
+            runHerculesClient r
       sayGoodbye = req $ LifeCycle.goodbye lifeCycleClient startInfo
   bracket pass (\() -> sayGoodbye) (\() -> app hello)
 
@@ -258,8 +254,8 @@ tryIncreaseResourceLimitTo resource resourceName target = katipAddContext (sl "r
       atMost l ResourceLimitInfinity = l
       atMost ResourceLimitUnknown r = r
       -- atMost l ResourceLimitUnknown = l -- already covered
-      showLimit (ResourceLimitInfinity) = "infinity"
-      showLimit (ResourceLimitUnknown) = A.Null
+      showLimit ResourceLimitInfinity = "infinity"
+      showLimit ResourceLimitUnknown = A.Null
       showLimit (ResourceLimit n) = A.Number $ fromIntegral n
   liftIO (setResourceLimit resource lims') `catch` \e ->
     katipAddContext

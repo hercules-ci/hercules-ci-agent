@@ -51,7 +51,7 @@ data Env = Env
 
 activePushCaches :: App [Text]
 activePushCaches = do
-  bc <- asks (binaryCaches)
+  bc <- asks binaryCaches
   pure $
     M.keys
       ( void (Config.BinaryCaches.cachixCaches bc)

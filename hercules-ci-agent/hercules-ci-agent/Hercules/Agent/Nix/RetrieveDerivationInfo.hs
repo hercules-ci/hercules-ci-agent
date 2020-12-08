@@ -35,7 +35,7 @@ retrieveDerivationInfo' drvPath drv = do
       { derivationPath = drvPath,
         platform = decode platform,
         requiredSystemFeatures = requiredSystemFeatures,
-        inputDerivations = inputDrvPaths & map (\(i, os) -> (decode i, map decode os)) & M.fromList,
+        inputDerivations = inputDrvPaths & map (bimap decode (map decode)) & M.fromList,
         inputSources = map decode sourcePaths,
         outputs =
           outputs
