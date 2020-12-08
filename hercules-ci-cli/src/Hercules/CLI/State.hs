@@ -3,16 +3,16 @@
 
 module Hercules.CLI.State where
 
-import Conduit ((.|), ConduitT, mapC, runConduitRes, sinkFile, sourceHandle, stdinC, stdoutC)
+import Conduit (ConduitT, mapC, runConduitRes, sinkFile, sourceHandle, stdinC, stdoutC, (.|))
 import qualified Hercules.API.Projects.Project as Project
 import Hercules.API.State
 import Hercules.CLI.Client
 import Hercules.CLI.Credentials
 import Hercules.CLI.Options (mkCommand)
 import Hercules.CLI.Project (findProject, projectOption)
-import qualified Options.Applicative as Optparse
 import Options.Applicative (bashCompleter, completer, help, long, metavar, strOption)
-import Protolude hiding (option, sourceFile)
+import qualified Options.Applicative as Optparse
+import Protolude hiding (option)
 import RIO (RIO, runRIO, withBinaryFile)
 import Servant.API (Headers (Headers), fromSourceIO, toSourceIO)
 import Servant.Auth.Client (Token (Token))
@@ -38,7 +38,7 @@ getCommandParser = do
     clientEnv <- Hercules.CLI.Client.init
     domain <- determineDomain
     token <- readPersonalToken domain
-    runRIO (HerculesClientToken $ Token $ toS $ token, clientEnv) do
+    runRIO (HerculesClientToken $ Token $ encodeUtf8 $ token, clientEnv) do
       projectId <- Project.id <$> findProject project
       runHerculesClientStream (getProjectStateData stateClient projectId name) \case
         Left e -> dieWithHttpError e
@@ -55,7 +55,7 @@ putCommandParser = do
     clientEnv <- Hercules.CLI.Client.init
     domain <- determineDomain
     token <- readPersonalToken domain
-    runRIO (HerculesClientToken $ Token $ toS $ token, clientEnv) do
+    runRIO (HerculesClientToken $ Token $ encodeUtf8 $ token, clientEnv) do
       projectId <- Project.id <$> findProject project
       let withStream :: (ConduitT a RawBytes IO () -> RIO r b) -> RIO r b
           withStream = case file of

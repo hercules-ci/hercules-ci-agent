@@ -12,8 +12,8 @@ import Data.Char
 import Data.Either (isLeft)
 import Data.Int
 import qualified Data.Map as M
-import qualified Data.Text as T
 import Data.Text (Text)
+import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Vector as V
 import Hercules.Formats.Secret

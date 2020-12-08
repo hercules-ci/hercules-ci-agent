@@ -5,7 +5,7 @@
 module Hercules.API.Attribute where
 
 import Control.Applicative (Alternative ((<|>)))
-import Control.Lens ((%~), at)
+import Control.Lens (at, (%~))
 import qualified Data.Aeson as A
 import Data.Aeson.Lens
 import Data.Proxy (Proxy (Proxy))
@@ -26,12 +26,11 @@ data AttributeType
 -- | An arbitrary ordering
 deriving instance Ord AttributeType
 
-data Attribute a
-  = Attribute
-      { path :: [Text],
-        value :: a,
-        typ :: AttributeType
-      }
+data Attribute a = Attribute
+  { path :: [Text],
+    value :: a,
+    typ :: AttributeType
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON)
 
 instance FromJSON a => FromJSON (Attribute a) where

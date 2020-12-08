@@ -1,17 +1,18 @@
 module Hercules.Agent.EnvironmentInfo where
 
 import Control.Lens
-  ( (^..),
+  ( to,
+    (^..),
     (^?),
-    to,
   )
 import qualified Data.Aeson as Aeson
 import Data.Aeson.Lens
-  ( _Array,
+  ( key,
+    _Array,
     _Number,
     _String,
-    key,
   )
+import qualified Data.ByteString.Lazy as LBS
 import Data.Char (isSpace)
 import qualified Data.Text as T
 import qualified Hercules.API.Agent.LifeCycle.AgentInfo as AgentInfo
@@ -43,19 +44,18 @@ extractAgentInfo = do
             substituters = nixSubstituters nix, -- TODO: Add cachix substituters
             concurrentTasks = fromIntegral concurrentTasks
           }
-  logLocM DebugS $ "Determined environment info: " <> show s
+  logLocM DebugS $ "Determined environment info: " <> logStr (show s :: Text)
   pure s
 
-data NixInfo
-  = NixInfo
-      { nixExeVersion :: Text,
-        nixPlatforms :: [Text],
-        nixSystemFeatures :: [Text],
-        nixSubstituters :: [Text],
-        nixTrustedPublicKeys :: [Text],
-        nixNarinfoCacheNegativeTTL :: Maybe Integer,
-        nixNetrcFile :: Maybe Text
-      }
+data NixInfo = NixInfo
+  { nixExeVersion :: Text,
+    nixPlatforms :: [Text],
+    nixSystemFeatures :: [Text],
+    nixSubstituters :: [Text],
+    nixTrustedPublicKeys :: [Text],
+    nixNarinfoCacheNegativeTTL :: Maybe Integer,
+    nixNetrcFile :: Maybe Text
+  }
 
 getNixInfo :: IO NixInfo
 getNixInfo = do
@@ -63,55 +63,55 @@ getNixInfo = do
   version <- Process.readProcess "nix" ["--version"] stdinEmpty
   rawJson <- Process.readProcess "nix" ["show-config", "--json"] stdinEmpty
   cfg <-
-    case Aeson.eitherDecode (toS rawJson) of
+    case Aeson.eitherDecode (LBS.fromStrict $ encodeUtf8 $ toS $ rawJson) of
       Left e -> panic $ "Could not parse nix show-config --json: " <> show e
       Right r -> pure r
   pure
     NixInfo
-      { nixExeVersion = T.dropAround isSpace (toSL version),
+      { nixExeVersion = T.dropAround isSpace (toS version),
         nixPlatforms =
           ((cfg :: Aeson.Value) ^.. key "system" . key "value" . _String)
             <> ( cfg
                    ^.. key "extra-platforms"
-                   . key "value"
-                   . _Array
-                   . traverse
-                   . _String
+                     . key "value"
+                     . _Array
+                     . traverse
+                     . _String
                ),
         nixSystemFeatures =
           cfg
             ^.. key "system-features"
-            . key "value"
-            . _Array
-            . traverse
-            . _String,
+              . key "value"
+              . _Array
+              . traverse
+              . _String,
         nixSubstituters =
           cfg
             ^.. key "substituters"
-            . key "value"
-            . _Array
-            . traverse
-            . _String
-            . to cleanUrl,
+              . key "value"
+              . _Array
+              . traverse
+              . _String
+              . to cleanUrl,
         nixTrustedPublicKeys =
           cfg
             ^.. key "trusted-public-keys"
-            . key "value"
-            . _Array
-            . traverse
-            . _String
-            . to cleanUrl,
+              . key "value"
+              . _Array
+              . traverse
+              . _String
+              . to cleanUrl,
         nixNarinfoCacheNegativeTTL =
           cfg
             ^? key "narinfo-cache-negative-ttl"
-            . key "value"
-            . _Number
-            . to floor,
+              . key "value"
+              . _Number
+              . to floor,
         nixNetrcFile =
           cfg
             ^? key "netrc-file"
-            . key "value"
-            . _String
+              . key "value"
+              . _String
       }
 
 cleanUrl :: Text -> Text

@@ -12,8 +12,9 @@ main :: IO ()
 main = do
   hSetBuffering stdout LineBuffering
   hSetBuffering stderr LineBuffering
-  withTimeout $ withServer $ \server ->
-    hspecWith config (beforeAll (pure server) Spec.spec)
+  withTimeout $
+    withServer $ \server ->
+      hspecWith config (beforeAll (pure server) Spec.spec)
   where
     config = defaultConfig {configColorMode = ColorNever}
 

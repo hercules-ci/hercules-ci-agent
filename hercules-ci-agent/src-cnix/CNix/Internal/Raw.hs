@@ -17,7 +17,7 @@ C.include "<nix/eval.hh>"
 
 C.include "<nix/eval-inline.hh>"
 
-C.include "aliases.h"
+C.include "hercules-aliases.h"
 
 C.include "<gc/gc.h>"
 

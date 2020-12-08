@@ -5,9 +5,8 @@ module Hercules.API.Organizations.CreateOrganization where
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Prelude
 
-data CreateOrganization
-  = CreateOrganization
-      { displayName :: Text,
-        primaryAccountId :: Id Account
-      }
+data CreateOrganization = CreateOrganization
+  { displayName :: Text,
+    primaryAccountId :: Id Account
+  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

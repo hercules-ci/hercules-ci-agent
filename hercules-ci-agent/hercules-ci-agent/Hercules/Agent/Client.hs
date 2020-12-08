@@ -29,8 +29,8 @@ import Servant.API
 import Servant.API.Generic
 import Servant.Auth.Client ()
 import Servant.Client.Generic (AsClientT)
-import qualified Servant.Client.Streaming
 import Servant.Client.Streaming (ClientM)
+import qualified Servant.Client.Streaming
 
 -- | Bad instance to make it the client for State api compile. GHC seems to pick
 -- the wrong overlappable instance.
@@ -61,5 +61,6 @@ lifeCycleClient = useApi lifeCycle $ Hercules.Agent.Client.client
 
 logsClient :: LogsAPI () (AsClientT ClientM)
 logsClient =
-  fromServant $ Servant.Client.Streaming.client $
-    (Proxy @(AddAPIVersion (ToServantApi (LogsAPI ()))))
+  fromServant $
+    Servant.Client.Streaming.client $
+      (Proxy @(AddAPIVersion (ToServantApi (LogsAPI ()))))

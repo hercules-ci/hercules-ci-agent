@@ -6,8 +6,6 @@ set -xe
 
 cabal2nix cabal://cachix-0.5.1 > nix/cachix.nix
 cabal2nix cabal://cachix-api-0.5.0 > nix/cachix-api.nix
-cabal2nix cabal://inline-c-0.9.0.0 > nix/haskell-inline-c.nix
-cabal2nix cabal://inline-c-cpp-0.4.0.2 >nix/haskell-inline-c-cpp.nix
 cabal2nix cabal://nix-narinfo-0.1.0.1 > nix/nix-narinfo.nix
 cabal2nix cabal://servant-websockets-2.0.0 > nix/servant-websockets.nix
 cabal2nix cabal://websockets-0.12.6.1 > nix/websockets.nix
@@ -15,11 +13,7 @@ cabal2nix cabal://websockets-0.12.6.1 > nix/websockets.nix
 pre-commit run --files \
   nix/cachix.nix \
   nix/cachix-api.nix \
-  nix/haskell-inline-c.nix \
-  nix/haskell-inline-c-cpp.nix \
-  nix/websockets.nix \
-  nix/servant-websockets.nix \
-  nix/cachix.nix \
-  nix/websockets.nix \
   nix/nix-narinfo.nix \
+  nix/servant-websockets.nix \
+  nix/websockets.nix \
   ;

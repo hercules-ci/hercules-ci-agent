@@ -5,13 +5,12 @@ module Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent where
 import Data.Aeson.Types
 import Hercules.API.Prelude
 
-data AttributeErrorEvent
-  = AttributeErrorEvent
-      { expressionPath :: [Text],
-        errorMessage :: Text,
-        errorDerivation :: Maybe Text,
-        errorType :: Maybe Text
-      }
+data AttributeErrorEvent = AttributeErrorEvent
+  { expressionPath :: [Text],
+    errorMessage :: Text,
+    errorDerivation :: Maybe Text,
+    errorType :: Maybe Text
+  }
   deriving (Generic, Show, Eq, NFData)
 
 instance ToJSON AttributeErrorEvent where

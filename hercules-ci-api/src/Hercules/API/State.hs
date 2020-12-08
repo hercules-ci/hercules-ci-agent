@@ -24,36 +24,35 @@ type ContentLength = Header "Content-Length" Integer
 
 type ContentDisposition = Header "Content-Disposition" Text
 
-data StateAPI auth f
-  = StateAPI
-      { putProjectStateData ::
-          f
-            :- Summary "Upload a state file"
-            :> "projects"
-            :> Capture' '[Required, Strict] "projectId" (Id Project)
-            :> "state"
-            :> Capture' '[Required, Strict] "stateName" Text
-            :> "data"
-            :> StreamBody NoFraming OctetStream (SourceIO RawBytes)
-            :> auth
-            :> Put '[JSON] NoContent,
-        getProjectStates ::
-          f
-            :- Summary "List all state files"
-            :> "projects"
-            :> Capture' '[Required, Strict] "projectId" (Id Project)
-            :> "states"
-            :> auth
-            :> Get '[JSON] ProjectState,
-        getProjectStateData ::
-          f
-            :- Summary "Download a state file"
-            :> "projects"
-            :> Capture' '[Required, Strict] "projectId" (Id Project)
-            :> "state"
-            :> Capture' '[Required, Strict] "stateName" Text
-            :> "data"
-            :> auth
-            :> StreamGet NoFraming OctetStream (Headers '[ContentLength, ContentDisposition] (SourceIO RawBytes))
-      }
+data StateAPI auth f = StateAPI
+  { putProjectStateData ::
+      f
+        :- Summary "Upload a state file"
+        :> "projects"
+        :> Capture' '[Required, Strict] "projectId" (Id Project)
+        :> "state"
+        :> Capture' '[Required, Strict] "stateName" Text
+        :> "data"
+        :> StreamBody NoFraming OctetStream (SourceIO RawBytes)
+        :> auth
+        :> Put '[JSON] NoContent,
+    getProjectStates ::
+      f
+        :- Summary "List all state files"
+        :> "projects"
+        :> Capture' '[Required, Strict] "projectId" (Id Project)
+        :> "states"
+        :> auth
+        :> Get '[JSON] ProjectState,
+    getProjectStateData ::
+      f
+        :- Summary "Download a state file"
+        :> "projects"
+        :> Capture' '[Required, Strict] "projectId" (Id Project)
+        :> "state"
+        :> Capture' '[Required, Strict] "stateName" Text
+        :> "data"
+        :> auth
+        :> StreamGet NoFraming OctetStream (Headers '[ContentLength, ContentDisposition] (SourceIO RawBytes))
+  }
   deriving (Generic)

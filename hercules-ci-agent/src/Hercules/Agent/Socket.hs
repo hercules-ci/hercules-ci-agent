@@ -24,8 +24,8 @@ import Data.Time (NominalDiffTime, addUTCTime, diffUTCTime, getCurrentTime)
 import Data.Time.Extras
 import Hercules.API.Agent.LifeCycle.ServiceInfo (ServiceInfo)
 import qualified Hercules.API.Agent.LifeCycle.ServiceInfo as ServiceInfo
-import qualified Hercules.API.Agent.Socket.Frame as Frame
 import Hercules.API.Agent.Socket.Frame (Frame)
+import qualified Hercules.API.Agent.Socket.Frame as Frame
 import Hercules.Agent.STM (atomically, newTChanIO, newTVarIO)
 import Katip (KatipContext, Severity (..), katipAddContext, katipAddNamespace, logLocM, sl)
 import Network.URI (URI, uriAuthority, uriPath, uriPort, uriQuery, uriRegName, uriScheme)
@@ -37,25 +37,23 @@ import UnliftIO.Exception (handle)
 import UnliftIO.Timeout (timeout)
 import Wuss (runSecureClientWith)
 
-data Socket r w
-  = Socket
-      { write :: w -> STM (),
-        serviceChan :: TChan r,
-        sync :: STM (STM ())
-      }
+data Socket r w = Socket
+  { write :: w -> STM (),
+    serviceChan :: TChan r,
+    sync :: STM (STM ())
+  }
 
 syncIO :: Socket r w -> IO ()
 syncIO = join . fmap atomically . atomically . sync
 
 -- | Parameters to start 'withReliableSocket'.
-data SocketConfig ap sp m
-  = SocketConfig
-      { makeHello :: m ap,
-        checkVersion :: (sp -> m (Either Text ())),
-        baseURL :: URI,
-        path :: Text,
-        token :: ByteString
-      }
+data SocketConfig ap sp m = SocketConfig
+  { makeHello :: m ap,
+    checkVersion :: (sp -> m (Either Text ())),
+    baseURL :: URI,
+    path :: Text,
+    token :: ByteString
+  }
 
 requiredServiceVersion :: (Int, Int)
 requiredServiceVersion = (2, 0)
@@ -132,16 +130,17 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
       recv conn = do
         withTimeout ackTimeout (FatalError "Hercules.Agent.Socket.recv timed out") $
           (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
-            Left e -> liftIO $ throwIO (FatalError $ "Error decoding service message: " <> toSL e)
+            Left e -> liftIO $ throwIO (FatalError $ "Error decoding service message: " <> toS e)
             Right r -> pure r
       handshake conn = katipAddNamespace "Handshake" do
         siMsg <- recv conn
         case siMsg of
-          Frame.Oob {o = o'} -> checkVersion socketConfig o' >>= \case
-            Left e -> do
-              send conn [Frame.Exception e]
-              throwIO $ FatalError "It looks like you're running a development version of hercules-ci-agent that is not yet supported on hercules-ci.com. Please use the stable branch or a tag."
-            Right _ -> pass
+          Frame.Oob {o = o'} ->
+            checkVersion socketConfig o' >>= \case
+              Left e -> do
+                send conn [Frame.Exception e]
+                throwIO $ FatalError "It looks like you're running a development version of hercules-ci-agent that is not yet supported on hercules-ci.com. Please use the stable branch or a tag."
+              Right _ -> pass
           _ -> throwIO $ FatalError "Unexpected message. This is either a bug or you might need to update your agent."
         hello <- makeHello socketConfig
         send conn [Frame.Oob hello]
@@ -222,13 +221,13 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
             -- terminate other threads via race_
             pass
           else noAckCleanupThread' expectedN
-  forever
-    $ handle logWarningPause
-    $ withConnection' socketConfig
-    $ \conn -> do
-      katipAddNamespace "Handshake" do
-        handshake conn
-      readThread conn `race_` writeThread conn `race_` noAckCleanupThread
+  forever $
+    handle logWarningPause $
+      withConnection' socketConfig $
+        \conn -> do
+          katipAddNamespace "Handshake" do
+            handshake conn
+          readThread conn `race_` writeThread conn `race_` noAckCleanupThread
 
 msgN :: Frame o a -> Maybe Integer
 msgN (Frame.Msg {n = n}) = Just n
@@ -263,6 +262,7 @@ a `slash` b = dropWhileEnd (== '/') a <> "/" <> dropWhile (== '/') b
 
 withTimeout :: (Exception e, MonadIO m, MonadUnliftIO m) => NominalDiffTime -> e -> m a -> m a
 withTimeout t e _ | t <= 0 = throwIO e
-withTimeout t e m = timeout (ceiling $ t * 1_000_000) m >>= \case
-  Nothing -> throwIO e
-  Just a -> pure a
+withTimeout t e m =
+  timeout (ceiling $ t * 1_000_000) m >>= \case
+    Nothing -> throwIO e
+    Just a -> pure a

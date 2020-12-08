@@ -38,7 +38,7 @@ C.include "<nix/globals.hh>"
 
 C.include "<nix/fs-accessor.hh>"
 
-C.include "aliases.h"
+C.include "hercules-aliases.h"
 
 C.using "namespace nix"
 
@@ -78,14 +78,13 @@ toBuildStatus 12 = NotDeterministic
 toBuildStatus (-1) = Successful
 toBuildStatus _ = UnknownFailure
 
-data BuildResult
-  = BuildResult
-      { isSuccess :: Bool,
-        status :: BuildStatus,
-        startTime :: C.CTime,
-        stopTime :: C.CTime,
-        errorMessage :: Text
-      }
+data BuildResult = BuildResult
+  { isSuccess :: Bool,
+    status :: BuildStatus,
+    startTime :: C.CTime,
+    stopTime :: C.CTime,
+    errorMessage :: Text
+  }
   deriving (Show)
 
 nullableForeignPtr :: FinalizerPtr a -> Ptr a -> IO (Maybe (ForeignPtr a))

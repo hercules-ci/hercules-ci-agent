@@ -41,7 +41,7 @@ C.include "<nix/affinity.hh>"
 
 C.include "<nix/globals.hh>"
 
-C.include "aliases.h"
+C.include "hercules-aliases.h"
 
 C.using "namespace nix"
 
@@ -160,13 +160,12 @@ getDerivationOutputPath fd outputName = withForeignPtr fd $ \d ->
   |]
     >>= BS.unsafePackMallocCString
 
-data DerivationOutput
-  = DerivationOutput
-      { derivationOutputName :: !ByteString,
-        derivationOutputPath :: !ByteString,
-        derivationOutputHashAlgo :: !ByteString,
-        derivationOutputHash :: !ByteString
-      }
+data DerivationOutput = DerivationOutput
+  { derivationOutputName :: !ByteString,
+    derivationOutputPath :: !ByteString,
+    derivationOutputHashAlgo :: !ByteString,
+    derivationOutputHash :: !ByteString
+  }
 
 getDerivationOutputs :: ForeignPtr Derivation -> IO [DerivationOutput]
 getDerivationOutputs derivation =
@@ -312,19 +311,20 @@ toByteStrings strings = do
         (bs :) <$> go
 
 toByteStringMap :: Ptr StringPairs -> IO (Map ByteString ByteString)
-toByteStringMap strings = M.fromList <$> do
-  i <- [C.exp| StringPairsIterator *{ new StringPairsIterator($(StringPairs *strings)->begin()) } |]
-  fix $ \go -> do
-    isEnd <- (0 /=) <$> [C.exp| bool { *$(StringPairsIterator *i) == $(StringPairs *strings)->end() }|]
-    if isEnd
-      then pure []
-      else do
-        k <- [C.exp| const char*{ strdup((*$(StringPairsIterator *i))->first.c_str()) }|]
-        v <- [C.exp| const char*{ strdup((*$(StringPairsIterator *i))->second.c_str()) }|]
-        bk <- BS.unsafePackMallocCString k
-        bv <- BS.unsafePackMallocCString v
-        [C.block| void { (*$(StringPairsIterator *i))++; }|]
-        ((bk, bv) :) <$> go
+toByteStringMap strings =
+  M.fromList <$> do
+    i <- [C.exp| StringPairsIterator *{ new StringPairsIterator($(StringPairs *strings)->begin()) } |]
+    fix $ \go -> do
+      isEnd <- (0 /=) <$> [C.exp| bool { *$(StringPairsIterator *i) == $(StringPairs *strings)->end() }|]
+      if isEnd
+        then pure []
+        else do
+          k <- [C.exp| const char*{ strdup((*$(StringPairsIterator *i))->first.c_str()) }|]
+          v <- [C.exp| const char*{ strdup((*$(StringPairsIterator *i))->second.c_str()) }|]
+          bk <- BS.unsafePackMallocCString k
+          bv <- BS.unsafePackMallocCString v
+          [C.block| void { (*$(StringPairsIterator *i))++; }|]
+          ((bk, bv) :) <$> go
 
 withStrings :: (Ptr Strings -> IO a) -> IO a
 withStrings =
@@ -374,8 +374,9 @@ signPath ::
   ByteString ->
   -- | False if the signature was already present, True if the signature was added
   IO Bool
-signPath store secretKey path = (== 1) <$> do
-  [C.throwBlock| int {
+signPath store secretKey path =
+  (== 1) <$> do
+    [C.throwBlock| int {
     nix::ref<nix::Store> store = *$(refStore *store);
     std::string storePath($bs-cstr:path);
     auto currentInfo = store->queryPathInfo(storePath);

@@ -15,36 +15,35 @@ import Hercules.API.Task (Task)
 import Servant.API
 import Servant.API.Generic
 
-data EvalAPI auth f
-  = EvalAPI
-      { tasksGetEvaluation ::
-          f
-            :- "tasks"
-            :> Capture "taskId" (Id (Task EvaluateTask))
-            :> "eval"
-            :> auth
-            :> Get '[JSON] EvaluateTask,
-        tasksUpdateEvaluation ::
-          f
-            :- "tasks"
-            :> Capture "taskId" (Id (Task EvaluateTask))
-            :> "eval"
-            :> ReqBody '[JSON] [EvaluateEvent]
-            :> auth
-            :> Post '[JSON] NoContent,
-        getDerivationStatus ::
-          f
-            :- "agent"
-            :> "build"
-            :> Capture "derivationPath" Text
-            :> auth
-            :> Get '[JSON] (Maybe DerivationStatus),
-        getDerivationStatus2 ::
-          f
-            :- "agent"
-            :> "eval-build"
-            :> Capture "derivationPath" Text
-            :> auth
-            :> Get '[JSON] (Maybe (UUID, DerivationStatus))
-      }
+data EvalAPI auth f = EvalAPI
+  { tasksGetEvaluation ::
+      f
+        :- "tasks"
+        :> Capture "taskId" (Id (Task EvaluateTask))
+        :> "eval"
+        :> auth
+        :> Get '[JSON] EvaluateTask,
+    tasksUpdateEvaluation ::
+      f
+        :- "tasks"
+        :> Capture "taskId" (Id (Task EvaluateTask))
+        :> "eval"
+        :> ReqBody '[JSON] [EvaluateEvent]
+        :> auth
+        :> Post '[JSON] NoContent,
+    getDerivationStatus ::
+      f
+        :- "agent"
+        :> "build"
+        :> Capture "derivationPath" Text
+        :> auth
+        :> Get '[JSON] (Maybe DerivationStatus),
+    getDerivationStatus2 ::
+      f
+        :- "agent"
+        :> "eval-build"
+        :> Capture "derivationPath" Text
+        :> auth
+        :> Get '[JSON] (Maybe (UUID, DerivationStatus))
+  }
   deriving (Generic)

@@ -17,35 +17,34 @@ import Servant.Links
 -- | URL routes for the web interface.
 --
 -- Typically the base URL for this is https://hercules-ci.com
-data FrontendRoutes view f
-  = FrontendRoutes
-      { home ::
-          f
-            :- view,
-        account ::
-          f
-            :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
-            :> Capture' [Required, Strict] "account" (Name Account)
-            :> view,
-        cliAuthorize ::
-          f :- "settings" :> "cli" :> "authorize"
-            :> QueryParam' [Required, Strict] "token" Text
-            :> view,
-        project ::
-          f
-            :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
-            :> Capture' [Required, Strict] "account" (Name Account)
-            :> Capture' [Required, Strict] "project" (Name Project)
-            :> view,
-        job ::
-          f
-            :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
-            :> Capture' [Required, Strict] "account" (Name Account)
-            :> Capture' [Required, Strict] "project" (Name Project)
-            :> "jobs"
-            :> Capture' [Required, Strict] "jobIndex" Int
-            :> view
-      }
+data FrontendRoutes view f = FrontendRoutes
+  { home ::
+      f
+        :- view,
+    account ::
+      f
+        :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
+        :> Capture' [Required, Strict] "account" (Name Account)
+        :> view,
+    cliAuthorize ::
+      f :- "settings" :> "cli" :> "authorize"
+        :> QueryParam' [Required, Strict] "token" Text
+        :> view,
+    project ::
+      f
+        :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
+        :> Capture' [Required, Strict] "account" (Name Account)
+        :> Capture' [Required, Strict] "project" (Name Project)
+        :> view,
+    job ::
+      f
+        :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
+        :> Capture' [Required, Strict] "account" (Name Account)
+        :> Capture' [Required, Strict] "project" (Name Project)
+        :> "jobs"
+        :> Capture' [Required, Strict] "jobIndex" Int
+        :> view
+  }
   deriving (Generic)
 
 mkLinks :: URI -> FrontendRoutes Raw (AsLink Text)

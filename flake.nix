@@ -1,33 +1,41 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-20.03";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-20.09";
+  inputs.nixos-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
   inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
   inputs.pre-commit-hooks-nix.flake = false;
 
-  outputs = inputs@{ self, nixpkgs, ... }:
+  outputs =
+    inputs@{ self
+    , nixpkgs
+    , nixos-unstable
+    , ...
+    }:
     let
-      lib = nixpkgs.lib;
-      filterMeta = nixpkgs.lib.filterAttrs (k: v: k != "meta" && k != "recurseForDerivations");
+      lib = defaultNixpkgs.lib;
+      filterMeta = defaultNixpkgs.lib.filterAttrs (k: v: k != "meta" && k != "recurseForDerivations");
       dimension = _name: attrs: f: lib.mapAttrs f attrs;
 
-      defaultTarget = allTargets."nixos-20_03";
+      defaultNixpkgs = nixos-unstable;
+      defaultTarget = allTargets."nixos-unstable";
       testSuiteTarget = defaultTarget;
 
       allTargets =
         dimension "Nixpkgs version"
           {
-            "nixos-20_03" = {
+            "nixos-20_09" = {
               nixpkgsSource = nixpkgs;
             };
-            # "nixos-unstable" = {
-            #   nixpkgsSource = "nixos-unstable";
-            # };
+            "nixos-unstable" = {
+              nixpkgsSource = nixos-unstable;
+              isDevVersion = true;
+            };
           }
           (
-            _name: { nixpkgsSource }:
+            _name: { nixpkgsSource, isDevVersion ? false }:
               dimension "System"
                 {
                   "aarch64-linux" = {
@@ -78,7 +86,7 @@
                         hercules-ci-agent
                         toTOML-test
                         ;
-                    } // lib.optionalAttrs isDevSystem {
+                    } // lib.optionalAttrs (isDevSystem && isDevVersion) {
                     inherit (pkgs)
                       pre-commit-check
                       devTools
@@ -95,7 +103,7 @@
       internal.pkgs = lib.mapAttrs (_sys: target: target.internal.pkgs) defaultTarget;
 
       packages =
-        nixpkgs.lib.mapAttrs
+        defaultNixpkgs.lib.mapAttrs
           (
             system: v:
               {
@@ -137,18 +145,39 @@
 
       devShell = lib.mapAttrs
         (
-          k: { internal, devTools, pre-commit-check, ... }:
+          system: { internal, devTools, pre-commit-check, ... }:
             internal.pkgs.mkShell {
-              buildInputs =
+              NIX_PATH = "nixpkgs=${internal.pkgs.path}";
+              nativeBuildInputs =
                 [
-                  devTools.niv
-                  devTools.stack
+                  (internal.pkgs.writeScriptBin "stack" ''
+                    #!/bin/sh
+                    export PATH="${internal.haskellPackages.stack}/bin:$PATH"
+                    if test -n "''${HIE_BIOS_OUTPUT:-}"; then
+                        echo | stack "$@"
+
+                        # Internal packages appear in -package flags for some
+                        # reason, unlike normal packages. This filters them out.
+                        sed -e 's/^-package=z-.*-z-.*$//' \
+                            -e 's/^-package-id=hercules-ci-agent.*$//' \
+                            -i $HIE_BIOS_OUTPUT
+
+                        # To support the CPP in Hercules.Agent.StoreFFI
+                        echo '-DGHCIDE=1' >>$HIE_BIOS_OUTPUT
+
+                        # Hack to include the correct snapshot directory
+                        echo "-package-db=$(dirname $(stack path --snapshot-doc-root))/pkgdb" >> $HIE_BIOS_OUTPUT
+                    else
+                        exec stack "$@"
+                    fi
+                  '')
                   devTools.ghcid
                   devTools.jq
                   devTools.cabal2nix
                   devTools.nix-prefetch-git
                   internal.haskellPackages.ghc
                   internal.haskellPackages.ghcide
+                  internal.haskellPackages.haskell-language-server
                 ];
               inherit (pre-commit-check) shellHook;
             }

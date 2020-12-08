@@ -18,7 +18,7 @@ import qualified Hercules.API.Logs.LogEntry as LogEntry
 import Katip
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
-import Protolude hiding (bracket, finally, mask_, onException, tryJust, wait, withAsync)
+import Protolude hiding (bracket, finally, mask_, onException, tryJust, wait, withAsync, yield)
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.IO.Error (isEOFError)
 import System.Posix.IO (closeFd, createPipe, dup, dupTo, fdToHandle, stdError)
@@ -38,7 +38,7 @@ C.include "<nix/shared.hh>"
 
 C.include "<nix/globals.hh>"
 
-C.include "aliases.h"
+C.include "hercules-aliases.h"
 
 C.include "hercules-logger.hh"
 
@@ -167,7 +167,7 @@ convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \le
             { i = i_,
               ms = ms_,
               level = fromIntegral level_,
-              msg = toSL text_
+              msg = decode text_
             }
       2 -> do
         text_ <- unsafePackMallocCString =<< peek textStrPtr
@@ -183,7 +183,7 @@ convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \le
               act = LogEntry.ActivityId act_,
               level = fromIntegral level_,
               typ = LogEntry.ActivityType typ_,
-              text = toSL text_,
+              text = decode text_,
               parent = LogEntry.ActivityId parent_,
               fields = fields_
             }
@@ -235,8 +235,11 @@ convertAndDeleteFields fieldsPtr = flip
       }|]
                 >>= \case
                   0 -> LogEntry.Int <$> peek uintPtr
-                  1 -> LogEntry.String . toSL <$> unsafeMallocBS (peek stringPtr)
+                  1 -> LogEntry.String . decode <$> unsafeMallocBS (peek stringPtr)
                   _ -> panic "convertAndDeleteFields invalid internal type"
+
+decode :: ByteString -> Text
+decode = decodeUtf8With lenientDecode
 
 close :: IO ()
 close =
@@ -252,11 +255,12 @@ withLoggerConduit :: (MonadIO m, MonadUnliftIO m) => (ConduitT () (Vector LogEnt
 withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
   ((io `finally` liftIO close) <* wait popperAsync) `onException` liftIO (timeout 2_000_000 (wait popperAsync))
   where
-    popper = liftIO popMany >>= \case
-      lns | null lns -> pass
-      lns -> do
-        yield lns
-        popper
+    popper =
+      liftIO popMany >>= \case
+        lns | null lns -> pass
+        lns -> do
+          yield lns
+          popper
 
 -- | Remove spammy progress results. Use 'nubProgress' instead?
 filterProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
@@ -280,34 +284,38 @@ unbatch = awaitForever $ \l -> do
 batch :: Monad m => ConduitT (Flush a) [a] m ()
 batch = go []
   where
-    go acc = await >>= \case
-      Nothing -> do
-        unless (null acc) (yield $ reverse acc)
-      Just Flush -> do
-        unless (null acc) (yield $ reverse acc)
-        go []
-      Just (Chunk c) -> do
-        go (c : acc)
+    go acc =
+      await >>= \case
+        Nothing -> do
+          unless (null acc) (yield $ reverse acc)
+        Just Flush -> do
+          unless (null acc) (yield $ reverse acc)
+          go []
+        Just (Chunk c) -> do
+          go (c : acc)
 
 nubSubset :: (Eq k, Monad m) => (a -> Maybe k) -> ConduitT a a m ()
-nubSubset toKey = await >>= \case
-  Nothing -> pass
-  Just firstA -> yield firstA
-    >> case toKey firstA of
-      Nothing -> nubSubset toKey
-      Just firstK -> nubSubset1 toKey firstK
+nubSubset toKey =
+  await >>= \case
+    Nothing -> pass
+    Just firstA ->
+      yield firstA
+        >> case toKey firstA of
+          Nothing -> nubSubset toKey
+          Just firstK -> nubSubset1 toKey firstK
 
 nubSubset1 :: (Eq k, Monad m) => (a -> Maybe k) -> k -> ConduitT a a m ()
-nubSubset1 toKey prevKey = await >>= \case
-  Nothing -> pass
-  Just a -> case toKey a of
-    Nothing -> do
-      yield a
-      nubSubset1 toKey prevKey
-    Just ak -> do
-      unless (ak == prevKey) do
+nubSubset1 toKey prevKey =
+  await >>= \case
+    Nothing -> pass
+    Just a -> case toKey a of
+      Nothing -> do
         yield a
-      nubSubset1 toKey ak
+        nubSubset1 toKey prevKey
+      Just ak -> do
+        unless (ak == prevKey) do
+          yield a
+        nubSubset1 toKey ak
 
 tryReadLine :: MonadUnliftIO m => Handle -> m (Either () ByteString)
 tryReadLine s = tryJust (\e -> guard $ isEOFError e) (liftIO (BSC.hGetLine s))

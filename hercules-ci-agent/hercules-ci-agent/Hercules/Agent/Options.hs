@@ -10,11 +10,10 @@ import Hercules.Agent.Config (ConfigPath (..))
 import Options.Applicative
 import Protolude hiding (option)
 
-data Options
-  = Options
-      { configFile :: ConfigPath,
-        mode :: Mode
-      }
+data Options = Options
+  { configFile :: ConfigPath,
+    mode :: Mode
+  }
 
 parseOptions :: Parser Options
 parseOptions =
@@ -44,7 +43,7 @@ parserInfo =
     (parseOptions <**> helper)
     ( fullDesc <> progDesc "Accepts tasks from Hercules CI and runs them."
         <> header
-          ("hercules-ci-agent " <> toSL herculesAgentVersion)
+          ("hercules-ci-agent " <> toS herculesAgentVersion)
     )
 
 parse :: IO Options

@@ -58,7 +58,7 @@ C.include "<nix/affinity.hh>"
 
 C.include "<nix/globals.hh>"
 
-C.include "aliases.h"
+C.include "hercules-aliases.h"
 
 C.include "<gc/gc.h>"
 

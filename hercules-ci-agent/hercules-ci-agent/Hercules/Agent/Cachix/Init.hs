@@ -26,7 +26,7 @@ customManagerSettings =
   tlsManagerSettings
     { managerResponseTimeout = responseTimeoutNone,
       -- managerModifyRequest :: Request -> IO Request
-      managerModifyRequest = return . setRequestHeader "User-Agent" [toS cachixVersion]
+      managerModifyRequest = return . setRequestHeader "User-Agent" [encodeUtf8 cachixVersion]
     }
 
 newEnv :: Config.FinalConfig -> Map Text CachixCache.CachixCache -> K.KatipContextT IO Env.Env
@@ -60,16 +60,17 @@ toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'
       let t = fromMaybe "" (CachixCache.authToken keys)
        in do
             sk <- head $ CachixCache.signingKeys keys
-            Just $ escalateAs FatalError $ do
-              k' <- Cachix.Secrets.parseSigningKeyLenient sk
-              pure
-                Cachix.Push.PushCache
-                  { pushCacheName = name,
-                    pushCacheSecret =
-                      Cachix.Push.PushSigningKey
-                        (Servant.Auth.Client.Token $ toSL t)
-                        k'
-                  }
+            Just $
+              escalateAs FatalError $ do
+                k' <- Cachix.Secrets.parseSigningKeyLenient sk
+                pure
+                  Cachix.Push.PushCache
+                    { pushCacheName = name,
+                      pushCacheSecret =
+                        Cachix.Push.PushSigningKey
+                          (Servant.Auth.Client.Token $ encodeUtf8 t)
+                          k'
+                    }
             <|> do
               token <- head $ CachixCache.authToken keys
               Just $
@@ -77,5 +78,5 @@ toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'
                   Cachix.Push.PushCache
                     { pushCacheName = name,
                       pushCacheSecret =
-                        Cachix.Push.PushToken (Servant.Auth.Client.Token $ toSL token)
+                        Cachix.Push.PushToken (Servant.Auth.Client.Token $ encodeUtf8 token)
                     }

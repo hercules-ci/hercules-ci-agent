@@ -29,13 +29,12 @@ import Protolude hiding
     writeChan,
   )
 
-data Queue a
-  = Queue
-      { chan :: Chan (Maybe a),
-        visitedSet :: IORef (Set a),
-        -- | Increased on enqueue, decreased when processed
-        size :: TVar Int
-      }
+data Queue a = Queue
+  { chan :: Chan (Maybe a),
+    visitedSet :: IORef (Set a),
+    -- | Increased on enqueue, decreased when processed
+    size :: TVar Int
+  }
 
 with :: MonadBaseControl IO m => (Queue a -> m ()) -> m ()
 with = Control.Exception.Lifted.bracket new close
@@ -54,9 +53,10 @@ enqueue env msg = do
   writeChan (chan env) (Just msg)
 
 waitUntilDone :: MonadBase IO m => Queue a -> m ()
-waitUntilDone env = liftBase $ atomically $ do
-  n <- readTVar (size env)
-  check (n == 0)
+waitUntilDone env = liftBase $
+  atomically $ do
+    n <- readTVar (size env)
+    check (n == 0)
 
 readJust_ ::
   (MonadBase IO m, MonadIO m) =>

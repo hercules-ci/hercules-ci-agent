@@ -24,8 +24,8 @@ import Servant.Auth.Client (Token)
 import qualified Servant.Client
 import qualified Servant.Client.Core as Client
 import Servant.Client.Generic (AsClientT)
-import qualified Servant.Client.Streaming
 import Servant.Client.Streaming (ClientM, responseStatusCode, showBaseUrl)
+import qualified Servant.Client.Streaming
 import qualified System.Environment
 
 -- | Bad instance to make it the client for State api compile. GHC seems to pick
@@ -102,11 +102,11 @@ dieWithHttpError (Client.FailureResponse req resp) = do
     "hci: Request failed; "
       <> show (statusCode status)
       <> " "
-      <> toS (statusMessage status)
+      <> decodeUtf8With lenientDecode (statusMessage status)
       <> " on: "
       <> toS (showBaseUrl base)
       <> "/"
-      <> T.dropWhile (== '/') (toS path)
+      <> T.dropWhile (== '/') (decodeUtf8With lenientDecode path)
   liftIO exitFailure
 dieWithHttpError e = do
   putErrText $ "hci: Request failed: " <> toS (displayException e)

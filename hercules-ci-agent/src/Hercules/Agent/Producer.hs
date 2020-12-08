@@ -20,11 +20,10 @@ import Prelude
 
 -- | A thread producing zero or more payloads and a final value.
 -- Handles exception propagation.
-data Producer p r
-  = Producer
-      { producerQueueRead :: STM (Msg p r),
-        producerThread :: ThreadId
-      }
+data Producer p r = Producer
+  { producerQueueRead :: STM (Msg p r),
+    producerThread :: ThreadId
+  }
   deriving (Functor)
 
 data ProducerCancelled = ProducerCancelled
@@ -164,13 +163,13 @@ withBoundedDelayBatchProducer maxDelay maxItems sourceP f = do
                   doPerformBatch buf
                   beginReading
          in beginReading
-  liftIO
-    $ withAsync
+  liftIO $
+    withAsync
       ( forever $ do
           threadDelay maxDelay
           atomically $ writeTQueue flushes ()
       )
-    $ \_flusher -> unlift $ withProducer producer f
+      $ \_flusher -> unlift $ withProducer producer f
 
 syncer :: MonadIO m => (Syncing a -> m ()) -> m ()
 syncer writer = do

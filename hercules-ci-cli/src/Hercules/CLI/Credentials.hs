@@ -5,52 +5,48 @@
 module Hercules.CLI.Credentials where
 
 import Data.Aeson (FromJSON, ToJSON, eitherDecode)
-import qualified Data.Aeson.Encode.Pretty
 import Data.Aeson.Encode.Pretty (Indent (Spaces), confIndent, confTrailingNewline, defConfig, encodePretty')
+import qualified Data.Aeson.Encode.Pretty
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import Hercules.CLI.Client (determineDefaultApiBaseUrl)
 import Hercules.Error
 import qualified Network.URI as URI
 import Protolude
 import System.Directory (XdgDirectory (XdgConfig), createDirectoryIfMissing, doesFileExist, getXdgDirectory)
-import System.FilePath ((</>), takeDirectory)
+import System.FilePath (takeDirectory, (</>))
 
-data Credentials
-  = Credentials
-      { domains :: Map Text DomainCredentials
-      }
+data Credentials = Credentials
+  { domains :: Map Text DomainCredentials
+  }
   deriving (Eq, Generic, FromJSON, ToJSON)
 
-data DomainCredentials
-  = DomainCredentials
-      { personalToken :: Text
-      }
+data DomainCredentials = DomainCredentials
+  { personalToken :: Text
+  }
   deriving (Eq, Generic, FromJSON, ToJSON)
 
-data CredentialsParsingException
-  = CredentialsParsingException
-      { filePath :: FilePath,
-        message :: Text
-      }
+data CredentialsParsingException = CredentialsParsingException
+  { filePath :: FilePath,
+    message :: Text
+  }
   deriving (Show, Eq)
 
 instance Exception CredentialsParsingException where
   displayException e = "Could not parse credentials file " <> filePath e <> ": " <> toS (message e)
 
-data NoCredentialException
-  = NoCredentialException
-      { noCredentialDomain :: Text
-      }
+data NoCredentialException = NoCredentialException
+  { noCredentialDomain :: Text
+  }
   deriving (Show, Eq)
 
 instance Exception NoCredentialException where
   displayException e = "Could not find credentials for domain " <> toS (noCredentialDomain e) <> ". Please run hci login."
 
-data ApiBaseUrlParsingException
-  = ApiBaseUrlParsingException
-      { apiBaseUrlParsingMessage :: Text
-      }
+data ApiBaseUrlParsingException = ApiBaseUrlParsingException
+  { apiBaseUrlParsingMessage :: Text
+  }
   deriving (Show, Eq)
 
 instance Exception ApiBaseUrlParsingException where
@@ -72,7 +68,7 @@ readCredentials = do
 
 parseCredentials :: FilePath -> ByteString -> Either CredentialsParsingException Credentials
 parseCredentials filePath_ bs =
-  case eitherDecode (toS bs) of
+  case eitherDecode (BL.fromStrict bs) of
     Right a -> Right a
     Left e -> Left (CredentialsParsingException {filePath = filePath_, message = toS e})
 
@@ -80,7 +76,7 @@ writeCredentials :: Credentials -> IO ()
 writeCredentials credentials = do
   filePath_ <- getCredentialsFilePath
   createDirectoryIfMissing True (takeDirectory filePath_)
-  BS.writeFile filePath_ $ toS $ encodePretty' prettyConf credentials
+  BS.writeFile filePath_ $ BL.toStrict $ encodePretty' prettyConf credentials
 
 prettyConf :: Data.Aeson.Encode.Pretty.Config
 prettyConf =

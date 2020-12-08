@@ -2,7 +2,7 @@ module Hercules.Agent.Token where
 
 import Control.Lens ((^?))
 import qualified Data.Aeson as Aeson
-import Data.Aeson.Lens (_String, key)
+import Data.Aeson.Lens (key, _String)
 import qualified Data.ByteString.Base64.Lazy as B64L
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
@@ -39,7 +39,7 @@ readTokenFile fp = liftIO $ sanitize <$> readFile fp
 readAgentSessionKey :: App (Maybe Text)
 readAgentSessionKey = do
   dir <- getDir
-  logLocM DebugS $ "Data directory: " <> show dir
+  logLocM DebugS $ "Data directory: " <> logStr (show dir :: Text)
   let file = dir </> "session.key"
   liftIO (System.Directory.doesFileExist file) >>= \case
     True -> notEmpty <$> readTokenFile file
@@ -50,26 +50,27 @@ readAgentSessionKey = do
     False -> pure Nothing
 
 ensureAgentSession :: App Text
-ensureAgentSession = readAgentSessionKey >>= \case
-  Just sessKey -> do
-    logLocM DebugS "Found agent session key"
-    let handler e = do
-          logLocM WarningS $ "Failed to check whether session token matches cluster join token. Using old session. Remove session.key if you need to force a session update. Exception: " <> show e
-          pure sessKey
-    safeLiftedHandle handler $ do
-      cjt <- getClusterJoinTokenId
-      logLocM DebugS $ "Found clusterJoinTokenId " <> show cjt
-      scjt <- getSessionClusterJoinTokenId sessKey
-      logLocM DebugS $ "Found sessionClusterJoinTokenId " <> show scjt
-      if cjt == scjt
-        then pure sessKey
-        else do
-          logLocM DebugS "Getting new session key to match cluster join token..."
-          updateAgentSession
-  Nothing -> do
-    writeAgentSessionKey "x" -- Sanity check
-    logLocM DebugS "Creating agent session"
-    updateAgentSession
+ensureAgentSession =
+  readAgentSessionKey >>= \case
+    Just sessKey -> do
+      logLocM DebugS "Found agent session key"
+      let handler e = do
+            logLocM WarningS $ "Failed to check whether session token matches cluster join token. Using old session. Remove session.key if you need to force a session update. Exception: " <> logStr (displayException e)
+            pure sessKey
+      safeLiftedHandle handler $ do
+        cjt <- getClusterJoinTokenId
+        logLocM DebugS $ "Found clusterJoinTokenId " <> logStr cjt
+        scjt <- getSessionClusterJoinTokenId sessKey
+        logLocM DebugS $ "Found sessionClusterJoinTokenId " <> logStr scjt
+        if cjt == scjt
+          then pure sessKey
+          else do
+            logLocM DebugS "Getting new session key to match cluster join token..."
+            updateAgentSession
+    Nothing -> do
+      writeAgentSessionKey "x" -- Sanity check
+      logLocM DebugS "Creating agent session"
+      updateAgentSession
 
 updateAgentSession :: App Text
 updateAgentSession = do
@@ -88,7 +89,7 @@ updateAgentSession = do
 createAgentSession :: App Text
 createAgentSession = do
   agentInfo <- EnvironmentInfo.extractAgentInfo
-  logLocM DebugS $ "Agent info: " <> show agentInfo
+  logLocM DebugS $ "Agent info: " <> logStr (show agentInfo :: Text)
   let createAgentBody =
         CreateAgentSession.CreateAgentSession {agentInfo = agentInfo}
   token <- asks Env.currentToken
@@ -105,7 +106,7 @@ createAgentSession = do
 withAgentToken :: App a -> App a
 withAgentToken m = do
   agentSessionToken <- ensureAgentSession
-  local (\env -> env {Env.currentToken = Token $ toS agentSessionToken}) m
+  local (\env -> env {Env.currentToken = Token $ encodeUtf8 agentSessionToken}) m
 
 data TokenError = TokenError Text
   deriving (Typeable, Show)
@@ -117,13 +118,13 @@ getClusterJoinTokenId = do
   t <-
     asks Env.currentToken >>= \case
       Token jwt -> pure jwt
-  v <- decodeToken (toSL t)
+  v <- decodeToken (BL.fromStrict t)
   sub <- escalate $ maybeToEither (TokenError "No sub field in cluster join token") (v ^? key "sub" . _String)
   escalate $ maybeToEither (TokenError "Unrecognized token type") $ T.stripPrefix "t$" sub
 
 getSessionClusterJoinTokenId :: Text -> App Text
 getSessionClusterJoinTokenId t = do
-  v <- decodeToken (toSL t)
+  v <- decodeToken (BL.fromStrict $ encodeUtf8 t)
   escalate $ maybeToEither (TokenError "No parent field in session token") (v ^? key "parent" . _String)
 
 decodeToken :: BL.ByteString -> App Aeson.Value
