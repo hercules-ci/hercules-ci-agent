@@ -127,7 +127,11 @@ prepareDerivation store command = do
       drvPath = encodeUtf8 $ Command.Effect.drvPath command
   for_ extraPaths $ \input ->
     liftIO $ CNix.ensurePath store input
-  derivationMaybe <- liftIO $ Build.getDerivation store drvPath
-  case derivationMaybe of
-    Just drv -> pure drv
-    Nothing -> panic $ "Could not retrieve derivation " <> show drvPath <> " from local store or binary caches."
+  derivation <-
+    liftIO (Build.getDerivation store drvPath) >>= \case
+      Just drv -> pure drv
+      Nothing -> panic $ "Could not retrieve derivation " <> show drvPath <> " from local store or binary caches."
+  sources <- liftIO $ getDerivationSources derivation
+  for_ sources \src -> do
+    liftIO $ CNix.ensurePath store src
+  pure derivation
