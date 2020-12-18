@@ -118,8 +118,8 @@ finalizeConfig loc input = do
   let rawConcurrentTasks = fromMaybe defaultConcurrentTasks $ concurrentTasks input
   validConcurrentTasks <-
     case rawConcurrentTasks of
-      x | not (x >= 1) -> throwIO $ FatalError "concurrentTasks must be at least 1"
-      x -> pure x
+      x | x >= 1 -> pure x
+      _ -> throwIO $ FatalError "concurrentTasks must be at least 1"
   let apiBaseUrl = fromMaybe dabu $ herculesApiBaseURL input
   pure
     Config

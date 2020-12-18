@@ -16,7 +16,7 @@ import Hercules.Agent.Worker.Effect.Container as Container
 import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Command.Effect
 import qualified Hercules.Formats.Secret as Secret
 import Katip
-import Protolude hiding (sourceFile)
+import Protolude
 import System.Directory (createDirectory, createDirectoryIfMissing, getCurrentDirectory)
 import System.FilePath ((</>))
 
@@ -27,7 +27,7 @@ runEffect store command = do
   drvArgs <- liftIO $ getDerivationArguments derivation
   drvEnv <- liftIO $ getDerivationEnv derivation
   drvSecretsMap <- parseDrvSecretsMap drvEnv
-  dir <- liftIO $ getCurrentDirectory
+  dir <- liftIO getCurrentDirectory
   let mkDir d = let newDir = dir </> d in toS newDir <$ liftIO (createDirectory newDir)
   buildDir <- mkDir "build"
   etcDir <- mkDir "etc"
@@ -69,30 +69,28 @@ runEffect store command = do
             ]
         (//) :: Ord k => Map k a -> Map k a -> Map k a
         (//) = flip M.union
-    exitCode <-
-      Container.run
-        Container.Config
-          { extraBindMounts =
-              [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
-                BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
-                BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
-                BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = True},
-                BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = "/nix/var/nix/daemon-socket/socket", readOnly = True}
-              ],
-            executable = decodeUtf8With lenientDecode drvBuilder,
-            arguments = map (decodeUtf8With lenientDecode) drvArgs,
-            environment = overridableEnv // drvEnv' // onlyImpureOverridableEnv // impureEnvVars // fixedEnv,
-            workingDirectory = "/build",
-            hostname = "hercules-ci",
-            rootReadOnly = False
-          }
-    pure exitCode
+    Container.run
+      Container.Config
+        { extraBindMounts =
+            [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
+              BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
+              BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
+              BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = True},
+              BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = "/nix/var/nix/daemon-socket/socket", readOnly = True}
+            ],
+          executable = decodeUtf8With lenientDecode drvBuilder,
+          arguments = map (decodeUtf8With lenientDecode) drvArgs,
+          environment = overridableEnv // drvEnv' // onlyImpureOverridableEnv // impureEnvVars // fixedEnv,
+          workingDirectory = "/build",
+          hostname = "hercules-ci",
+          rootReadOnly = False
+        }
 
 parseDrvSecretsMap :: MonadIO m => Map ByteString ByteString -> m (Map Text Text)
 parseDrvSecretsMap drvEnv =
   case drvEnv & M.lookup "secretsMap" of
     Nothing -> pure mempty
-    Just secretsMapText -> case A.eitherDecode (BL.fromStrict $ secretsMapText) of
+    Just secretsMapText -> case A.eitherDecode (BL.fromStrict secretsMapText) of
       Left _ -> throwIO $ FatalError "Could not parse secretsMap variable in derivation. It must be a JSON dictionary of strings referencing agent secret names."
       Right r -> pure r
 
@@ -111,19 +109,17 @@ writeSecrets sourceFile secretsMap extraSecrets destinationDirectory = write . f
           r <- case A.eitherDecode $ BL.fromStrict secretsBytes of
             Left e -> do
               logLocM ErrorS $ "Could not parse secrets file " <> logStr sourceFile <> ": " <> logStr e
-              throwIO $ FatalError $ "Could not parse secrets file as configured on agent."
+              throwIO $ FatalError "Could not parse secrets file as configured on agent."
             Right r -> pure (Sensitive r)
           liftIO $ createDirectoryIfMissing True destinationDirectory
-          out <-
-            secretsMap & M.traverseWithKey \destinationName (secretName :: Text) -> do
-              case revealContainer (r <&> M.lookup secretName) of
-                Nothing ->
-                  liftIO $
-                    throwIO $
-                      FatalError $
-                        "Secret " <> secretName <> " does not exist, so we can't find a secret for " <> destinationName <> ". Please make sure that the secret name matches a secret on your agents."
-                Just secret -> pure (Secret.data_ <$> secret)
-          pure out
+          secretsMap & M.traverseWithKey \destinationName (secretName :: Text) -> do
+            case revealContainer (r <&> M.lookup secretName) of
+              Nothing ->
+                liftIO $
+                  throwIO $
+                    FatalError $
+                      "Secret " <> secretName <> " does not exist, so we can't find a secret for " <> destinationName <> ". Please make sure that the secret name matches a secret on your agents."
+              Just secret -> pure (Secret.data_ <$> secret)
 
 prepareDerivation :: MonadIO m => Ptr (Ref NixStore) -> Command.Effect.Effect -> m (ForeignPtr Derivation)
 prepareDerivation store command = do

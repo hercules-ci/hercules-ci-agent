@@ -44,7 +44,7 @@ performBuild buildTask = do
   statusRef <- newIORef Nothing
   extraNixOptions <- Nix.askExtraOptions
   workerEnv <- liftIO $ WorkerProcess.prepareEnv (WorkerProcess.WorkerEnvSettings {nixPath = mempty})
-  let opts = [show $ extraNixOptions]
+  let opts = [show extraNixOptions]
       procSpec =
         (System.Process.proc workerExe opts)
           { env = Just workerEnv,
@@ -82,13 +82,13 @@ performBuild buildTask = do
     _ -> panic $ "Worker failed: " <> show exitCode
   status <- readIORef statusRef
   case status of
-    Just (BuildResult.BuildSuccess {outputs = outs'}) -> do
+    Just BuildResult.BuildSuccess {outputs = outs'} -> do
       let outs = convertOutputs (BuildTask.derivationPath buildTask) outs'
       reportOutputInfos buildTask outs
       push buildTask outs
       reportSuccess buildTask
       pure $ TaskStatus.Successful ()
-    Just (BuildResult.BuildFailure {}) -> pure $ TaskStatus.Terminated ()
+    Just BuildResult.BuildFailure {} -> pure $ TaskStatus.Terminated ()
     Nothing -> pure $ TaskStatus.Exceptional "Build did not complete"
 
 convertOutputs :: Text -> [BuildResult.OutputInfo] -> Map Text OutputInfo

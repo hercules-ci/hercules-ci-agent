@@ -55,13 +55,13 @@ withStore' ::
   IO r
 withStore' =
   bracket
-    ( liftIO $
+    ( liftIO
         [C.throwBlock| refStore* {
             refStore s = openStore();
             return new refStore(s);
           } |]
     )
-    (\x -> liftIO $ [C.exp| void { delete $(refStore* x) } |])
+    (\x -> liftIO [C.exp| void { delete $(refStore* x) } |])
 
 withStoreFromURI ::
   MonadUnliftIO m =>
@@ -402,14 +402,14 @@ withHerculesStore ::
   IO a
 withHerculesStore wrappedStore =
   bracket
-    ( liftIO $
+    ( liftIO
         [C.block| refHerculesStore* {
           refStore &s = *$(refStore *wrappedStore);
           refHerculesStore hs(new HerculesStore({}, s));
           return new refHerculesStore(hs);
         } |]
     )
-    (\x -> liftIO $ [C.exp| void { delete $(refHerculesStore* x) } |])
+    (\x -> liftIO [C.exp| void { delete $(refHerculesStore* x) } |])
 
 nixStore :: Ptr (Ref HerculesStore) -> Ptr (Ref NixStore)
 nixStore = coerce

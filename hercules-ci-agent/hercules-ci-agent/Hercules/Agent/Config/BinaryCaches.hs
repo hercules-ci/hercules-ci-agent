@@ -34,8 +34,8 @@ instance FromJSON BinaryCaches where
   parseJSON =
     parseBag
       ( BinaryCaches
-          <$> part (\_name -> whenKind "CachixCache" $ \v -> Just $ (parseJSON v))
-          <*> part (\_name -> whenKind "NixCache" $ \v -> Just $ (parseJSON v))
+          <$> part (\_name -> whenKind "CachixCache" $ \v -> Just $ parseJSON v)
+          <*> part (\_name -> whenKind "NixCache" $ \v -> Just $ parseJSON v)
           <*> part (\_name v -> Just $ parseJSON v)
       )
 

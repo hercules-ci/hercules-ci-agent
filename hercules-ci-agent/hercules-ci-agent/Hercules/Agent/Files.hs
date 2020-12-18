@@ -36,6 +36,6 @@ renamePathTryHarder source dest = do
     modifyPermissions f p = getPermissions p >>= setPermissions p . f
     tryHarder = do
       modifyPermissions (setOwnerWritable True) (takeDirectory source)
-      modifyPermissions (setOwnerWritable True) (source)
+      modifyPermissions (setOwnerWritable True) source
       modifyPermissions (setOwnerWritable True) (takeDirectory dest)
       doIt

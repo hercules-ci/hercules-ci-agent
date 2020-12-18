@@ -23,7 +23,7 @@ push cache paths workers = withNamedContext "cache" cache $ do
       nixStore = nixStore,
       clientEnv = clientEnv
     } <-
-    asks $ Agent.Cachix.getEnv
+    asks Agent.Cachix.getEnv
   pushCache <-
     escalate $
       maybeToEither (FatalError $ "Cache not found " <> cache) $
@@ -46,7 +46,7 @@ push cache paths workers = withNamedContext "cache" cache $ do
                       withNamedContext "size" size $
                         withNamedContext "retry" (show retryStatus :: Text) $
                           logLocM DebugS "pushing",
-                  on401 = throwIO $ FatalError $ "Cachix push is unauthorized",
+                  on401 = throwIO $ FatalError "Cachix push is unauthorized",
                   onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
                   onDone = ctx $ logLocM DebugS "push done",
                   withXzipCompressor = Cachix.Push.defaultWithXzipCompressor,

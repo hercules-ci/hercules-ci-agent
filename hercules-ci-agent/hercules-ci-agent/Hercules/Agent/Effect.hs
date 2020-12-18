@@ -31,7 +31,7 @@ performEffect effectTask = withWorkDir "effect" $ \workDir -> do
   extraNixOptions <- Nix.askExtraOptions
   workerEnv <- liftIO $ WorkerProcess.prepareEnv (WorkerProcess.WorkerEnvSettings {nixPath = mempty})
   effectResult <- liftIO $ newIORef Nothing
-  let opts = [show $ extraNixOptions]
+  let opts = [show extraNixOptions]
       procSpec =
         (System.Process.proc workerExe opts)
           { env = Just workerEnv,

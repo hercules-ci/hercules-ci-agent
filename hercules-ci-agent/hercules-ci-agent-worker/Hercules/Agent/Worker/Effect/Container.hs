@@ -1,5 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Hercules.Agent.Worker.Effect.Container where
 
@@ -95,7 +96,7 @@ run config = do
       pure $ "hercules-ci-" <> show uuid
     (exitCode, _) <- bracket
       openPseudoTerminal
-      ( \(fd1, fd2) -> handle (\e -> const pass (e :: SomeException)) do
+      ( \(fd1, fd2) -> handle (\(_e :: SomeException) -> pass) do
           closeFd fd1
           when (fd2 /= fd1) (closeFd fd2)
       )
@@ -110,18 +111,17 @@ run config = do
                         std_err = UseHandle terminalHandle,
                         cwd = Just dir
                       }
-              r <- withCreateProcess createProcSpec \_subStdin _noOut _noErr processHandle -> do
+              withCreateProcess createProcSpec \_subStdin _noOut _noErr processHandle -> do
                 waitForProcess processHandle
                   `onException` ( do
                                     putErrText "Terminating effect process..."
-                                    System.Process.withCreateProcess (System.Process.proc runcExe ["kill", name]) \_ _ _ kh ->
+                                    _ <- System.Process.withCreateProcess (System.Process.proc runcExe ["kill", name]) \_ _ _ kh ->
                                       waitForProcess kh
                                     threadDelay 3_000_000
-                                    System.Process.withCreateProcess (System.Process.proc runcExe ["kill", name, "KILL"]) \_ _ _ kh ->
+                                    _ <- System.Process.withCreateProcess (System.Process.proc runcExe ["kill", name, "KILL"]) \_ _ _ kh ->
                                       waitForProcess kh
                                     putErrText "Killed effect process."
                                 )
-              pure r
           )
           ( do
               masterHandle <- fdToHandle master
@@ -134,7 +134,7 @@ run config = do
                       someBytes -> do
                         BS.hPut stderr (someBytes <> "\n")
                         shovel
-                  handleEOF = handle \e -> if (ioeGetErrorType e) == HardwareFault then pure "" else throwIO e
+                  handleEOF = handle \e -> if ioeGetErrorType e == HardwareFault then pure "" else throwIO e
               shovel
           )
     pure exitCode

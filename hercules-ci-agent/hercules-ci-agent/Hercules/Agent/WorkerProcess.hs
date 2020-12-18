@@ -95,7 +95,7 @@ runWorker baseProcess stderrLineHandler commandChan eventHandler = do
                 Nothing -- no handle
                 Nothing -- no path
       pidMaybe <- liftIO $ getPid processHandle
-      let pid = case pidMaybe of Just x -> fromIntegral x; Nothing -> 0
+      let pid = maybe 0 fromIntegral pidMaybe
       let stderrPiper =
             liftIO $
               runConduit

@@ -446,7 +446,7 @@ spec = describe "Evaluation" $ do
           defaultTask
             { EvaluateTask.id = id,
               EvaluateTask.otherInputs = "src" =: "/tarball/auto-arg-meta" <> "oi1" =: "/tarball/identity",
-              EvaluateTask.autoArguments = "identity" =: (EvaluateTask.SubPathOf "oi1" Nothing),
+              EvaluateTask.autoArguments = "identity" =: EvaluateTask.SubPathOf "oi1" Nothing,
               EvaluateTask.inputMetadata =
                 "oi1"
                   =: ( "rev" =: A.String "a5c9b598ab75eb987feb69f" -- weird length though; just an example
@@ -582,8 +582,8 @@ spec = describe "Evaluation" $ do
                 toS (AttributeEvent.derivationPath ae2) `shouldContain` "/nix/store"
                 toS (AttributeEvent.derivationPath ae2) `shouldContain` "-hello"
             bad -> failWith $ "Events should be a two attributes, not: " <> show bad
-    it "can request a build" $ ifdTest
-    it "can request a build again" $ \srv -> (ifdTest srv >> ifdTest srv)
+    it "can request a build" ifdTest
+    it "can request a build again" $ \srv -> ifdTest srv >> ifdTest srv
     it "can handle a failed build" $ \srv -> do
       id <- randomId
       (s, r) <-

@@ -123,7 +123,7 @@ forNonNull :: Ptr a -> (Ptr a -> IO b) -> IO (Maybe b)
 forNonNull p f = if p == nullPtr then pure Nothing else Just <$> f p
 
 -- popping multiple lines into an array would be nice
-convertEntry :: Ptr HerculesLoggerEntry -> IO (LogEntry)
+convertEntry :: Ptr HerculesLoggerEntry -> IO LogEntry
 convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \levelPtr -> alloca \activityIdPtr -> alloca \typePtr -> alloca \parentPtr -> alloca \fieldsPtrPtr ->
   do
     r <-
@@ -212,8 +212,7 @@ convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \le
 convertAndDeleteFields :: Ptr Fields -> IO (Vector LogEntry.Field)
 convertAndDeleteFields fieldsPtr = flip
   finally
-  ( [C.block| void { delete $(LoggerFields *fieldsPtr); }|]
-  )
+  [C.block| void { delete $(LoggerFields *fieldsPtr); }|]
   do
     size <- [C.exp| size_t { $(LoggerFields *fieldsPtr)->size() }|]
     V.generateM (fromIntegral size) $ \i' ->
@@ -265,13 +264,13 @@ withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
 -- | Remove spammy progress results. Use 'nubProgress' instead?
 filterProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 filterProgress = filterC \case
-  Chunk (LogEntry.Result {rtype = LogEntry.ResultTypeProgress}) -> False
+  Chunk LogEntry.Result {rtype = LogEntry.ResultTypeProgress} -> False
   _ -> True
 
 nubProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 nubProgress = nubSubset (toChunk >=> toProgressKey)
   where
-    toProgressKey k@(LogEntry.Result {rtype = LogEntry.ResultTypeProgress}) = Just k {LogEntry.i = 0}
+    toProgressKey k@LogEntry.Result {rtype = LogEntry.ResultTypeProgress} = Just k {LogEntry.i = 0}
     toProgressKey _ = Nothing
     toChunk (Chunk a) = Just a
     toChunk Flush = Nothing
@@ -318,7 +317,7 @@ nubSubset1 toKey prevKey =
         nubSubset1 toKey ak
 
 tryReadLine :: MonadUnliftIO m => Handle -> m (Either () ByteString)
-tryReadLine s = tryJust (\e -> guard $ isEOFError e) (liftIO (BSC.hGetLine s))
+tryReadLine s = tryJust (guard . isEOFError) (liftIO (BSC.hGetLine s))
 
 tapper :: (KatipContext m, MonadUnliftIO m) => TapState -> m ()
 tapper s = do

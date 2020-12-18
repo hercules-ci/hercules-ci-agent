@@ -89,7 +89,7 @@ init :: IO HerculesClientEnv
 init = do
   manager <- Network.HTTP.Client.TLS.newTlsManager
   baseUrlText <- determineDefaultApiBaseUrl
-  baseUrl <- Servant.Client.parseBaseUrl $ toS $ baseUrlText
+  baseUrl <- Servant.Client.parseBaseUrl $ toS baseUrlText
   let clientEnv :: Servant.Client.ClientEnv
       clientEnv = Servant.Client.mkClientEnv manager baseUrl
   pure $ HerculesClientEnv clientEnv
@@ -113,4 +113,4 @@ dieWithHttpError e = do
   liftIO exitFailure
 
 prettyPrintHttpErrors :: IO a -> IO a
-prettyPrintHttpErrors = handle (dieWithHttpError)
+prettyPrintHttpErrors = handle dieWithHttpError

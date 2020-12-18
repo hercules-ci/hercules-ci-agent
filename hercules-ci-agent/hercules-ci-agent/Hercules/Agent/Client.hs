@@ -48,19 +48,19 @@ client :: AgentAPI ClientAuth (AsClientT ClientM)
 client = fromServant $ Servant.Client.Streaming.client (servantApi @ClientAuth)
 
 tasksClient :: TasksAPI ClientAuth (AsClientT ClientM)
-tasksClient = useApi tasks $ Hercules.Agent.Client.client
+tasksClient = useApi tasks Hercules.Agent.Client.client
 
 evalClient :: EvalAPI ClientAuth (AsClientT ClientM)
-evalClient = useApi eval $ Hercules.Agent.Client.client
+evalClient = useApi eval Hercules.Agent.Client.client
 
 buildClient :: BuildAPI ClientAuth (AsClientT ClientM)
-buildClient = useApi build $ Hercules.Agent.Client.client
+buildClient = useApi build Hercules.Agent.Client.client
 
 lifeCycleClient :: LifeCycleAPI ClientAuth (AsClientT ClientM)
-lifeCycleClient = useApi lifeCycle $ Hercules.Agent.Client.client
+lifeCycleClient = useApi lifeCycle Hercules.Agent.Client.client
 
 logsClient :: LogsAPI () (AsClientT ClientM)
 logsClient =
   fromServant $
-    Servant.Client.Streaming.client $
+    Servant.Client.Streaming.client
       (Proxy @(AddAPIVersion (ToServantApi (LogsAPI ()))))

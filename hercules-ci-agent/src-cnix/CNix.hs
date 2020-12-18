@@ -120,13 +120,13 @@ withEvalState ::
   ConduitT i o m r
 withEvalState store =
   bracketP
-    ( liftIO $
+    ( liftIO
         [C.throwBlock| EvalState* {
           Strings searchPaths;
           return new EvalState(searchPaths, *$(refStore* store));
         } |]
     )
-    (\x -> liftIO $ [C.throwBlock| void { delete $(EvalState* x); } |])
+    (\x -> liftIO [C.throwBlock| void { delete $(EvalState* x); } |])
 
 evalFile :: Ptr EvalState -> FilePath -> IO RawValue
 evalFile evalState filename = do
@@ -246,14 +246,12 @@ getAttrs (Value (RawValue v)) = do
   end <- [C.exp| Attr *{ $(Value *v)->attrs->end() }|]
   let gather :: Map ByteString RawValue -> Ptr Attr' -> IO (Map ByteString RawValue)
       gather acc i | i == end = pure acc
-      gather acc i
-        | otherwise =
-          do
-            name <- unsafeMallocBS [C.exp| const char *{ strdup(static_cast<std::string>($(Attr *i)->name).c_str()) } |]
-            value <- mkRawValue =<< [C.exp| Value *{ new (NoGC) Value(*$(Attr *i)->value) } |]
-            let acc' = M.insert name value acc
-            seq acc' pass
-            gather acc' =<< [C.exp| Attr *{ &$(Attr *i)[1] }|]
+      gather acc i = do
+        name <- unsafeMallocBS [C.exp| const char *{ strdup(static_cast<std::string>($(Attr *i)->name).c_str()) } |]
+        value <- mkRawValue =<< [C.exp| Value *{ new (NoGC) Value(*$(Attr *i)->value) } |]
+        let acc' = M.insert name value acc
+        seq acc' pass
+        gather acc' =<< [C.exp| Attr *{ &$(Attr *i)[1] }|]
   gather mempty begin
 
 getDrvFile :: MonadIO m => Ptr EvalState -> RawValue -> m ByteString
