@@ -11,6 +11,7 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import GHC.ForeignPtr (ForeignPtr)
 import Hercules.Agent.Sensitive (Sensitive (Sensitive), reveal, revealContainer)
+import Hercules.Agent.Worker.Build.Prefetched (buildDerivation)
 import qualified Hercules.Agent.Worker.Build.Prefetched as Build
 import Hercules.Agent.Worker.Effect.Container as Container
 import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Command.Effect
@@ -125,8 +126,19 @@ prepareDerivation :: MonadIO m => Ptr (Ref NixStore) -> Command.Effect.Effect ->
 prepareDerivation store command = do
   let extraPaths = Command.Effect.inputDerivationOutputPaths command
       drvPath = encodeUtf8 $ Command.Effect.drvPath command
-  for_ extraPaths $ \input ->
-    liftIO $ CNix.ensurePath store input
+      ensureDeps = for_ extraPaths $ \input ->
+        liftIO $ CNix.ensurePath store input
+  liftIO $ do
+    ensureDeps `catch` \e -> do
+      CNix.logInfo $ "while retrieving dependencies: " <> toS (displayException (e :: SomeException))
+      CNix.logInfo "unable to retrieve dependency; attempting fallback to local build"
+      CNix.ensurePath store drvPath
+      derivation <- CNix.getDerivation store drvPath
+      depDrvPaths <- CNix.getDerivationInputs derivation
+      for_ depDrvPaths \(depDrv, _outputs) -> do
+        depDerivation <- CNix.getDerivation store depDrv
+        _nixBuildResult <- liftIO $ buildDerivation store depDrv depDerivation mempty
+        pass
   derivation <-
     liftIO (Build.getDerivation store drvPath) >>= \case
       Just drv -> pure drv

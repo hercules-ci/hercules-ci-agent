@@ -31,7 +31,7 @@ runBuild store build = do
       pure $ Command.Build.materializeDerivation build
     Left (e :: SomeException) -> liftIO do
       CNix.logInfo $ "while retrieving dependencies: " <> toS (displayException e)
-      CNix.logInfo "unable to retrieve dependency; will build locally"
+      CNix.logInfo "unable to retrieve dependency; attempting fallback to local build"
       pure True
   derivationMaybe <- liftIO $ Build.getDerivation store drvPath
   derivation <- case derivationMaybe of
