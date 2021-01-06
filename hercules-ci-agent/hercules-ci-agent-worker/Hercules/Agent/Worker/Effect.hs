@@ -15,7 +15,7 @@ import Hercules.Agent.Worker.Build.Prefetched (buildDerivation)
 import qualified Hercules.Agent.Worker.Build.Prefetched as Build
 import Hercules.Agent.Worker.Effect.Container as Container
 import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Command.Effect
-import qualified Hercules.Formats.Secret as Secret
+import qualified Hercules.Formats.Secret as Formats.Secret
 import Katip
 import Protolude
 import System.Directory (createDirectory, createDirectoryIfMissing, getCurrentDirectory)
@@ -33,7 +33,13 @@ runEffect store command = do
   buildDir <- mkDir "build"
   etcDir <- mkDir "etc"
   secretsDir <- mkDir "secrets"
-  let extraSecrets = M.singleton "hercules-ci" (M.singleton "token" . A.String <$> Command.Effect.token command)
+  let extraSecrets :: Map Text (Sensitive Formats.Secret.Secret)
+      extraSecrets = M.singleton "hercules-ci" $ do
+        token <- Command.Effect.token command
+        pure $
+          Formats.Secret.Secret
+            { data_ = M.singleton "token" $ A.String token
+            }
   writeSecrets (Command.Effect.secretsPath command) drvSecretsMap extraSecrets (toS secretsDir)
   liftIO $ do
     -- Nix sandbox sets tmp to buildTopDir
@@ -97,7 +103,7 @@ parseDrvSecretsMap drvEnv =
 
 type SecretData = Sensitive (Map Text A.Value)
 
-writeSecrets :: (MonadIO m, KatipContext m) => FilePath -> Map Text Text -> Map Text SecretData -> FilePath -> m ()
+writeSecrets :: (MonadIO m, KatipContext m) => FilePath -> Map Text Text -> Map Text (Sensitive Formats.Secret.Secret) -> FilePath -> m ()
 writeSecrets sourceFile secretsMap extraSecrets destinationDirectory = write . fmap reveal . addExtra =<< gather
   where
     addExtra = flip M.union extraSecrets
@@ -120,7 +126,15 @@ writeSecrets sourceFile secretsMap extraSecrets destinationDirectory = write . f
                   throwIO $
                     FatalError $
                       "Secret " <> secretName <> " does not exist, so we can't find a secret for " <> destinationName <> ". Please make sure that the secret name matches a secret on your agents."
-              Just secret -> pure (Secret.data_ <$> secret)
+              Just ssecret ->
+                pure do
+                  secret <- ssecret
+                  -- Currently this is `id` but we might want to fork the
+                  -- format here or omit some fields.
+                  pure $
+                    Formats.Secret.Secret
+                      { data_ = Formats.Secret.data_ secret
+                      }
 
 prepareDerivation :: MonadIO m => Ptr (Ref NixStore) -> Command.Effect.Effect -> m (ForeignPtr Derivation)
 prepareDerivation store command = do
