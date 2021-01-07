@@ -56,7 +56,8 @@ runEffect store command = do
               ("NIX_BUILD_CORES", "1"), -- not great
               ("NIX_REMOTE", "daemon"),
               ("IN_HERCULES_CI_EFFECT", "true"),
-              ("HERCULES_CI_API_BASE_URL", Command.Effect.apiBaseURL command)
+              ("HERCULES_CI_API_BASE_URL", Command.Effect.apiBaseURL command),
+              ("HERCULES_CI_SECRETS_JSON", "/secrets/secrets.json")
             ]
         -- NB: this is lossy. Consider using ByteString-based process functions
         drvEnv' = drvEnv & M.mapKeys (decodeUtf8With lenientDecode) & fmap (decodeUtf8With lenientDecode)
