@@ -1,4 +1,4 @@
-resolver: nightly-2020-12-07
+resolver: nightly-2021-01-01
 
 # paths to local packages
 packages:
@@ -10,17 +10,21 @@ packages:
   - tests/agent-test
 extra-deps:
   # REMINDER: sync with scripts/generate-nix
-  - git: https://github.com/hercules-ci/cachix.git
-    commit:
-      # ghc >=8.10:
-      9cfe586a9ed173f87d741063bced024335e394ba
-      # ghc < 8.10:
-      # 33a040faa8c5c0d7d27b8147fd95245b3808bd98
-    subdirs:
-      - cachix
-      - cachix-api
+  # - git: https://github.com/hercules-ci/cachix.git
+  #   commit:
+  #     # ghc >=8.10:
+  #     9cfe586a9ed173f87d741063bced024335e394ba
+  #     # ghc < 8.10:
+  #     # 33a040faa8c5c0d7d27b8147fd95245b3808bd98
+  #   subdirs:
+  #     - cachix
+  #     - cachix-api
+  - cachix-0.6.0
+  - cachix-api-0.6.0
   - inline-c-0.9.0.0
   - inline-c-cpp-0.4.0.2
+  - ListLike-4.7.4@sha256:613b2967df738010e8f6f6b7c47d615f6fe42081f68eba7f946d5de7552aa8a4,3778
+  - process-extras-0.7.4@sha256:4e79289131415796c181889c4a226ebab7fc3b0d27b164f65e1aad123ae9b9e3,1759
   - protolude-0.3.0@sha256:8361b811b420585b122a7ba715aa5923834db6e8c36309bf267df2dbf66b95ef,2693
   - netrc-0.2.0.0@sha256:0e1e6e3f3fbd83c26c0e5edec27098bed99219afaaeeebf9ff19aedff1e4b332,2145
   - nix-derivation-1.0.2@sha256:dc1f13f89d37d4dcc7a46dbac7f6b4e8cd2877f4af99e35b9cb8255d08179bd4,3123

@@ -53,7 +53,7 @@ toNetrcLines = concatMap toNetrcLine . M.toList
       pt <- toList $ CachixCache.authToken keys
       pure $ "machine " <> name <> ".cachix.org" <> " password " <> pt
 
-toPushCaches :: Map Text CachixCache.CachixCache -> IO (Map Text Cachix.Push.PushCache)
+toPushCaches :: Map Text CachixCache.CachixCache -> IO (Map Text PushCache)
 toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'
   where
     toPushCaches' name keys =
@@ -64,7 +64,7 @@ toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'
               escalateAs FatalError $ do
                 k' <- Cachix.Secrets.parseSigningKeyLenient sk
                 pure
-                  Cachix.Push.PushCache
+                  PushCache
                     { pushCacheName = name,
                       pushCacheSecret =
                         Cachix.Push.PushSigningKey
@@ -75,7 +75,7 @@ toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'
               token <- head $ CachixCache.authToken keys
               Just $
                 pure
-                  Cachix.Push.PushCache
+                  PushCache
                     { pushCacheName = name,
                       pushCacheSecret =
                         Cachix.Push.PushToken (Servant.Auth.Client.Token $ encodeUtf8 token)

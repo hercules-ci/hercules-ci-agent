@@ -5,6 +5,7 @@
 , boost
 , bytestring
 , cachix-api
+, concurrent-extra
 , conduit
 , conduit-extra
 , containers
@@ -43,6 +44,7 @@
 , servant-client-core
 , servant-conduit
 , stdenv
+, stm
 , temporary
 , text
 , unix
@@ -52,8 +54,8 @@
 }:
 mkDerivation {
   pname = "cachix";
-  version = "0.5.1";
-  sha256 = "ab224ffddb6749296898957d949b563a368b2ef5cda07cefe33aa8fbe441b48f";
+  version = "0.6.0";
+  sha256 = "d49ad3f405b1ddcceda0f11319f78bcebf5c9a677fd84d087b9b5e7bad98c3ab";
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
@@ -62,6 +64,7 @@ mkDerivation {
     base64-bytestring
     bytestring
     cachix-api
+    concurrent-extra
     conduit
     conduit-extra
     containers
@@ -96,6 +99,7 @@ mkDerivation {
     servant-client
     servant-client-core
     servant-conduit
+    stm
     text
     unix
     uri-bytestring
