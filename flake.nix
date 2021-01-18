@@ -1,7 +1,7 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-20.09";
+  inputs.nixos-20_09.url = "github:NixOS/nixpkgs/nixos-20.09";
   inputs.nixos-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
@@ -10,7 +10,7 @@
 
   outputs =
     inputs@{ self
-    , nixpkgs
+    , nixos-20_09
     , nixos-unstable
     , ...
     }:
@@ -28,7 +28,7 @@
           {
             # Cachix 0.6 does not support GHC < 8.10
             # "nixos-20_09" = {
-            #   nixpkgsSource = nixpkgs;
+            #   nixpkgsSource = nixos-20_09;
             # };
             "nixos-unstable" = {
               nixpkgsSource = nixos-unstable;
