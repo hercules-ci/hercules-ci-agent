@@ -26,9 +26,10 @@
       allTargets =
         dimension "Nixpkgs version"
           {
-            "nixos-20_09" = {
-              nixpkgsSource = nixpkgs;
-            };
+            # Cachix 0.6 does not support GHC < 8.10
+            # "nixos-20_09" = {
+            #   nixpkgsSource = nixpkgs;
+            # };
             "nixos-unstable" = {
               nixpkgsSource = nixos-unstable;
               isDevVersion = true;
