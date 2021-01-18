@@ -29,30 +29,32 @@ push cache paths workers = withNamedContext "cache" cache $ do
       maybeToEither (FatalError $ "Cache not found " <> cache) $
         M.lookup cache pushCaches
   ul <- askUnliftIO
+  let pushParams =
+        Cachix.Push.PushParams
+          { pushParamsName = Agent.Cachix.pushCacheName pushCache,
+            pushParamsSecret = Agent.Cachix.pushCacheSecret pushCache,
+            pushParamsStore = nixStore,
+            pushParamsClientEnv = clientEnv,
+            pushParamsStrategy = \storePath ->
+              let ctx = withNamedContext "path" storePath
+               in Cachix.Push.PushStrategy
+                    { onAlreadyPresent = pass,
+                      onAttempt = \retryStatus size ->
+                        ctx $
+                          withNamedContext "size" size $
+                            withNamedContext "retry" (show retryStatus :: Text) $
+                              logLocM DebugS "pushing",
+                      on401 = throwIO $ FatalError "Cachix push is unauthorized",
+                      onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
+                      onDone = ctx $ logLocM DebugS "push done",
+                      withXzipCompressor = Cachix.Push.defaultWithXzipCompressor,
+                      omitDeriver = False
+                    }
+          }
   void $
     Cachix.Push.pushClosure
-      ( \f l ->
-          liftIO $ Cachix.Push.mapConcurrentlyBounded workers (fmap (unliftIO ul) f) l
-      )
-      clientEnv
-      nixStore
-      pushCache
-      ( \storePath ->
-          let ctx = withNamedContext "path" storePath
-           in Cachix.Push.PushStrategy
-                { onAlreadyPresent = pass,
-                  onAttempt = \retryStatus size ->
-                    ctx $
-                      withNamedContext "size" size $
-                        withNamedContext "retry" (show retryStatus :: Text) $
-                          logLocM DebugS "pushing",
-                  on401 = throwIO $ FatalError "Cachix push is unauthorized",
-                  onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
-                  onDone = ctx $ logLocM DebugS "push done",
-                  withXzipCompressor = Cachix.Push.defaultWithXzipCompressor,
-                  omitDeriver = False
-                }
-      )
+      (\f l -> liftIO $ Cachix.Push.mapConcurrentlyBounded workers (fmap (unliftIO ul) f) l)
+      pushParams
       paths
 
 getNetrcLines :: App [Text]

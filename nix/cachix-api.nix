@@ -20,7 +20,6 @@
 , resourcet
 , servant
 , servant-auth
-, servant-auth-server
 , servant-auth-swagger
 , servant-client
 , servant-swagger
@@ -34,8 +33,8 @@
 }:
 mkDerivation {
   pname = "cachix-api";
-  version = "0.5.0";
-  sha256 = "9eeb6b8403f702a5983d558b29b67788a7bab9a09518b8dcec7f9ecdcddb6491";
+  version = "0.6.0";
+  sha256 = "a3318984fe0a9c2b79f96bd0ad06cb103e5ae3460d48ec85a98115b068a1d360";
   libraryHaskellDepends = [
     aeson
     base
@@ -56,7 +55,7 @@ mkDerivation {
     resourcet
     servant
     servant-auth
-    servant-auth-server
+    servant-auth-swagger
     servant-client
     string-conv
     swagger2
@@ -80,7 +79,6 @@ mkDerivation {
     protolude
     servant
     servant-auth
-    servant-auth-server
     servant-auth-swagger
     servant-swagger
     servant-swagger-ui-core
