@@ -85,7 +85,6 @@
                         ;
                       inherit (pkgs)
                         hercules-ci-agent
-                        toTOML-test
                         ;
                     } // lib.optionalAttrs (isDevSystem && isDevVersion) {
                     inherit (pkgs)
@@ -119,12 +118,26 @@
       overlay =
         final: prev: (import ./nix/make-overlay.nix inputs) final prev;
 
-      # TODO
-      # nixosModules.agent-service = { imports = [ ./module.nix ]; };
+      nixosModules.agent-service =
+        { pkgs, ... }:
+        {
+          imports = [ ./internal/nix/nixos/default.nix ];
+
+          # This module replaces what's provided by NixOS
+          disabledModules = [ "services/continuous-integration/hercules-ci-agent/default.nix" ];
+
+          config = {
+            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
+          };
+        };
       nixosModules.agent-profile =
         { pkgs, ... }:
         {
-          imports = [ ./for-upstream/default.nixos.nix ];
+          imports = [
+            ./internal/nix/nixos/default.nix
+            ./internal/nix/deploy-keys.nix
+            ./internal/nix/gc.nix
+          ];
 
           # This module replaces what's provided by NixOS
           disabledModules = [ "services/continuous-integration/hercules-ci-agent/default.nix" ];

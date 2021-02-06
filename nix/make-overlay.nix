@@ -11,8 +11,6 @@ self: pkgs:
 
   inherit (self.hercules-ci-agent-packages) pre-commit-check;
 
-  toTOML-test = pkgs.callPackage ../for-upstream/to-toml/test-run.nix { };
-
   boehmgc-hercules = (
     pkgs.boehmgc.override {
       enableLargeConfig = true;
