@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.5] - 2020-11-27
+
+### Fixed
+
+ - GHC 8.10.2 compatibility for NixOS unstable / NixOS 21.03
+
+ - Build with cachix 0.5.1. Write token support is not included due to a break configuration semantics. It will be available in >= 0.8.
+
+### Changed
+
+ - The in-repo expressions have upgraded their dependency to NixOS 20.09
+
+ - Agent will now use `HERCULES_CI_API_BASE_URL` over `HERCULES_API_BASE_URL` if set.
+
+ - Temporarily switch to cabal tooling due to breakage. `master` continues to be stack-based.
+
 ## [0.7.4] - 2020-08-25
 
 ### Fixed
