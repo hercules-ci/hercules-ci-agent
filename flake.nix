@@ -118,6 +118,7 @@
       overlay =
         final: prev: (import ./nix/make-overlay.nix inputs) final prev;
 
+      # A module like the one in Nixpkgs
       nixosModules.agent-service =
         { pkgs, ... }:
         {
@@ -130,6 +131,8 @@
             services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
           };
         };
+
+      # An opinionated module for configuring an agent machine
       nixosModules.agent-profile =
         { pkgs, ... }:
         {

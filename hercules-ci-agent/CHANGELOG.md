@@ -5,6 +5,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Upcoming
+
+### Added
+
+ - Hercules CI Effects, a new feature for running programs that interact with
+   the real world, with useful features for continous deployment.
+
+    - Effects only run after the build completes successfully
+
+    - Effects are defined like a derivation, not unlike a Nix shell
+
+    - Independent processes can run concurrently as distinct effects
+
+    - No two commits in the same repo run effects at the same time; no need to
+      worry about concurrency in deployment scripts
+
+    - Effects each run in their own sandbox with access to network, Nix store,
+      remote state file API and secrets
+
+    - Secrets are configured locally on your agents, so you don't have to trust
+      a third party with your cloud credentials
+
+ - Hercules CI Agent is now a flake. The highlights are
+    - `nixosModules` overriding the NixOS-distributed module to the in-repo version
+      - `agent-profile` for agent machines, or
+      - `agent-service` for just the service definition
+    - `packages`
+      - `hercules-ci-cli` the user command line interface
+      - `hercules-ci-agent` for custom installation methods, etc
+
+ - The `hci` command (flake: `defaultApp`)
+    - `hci login` to authenticate yourself
+    - `hci state` to work with Effects state files
+
+ - Commit metadata as a `ci.nix` argument. Make your `ci.nix` a function:
+
+   ```nix
+   { src ? { ref = null; rev = null; }}:
+   # rest of your ci.nix
+   ```
+
+   `src.ref` will have e.g. `refs/heads/master` and `rev` will have the
+   git commit SHA.
+
+ - Shell derivations will only be built for their dependencies. Add a
+   `mkShell`-based expression like you would add a derivation.
+
+   This behavior can be requested explicitly for shells and non-shell
+   derivations alike by appending ` // { buildDependenciesOnly = true; }` to
+   the attribute definition.
+
+ - Attributes can now be marked to require or ignore a build failure in the
+   derivation it references directly.
+   ([support#34](https://github.com/hercules-ci/support/issues/34))
+
+### Fixed
+
+ - The parent directory name will match the repo name [support#40](https://github.com/hercules-ci/support/issues/40)
+
+ - Previously, lines from Nix's configured netrc file were ignored. Now they are appended to Hercules CI's netrc lines.
+
+### Changed
+
+ - Cachix caches without `signingKeys` will be pushed to, as part of the recently
+   introduced write token feature (Cachix-managed signing keys)
+
+
 ## [0.7.5] - 2020-11-27
 
 ### Fixed
