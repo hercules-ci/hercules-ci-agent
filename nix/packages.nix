@@ -16,6 +16,7 @@ let
     appendPatch
     buildFromSdist
     disableLibraryProfiling
+    enableDWARFDebugging
     doJailbreak
     overrideCabal
     overrideSrc
@@ -79,7 +80,10 @@ let
                   overrideCabal
                     (
                       addBuildDepends
-                        (addSetupDepends basePkg (lib.optional (lib.versionAtLeast super.ghc.version "8.10") self.Cabal_3_2_1_0))
+                        (addSetupDepends
+                          (enableDWARFDebugging basePkg)
+                          (lib.optional (lib.versionAtLeast super.ghc.version "8.10") self.Cabal_3_2_1_0)
+                        )
                         [ pkgs.makeWrapper pkgs.boost pkgs.boehmgc ]
                     )
                     (
