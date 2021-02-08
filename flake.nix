@@ -57,7 +57,7 @@
                     dev-and-test-overlay =
                       self: pkgs:
                       {
-                        testSuitePkgs = testSuiteTarget.${system};
+                        testSuitePkgs = testSuiteTarget.${system}.internal.pkgs;
                         devTools =
                           {
                             inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
@@ -82,6 +82,7 @@
                       inherit (pkgs.hercules-ci-agent-packages)
                         hercules-ci-cli
                         hercules-ci-api-swagger
+                        tests
                         ;
                       inherit (pkgs)
                         hercules-ci-agent

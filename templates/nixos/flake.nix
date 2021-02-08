@@ -15,8 +15,6 @@
             services.hercules-ci-agent.enable = true;
             # Number of jobs to run simultaneously
             services.hercules-ci-agent.concurrentTasks = 4;
-            # Automatically apply a required patch for stable Nix if necessary.
-            services.hercules-ci-agent.patchNix = true;
 
             # Let 'nixos-version --json' know about the Git revision
             # of this flake.

@@ -34,12 +34,11 @@ in
         # It's an offline test, so no caches are available
         nix.binaryCaches = lib.mkForce [ ];
         services.hercules-ci-agent.enable = true;
-        services.hercules-ci-agent.patchNix = true;
-        services.hercules-ci-agent.extraOptions.apiBaseUrl = "http://api";
-        services.hercules-ci-agent.extraOptions.nixUserIsTrusted = lib.mkForce false;
-        services.hercules-ci-agent.extraOptions.binaryCachesPath = (pkgs.writeText "binary-caches.json" (builtins.toJSON { })).outPath;
-        services.hercules-ci-agent.extraOptions.clusterJoinTokenPath = (pkgs.writeText "pretend-agent-token" "").outPath;
-        services.hercules-ci-agent.concurrentTasks = 4; # Decrease on itest memory problems
+        services.hercules-ci-agent.settings.apiBaseUrl = "http://api";
+        services.hercules-ci-agent.settings.nixUserIsTrusted = lib.mkForce false;
+        services.hercules-ci-agent.settings.binaryCachesPath = (pkgs.writeText "binary-caches.json" (builtins.toJSON { })).outPath;
+        services.hercules-ci-agent.settings.clusterJoinTokenPath = (pkgs.writeText "pretend-agent-token" "").outPath;
+        services.hercules-ci-agent.settings.concurrentTasks = 4; # Decrease on itest memory problems
 
         systemd.services.hercules-ci-agent.serviceConfig.StartLimitBurst = lib.mkForce (agentStartTimeoutSec * 10);
         systemd.services.hercules-ci-agent.serviceConfig.RestartSec = lib.mkForce ("100ms");
@@ -55,10 +54,6 @@ in
   testScript =
     ''
       start_all()
-
-      # Make sure it even starts (if it doesn't start we need to time
-      # out, which will take a very long time on current CI)
-      agent.wait_for_unit("hercules-ci-agent.service")
 
       # Run the test code + api
       api.succeed(
