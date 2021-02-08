@@ -3,6 +3,7 @@
 
   inputs.nixos-20_09.url = "github:NixOS/nixpkgs/nixos-20.09";
   inputs.nixos-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nix-darwin.url = "github:/LnL7/nix-darwin"; # test only
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
   inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
@@ -145,6 +146,37 @@
 
           # This module replaces what's provided by NixOS
           disabledModules = [ "services/continuous-integration/hercules-ci-agent/default.nix" ];
+
+          config = {
+            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
+          };
+        };
+
+      # A nix-darwin module
+      darwinModules.agent-service =
+        { pkgs, ... }:
+        {
+          imports = [ ./internal/nix/nix-darwin/default.nix ];
+
+          # This module replaces what's provided by nix-darwin
+          disabledModules = [ "services/hercules-ci-agent" ];
+
+          config = {
+            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
+          };
+        };
+
+      # A nix-darwin module with more defaults set for machines that serve as agents
+      darwinModules.agent-profile =
+        { pkgs, ... }:
+        {
+          imports = [
+            ./internal/nix/nix-darwin/default.nix
+            ./internal/nix/gc.nix
+          ];
+
+          # This module replaces what's provided by nix-darwin
+          disabledModules = [ "services/hercules-ci-agent" ];
 
           config = {
             services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
