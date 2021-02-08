@@ -142,8 +142,13 @@ let
         pkgs.callPackage ../hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };
 
       tests =
-        recurseIntoAttrs {
+        recurseIntoAttrs
+          { } //
+        # isx86_64: Don't run the VM tests on aarch64 to save time
+        optionalAttrs (pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64) {
           agent-functional-test = pkgs.nixosTest ../tests/agent-test.nix;
+        } // optionalAttrs pkgs.stdenv.isDarwin {
+          nix-darwin-example = pkgs.callPackage ../tests/nix-darwin-example.nix { };
         };
 
       projectRootSource = ../.;
@@ -151,9 +156,8 @@ let
 in
 recurseIntoAttrs {
   inherit (internal.haskellPackages) hercules-ci-agent hercules-ci-cli;
-  inherit (internal) hercules-ci-api-swagger;
-  # isx86_64: Don't run the VM tests on aarch64 to save time
-  tests = if pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64 then internal.tests else null;
+  inherit (internal) hercules-ci-api-swagger tests;
+
   pre-commit-check =
     (import (pre-commit-hooks-nix + "/nix") { inherit (pkgs) system; }).packages.run {
       src = ../.;
