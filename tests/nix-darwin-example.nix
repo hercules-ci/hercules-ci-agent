@@ -15,4 +15,4 @@ let
     inherit nixpkgs system configuration;
   };
 in
-machine.installer
+machine.system
