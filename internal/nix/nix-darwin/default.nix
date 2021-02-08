@@ -54,7 +54,7 @@ in
     users.users.hercules-ci-agent = {
       uid = mkDefault 532;
       gid = mkDefault config.users.groups.hercules-ci-agent.gid;
-      home = mkDefault cfg.baseDirectory;
+      home = mkDefault cfg.settings.baseDirectory;
       createHome = true;
       shell = "/bin/bash";
       description = "System user for the Hercules CI Agent";
