@@ -1,17 +1,16 @@
+/*
+
+This file is for NixOS-specific options and configs.
+
+Code that is shared with nix-darwin goes in common.nix.
+
+ */
+
 { pkgs, config, lib, ... }:
 let
   inherit (lib) mkIf mkDefault;
 
   cfg = config.services.hercules-ci-agent;
-
-  defaultUser = "hercules-ci-agent";
-  defaultUserDetails = {
-    name = defaultUser;
-    home = "/var/lib/hercules-ci-agent";
-    description = "System user for the Hercules Agent";
-    isSystemUser = true;
-    createHome = true;
-  };
 
   command = "${cfg.package}/bin/hercules-ci-agent --config ${cfg.tomlFile}";
   testCommand = "${command} --test-configuration";
@@ -20,41 +19,34 @@ in
 {
   imports = [
     ./common.nix
-    ./deploy-keys.nix
+    (lib.mkRenamedOptionModule [ "services" "hercules-ci-agent" "user" ] [ "systemd" "services" "hercules-ci-agent" "serviceConfig" "User" ])
   ];
 
   config = mkIf cfg.enable {
-
-    services.hercules-ci-agent.user = mkDefault defaultUser;
-    services.hercules-ci-agent.extraOptions.baseDirectory = lib.mkDefault defaultUserDetails.home;
-
     systemd.services.hercules-ci-agent = {
       wantedBy = [ "multi-user.target" ];
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
-      # Allow agent to continue running as long as possible during restart.
-      # NOTE: ExecStop commands will be taken from the new configuration,
-      #       but we don't currently have any.
-      stopIfChanged = false;
+      path = [ config.nix.package ];
+      startLimitBurst = 30 * 1000000; # practically infinite
       serviceConfig = {
-        User = cfg.user;
+        User = "hercules-ci-agent";
         ExecStart = command;
+        ExecStartPre = testCommand;
         Restart = "on-failure";
         RestartSec = 120;
-        StartLimitBurst = 30 * 1000000; # practically infinite
-        RuntimeDirectory = "runc";
-        RuntimeDirectoryPreserve = "yes";
       };
     };
 
+    # Changes in the secrets do not affect the unit in any way that would cause
+    # a restart, which is currently necessary to reload the secrets.
     systemd.paths.hercules-ci-agent-restart-files = {
       wantedBy = [ "hercules-ci-agent.service" ];
       pathConfig = {
         Unit = "hercules-ci-agent-restarter.service";
-        PathChanged = [ cfg.effectiveConfig.clusterJoinTokenPath ] ++ lib.optional (cfg.effectiveConfig ? binaryCachesPath) cfg.effectiveConfig.binaryCachesPath;
+        PathChanged = [ cfg.settings.clusterJoinTokenPath cfg.settings.binaryCachesPath ];
       };
     };
-
     systemd.services.hercules-ci-agent-restarter = {
       serviceConfig.Type = "oneshot";
       script = ''
@@ -75,14 +67,19 @@ in
 
     # Trusted user allows simplified configuration and better performance
     # when operating in a cluster.
-    nix.trustedUsers = [ cfg.user ];
-    services.hercules-ci-agent.extraOptions.nixUserIsTrusted = true;
+    nix.trustedUsers = [ config.systemd.services.hercules-ci-agent.serviceConfig.User ];
+    services.hercules-ci-agent.settings.nixUserIsTrusted = true;
 
-    users = mkIf (cfg.user == defaultUser) {
-      users.hercules-ci-agent =
-        if config.ids.uids ? "hercules-ci-agent"
-        then { uid = config.ids.uids.hercules-ci-agent; } // defaultUserDetails
-        else defaultUserDetails;
+    users.users.hercules-ci-agent = {
+      home = cfg.settings.baseDirectory;
+      createHome = true;
+      group = "hercules-ci-agent";
+      description = "Hercules CI Agent system user";
+      isSystemUser = true;
     };
+
+    users.groups.hercules-ci-agent = { };
   };
+
+  meta.maintainers = [ lib.maintainers.roberth ];
 }

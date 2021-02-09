@@ -3,6 +3,7 @@
 
   inputs.nixos-20_09.url = "github:NixOS/nixpkgs/nixos-20.09";
   inputs.nixos-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nix-darwin.url = "github:/LnL7/nix-darwin"; # test only
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
   inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
@@ -57,7 +58,7 @@
                     dev-and-test-overlay =
                       self: pkgs:
                       {
-                        testSuitePkgs = testSuiteTarget.${system};
+                        testSuitePkgs = testSuiteTarget.${system}.internal.pkgs;
                         devTools =
                           {
                             inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
@@ -82,10 +83,10 @@
                       inherit (pkgs.hercules-ci-agent-packages)
                         hercules-ci-cli
                         hercules-ci-api-swagger
+                        tests
                         ;
                       inherit (pkgs)
                         hercules-ci-agent
-                        toTOML-test
                         ;
                     } // lib.optionalAttrs (isDevSystem && isDevVersion) {
                     inherit (pkgs)
@@ -119,15 +120,63 @@
       overlay =
         final: prev: (import ./nix/make-overlay.nix inputs) final prev;
 
-      # TODO
-      # nixosModules.agent-service = { imports = [ ./module.nix ]; };
-      nixosModules.agent-profile =
+      # A module like the one in Nixpkgs
+      nixosModules.agent-service =
         { pkgs, ... }:
         {
-          imports = [ ./for-upstream/default.nixos.nix ];
+          imports = [ ./internal/nix/nixos/default.nix ];
 
           # This module replaces what's provided by NixOS
           disabledModules = [ "services/continuous-integration/hercules-ci-agent/default.nix" ];
+
+          config = {
+            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
+          };
+        };
+
+      # An opinionated module for configuring an agent machine
+      nixosModules.agent-profile =
+        { pkgs, ... }:
+        {
+          imports = [
+            ./internal/nix/nixos/default.nix
+            ./internal/nix/deploy-keys.nix
+            ./internal/nix/gc.nix
+          ];
+
+          # This module replaces what's provided by NixOS
+          disabledModules = [ "services/continuous-integration/hercules-ci-agent/default.nix" ];
+
+          config = {
+            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
+          };
+        };
+
+      # A nix-darwin module
+      darwinModules.agent-service =
+        { pkgs, ... }:
+        {
+          imports = [ ./internal/nix/nix-darwin/default.nix ];
+
+          # This module replaces what's provided by nix-darwin
+          disabledModules = [ "services/hercules-ci-agent" ];
+
+          config = {
+            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
+          };
+        };
+
+      # A nix-darwin module with more defaults set for machines that serve as agents
+      darwinModules.agent-profile =
+        { pkgs, ... }:
+        {
+          imports = [
+            ./internal/nix/nix-darwin/default.nix
+            ./internal/nix/gc.nix
+          ];
+
+          # This module replaces what's provided by nix-darwin
+          disabledModules = [ "services/hercules-ci-agent" ];
 
           config = {
             services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;

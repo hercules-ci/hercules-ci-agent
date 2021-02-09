@@ -34,7 +34,7 @@ in
       serviceConfig.UserName = "hercules-ci-agent";
       serviceConfig.WorkingDirectory = user.home;
       serviceConfig.WatchPaths = [
-        cfg.secretsDirectory
+        cfg.settings.staticSecretsDirectory
       ];
     };
 
@@ -46,7 +46,7 @@ in
     # Trusted user allows simplified configuration and better performance
     # when operating in a cluster.
     nix.trustedUsers = [ "hercules-ci-agent" ];
-    services.hercules-ci-agent.extraOptions.nixUserIsTrusted = true;
+    services.hercules-ci-agent.settings.nixUserIsTrusted = true;
 
     users.knownGroups = [ "hercules-ci-agent" ];
     users.knownUsers = [ "hercules-ci-agent" ];
@@ -54,7 +54,7 @@ in
     users.users.hercules-ci-agent = {
       uid = mkDefault 532;
       gid = mkDefault config.users.groups.hercules-ci-agent.gid;
-      home = mkDefault cfg.baseDirectory;
+      home = mkDefault cfg.settings.baseDirectory;
       createHome = true;
       shell = "/bin/bash";
       description = "System user for the Hercules CI Agent";
