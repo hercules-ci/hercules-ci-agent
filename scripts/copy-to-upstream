@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -eou pipefail
+
+die() {
+  echo "$@" 1>&2
+  exit 1
+}
+
+project_dir="$(dirname "${BASH_SOURCE[0]}")/.."
+src_dir="$project_dir/internal/nix"
+nix_darwin_dir="${NIX_DARWIN:-../nix-darwin}"
+nixpkgs_dir="${NIXPKGS:-../nixpkgs}"
+
+darwin_module_dir="${nix_darwin_dir}/modules/services/hercules-ci-agent"
+nixos_module_dir="${nixpkgs_dir}/nixos/modules/services/continuous-integration/hercules-ci-agent"
+
+
+cp "$src_dir/nix-darwin/default.nix" \
+   "$src_dir/common.nix" \
+   "$darwin_module_dir"
+
+cp "$src_dir/nixos/default.nix" \
+   "$src_dir/common.nix" \
+   "$nixos_module_dir"
+
+(
+  echo "nixpkgs status:"
+  cd "$nixpkgs_dir";
+  git status . -u all --short --no-ahead-behind \
+    | grep '' || echo nixpkgs files up to date.
+  echo
+)
+
+(
+  echo "nix-darwin status:"
+  cd "$nix_darwin_dir";
+  git status . -u all --short --no-ahead-behind \
+    | grep '' || echo nix-darwin files up to date.
+  echo
+)
+
+cat 1>&2 <<EOF
+Sources copied.
+
+Next steps:
+  - review upstream history
+  - make sure you're not overwriting upstream changes
+  - delete upstream files that were deleted locally
+EOF
