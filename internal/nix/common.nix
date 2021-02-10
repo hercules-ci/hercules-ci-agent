@@ -41,10 +41,7 @@ let
           At minimum, you need 2 concurrent tasks for <literal>x86_64-linux</literal>
           in your cluster, to allow for import from derivation.
 
-          You must have a total capacity across agents of at least 2 concurrent tasks 
-          to allow for import from derivation.
-
-          This number can be around the CPU core count or lower if memory is
+          <literal>concurrentTasks</literal> can be around the CPU core count or lower if memory is
           the bottleneck.
         '';
         type = types.int;
