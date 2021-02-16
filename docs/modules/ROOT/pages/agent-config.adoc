@@ -52,12 +52,23 @@ This token is used for authentication with `<<apiBaseUrl,_apiBaseUrl_>>`.
 [[concurrentTasks]]
 == concurrentTasks
 
-Optional. Defaults to 4.
+Optional. Defaults to `"auto"`. Must be an integer or `"auto"`.
 
-Combined number of workers to use for building and evaluating Nix derivations.
+Number of tasks to perform simultaneously.
+
+A task is a single derivation build, an evaluation or an effect run.
+At minimum, you need `2` concurrent tasks for <literal>x86_64-linux</literal>
+in your cluster, to allow for import from derivation.
+
+When the value is `"auto"`, the number becomes the number of CPU cores, but with
+a lower bound of `2` in order to avoid deadlock during import from derivation.
 
 The optimal value depends on the resource consumption characteristics of your workload,
 including memory usage and in-task parallelism. This is typically determined empirically.
+
+NOTE: When scaling, it is generally better to have a double-size machine than two machines,
+because each split of resources causes inefficiencies; particularly with regards
+to build latency because of extra downloads.
 
 [[logLevel]]
 == logLevel

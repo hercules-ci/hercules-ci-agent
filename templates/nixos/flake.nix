@@ -19,7 +19,7 @@
             # x86_64-linux concurrentTasks in your cluster, to support IFD.
             # This number can be around the CPU core count; lower if memory
             # is the bottleneck.
-            services.hercules-ci-agent.settings.concurrentTasks = 4;
+            # services.hercules-ci-agent.settings.concurrentTasks = "auto";
 
             # Let 'nixos-version --json' know about the Git revision
             # of this flake.
