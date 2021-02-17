@@ -14,6 +14,7 @@ module Hercules.Agent.Config
   )
 where
 
+import GHC.Conc (getNumProcessors)
 import Katip (Severity (..))
 import Protolude hiding (to)
 import qualified System.Environment
@@ -28,9 +29,11 @@ nounPhrase (TomlPath p) = "your agent.toml file from " <> show p
 data Purpose = Input | Final
 
 -- | Whether the 'Final' value is optional.
-data Sort = Required | Optional
+data Sort = Required | Optional | From Sort Type
 
 type family Item purpose sort a where
+  Item 'Input ('From sort b) a = Item 'Input sort b
+  Item 'Final ('From sort b) a = Item 'Final sort a
   Item 'Input _sort a = Maybe a
   Item 'Final 'Required a = a
   Item 'Final 'Optional a = Maybe a
@@ -40,7 +43,7 @@ type FinalConfig = Config 'Final
 data Config purpose = Config
   { herculesApiBaseURL :: Item purpose 'Required Text,
     nixUserIsTrusted :: Item purpose 'Required Bool,
-    concurrentTasks :: Item purpose 'Required Integer,
+    concurrentTasks :: Item purpose ('From 'Required (Either () Int)) Int,
     baseDirectory :: Item purpose 'Required FilePath,
     -- | Read-only
     staticSecretsDirectory :: Item purpose 'Required FilePath,
@@ -60,7 +63,10 @@ tomlCodec =
     .= herculesApiBaseURL
     <*> dioptional (Toml.bool "nixUserIsTrusted")
     .= nixUserIsTrusted
-    <*> dioptional (Toml.integer "concurrentTasks")
+    <*> dioptional
+      ( Toml.dimatch matchRight Right (Toml.int "concurrentTasks")
+          <|> Toml.dimatch matchLeft Left (Toml.textBy (\() -> "auto") isAuto "concurrentTasks")
+      )
     .= concurrentTasks
     <*> dioptional (Toml.string keyBaseDirectory)
     .= baseDirectory
@@ -74,6 +80,18 @@ tomlCodec =
     .= binaryCachesPath
     <*> dioptional (Toml.enumBounded "logLevel")
     .= logLevel
+
+matchLeft :: Either a b -> Maybe a
+matchLeft (Left a) = Just a
+matchLeft _ = Nothing
+
+matchRight :: Either a1 a2 -> Maybe a2
+matchRight (Right a) = Just a
+matchRight _ = Nothing
+
+isAuto :: Text -> Either Text ()
+isAuto "auto" = Right ()
+isAuto _ = Left "The only permissible string value is \"auto\""
 
 keyClusterJoinTokenPath :: Key
 keyClusterJoinTokenPath = "clusterJoinTokenPath"
@@ -89,9 +107,6 @@ determineDefaultApiBaseUrl = do
 
 defaultApiBaseUrl :: Text
 defaultApiBaseUrl = "https://hercules-ci.com"
-
-defaultConcurrentTasks :: Integer
-defaultConcurrentTasks = 4
 
 readConfig :: ConfigPath -> IO (Config 'Input)
 readConfig loc = case loc of
@@ -115,9 +130,15 @@ finalizeConfig loc input = do
           (binaryCachesPath input)
       workDir = fromMaybe (baseDir </> "work") (workDirectory input)
   dabu <- determineDefaultApiBaseUrl
-  let rawConcurrentTasks = fromMaybe defaultConcurrentTasks $ concurrentTasks input
+  numProc <- getNumProcessors
+  let -- make sure the default is at least two, for ifd
+      autoConcurrentTasks = max 2 numProc
+      configuredConcurrentTasks = case concurrentTasks input of
+        Nothing -> autoConcurrentTasks
+        Just (Left _auto) -> autoConcurrentTasks
+        Just (Right n) -> fromIntegral n
   validConcurrentTasks <-
-    case rawConcurrentTasks of
+    case configuredConcurrentTasks of
       x | x >= 1 -> pure x
       _ -> throwIO $ FatalError "concurrentTasks must be at least 1"
   let apiBaseUrl = fromMaybe dabu $ herculesApiBaseURL input

@@ -1,2 +1,3 @@
+# See https://docs.hercules-ci.com/hercules-ci-agent/agent-config/
 baseDirectory = "/var/lib/hercules-ci-agent"
-concurrentTasks = 4
+# concurrentTasks = "auto"
