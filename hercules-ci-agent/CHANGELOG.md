@@ -60,6 +60,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    derivation it references directly.
    ([support#34](https://github.com/hercules-ci/support/issues/34))
 
+ - `concurrentTasks` now has a default, `"auto"` for ease of setup and to help
+   avoid underutilization.
+
 ### Fixed
 
  - The parent directory name will match the repo name [support#40](https://github.com/hercules-ci/support/issues/40)
