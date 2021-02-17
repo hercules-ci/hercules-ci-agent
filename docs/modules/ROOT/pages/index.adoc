@@ -1,0 +1,10 @@
+= Agent Reference
+
+These documents provide a technical description of the agent.
+
+For instructions to deploy an agent, use xref:hercules-ci:ROOT:getting-started/index.adoc#deploy-agent[the setup guide] instead.
+
+[discrete]
+== Table of Contents
+
+include::ROOT:partial$nav-items.adoc[]

@@ -1,0 +1,118 @@
+[[binary-caches-json]]
+= The `binary-caches.json` format
+
+The `binary-caches.json` file configures the agent to use a binary cache.
+
+A `binary-caches.json` with a single pushable cache looks like:
+
+[[binary-caches-json-cachix-example]]
+[source,json,reftext="the example"]
+----
+{ "mycache": <1>
+    { "kind": "CachixCache" <2>
+    , "publicKeys": ... <3>
+    , ...
+    }
+}
+----
+<1> An identifier for the cache. It has to be consistent with your other agents (if any). In case of Cachix, it must match the name of the cache; for example the `mycache` part from `mycache.cachix.org`.
+<2> A `kind` field to distinguish between cache types. Values: `CachixCache` or `NixCache` (since agent 0.7.1)
+<3> Further details about the cache.
+
+== Top-level dictionary
+
+The top-level object represents a dictionary from cache names to objects with the cache's details and secrets.
+
+Multiple caches can be specified this way. Currently the cache name in the dictionary is also used
+directly as the Cachix cache name.
+
+[source,json]
+----
+{ "mycache": ...
+, "some-other-cache": ...
+}
+----
+
+== `CachixCache`
+
+The name for a cache is taken from the key in the top-level dictionary, such as `mycache` in <<binary-caches-json-cachix-example>>.
+
+The details of a cachix cache can be specified with the following fields:
+
+[[CachixCache-kind]]
+`kind`::
+A field of type string with the value `CachixCache`.
+
+[[CachixCache-authToken]]
+`authToken`::
+An optional field of type string.
++
+Omit this field entirely when configuring a publicly readable Cachix cache.
++
+This is a secret token to authenticate the agent to `cachix.org`. A personal token can be retrieved from the https://cachix.org/[the cachix.org Getting started instructions, step 3]. If you have set up the `cachix` CLI, it is also present in `~/.config/cachix/cachix.dhall`.
++
+Cachix.org will provide tokens with restricted authorization in the near future.
++
+When present, its value starts with `eyJ`.
+
+[[CachixCache-publicKeys]]
+`publicKeys`::
+A list of strings.
++
+These are required to verify the integrity of cached store paths and to accept them into the Nix store. They are the public counterpart to the `signingKeys`.
++
+You may look up the public keys by going to `https://<cache-name>.cachix.org`.
++
+A public key looks like `mycache.cachix.org-1:WsUIffActpYsfyxIZrfm6OXRHdNHkHk+X/lUsDTGtJS=`
+
+[[CachixCache-signingKeys]]
+`signingKeys`::
+A list of strings.
++
+This is a cache-specific secret key to sign store paths.
++
+You can find it in `~/.config/cachix/cachix.dhall` or your key backup after following the setup instructions on cachix.org.
++
+The keys are in Base64 format.
++
+For Cachix, only a single signing key is currently supported.
+
+== `NixCache`
+
+*Since agent 0.7.1*
+
+The details of a generic Nix-supported cache can be specified with `NixCache`.
+
+The Nix manual has more information about https://nixos.org/nix/manual/#ssec-s3-substituter[operating an S3 binary cache].
+
+You may use existing keys or you can use the https://nixos.org/nix/manual/#operation-generate-binary-cache-key[`nix-store --generate-binary-cache-key`] command to generate keys for a new cache.
+
+[[NixCache-kind]]
+`kind`::
+A field of type string with the value `NixCache`.
+
+
+[[NixCache-storeURI]]
+`storeURI`::
+The Nix Store URI to use when accessing the cache. For example
++
+```text
+s3://my-nix-cache?region=us-east-1&profile=my-agent-cache-credentials
+```
++
+where `my-nix-cache` is the name of the bucket and `my-agent-cache-credentials` references an entry in https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#cli-configure-files-where[`~/.aws/credentials`] in the agent's home directory (typically `~hercules-ci-agent/.aws/credentials`) *AND* in the root directory (`~root/.aws/credentials`). The latter is for `nix-daemon`, which is what most installations use.
+
+[[NixCache-publicKeys]]
+`publicKeys`::
+A list of strings.
++
+These are required to verify the integrity of cached store paths and to accept them into the Nix store. They are the public counterpart to the `signingKeys`.
+
+
+[[NixCache-signingKeys]]
+`signingKeys`::
+A list of strings.
++
+This is a cache-specific secret key to sign store paths.
++
+The keys are in Base64 format. As of writing they are Ed25519 keys, where a signing key is about 88 characters after the colon. A public key is half as long.

@@ -1,0 +1,81 @@
+= Configuration file
+
+When deploying with NixOS, NixOps or nix-darwin you should use the module
+documentation instead, or skip ahead to read about less frequently used options
+to use with `extraOptions`.
+
+The configuration format for the agent is https://github.com/toml-lang/toml#toml[TOML] markup.
+Its location can be specified by invoking `hercules-ci-agent --config agent.toml`. Alternatively, the NixOS and nix-darwin module can generate this file for you. See also xref:hercules-ci:ROOT:getting-started/index.adoc#deploy-agent[the setup guide].
+
+A basic `agent.toml` looks as follows:
+
+[source,toml]
+----
+include::ROOT:partial$agent-small-example.toml[]
+----
+
+NOTE: If you are deploying an agent, the xref:hercules-ci:ROOT:getting-started/index.adoc[guide] is a better starting point.
+
+[[apiBaseUrl]]
+== apiBaseUrl
+
+Optional. Defaults to `https://hercules-ci.com[https://hercules-ci.com]`.
+
+HTTP API agent will connect to.
+
+[[baseDirectory]]
+== baseDirectory
+
+Required.
+
+Directory with all the agent state: secrets, work, etc.
+
+[[binaryCachesPath]]
+== binaryCachesPath
+
+Optional. Defaults to `<<staticSecretsDirectory,_staticSecretsDirectory_>>/binary-caches.json` if that file exists. With the NixOS module this defaults to `/var/lib/hercules-ci-agent/secrets/binary-caches.json`.
+
+Path to a JSON file containing binary cache secret keys.
+
+The contents of the file are described in xref:binary-caches-json.adoc[binary-caches.json].
+
+[[clusterJoinTokenPath]]
+== clusterJoinTokenPath
+
+Optional. Defaults to `<<staticSecretsDirectory,_staticSecretsDirectory_>>/cluster-join-token.key`.
+
+Path to a secret token retrieved when creating a new agent via
+https://hercules-ci.com/dashboard.
+
+This token is used for authentication with `<<apiBaseUrl,_apiBaseUrl_>>`.
+
+[[concurrentTasks]]
+== concurrentTasks
+
+Optional. Defaults to 4.
+
+Combined number of workers to use for building and evaluating Nix derivations.
+
+The optimal value depends on the resource consumption characteristics of your workload,
+including memory usage and in-task parallelism. This is typically determined empirically.
+
+[[logLevel]]
+== logLevel
+
+Optional. Defaults to `InfoS`. More verbose: `DebugS`, less verbose: `WarningS`, `ErrorS`.
+
+[[staticSecretsDirectory]]
+== staticSecretsDirectory
+
+Optional. Defaults to `<<baseDirectory,_baseDirectory_>>/secrets`.
+
+This is the default directory to look for statically configured secrets like
+clusterJoinTokenPath.
+
+[[workDirectory]]
+== workDirectory
+
+Optional. Defaults to `<<baseDirectory,_baseDirectory_>>/work`.
+
+The directory in which temporary subdirectories are created for task state.
+This includes sources for Nix evaluation.
