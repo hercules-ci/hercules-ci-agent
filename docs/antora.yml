@@ -1,0 +1,5 @@
+name: hercules-ci-agent
+title: Hercules CI Agent
+version: 'master'
+nav:
+- modules/ROOT/nav.adoc

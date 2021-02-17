@@ -1,0 +1,35 @@
+
+# Data sharing overview
+
+The agent shares metadata and logs with `hercules-ci.com` to populate the dashboard and distribute work to other agents. It does not upload sources, whole derivations, or build outputs. This way it's easy to keep your software confidential.
+
+`hercules-ci.com` will receive the following information.
+
+Per agent:
+
+ * hostname
+ * agent version
+ * nix version
+ * systemFeatures
+ * push cache configuration (excluding secrets)
+ * substituter urls (e.g. `s3://our-nix-cache?profile=cache-pull&region=us-east-1`)
+
+Per evaluation:
+
+ * attribute names
+ * error messages from Nix
+ * derivation metadata
+ ** drv path name (e.g. `/nix/store/...-name.drv`)
+ ** output path names
+ ** platform
+ ** requiredSystemFeatures (e.g. `nixos-test`, `kvm`)
+ ** dependencies (paths, output names)
+ ** source path names (no contents)
+
+Per build (realisation):
+
+ * build log at a verbose level
+ * derivation path
+ * output hashes as in `nix-store -q --hash`
+ * output sizes as in `nix-store -q --size`
+ * timestamps
