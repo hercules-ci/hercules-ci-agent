@@ -69,6 +69,7 @@ library
     Hercules.API.Projects.SimpleJob
     Hercules.API.Repos
     Hercules.API.Repos.Repo
+    Hercules.API.Repos.RepoKey
     Hercules.API.Result
     Hercules.API.Servant.Status
     Hercules.API.SourceHostingSite.SourceHostingSite
