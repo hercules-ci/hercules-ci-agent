@@ -2,7 +2,7 @@
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Hercules.Agent.Worker.Effect.Container where
+module Hercules.Effect.Container where
 
 import Control.Lens
 import Data.Aeson (Value (String), eitherDecode, encode, object, toJSON)
@@ -13,14 +13,14 @@ import qualified Data.Map as M
 import qualified Data.UUID.V4 as UUID
 import GHC.IO.Exception (IOErrorType (HardwareFault))
 import Protolude
-import System.Directory hiding (executable)
-import System.FilePath
+import System.Directory (createDirectory)
+import System.FilePath ((</>))
 import System.IO.Error (ioeGetErrorType)
-import System.IO.Temp
+import System.IO.Temp (withTempDirectory)
 import System.Posix.IO (closeFd, fdToHandle)
 import System.Posix.Terminal (openPseudoTerminal)
 import System.Process (CreateProcess (..), StdStream (UseHandle), proc, waitForProcess, withCreateProcess)
-import System.Process.ByteString
+import System.Process.ByteString (readCreateProcessWithExitCode)
 
 data BindMount = BindMount
   { pathInContainer :: Text,

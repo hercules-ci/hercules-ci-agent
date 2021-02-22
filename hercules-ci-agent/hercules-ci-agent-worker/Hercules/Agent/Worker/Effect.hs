@@ -11,10 +11,10 @@ import GHC.ForeignPtr (ForeignPtr)
 import Hercules.Agent.Sensitive (Sensitive (Sensitive), reveal, revealContainer)
 import Hercules.Agent.Worker.Build.Prefetched (buildDerivation)
 import qualified Hercules.Agent.Worker.Build.Prefetched as Build
-import Hercules.Agent.Worker.Effect.Container as Container
 import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Command.Effect
 import Hercules.CNix as CNix
 import Hercules.CNix.Store.Context (Derivation)
+import Hercules.Effect.Container as Container
 import qualified Hercules.Formats.Secret as Formats.Secret
 import Katip
 import Protolude

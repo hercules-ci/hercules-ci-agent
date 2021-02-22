@@ -63,6 +63,7 @@ library
       Hercules.Agent.WorkerProtocol.Event.AttributeError
       Hercules.Agent.WorkerProtocol.Event.BuildResult
       Hercules.Agent.WorkerProtocol.LogSettings
+      Hercules.Effect.Container
       Data.Conduit.Extras
       Data.Conduit.Katip.Orphans
 
@@ -83,10 +84,14 @@ library
     , bytestring
     , conduit
     , containers
+    , directory
     , dlist
     , exceptions
+    , filepath
     , hercules-ci-api-agent
     , katip
+    , lens
+    , lens-aeson
     , lifted-async
     , lifted-base
     , monad-control
@@ -95,12 +100,15 @@ library
     , optparse-applicative
     , protolude >= 0.3
     , process
+    , process-extras
     , safe-exceptions
     , stm
+    , temporary
     , text
     , time
     , transformers-base
     , unbounded-delays
+    , unix
     , unliftio-core
     , unliftio
     , uuid
@@ -230,7 +238,6 @@ executable hercules-ci-agent-worker
       Hercules.Agent.Worker.Build.Logger
       Hercules.Agent.Worker.Build.Logger.Context
       Hercules.Agent.Worker.Effect
-      Hercules.Agent.Worker.Effect.Container
       Paths_hercules_ci_agent
       Hercules.Agent.Worker.HerculesStore
       Hercules.Agent.Worker.HerculesStore.Context
