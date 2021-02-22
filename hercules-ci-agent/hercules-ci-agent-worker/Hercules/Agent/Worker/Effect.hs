@@ -5,11 +5,8 @@ module Hercules.Agent.Worker.Effect where
 
 import Control.Monad.Catch (MonadThrow)
 import qualified Data.Aeson as A
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import GHC.ForeignPtr (ForeignPtr)
-import Hercules.Agent.Sensitive (Sensitive (Sensitive), reveal, revealContainer)
 import Hercules.Agent.Worker.Build.Prefetched (buildDerivation)
 import qualified Hercules.Agent.Worker.Build.Prefetched as Build
 import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Command.Effect
@@ -36,8 +33,7 @@ runEffect store command = do
   buildDir <- mkDir "build"
   etcDir <- mkDir "etc"
   secretsDir <- mkDir "secrets"
-  let extraSecrets :: Map Text (Sensitive Formats.Secret.Secret)
-      extraSecrets = M.singleton "hercules-ci" $ do
+  let extraSecrets = M.singleton "hercules-ci" $ do
         token <- Command.Effect.token command
         pure $
           Formats.Secret.Secret
