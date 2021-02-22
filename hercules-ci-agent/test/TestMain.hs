@@ -1,13 +1,13 @@
 module Main where
 
-import CNix
+import Hercules.CNix (init)
 import Protolude
 import qualified Spec
 import Test.Hspec.Runner
 
 main :: IO ()
 main = do
-  CNix.init
+  init
   hspecWith config Spec.spec
   where
     config = defaultConfig {configColorMode = ColorAlways}

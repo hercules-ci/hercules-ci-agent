@@ -1,22 +1,17 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module CNix.Internal.Store
-  ( module CNix.Internal.Store,
-    HerculesStore,
+module Hercules.CNix.Store
+  ( module Hercules.CNix.Store,
   )
 where
 
-import CNix.Internal.Context
 import Control.Exception
 import Control.Monad.IO.Unlift
 import qualified Data.ByteString.Unsafe as BS
-import Data.Coerce
 import qualified Data.Map as M
-import Foreign.C.String (withCString)
 import Foreign.ForeignPtr
-import Foreign.StablePtr
-import Hercules.Agent.StoreFFI
+import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude
@@ -41,7 +36,7 @@ C.include "<nix/affinity.hh>"
 
 C.include "<nix/globals.hh>"
 
-C.include "hercules-aliases.h"
+C.include "hercules-ci-cnix/store.hxx"
 
 C.using "namespace nix"
 
@@ -393,44 +388,4 @@ signPath store secretKey path =
       store->addSignatures(storePath, info2.sigs);
       return 1;
     }
-  }|]
-
------ Hercules -----
-withHerculesStore ::
-  Ptr (Ref NixStore) ->
-  (Ptr (Ref HerculesStore) -> IO a) ->
-  IO a
-withHerculesStore wrappedStore =
-  bracket
-    ( liftIO
-        [C.block| refHerculesStore* {
-          refStore &s = *$(refStore *wrappedStore);
-          refHerculesStore hs(new HerculesStore({}, s));
-          return new refHerculesStore(hs);
-        } |]
-    )
-    (\x -> liftIO [C.exp| void { delete $(refHerculesStore* x) } |])
-
-nixStore :: Ptr (Ref HerculesStore) -> Ptr (Ref NixStore)
-nixStore = coerce
-
-printDiagnostics :: Ptr (Ref HerculesStore) -> IO ()
-printDiagnostics s =
-  [C.throwBlock| void{
-    (*$(refHerculesStore* s))->printDiagnostics();
-  }|]
-
--- TODO catch pure exceptions from displayException
-setBuilderCallback :: Ptr (Ref HerculesStore) -> (ByteString -> IO ()) -> IO ()
-setBuilderCallback s callback = do
-  p <-
-    mkBuilderCallback $ \cstr exceptionToThrowPtr ->
-      Control.Exception.catch (BS.unsafePackMallocCString cstr >>= callback) $ \e ->
-        withCString (displayException (e :: SomeException)) $ \renderedException -> do
-          stablePtr <- castStablePtrToPtr <$> newStablePtr e
-          [C.block| void {
-            (*$(exception_ptr *exceptionToThrowPtr)) = std::make_exception_ptr(HaskellException(std::string($(const char* renderedException)), $(void* stablePtr)));
-          }|]
-  [C.throwBlock| void {
-    (*$(refHerculesStore* s))->setBuilderCallback($(void (*p)(const char *, exception_ptr *) ));
   }|]

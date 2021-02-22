@@ -5,7 +5,6 @@
 
 module Hercules.Agent.Worker.Build.Logger where
 
-import CNix.Internal.Context
 import Conduit (MonadUnliftIO, filterC)
 import qualified Data.ByteString.Char8 as BSC
 import Data.ByteString.Unsafe (unsafePackMallocCString)
@@ -15,6 +14,8 @@ import qualified Data.Vector as V
 import Foreign (alloca, nullPtr, peek)
 import Hercules.API.Logs.LogEntry (LogEntry)
 import qualified Hercules.API.Logs.LogEntry as LogEntry
+import Hercules.Agent.Worker.Build.Logger.Context (Fields, HerculesLoggerEntry, context)
+import Hercules.CNix.Store.Context (unsafeMallocBS)
 import Katip
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C

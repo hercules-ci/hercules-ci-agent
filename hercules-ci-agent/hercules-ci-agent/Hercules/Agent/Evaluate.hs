@@ -7,7 +7,6 @@ module Hercules.Agent.Evaluate
   )
 where
 
-import CNix (withStore)
 import Conduit
 import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
@@ -65,6 +64,7 @@ import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as WorkerAttribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as WorkerAttributeError
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
+import Hercules.CNix (withStore)
 import Hercules.Error (defaultRetry, quickRetry)
 import qualified Network.HTTP.Client.Conduit as HTTP.Conduit
 import qualified Network.HTTP.Simple as HTTP.Simple

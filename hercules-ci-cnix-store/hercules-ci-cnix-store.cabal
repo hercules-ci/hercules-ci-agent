@@ -1,0 +1,77 @@
+cabal-version: 2.4
+
+name:           hercules-ci-cnix-store
+version:        0.1.0
+synopsis:       Haskell bindings for Nix's libstore
+category:       Nix
+homepage:       https://docs.hercules-ci.com
+bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
+author:         Hercules CI contributors
+maintainer:     info@hercules-ci.com
+copyright:      2018-2020 Hercules CI
+license:        Apache-2.0
+build-type:     Simple
+extra-source-files:
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/hercules-ci/hercules-ci-agent
+
+-- match the C++ language standard Nix is using
+common cxx-opts
+  cxx-options:
+    -std=c++17
+    -Wall
+  extra-libraries: stdc++
+
+  if os(darwin)
+    -- avoid https://gitlab.haskell.org/ghc/ghc/issues/11829
+    ld-options:  -Wl,-keep_dwarf_unwind
+
+  if impl(ghc >= 8.10)
+    ghc-options:
+      -optcxx-std=c++17
+      -optcxx-Wall
+  else
+    ghc-options:
+      -optc-std=c++17
+      -optc-Wall
+    if os(darwin)
+      ghc-options: -pgmc=clang++
+
+library
+  import: cxx-opts
+  exposed-modules:
+      Hercules.CNix
+      Hercules.CNix.Store.Context
+      Hercules.CNix.Store
+  include-dirs:
+      include
+
+  hs-source-dirs: src
+  build-depends:
+      base
+    , inline-c
+    , inline-c-cpp
+    , bytestring
+    , cachix >= 0.5.1
+    , conduit
+    , containers
+    , protolude
+    , unliftio-core
+  pkgconfig-depends:
+      nix-store >= 2.0
+    , nix-main >= 2.0
+  extra-libraries:
+      boost_context
+  default-language: Haskell2010
+  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
+  ghc-options:
+    -Werror=incomplete-patterns -Werror=missing-fields
+    -Wall
+    -fwarn-tabs
+    -fwarn-unused-imports
+    -fwarn-missing-signatures
+    -fwarn-name-shadowing
+    -fwarn-incomplete-patterns

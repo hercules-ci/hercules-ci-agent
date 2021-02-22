@@ -63,6 +63,7 @@ let
               dhall =
                 updateTo "1.28" super.dhall (super.callPackage ./dhall-1.28.nix { });
 
+              hercules-ci-cnix-store = haskell.lib.disableLibraryProfiling (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { });
               hercules-ci-api = callPkg super "hercules-ci-api" ../hercules-ci-api { };
               hercules-ci-api-agent = callPkg super "hercules-ci-api-agent" ../hercules-ci-api-agent { };
               hercules-ci-api-core = callPkg super "hercules-ci-api-core" ../hercules-ci-api-core { };

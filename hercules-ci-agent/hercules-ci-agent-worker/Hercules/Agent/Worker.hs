@@ -8,8 +8,12 @@ module Hercules.Agent.Worker
   )
 where
 
-import CNix
-import qualified CNix.Internal.Raw
+import CNix.Eval (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCallFunction, evalArgs, evalFile, getAttrBool, getAttrList, getAttrs, getDrvFile, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, withEvalState)
+import CNix.Eval.Context (EvalState)
+import qualified CNix.Eval.Raw
+import CNix.Eval.Typed (Value)
+import CNix.Internal.HerculesStore (nixStore, setBuilderCallback, withHerculesStore)
+import CNix.Internal.HerculesStore.Context (HerculesStore)
 import Conduit
 import Control.Concurrent.STM
 import qualified Control.Exception.Lifted as EL
@@ -58,6 +62,7 @@ import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
+import Hercules.CNix as CNix
 import Hercules.Error
 import Katip
 import qualified Language.C.Inline.Cpp.Exceptions as C
@@ -92,7 +97,7 @@ instance Exception BuildException
 main :: IO ()
 main = do
   hSetBuffering stderr LineBuffering
-  CNix.init
+  CNix.Eval.init
   _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
   Logger.initLogger
   [options] <- Environment.getArgs
@@ -567,7 +572,7 @@ walk evalState = walk' True [] 10
                   ( lastMay path
                       == Just "recurseForDerivations"
                       && vt
-                      == CNix.Internal.Raw.Bool
+                      == CNix.Eval.Raw.Bool
                   )
                   $ logLocM DebugS $
                     logStr $

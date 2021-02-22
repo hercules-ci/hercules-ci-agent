@@ -2,10 +2,10 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module CNix.Internal.Typed where
+module CNix.Eval.Typed where
 
-import CNix.Internal.Context
-import CNix.Internal.Raw
+import CNix.Eval.Context
+import CNix.Eval.Raw
 import qualified Language.C.Inline.Cpp as C
 import Protolude hiding
   ( evalState,
