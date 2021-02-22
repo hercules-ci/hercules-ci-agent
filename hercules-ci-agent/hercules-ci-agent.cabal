@@ -238,7 +238,6 @@ executable hercules-ci-agent-worker
       Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent-worker
-      src-cnix
   cxx-sources:
       cbits/hercules-store.cxx
       cbits/hercules-logger.cxx
