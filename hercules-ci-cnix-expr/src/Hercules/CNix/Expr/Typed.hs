@@ -2,10 +2,10 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module CNix.Eval.Typed where
+module Hercules.CNix.Expr.Typed where
 
-import CNix.Eval.Context
-import CNix.Eval.Raw
+import Hercules.CNix.Expr.Context
+import Hercules.CNix.Expr.Raw
 import qualified Language.C.Inline.Cpp as C
 import Protolude hiding
   ( evalState,
@@ -41,7 +41,7 @@ C.include "<nix/affinity.hh>"
 
 C.include "<nix/globals.hh>"
 
-C.include "hercules-aliases.h"
+C.include "hercules-ci-cnix/expr.hxx"
 
 C.include "<gc/gc.h>"
 

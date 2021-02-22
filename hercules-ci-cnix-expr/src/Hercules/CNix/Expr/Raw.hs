@@ -1,9 +1,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module CNix.Eval.Raw where
+module Hercules.CNix.Expr.Raw where
 
-import CNix.Eval.Context
+import Hercules.CNix.Expr.Context
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude hiding (evalState)
@@ -17,7 +17,7 @@ C.include "<nix/eval.hh>"
 
 C.include "<nix/eval-inline.hh>"
 
-C.include "hercules-aliases.h"
+C.include "<hercules-ci-cnix/expr.hxx>"
 
 C.include "<gc/gc.h>"
 

@@ -2,8 +2,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module CNix.Eval.Context
-  ( module CNix.Eval.Context,
+module Hercules.CNix.Expr.Context
+  ( module Hercules.CNix.Expr.Context,
     module Hercules.CNix.Store.Context,
   )
 where

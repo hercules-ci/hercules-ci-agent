@@ -38,7 +38,7 @@ C.include "<nix/globals.hh>"
 
 C.include "<nix/fs-accessor.hh>"
 
-C.include "hercules-aliases.h"
+C.include "<hercules-ci-cnix/store.hxx>"
 
 C.using "namespace nix"
 

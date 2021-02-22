@@ -232,12 +232,8 @@ executable hercules-ci-agent-worker
       Hercules.Agent.Worker.Effect
       Hercules.Agent.Worker.Effect.Container
       Paths_hercules_ci_agent
-      CNix.Eval
-      CNix.Eval.Context
-      CNix.Eval.Raw
-      CNix.Eval.Typed
-      CNix.Internal.HerculesStore
-      CNix.Internal.HerculesStore.Context
+      Hercules.Agent.Worker.HerculesStore
+      Hercules.Agent.Worker.HerculesStore.Context
   autogen-modules:
       Paths_hercules_ci_agent
   hs-source-dirs:
@@ -270,7 +266,6 @@ executable hercules-ci-agent-worker
     , binary-conduit
     , bytestring
     , cachix
-    , hercules-ci-cnix-store
     , conduit
     , containers
     , directory
@@ -279,6 +274,8 @@ executable hercules-ci-agent-worker
     , hercules-ci-agent
     , hercules-ci-api-agent
     , hercules-ci-api-core
+    , hercules-ci-cnix-store
+    , hercules-ci-cnix-expr
     , internal-ffi
     , inline-c
     , inline-c-cpp

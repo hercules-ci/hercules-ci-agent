@@ -2,11 +2,11 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module CNix.Internal.HerculesStore.Context where
+module Hercules.Agent.Worker.HerculesStore.Context where
 
-import CNix.Eval.Context (Ref)
 import qualified Data.Map as M
 import Hercules.Agent.StoreFFI (ExceptionPtr)
+import Hercules.CNix.Expr.Context (Ref)
 import qualified Hercules.CNix.Store.Context as Store
 import qualified Language.C.Inline.Context as C
 import qualified Language.C.Inline.Cpp as C

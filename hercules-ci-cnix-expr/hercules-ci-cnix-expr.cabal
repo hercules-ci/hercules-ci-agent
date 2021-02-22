@@ -1,14 +1,14 @@
 cabal-version: 2.4
 
-name:           hercules-ci-cnix-store
+name:           hercules-ci-cnix-expr
 version:        0.1.0
-synopsis:       Haskell bindings for Nix's libstore
-category:       Nix
+synopsis:       Bindings for the Nix evaluator
+category:       Nix, CI, Testing, DevOps
 homepage:       https://docs.hercules-ci.com
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
 author:         Hercules CI contributors
 maintainer:     info@hercules-ci.com
-copyright:      2018-2020 Hercules CI
+copyright:      2018-2021 Hercules CI
 license:        Apache-2.0
 build-type:     Simple
 extra-source-files:
@@ -40,40 +40,40 @@ common cxx-opts
     if os(darwin)
       ghc-options: -pgmc=clang++
 
+
 library
   import: cxx-opts
   exposed-modules:
-      Hercules.CNix
-      Hercules.CNix.Store.Context
-      Hercules.CNix.Store
+      Hercules.CNix.Expr
+      Hercules.CNix.Expr.Context
+      Hercules.CNix.Expr.Raw
+      Hercules.CNix.Expr.Typed
+
+  hs-source-dirs:
+      src
+  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
+  ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , bytestring
+    , conduit
+    , hercules-ci-cnix-store
+    , containers
+    , exceptions
+    , inline-c
+    , inline-c-cpp
+    , protolude >= 0.3
+    , text
+  default-language: Haskell2010
   include-dirs:
       include
   install-includes:
-      hercules-ci-cnix/store.hxx
-
-  hs-source-dirs: src
-  build-depends:
-      base
-    , inline-c
-    , inline-c-cpp
-    , bytestring
-    , cachix >= 0.5.1
-    , conduit
-    , containers
-    , protolude
-    , unliftio-core
-  pkgconfig-depends:
-      nix-store >= 2.0
-    , nix-main >= 2.0
+      hercules-ci-cnix/expr.hxx
   extra-libraries:
       boost_context
-  default-language: Haskell2010
-  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
-  ghc-options:
-    -Werror=incomplete-patterns -Werror=missing-fields
-    -Wall
-    -fwarn-tabs
-    -fwarn-unused-imports
-    -fwarn-missing-signatures
-    -fwarn-name-shadowing
-    -fwarn-incomplete-patterns
+  pkgconfig-depends:
+      nix-store >= 2.0
+    , nix-expr >= 2.0
+    , nix-main >= 2.0
+    , bdw-gc

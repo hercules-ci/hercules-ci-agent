@@ -63,7 +63,6 @@ let
               dhall =
                 updateTo "1.28" super.dhall (super.callPackage ./dhall-1.28.nix { });
 
-              hercules-ci-cnix-store = haskell.lib.disableLibraryProfiling (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { });
               hercules-ci-api = callPkg super "hercules-ci-api" ../hercules-ci-api { };
               hercules-ci-api-agent = callPkg super "hercules-ci-api-agent" ../hercules-ci-api-agent { };
               hercules-ci-api-core = callPkg super "hercules-ci-api-core" ../hercules-ci-api-core { };
@@ -131,6 +130,8 @@ let
                 callPkg super "hercules-ci-agent-test" ../tests/agent-test { };
 
               hercules-ci-cli = callPkg super "hercules-ci-cli" ../hercules-ci-cli { };
+              hercules-ci-cnix-expr = haskell.lib.disableLibraryProfiling (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; });
+              hercules-ci-cnix-store = haskell.lib.disableLibraryProfiling (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { });
 
               websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });
 

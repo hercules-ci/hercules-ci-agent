@@ -1,13 +1,12 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module CNix.Internal.HerculesStore
-  ( module CNix.Internal.HerculesStore,
+module Hercules.Agent.Worker.HerculesStore
+  ( module Hercules.Agent.Worker.HerculesStore,
     HerculesStore,
   )
 where
 
-import CNix.Internal.HerculesStore.Context
 import Control.Exception
 import Control.Monad.IO.Unlift
 import qualified Data.ByteString.Unsafe as BS
@@ -17,6 +16,7 @@ import Foreign.C.String (withCString)
 import Foreign.ForeignPtr
 import Foreign.StablePtr
 import Hercules.Agent.StoreFFI
+import Hercules.Agent.Worker.HerculesStore.Context
 import Hercules.CNix.Store.Context (Derivation, DerivationInputsIterator, DerivationOutputsIterator, NixStore, Ref, SecretKey, StringPairs, Strings, unsafeMallocBS)
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
