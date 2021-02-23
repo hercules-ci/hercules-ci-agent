@@ -9,11 +9,11 @@
 
 module Hercules.Agent.Worker.Build.Prefetched where
 
-import CNix
-import CNix.Internal.Context
 import qualified Data.ByteString.Char8 as C8
 import Foreign (FinalizerPtr, ForeignPtr, alloca, newForeignPtr, nullPtr, peek)
 import Foreign.C (peekCString)
+import Hercules.CNix.Store
+import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude
@@ -38,7 +38,7 @@ C.include "<nix/globals.hh>"
 
 C.include "<nix/fs-accessor.hh>"
 
-C.include "hercules-aliases.h"
+C.include "<hercules-ci-cnix/store.hxx>"
 
 C.using "namespace nix"
 

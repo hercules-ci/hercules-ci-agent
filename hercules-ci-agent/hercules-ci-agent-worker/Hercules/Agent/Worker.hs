@@ -8,8 +8,6 @@ module Hercules.Agent.Worker
   )
 where
 
-import CNix
-import qualified CNix.Internal.Raw
 import Conduit
 import Control.Concurrent.STM
 import qualified Control.Exception.Lifted as EL
@@ -40,6 +38,8 @@ import qualified Hercules.Agent.Socket as Socket
 import Hercules.Agent.Worker.Build (runBuild)
 import qualified Hercules.Agent.Worker.Build.Logger as Logger
 import Hercules.Agent.Worker.Effect (runEffect)
+import Hercules.Agent.Worker.HerculesStore (nixStore, setBuilderCallback, withHerculesStore)
+import Hercules.Agent.Worker.HerculesStore.Context (HerculesStore)
 import Hercules.Agent.WorkerProtocol.Command
   ( Command,
   )
@@ -58,6 +58,11 @@ import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
+import Hercules.CNix as CNix
+import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCallFunction, evalArgs, evalFile, getAttrBool, getAttrList, getAttrs, getDrvFile, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, withEvalState)
+import Hercules.CNix.Expr.Context (EvalState)
+import qualified Hercules.CNix.Expr.Raw
+import Hercules.CNix.Expr.Typed (Value)
 import Hercules.Error
 import Katip
 import qualified Language.C.Inline.Cpp.Exceptions as C
@@ -92,7 +97,7 @@ instance Exception BuildException
 main :: IO ()
 main = do
   hSetBuffering stderr LineBuffering
-  CNix.init
+  Hercules.CNix.Expr.init
   _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
   Logger.initLogger
   [options] <- Environment.getArgs
@@ -567,7 +572,7 @@ walk evalState = walk' True [] 10
                   ( lastMay path
                       == Just "recurseForDerivations"
                       && vt
-                      == CNix.Internal.Raw.Bool
+                      == Hercules.CNix.Expr.Raw.Bool
                   )
                   $ logLocM DebugS $
                     logStr $

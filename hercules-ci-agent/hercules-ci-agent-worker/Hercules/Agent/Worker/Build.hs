@@ -3,8 +3,6 @@
 
 module Hercules.Agent.Worker.Build where
 
-import CNix
-import CNix.Internal.Context (Derivation)
 import Cachix.Client.Store (Store, queryPathInfo, validPathInfoNarHash, validPathInfoNarSize)
 import Conduit
 import Data.Conduit.Katip.Orphans ()
@@ -15,6 +13,14 @@ import qualified Hercules.Agent.WorkerProtocol.Command.Build as Command.Build
 import Hercules.Agent.WorkerProtocol.Event (Event)
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.BuildResult as Event.BuildResult
+import Hercules.CNix
+  ( DerivationOutput (derivationOutputName, derivationOutputPath),
+    NixStore,
+    Ref,
+    getDerivationOutputs,
+  )
+import qualified Hercules.CNix as CNix
+import Hercules.CNix.Store.Context (Derivation)
 import Katip
 import Protolude hiding (yield)
 import Unsafe.Coerce

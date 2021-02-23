@@ -32,6 +32,7 @@ run_stack() {
     --no-load \
     --no-nix-pure \
     --no-install-ghc \
+    --test \
     --system-ghc \
     --stack-yaml stack.yaml.nixed.tmp \
     --with-ghc=$PWD/.hie-bios-helper \

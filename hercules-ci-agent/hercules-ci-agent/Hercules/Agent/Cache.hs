@@ -2,7 +2,6 @@
 
 module Hercules.Agent.Cache where
 
-import qualified CNix
 import qualified Cachix.Client.Store as Store
 import qualified Data.Map as M
 import qualified Data.Text as T
@@ -14,6 +13,7 @@ import Hercules.Agent.Env (App)
 import qualified Hercules.Agent.Env as Env
 import qualified Hercules.Agent.Nix as Nix
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
+import qualified Hercules.CNix as CNix
 import qualified Hercules.Formats.NixCache as NixCache
 import Katip
 import Protolude

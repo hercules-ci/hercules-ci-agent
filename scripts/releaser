@@ -35,6 +35,12 @@ main = do
     releasePackage "hercules-ci-api-core" (bumpExactVersion "hercules-ci-api-core")
   whenConfirmed "Update hercules-ci-api-agent?" $
     releasePackage "hercules-ci-api-agent" (bumpExactVersion "hercules-ci-api-agent")
+  whenConfirmed "Update hercules-ci-api?" $
+    releasePackage "hercules-ci-api" (bumpExactVersion "hercules-ci-api")
+  whenConfirmed "Update hercules-ci-cnix-store?" $
+    releasePackage "hercules-ci-cnix-store" (bumpExactVersion "hercules-ci-cnix-store")
+  whenConfirmed "Update hercules-ci-cnix-expr?" $
+    releasePackage "hercules-ci-cnix-expr" (bumpExactVersion "hercules-ci-cnix-expr")
   releasePackage "hercules-ci-agent" bumpVersionInNix
 
 whenConfirmed :: String -> IO () -> IO ()

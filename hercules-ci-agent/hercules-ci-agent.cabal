@@ -116,49 +116,6 @@ library internal-ffi
   build-depends:       base, protolude
   default-language:    Haskell2010
 
-library cnix
-  import: cxx-opts
-  exposed-modules:
-      CNix
-      CNix.Internal.Context
-      CNix.Internal.Raw
-      CNix.Internal.Store
-      CNix.Internal.Typed
-  hs-source-dirs: src-cnix
-  include-dirs:
-      cbits
-  cxx-sources:
-     cbits/hercules-store.cxx
-     cbits/hercules-logger.cxx
-  build-depends:
-      base
-    , inline-c
-    , inline-c-cpp
-    , internal-ffi
-    , bytestring
-    , cachix >= 0.6.0
-    , conduit
-    , containers
-    , protolude
-    , unliftio-core
-  pkgconfig-depends:
-      nix-store >= 2.0
-    , nix-expr >= 2.0
-    , nix-main >= 2.0
-    , bdw-gc
-  extra-libraries:
-      boost_context
-  default-language: Haskell2010
-  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
-  ghc-options:
-    -Werror=incomplete-patterns -Werror=missing-fields
-    -Wall
-    -fwarn-tabs
-    -fwarn-unused-imports
-    -fwarn-missing-signatures
-    -fwarn-name-shadowing
-    -fwarn-incomplete-patterns
-
 executable hercules-ci-agent
   main-is: Main.hs
   other-modules:
@@ -214,7 +171,7 @@ executable hercules-ci-agent
     , bytestring
     , cachix
     , cachix-api
-    , cnix
+    , hercules-ci-cnix-store
     , conduit
     , conduit-extra
     , containers
@@ -271,13 +228,19 @@ executable hercules-ci-agent-worker
       Hercules.Agent.Worker.Build
       Hercules.Agent.Worker.Build.Prefetched
       Hercules.Agent.Worker.Build.Logger
+      Hercules.Agent.Worker.Build.Logger.Context
       Hercules.Agent.Worker.Effect
       Hercules.Agent.Worker.Effect.Container
       Paths_hercules_ci_agent
+      Hercules.Agent.Worker.HerculesStore
+      Hercules.Agent.Worker.HerculesStore.Context
   autogen-modules:
       Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent-worker
+  cxx-sources:
+      cbits/hercules-store.cxx
+      cbits/hercules-logger.cxx
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
     -Werror=incomplete-patterns -Werror=missing-fields
@@ -302,7 +265,6 @@ executable hercules-ci-agent-worker
     , binary-conduit
     , bytestring
     , cachix
-    , cnix
     , conduit
     , containers
     , directory
@@ -311,6 +273,8 @@ executable hercules-ci-agent-worker
     , hercules-ci-agent
     , hercules-ci-api-agent
     , hercules-ci-api-core
+    , hercules-ci-cnix-store
+    , hercules-ci-cnix-expr
     , internal-ffi
     , inline-c
     , inline-c-cpp
@@ -370,7 +334,7 @@ test-suite hercules-test
     , binary
     , binary-conduit
     , bytestring
-    , cnix
+    , hercules-ci-cnix-store
     , conduit
     , containers
     , exceptions

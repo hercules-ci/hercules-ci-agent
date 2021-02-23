@@ -3,8 +3,6 @@
 
 module Hercules.Agent.Worker.Effect where
 
-import CNix
-import CNix.Internal.Context (Derivation)
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
@@ -15,6 +13,8 @@ import Hercules.Agent.Worker.Build.Prefetched (buildDerivation)
 import qualified Hercules.Agent.Worker.Build.Prefetched as Build
 import Hercules.Agent.Worker.Effect.Container as Container
 import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Command.Effect
+import Hercules.CNix as CNix
+import Hercules.CNix.Store.Context (Derivation)
 import qualified Hercules.Formats.Secret as Formats.Secret
 import Katip
 import Protolude

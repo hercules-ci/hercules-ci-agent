@@ -1,6 +1,5 @@
 module Hercules.Agent.Init where
 
-import qualified CNix
 import qualified Hercules.Agent.Cachix.Init
 import qualified Hercules.Agent.Compat as Compat
 import qualified Hercules.Agent.Config as Config
@@ -11,6 +10,7 @@ import qualified Hercules.Agent.Nix.Init
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import qualified Hercules.Agent.Token as Token
+import qualified Hercules.CNix
 import qualified Katip as K
 import qualified Network.HTTP.Client.TLS
 import Protolude
@@ -64,5 +64,5 @@ emptyNamespace = K.Namespace []
 
 initCNix :: IO ()
 initCNix = do
-  CNix.init
-  CNix.setTalkative
+  Hercules.CNix.init
+  Hercules.CNix.setTalkative

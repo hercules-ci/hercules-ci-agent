@@ -3,6 +3,8 @@
 #include "hercules-store.hh"
 #include "hercules-logger.hh"
 #include "derivations.hh"
+#include <hercules-ci-cnix/store.hxx>
+#include <hercules-ci-cnix/expr.hxx>
 
 // inline-c-cpp doesn't seem to handle namespace operator or template
 // syntax so we help it a bit for now. This definition can be inlined

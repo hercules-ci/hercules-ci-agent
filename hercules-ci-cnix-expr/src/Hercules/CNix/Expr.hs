@@ -2,12 +2,12 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module CNix
-  ( module CNix,
+module Hercules.CNix.Expr
+  ( module Hercules.CNix.Expr,
     RawValue,
     rawValueType,
-    module CNix.Internal.Store,
-    module CNix.Internal.Typed,
+    module Hercules.CNix.Store,
+    module Hercules.CNix.Expr.Typed,
     type NixStore,
     type EvalState,
     type Ref,
@@ -18,19 +18,21 @@ where
 -- TODO: No more Ptr EvalState
 -- TODO: No more NixStore when EvalState is already there
 -- TODO: Map Nix-specific C++ exceptions to a CNix exception type
-import CNix.Internal.Context
-import CNix.Internal.Raw
-import CNix.Internal.Store
-import CNix.Internal.Typed
+
 import Conduit
 import qualified Data.Map as M
 import Foreign (nullPtr)
 import qualified Foreign.C.String
+import Hercules.CNix.Expr.Context
+import Hercules.CNix.Expr.Raw
+import Hercules.CNix.Expr.Typed
+import Hercules.CNix.Store
+import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude hiding (evalState, throwIO)
 
-C.context context
+C.context (Hercules.CNix.Store.Context.context <> Hercules.CNix.Expr.Context.evalContext)
 
 C.include "<stdio.h>"
 
@@ -58,7 +60,7 @@ C.include "<nix/affinity.hh>"
 
 C.include "<nix/globals.hh>"
 
-C.include "hercules-aliases.h"
+C.include "hercules-ci-cnix/expr.hxx"
 
 C.include "<gc/gc.h>"
 

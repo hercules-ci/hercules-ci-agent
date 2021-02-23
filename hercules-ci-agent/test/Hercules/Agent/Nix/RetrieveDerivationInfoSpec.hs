@@ -2,10 +2,10 @@
 
 module Hercules.Agent.Nix.RetrieveDerivationInfoSpec where
 
-import CNix
 import qualified Data.Map as M
 import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
 import Hercules.Agent.Nix.RetrieveDerivationInfo
+import Hercules.CNix
 import Protolude
 import Test.Hspec
 

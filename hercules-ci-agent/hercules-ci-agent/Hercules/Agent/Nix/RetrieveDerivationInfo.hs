@@ -1,7 +1,5 @@
 module Hercules.Agent.Nix.RetrieveDerivationInfo where
 
-import CNix
-import CNix.Internal.Context (Derivation)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Foreign.ForeignPtr (ForeignPtr)
@@ -9,6 +7,8 @@ import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
   ( DerivationInfo (DerivationInfo),
   )
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
+import Hercules.CNix
+import Hercules.CNix.Store.Context (Derivation)
 import Protolude
 
 retrieveDerivationInfo ::
