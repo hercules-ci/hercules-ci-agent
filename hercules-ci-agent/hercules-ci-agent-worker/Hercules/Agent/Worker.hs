@@ -59,7 +59,7 @@ import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.CNix as CNix
-import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCallFunction, evalArgs, evalFile, getAttrBool, getAttrList, getAttrs, getDrvFile, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, withEvalState)
+import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCallFunction, evalArgs, evalFile, getAttrBool, getAttrList, getAttrs, getDrvFile, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
 import qualified Hercules.CNix.Expr.Raw
 import Hercules.CNix.Expr.Typed (Value)
@@ -452,7 +452,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                             <> show (e2 :: SomeException)
                       )
         logLocM DebugS "Built"
-  withEvalState store $ \evalState -> do
+  withEvalStateConduit store $ \evalState -> do
     katipAddContext (sl "storeURI" (decode s)) $
       logLocM DebugS "EvalState loaded."
     args <-

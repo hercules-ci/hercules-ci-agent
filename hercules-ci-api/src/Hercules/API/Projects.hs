@@ -12,6 +12,7 @@ import Hercules.API.Prelude
 import Hercules.API.Projects.CreateProject
   ( CreateProject,
   )
+import Hercules.API.Projects.CreateUserEffectTokenResponse (CreateUserEffectTokenResponse)
 import Hercules.API.Projects.Job
   ( Job,
     ProjectAndJobs,
@@ -59,6 +60,14 @@ data ProjectsAPI auth f = ProjectsAPI
         :> ReqBody '[JSON] PatchProject
         :> auth
         :> Patch '[JSON] Project,
+    createUserEffectToken ::
+      f
+        :- Summary "Create a token for local effect execution"
+        :> "projects"
+        :> Capture' '[Required, Strict] "projectId" (Id Project)
+        :> auth
+        :> "create-user-effect-token"
+        :> Post '[JSON] CreateUserEffectTokenResponse,
     projectJobs ::
       f
         :- Summary "List all jobs in a project"

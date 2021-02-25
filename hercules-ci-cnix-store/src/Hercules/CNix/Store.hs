@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -103,6 +104,17 @@ clearSubstituterCaches =
       sub->clearPathInfoCache();
     }
   } |]
+
+buildPaths :: Ptr (Ref NixStore) -> [ByteString] -> IO ()
+buildPaths store paths = do
+  withStringsOf paths $ \pathStrings -> do
+    [C.throwBlock| void {
+      StringSet pathSet;
+      for (auto path : *$(Strings *pathStrings)) {
+        pathSet.insert(path);
+      }
+      (*$(refStore* store))->buildPaths(pathSet);
+    }|]
 
 buildPath :: Ptr (Ref NixStore) -> ByteString -> IO ()
 buildPath store path =
@@ -327,14 +339,19 @@ withStrings =
     [C.exp| Strings *{ new Strings() }|]
     (\sp -> [C.block| void { delete $(Strings *sp); }|])
 
+withStringsOf :: [ByteString] -> (Ptr Strings -> IO a) -> IO a
+withStringsOf paths f =
+  withStrings \strings -> do
+    for_ paths (pushString strings)
+    f strings
+
 pushString :: Ptr Strings -> ByteString -> IO ()
 pushString strings s =
   [C.block| void { $(Strings *strings)->push_back($bs-cstr:s); }|]
 
 copyClosure :: Ptr (Ref NixStore) -> Ptr (Ref NixStore) -> [ByteString] -> IO ()
 copyClosure src dest paths = do
-  withStrings $ \pathStrings -> do
-    paths & traverse_ (pushString pathStrings)
+  withStringsOf paths $ \pathStrings -> do
     [C.throwBlock| void {
       StringSet pathSet;
       for (auto path : *$(Strings *pathStrings)) {

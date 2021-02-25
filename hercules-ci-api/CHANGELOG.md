@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Effects
  - State files
  - CLI authorization flow
+ - Endpoint for resolving git urls to projects
 
 ### Changed
 

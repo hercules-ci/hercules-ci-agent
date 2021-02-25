@@ -11,6 +11,11 @@ packages:
   - hercules-ci-cli
   - tests/agent-test
 extra-deps:
+  - git: https://github.com/hercules-ci/optparse-applicative.git
+    commit:
+      # PR: https://github.com/pcapriotti/optparse-applicative/pull/414
+      # gc root: refs/tags/0.16.1-completion-control-1
+      c4d558158dcf97bb39b409c24f519b2358c64b6f
   # REMINDER: sync with scripts/generate-nix
   # - git: https://github.com/hercules-ci/cachix.git
   #   commit:

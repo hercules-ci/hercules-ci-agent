@@ -63,12 +63,14 @@ library
     Hercules.API.Orphans
     Hercules.API.Projects
     Hercules.API.Projects.CreateProject
+    Hercules.API.Projects.CreateUserEffectTokenResponse
     Hercules.API.Projects.Job
     Hercules.API.Projects.PatchProject
     Hercules.API.Projects.Project
     Hercules.API.Projects.SimpleJob
     Hercules.API.Repos
     Hercules.API.Repos.Repo
+    Hercules.API.Repos.RepoKey
     Hercules.API.Result
     Hercules.API.Servant.Status
     Hercules.API.SourceHostingSite.SourceHostingSite

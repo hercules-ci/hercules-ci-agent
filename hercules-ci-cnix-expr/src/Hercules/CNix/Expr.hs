@@ -116,11 +116,25 @@ logInfo t = do
   }|]
 
 withEvalState ::
+  Ptr (Ref NixStore) ->
+  (Ptr EvalState -> IO a) ->
+  IO a
+withEvalState store =
+  bracket
+    ( liftIO
+        [C.throwBlock| EvalState* {
+          Strings searchPaths;
+          return new EvalState(searchPaths, *$(refStore* store));
+        } |]
+    )
+    (\x -> liftIO [C.throwBlock| void { delete $(EvalState* x); } |])
+
+withEvalStateConduit ::
   MonadResource m =>
   Ptr (Ref NixStore) ->
   (Ptr EvalState -> ConduitT i o m r) ->
   ConduitT i o m r
-withEvalState store =
+withEvalStateConduit store =
   bracketP
     ( liftIO
         [C.throwBlock| EvalState* {
@@ -189,6 +203,7 @@ isDerivation evalState (RawValue v) =
   (0 /=)
     <$> [C.throwBlock| int {
           if ($(Value *v) == NULL) { throw std::invalid_argument("forceValue value must be non-null"); }
+          $(EvalState *evalState)->forceValue(*$(Value *v));
           return $(EvalState *evalState)->isDerivation(*$(Value *v));
         }|]
 
