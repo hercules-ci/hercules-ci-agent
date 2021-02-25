@@ -12,6 +12,7 @@ import qualified Data.Text as T
 import Hercules.API (ClientAPI (..), ClientAuth, servantClientApi, useApi)
 import Hercules.API.Accounts (AccountsAPI)
 import Hercules.API.Projects (ProjectsAPI)
+import Hercules.API.Repos (ReposAPI)
 import Hercules.API.State (ContentDisposition, ContentLength, RawBytes, StateAPI)
 import Hercules.Error
 import qualified Network.HTTP.Client.TLS
@@ -52,6 +53,9 @@ stateClient = useApi clientState client
 projectsClient :: ProjectsAPI ClientAuth (AsClientT ClientM)
 projectsClient = useApi clientProjects client
 
+reposClient :: ReposAPI ClientAuth (AsClientT ClientM)
+reposClient = useApi clientRepos client
+
 -- Duplicated from agent... create common lib?
 determineDefaultApiBaseUrl :: IO Text
 determineDefaultApiBaseUrl = do
@@ -70,6 +74,11 @@ runHerculesClient f = do
   HerculesClientToken token <- asks getter
   runHerculesClient' $ f token
 
+runHerculesClientEither :: (NFData a, Has HerculesClientToken r, Has HerculesClientEnv r) => (Token -> Servant.Client.Streaming.ClientM a) -> RIO r (Either Servant.Client.Streaming.ClientError a)
+runHerculesClientEither f = do
+  HerculesClientToken token <- asks getter
+  runHerculesClientEither' $ f token
+
 runHerculesClientStream ::
   (Has HerculesClientToken r, Has HerculesClientEnv r) =>
   (Token -> Servant.Client.Streaming.ClientM a) ->
@@ -81,9 +90,12 @@ runHerculesClientStream f g = do
   liftIO $ Servant.Client.Streaming.withClientM (f token) clientEnv g
 
 runHerculesClient' :: (NFData a, Has HerculesClientEnv r) => Servant.Client.Streaming.ClientM a -> RIO r a
-runHerculesClient' m = do
+runHerculesClient' = runHerculesClientEither' >=> escalate
+
+runHerculesClientEither' :: (NFData a, Has HerculesClientEnv r) => Servant.Client.Streaming.ClientM a -> RIO r (Either Servant.Client.Streaming.ClientError a)
+runHerculesClientEither' m = do
   HerculesClientEnv clientEnv <- asks getter
-  escalate =<< liftIO (Servant.Client.Streaming.runClientM m clientEnv)
+  liftIO (Servant.Client.Streaming.runClientM m clientEnv)
 
 init :: IO HerculesClientEnv
 init = do

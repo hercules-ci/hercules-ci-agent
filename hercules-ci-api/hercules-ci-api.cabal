@@ -63,6 +63,7 @@ library
     Hercules.API.Orphans
     Hercules.API.Projects
     Hercules.API.Projects.CreateProject
+    Hercules.API.Projects.CreateUserEffectTokenResponse
     Hercules.API.Projects.Job
     Hercules.API.Projects.PatchProject
     Hercules.API.Projects.Project

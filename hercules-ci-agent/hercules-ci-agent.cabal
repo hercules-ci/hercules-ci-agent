@@ -49,6 +49,7 @@ library
   exposed-modules:
       Data.Fixed.Extras
       Data.Time.Extras
+      Hercules.Agent.NixFile
       Hercules.Agent.Producer
       Hercules.Agent.Sensitive
       Hercules.Agent.Socket
@@ -90,6 +91,8 @@ library
     , exceptions
     , filepath
     , hercules-ci-api-agent
+    , hercules-ci-api-core
+    , hercules-ci-cnix-store
     , katip
     , lens
     , lens-aeson

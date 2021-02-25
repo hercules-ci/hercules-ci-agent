@@ -3,16 +3,23 @@
 
 module Hercules.Effect where
 
+import Control.Monad.Catch (MonadThrow)
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
+import Foreign (ForeignPtr)
 import Hercules.Agent.Sensitive (Sensitive (Sensitive, reveal), revealContainer)
+import Hercules.CNix.Store (getDerivationArguments, getDerivationBuilder, getDerivationEnv)
+import Hercules.CNix.Store.Context (Derivation)
+import Hercules.Effect.Container (BindMount (BindMount))
+import qualified Hercules.Effect.Container as Container
+import Hercules.Error (escalateAs)
 import qualified Hercules.Formats.Secret as Formats.Secret
 import Katip (KatipContext, Severity (..), logLocM, logStr)
 import Protolude
 import System.FilePath
-import UnliftIO.Directory (createDirectoryIfMissing)
+import UnliftIO.Directory (createDirectory, createDirectoryIfMissing)
 
 parseDrvSecretsMap :: Map ByteString ByteString -> Either Text (Map Text Text)
 parseDrvSecretsMap drvEnv =
@@ -55,3 +62,79 @@ writeSecrets sourceFile secretsMap extraSecrets destinationDirectory = write . f
                     Formats.Secret.Secret
                       { data_ = Formats.Secret.data_ secret
                       }
+
+runEffect :: (MonadThrow m, KatipContext m) => ForeignPtr Derivation -> Sensitive Text -> FilePath -> Text -> FilePath -> m ExitCode
+runEffect derivation token secretsPath apiBaseURL dir = do
+  drvBuilder <- liftIO $ getDerivationBuilder derivation
+  drvArgs <- liftIO $ getDerivationArguments derivation
+  drvEnv <- liftIO $ getDerivationEnv derivation
+  drvSecretsMap <- escalateAs FatalError $ parseDrvSecretsMap drvEnv
+  let mkDir d = let newDir = dir </> d in toS newDir <$ createDirectory newDir
+  buildDir <- mkDir "build"
+  etcDir <- mkDir "etc"
+  secretsDir <- mkDir "secrets"
+  runcDir <- mkDir "runc-state"
+  let extraSecrets =
+        M.singleton
+          "hercules-ci"
+          ( do
+              tok <- token
+              pure $
+                Formats.Secret.Secret
+                  { data_ = M.singleton "token" $ A.String tok
+                  }
+          )
+  writeSecrets secretsPath drvSecretsMap extraSecrets (toS secretsDir)
+  liftIO $ do
+    -- Nix sandbox sets tmp to buildTopDir
+    -- Nix sandbox reference: https://github.com/NixOS/nix/blob/24e07c428f21f28df2a41a7a9851d5867f34753a/src/libstore/build.cc#L2545
+    --
+    -- TODO: what if we have structuredAttrs?
+    -- TODO: implement passAsFile?
+    let overridableEnv, onlyImpureOverridableEnv, fixedEnv :: Map Text Text
+        overridableEnv =
+          M.fromList
+            [ ("PATH", "/path-not-set"),
+              ("HOME", "/homeless-shelter"),
+              ("NIX_STORE", "/nix/store"), -- TODO store.storeDir
+              ("NIX_BUILD_CORES", "1"), -- not great
+              ("NIX_REMOTE", "daemon"),
+              ("IN_HERCULES_CI_EFFECT", "true"),
+              ("HERCULES_CI_API_BASE_URL", apiBaseURL),
+              ("HERCULES_CI_SECRETS_JSON", "/secrets/secrets.json")
+            ]
+        -- NB: this is lossy. Consider using ByteString-based process functions
+        drvEnv' = drvEnv & M.mapKeys (decodeUtf8With lenientDecode) & fmap (decodeUtf8With lenientDecode)
+        impureEnvVars = mempty -- TODO
+        fixedEnv =
+          M.fromList
+            [ ("NIX_LOG_FD", "2"),
+              ("TERM", "xterm-256color")
+            ]
+        onlyImpureOverridableEnv =
+          M.fromList
+            [ ("NIX_BUILD_TOP", "/build"),
+              ("TMPDIR", "/build"),
+              ("TEMPDIR", "/build"),
+              ("TMP", "/build"),
+              ("TEMP", "/build")
+            ]
+        (//) :: Ord k => Map k a -> Map k a -> Map k a
+        (//) = flip M.union
+    Container.run
+      runcDir
+      Container.Config
+        { extraBindMounts =
+            [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
+              BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
+              BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
+              BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = True},
+              BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = "/nix/var/nix/daemon-socket/socket", readOnly = True}
+            ],
+          executable = decodeUtf8With lenientDecode drvBuilder,
+          arguments = map (decodeUtf8With lenientDecode) drvArgs,
+          environment = overridableEnv // drvEnv' // onlyImpureOverridableEnv // impureEnvVars // fixedEnv,
+          workingDirectory = "/build",
+          hostname = "hercules-ci",
+          rootReadOnly = False
+        }

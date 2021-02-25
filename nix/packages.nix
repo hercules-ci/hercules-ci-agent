@@ -13,11 +13,14 @@ let
     addBuildDepends
     addBuildTool
     addSetupDepends
+    allowInconsistentDependencies
     appendPatch
     buildFromSdist
     disableLibraryProfiling
     enableDWARFDebugging
     doJailbreak
+    generateOptparseApplicativeCompletion
+    justStaticExecutables
     overrideCabal
     overrideSrc
     ;
@@ -50,6 +53,8 @@ let
 
               nix-narinfo = self.callPackage ./nix-narinfo.nix { };
 
+              optparse-applicative_hercules-ci =
+                super.callPackage ./optparse-applicative.nix { };
               protolude =
                 updateTo "0.3" super.protolude (super.callPackage ./protolude-0.3.nix { });
               servant-auth =
@@ -76,7 +81,7 @@ let
                   bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git nix ] ++ lib.optional (pkgs.stdenv.isLinux) pkgs.runc;
 
                 in
-                buildFromSdist (
+                generateOptparseApplicativeCompletion "hercules-ci-agent" (buildFromSdist (
                   overrideCabal
                     (
                       addBuildDepends
@@ -124,12 +129,38 @@ let
                         # end justStaticExecutables
                       }
                     )
-                );
+                ));
 
               hercules-ci-agent-test =
                 callPkg super "hercules-ci-agent-test" ../tests/agent-test { };
 
-              hercules-ci-cli = callPkg super "hercules-ci-cli" ../hercules-ci-cli { };
+              hercules-ci-cli = overrideCabal
+                (
+                  generateOptparseApplicativeCompletion "hci" (
+                    justStaticExecutables (
+                      haskell.lib.disableLibraryProfiling (
+                        allowInconsistentDependencies (
+                          callPkg super "hercules-ci-cli" ../hercules-ci-cli {
+                            optparse-applicative = self.optparse-applicative_hercules-ci;
+                            hercules-ci-agent = overrideCabal self.hercules-ci-agent (o: {
+                              isLibrary = true;
+                              isExecutable = false;
+                              postFixup = "";
+                            });
+                          }
+                        )
+                      )
+                    )
+                  )
+                )
+                (o: {
+                  postInstall =
+                    o.postInstall or ""
+                    + ''
+                      wrapProgram $out/bin/hci --prefix PATH : ${makeBinPath (lib.optional (pkgs.stdenv.isLinux) pkgs.runc)}
+                    '';
+                }
+                );
               hercules-ci-cnix-expr = haskell.lib.disableLibraryProfiling (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; });
               hercules-ci-cnix-store = haskell.lib.disableLibraryProfiling (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { });
 

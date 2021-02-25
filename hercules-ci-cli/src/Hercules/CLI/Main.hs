@@ -6,8 +6,10 @@ module Hercules.CLI.Main
 where
 
 import Hercules.CLI.Client (prettyPrintHttpErrors)
+import qualified Hercules.CLI.Effect as Effect
 import qualified Hercules.CLI.Login as Login
 import Hercules.CLI.Options (mkCommand)
+import qualified Hercules.CLI.Secret as Secret
 import qualified Hercules.CLI.State as State
 import qualified Options.Applicative as Optparse
 import Protolude
@@ -42,4 +44,12 @@ commands =
           "state"
           (Optparse.progDesc "Perform operations on state files")
           State.commandParser
+        <> mkCommand
+          "effect"
+          (Optparse.progDesc "Run effects")
+          Effect.commandParser
+        <> mkCommand
+          "secret"
+          (Optparse.progDesc "Manipulate locally stored secrets")
+          Secret.commandParser
     )

@@ -4,6 +4,7 @@
 
 module Hercules.CNix.Expr.Typed where
 
+import Control.Exception (throwIO)
 import Hercules.CNix.Expr.Context
 import Hercules.CNix.Expr.Raw
 import qualified Language.C.Inline.Cpp as C
@@ -118,6 +119,9 @@ match es v =
         Float -> pure $ IsFloat $ unsafeAssertType v
         Other ->
           Left $ SomeException $ userError "Unknown runtime type in Nix value"
+
+match' :: Ptr EvalState -> RawValue -> IO Match
+match' es v = match es v >>= \case Left e -> throwIO e; Right a -> pure a
 
 getBool :: Value Bool -> IO Bool
 getBool (Value (RawValue v)) =
