@@ -58,8 +58,9 @@ putCommandParser = do
               liftIO $ withBinaryFile file ReadMode \h ->
                 runRIO r $ f (sourceHandle h .| mapC RawBytes)
       withStream \stream -> do
-        _noContent <- runHerculesClient (putProjectStateData stateClient projectId name (toSourceIO (stream)))
+        _noContent <- runHerculesClient (putProjectStateData stateClient projectId name (toSourceIO stream))
         pass
+    putErrText $ "hci: State file upload successful for " <> name
 
 nameOption :: Optparse.Parser Text
 nameOption = strOption $ long "name" <> metavar "NAME" <> help "Name of the state file"
