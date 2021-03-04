@@ -1,4 +1,4 @@
-resolver: nightly-2021-01-01
+resolver: lts-17.5
 
 # paths to local packages
 packages:
