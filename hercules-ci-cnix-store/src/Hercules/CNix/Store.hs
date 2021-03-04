@@ -1,18 +1,36 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Hercules.CNix.Store
   ( module Hercules.CNix.Store,
+    module Hercules.CNix.Store.Context,
   )
 where
 
 import Control.Exception
 import Control.Monad.IO.Unlift
+import Data.ByteString.Unsafe (unsafePackMallocCString)
 import qualified Data.ByteString.Unsafe as BS
+import Data.Coerce (coerce)
 import qualified Data.Map as M
 import Foreign.ForeignPtr
 import Hercules.CNix.Store.Context
+  ( Derivation,
+    DerivationInputsIterator,
+    DerivationOutputsIterator,
+    NixStore,
+    PathSetIterator,
+    Ref,
+    SecretKey,
+    StringPairs,
+    Strings,
+    ValidPathInfo,
+    context,
+    unsafeMallocBS,
+  )
+import qualified Hercules.CNix.Store.Context as C hiding (context)
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude
@@ -41,28 +59,34 @@ C.include "hercules-ci-cnix/store.hxx"
 
 C.using "namespace nix"
 
-withStore :: MonadUnliftIO m => (Ptr (Ref NixStore) -> m a) -> m a
+newtype Store = Store (Ptr (Ref NixStore))
+
+openStore :: IO Store
+openStore =
+  coerce
+    [C.throwBlock| refStore* {
+      refStore s = openStore();
+      return new refStore(s);
+    } |]
+
+releaseStore :: Store -> IO ()
+releaseStore (Store store) = [C.exp| void { delete $(refStore* store) } |]
+
+withStore :: MonadUnliftIO m => (Store -> m a) -> m a
 withStore m = do
   UnliftIO ul <- askUnliftIO
   liftIO $ withStore' $ \a -> ul (m a)
 
 withStore' ::
-  (Ptr (Ref NixStore) -> IO r) ->
+  (Store -> IO r) ->
   IO r
 withStore' =
-  bracket
-    ( liftIO
-        [C.throwBlock| refStore* {
-            refStore s = openStore();
-            return new refStore(s);
-          } |]
-    )
-    (\x -> liftIO [C.exp| void { delete $(refStore* x) } |])
+  bracket openStore releaseStore
 
 withStoreFromURI ::
   MonadUnliftIO m =>
   Text ->
-  (Ptr (Ref NixStore) -> m r) ->
+  (Store -> m r) ->
   m r
 withStoreFromURI storeURIText f = do
   let storeURI = encodeUtf8 storeURIText
@@ -74,24 +98,24 @@ withStoreFromURI storeURIText f = do
         return new refStore(s);
       }|]
       (\x -> [C.exp| void { delete $(refStore* x) } |])
-      (unlift . f)
+      (unlift . f . Store)
 
-storeUri :: MonadIO m => Ptr (Ref NixStore) -> m ByteString
-storeUri store =
+storeUri :: MonadIO m => Store -> m ByteString
+storeUri (Store store) =
   unsafeMallocBS
     [C.block| const char* {
        std::string uri = (*$(refStore* store))->getUri();
        return strdup(uri.c_str());
      } |]
 
-ensurePath :: Ptr (Ref NixStore) -> ByteString -> IO ()
-ensurePath store path =
+ensurePath :: Store -> ByteString -> IO ()
+ensurePath (Store store) path =
   [C.throwBlock| void {
     (*$(refStore* store))->ensurePath(std::string($bs-ptr:path, $bs-len:path));
   } |]
 
-clearPathInfoCache :: Ptr (Ref NixStore) -> IO ()
-clearPathInfoCache store =
+clearPathInfoCache :: Store -> IO ()
+clearPathInfoCache (Store store) =
   [C.throwBlock| void {
     (*$(refStore* store))->clearPathInfoCache();
   } |]
@@ -105,8 +129,8 @@ clearSubstituterCaches =
     }
   } |]
 
-buildPaths :: Ptr (Ref NixStore) -> [ByteString] -> IO ()
-buildPaths store paths = do
+buildPaths :: Store -> [ByteString] -> IO ()
+buildPaths (Store store) paths = do
   withStringsOf paths $ \pathStrings -> do
     [C.throwBlock| void {
       StringSet pathSet;
@@ -116,15 +140,15 @@ buildPaths store paths = do
       (*$(refStore* store))->buildPaths(pathSet);
     }|]
 
-buildPath :: Ptr (Ref NixStore) -> ByteString -> IO ()
-buildPath store path =
+buildPath :: Store -> ByteString -> IO ()
+buildPath (Store store) path =
   [C.throwBlock| void {
     PathSet ps({std::string($bs-ptr:path, $bs-len:path)});
     (*$(refStore* store))->buildPaths(ps);
    } |]
 
-getDerivation :: Ptr (Ref NixStore) -> ByteString -> IO (ForeignPtr Derivation)
-getDerivation store path = do
+getDerivation :: Store -> ByteString -> IO (ForeignPtr Derivation)
+getDerivation (Store store) path = do
   ptr <-
     [C.throwBlock| Derivation *{
       return new Derivation(
@@ -349,8 +373,8 @@ pushString :: Ptr Strings -> ByteString -> IO ()
 pushString strings s =
   [C.block| void { $(Strings *strings)->push_back($bs-cstr:s); }|]
 
-copyClosure :: Ptr (Ref NixStore) -> Ptr (Ref NixStore) -> [ByteString] -> IO ()
-copyClosure src dest paths = do
+copyClosure :: Store -> Store -> [ByteString] -> IO ()
+copyClosure (Store src) (Store dest) paths = do
   withStringsOf paths $ \pathStrings -> do
     [C.throwBlock| void {
       StringSet pathSet;
@@ -379,14 +403,14 @@ finalizeSecretKey =
     } |]
 
 signPath ::
-  Ptr (Ref NixStore) ->
+  Store ->
   -- | Secret signing key
   Ptr SecretKey ->
   -- | Store path
   ByteString ->
   -- | False if the signature was already present, True if the signature was added
   IO Bool
-signPath store secretKey path =
+signPath (Store store) secretKey path =
   (== 1) <$> do
     [C.throwBlock| int {
     nix::ref<nix::Store> store = *$(refStore *store);
@@ -406,3 +430,165 @@ signPath store secretKey path =
       return 1;
     }
   }|]
+
+----- PathSet -----
+newtype PathSet = PathSet (ForeignPtr (C.StdSet C.StdString))
+
+finalizePathSet :: FinalizerPtr C.PathSet
+{-# NOINLINE finalizePathSet #-}
+finalizePathSet =
+  unsafePerformIO
+    [C.exp|
+  void (*)(PathSet *) {
+    [](PathSet *v){
+      delete v;
+    }
+  } |]
+
+newEmptyPathSet :: IO PathSet
+newEmptyPathSet = do
+  ptr <- [C.exp| PathSet *{ new PathSet() }|]
+  fptr <- newForeignPtr finalizePathSet ptr
+  pure $ PathSet fptr
+
+addToPathSet :: ByteString -> PathSet -> IO ()
+addToPathSet bs pathSet_ = withPathSet pathSet_ $ \pathSet ->
+  [C.throwBlock| void { 
+    $(PathSet *pathSet)->insert(std::string($bs-ptr:bs, $bs-len:bs));
+  }|]
+
+withPathSet :: PathSet -> (Ptr C.PathSet -> IO b) -> IO b
+withPathSet (PathSet pathSetFptr) = withForeignPtr pathSetFptr
+
+traversePathSet :: forall a. (ByteString -> IO a) -> PathSet -> IO [a]
+traversePathSet f pathSet_ = withPathSet pathSet_ $ \pathSet -> do
+  i <- [C.exp| PathSetIterator *{ new PathSetIterator($(PathSet *pathSet)->begin()) }|]
+  end <- [C.exp| PathSetIterator *{ new PathSetIterator ($(PathSet *pathSet)->end()) }|]
+  let cleanup =
+        [C.throwBlock| void {
+          delete $(PathSetIterator *i);
+          delete $(PathSetIterator *end);
+        }|]
+  flip finally cleanup $
+    let go :: ([a] -> [a]) -> IO [a]
+        go acc = do
+          isDone <-
+            [C.exp| int {
+            *$(PathSetIterator *i) == *$(PathSetIterator *end)
+          }|]
+          if isDone /= 0
+            then pure $ acc []
+            else do
+              somePath <- unsafePackMallocCString =<< [C.exp| const char *{ strdup((*$(PathSetIterator *i))->c_str()) } |]
+              a <- f somePath
+              [C.throwBlock| void { (*$(PathSetIterator *i))++; } |]
+              go (acc . (a :))
+     in go identity
+
+-- | Follow symlinks to the store and chop off the parts after the top-level store name
+followLinksToStorePath :: Store -> ByteString -> IO ByteString
+followLinksToStorePath (Store store) bs =
+  unsafePackMallocCString
+    =<< [C.throwBlock| const char *{
+    return strdup((*$(refStore* store))->followLinksToStorePath(std::string($bs-ptr:bs, $bs-len:bs)).c_str());
+  }|]
+
+queryPathInfo ::
+  Store ->
+  -- | Exact store path, not a subpath
+  ByteString ->
+  -- | ValidPathInfo or exception
+  IO (ForeignPtr (Ref ValidPathInfo))
+queryPathInfo (Store store) path = do
+  vpi <-
+    [C.throwBlock| refValidPathInfo*
+      {
+        return new refValidPathInfo((*$(refStore* store))->queryPathInfo($bs-cstr:path));
+      } |]
+  newForeignPtr finalizeRefValidPathInfo vpi
+
+finalizeRefValidPathInfo :: FinalizerPtr (Ref ValidPathInfo)
+{-# NOINLINE finalizeRefValidPathInfo #-}
+finalizeRefValidPathInfo =
+  unsafePerformIO
+    [C.exp|
+  void (*)(refValidPathInfo *) {
+    [](refValidPathInfo *v){ delete v; }
+  } |]
+
+-- | The narSize field of a ValidPathInfo struct. Source: store-api.hh
+validPathInfoNarSize :: ForeignPtr (Ref ValidPathInfo) -> Int64
+validPathInfoNarSize vpi =
+  fromIntegral $
+    toInteger
+      [C.pure| long
+        { (*$fptr-ptr:(refValidPathInfo* vpi))->narSize }
+      |]
+
+-- | Copy the narHash field of a ValidPathInfo struct. Source: store-api.hh
+validPathInfoNarHash :: ForeignPtr (Ref ValidPathInfo) -> IO ByteString
+validPathInfoNarHash vpi =
+  unsafePackMallocCString
+    =<< [C.exp| const char
+        *{ strdup((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string().c_str()) }
+      |]
+
+-- | Deriver field of a ValidPathInfo struct. Source: store-api.hh
+--
+-- Returns 'unknownDeriver' when missing.
+validPathInfoDeriver :: ForeignPtr (Ref ValidPathInfo) -> IO ByteString
+validPathInfoDeriver vpi =
+  unsafePackMallocCString
+    =<< [C.throwBlock| const char*
+        {
+          std::optional<Path> deriver = (*$fptr-ptr:(refValidPathInfo* vpi))->deriver;
+          return strdup((deriver == "" ? "unknown-deriver" : deriver->c_str()));
+        }
+      |]
+
+-- | String constant representing the case when the deriver of a store path does
+-- not exist or is not known. Value: @unknown-deriver@
+unknownDeriver :: Text
+unknownDeriver = "unknown-deriver"
+
+-- | References field of a ValidPathInfo struct. Source: store-api.hh
+validPathInfoReferences :: ForeignPtr (Ref ValidPathInfo) -> IO PathSet
+validPathInfoReferences vpi = do
+  ptr <-
+    [C.exp| const PathSet*
+            { new PathSet((*$fptr-ptr:(refValidPathInfo* vpi))->references) }
+        |]
+  fptr <- newForeignPtr finalizePathSet ptr
+  pure $ PathSet fptr
+
+----- computeFSClosure -----
+data ClosureParams = ClosureParams
+  { flipDirection :: Bool,
+    includeOutputs :: Bool,
+    includeDerivers :: Bool
+  }
+
+defaultClosureParams :: ClosureParams
+defaultClosureParams =
+  ClosureParams
+    { flipDirection = False,
+      includeOutputs = False,
+      includeDerivers = False
+    }
+
+computeFSClosure :: Store -> ClosureParams -> PathSet -> IO PathSet
+computeFSClosure (Store store) params startingSet_ = withPathSet startingSet_ $ \startingSet -> do
+  let countTrue :: Bool -> C.CInt
+      countTrue True = 1
+      countTrue False = 0
+      flipDir = countTrue $ flipDirection params
+      inclOut = countTrue $ includeOutputs params
+      inclDrv = countTrue $ includeDerivers params
+  ps <-
+    [C.throwBlock| PathSet* {
+             PathSet *r = new PathSet();
+             (*$(refStore* store))->computeFSClosure(*$(PathSet *startingSet), *r, $(int flipDir), $(int inclOut), $(int inclDrv));
+             return r;
+           } |]
+  fp <- newForeignPtr finalizePathSet ps
+  pure $ PathSet fp

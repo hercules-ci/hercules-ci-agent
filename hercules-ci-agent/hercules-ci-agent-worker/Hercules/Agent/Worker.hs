@@ -82,7 +82,7 @@ data HerculesState = HerculesState
   { drvsCompleted :: TVar (Map Text (UUID, BuildResult.BuildStatus)),
     drvsInProgress :: IORef (Set Text),
     herculesStore :: Ptr (Ref HerculesStore),
-    wrappedStore :: Ptr (Ref NixStore),
+    wrappedStore :: Store,
     shortcutChannel :: Chan (Maybe Event)
   }
 

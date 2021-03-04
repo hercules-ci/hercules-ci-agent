@@ -16,9 +16,9 @@ import Hercules.CLI.Nix (attrByPath, callCiNix, ciNixAttributeCompleter, withNix
 import Hercules.CLI.Options (flatCompleter, mkCommand)
 import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption)
 import Hercules.CLI.Secret (getSecretsFilePath)
-import Hercules.CNix (NixStore, Ref, getDerivationInputs)
+import Hercules.CNix (Store)
 import Hercules.CNix.Expr (Match (IsAttrs), Value (rtValue), getAttrBool, getDrvFile, match)
-import Hercules.CNix.Store (buildPaths)
+import Hercules.CNix.Store (buildPaths, getDerivationInputs)
 import qualified Hercules.CNix.Store as CNix
 import Hercules.CNix.Store.Context (Derivation)
 import Hercules.Effect (runEffect)
@@ -80,7 +80,7 @@ runParser = do
           runKatipContextT logEnv () mempty $ runEffect derivation (Sensitive token) secretsJson apiBaseURL workDir
         throwIO exitCode
 
-prepareDerivation :: MonadIO m => Ptr (Ref NixStore) -> ByteString -> m (ForeignPtr Derivation)
+prepareDerivation :: MonadIO m => Store -> ByteString -> m (ForeignPtr Derivation)
 prepareDerivation store drvPath = do
   derivation <- liftIO $ CNix.getDerivation store drvPath
   inputs <- liftIO $ getDerivationInputs derivation

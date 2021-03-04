@@ -13,7 +13,6 @@ import qualified Data.ByteString.Char8 as C8
 import Foreign (FinalizerPtr, ForeignPtr, alloca, newForeignPtr, nullPtr, peek)
 import Foreign.C (peekCString)
 import Hercules.CNix.Store
-import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude
@@ -91,11 +90,10 @@ nullableForeignPtr :: FinalizerPtr a -> Ptr a -> IO (Maybe (ForeignPtr a))
 nullableForeignPtr _ rawPtr | rawPtr == nullPtr = pure Nothing
 nullableForeignPtr finalize rawPtr = Just <$> newForeignPtr finalize rawPtr
 
-getDerivation :: Ptr (Ref NixStore) -> ByteString -> IO (Maybe (ForeignPtr Derivation))
-getDerivation store derivationPath =
+getDerivation :: Store -> ByteString -> IO (Maybe (ForeignPtr Derivation))
+getDerivation (Store store) derivationPath =
   nullableForeignPtr finalizeDerivation
     =<< [C.throwBlock| Derivation *{
-      Store &store = **$(refStore* store);
       std::string derivationPath($bs-ptr:derivationPath, $bs-len:derivationPath);
       std::list<nix::ref<nix::Store>> stores = getDefaultSubstituters();
       stores.push_front(*$(refStore* store));
@@ -128,8 +126,8 @@ getDerivation store derivationPath =
     }|]
 
 -- | @buildDerivation derivationPath derivationText@
-buildDerivation :: Ptr (Ref NixStore) -> ByteString -> ForeignPtr Derivation -> Maybe [ByteString] -> IO BuildResult
-buildDerivation store derivationPath derivation extraInputs =
+buildDerivation :: Store -> ByteString -> ForeignPtr Derivation -> Maybe [ByteString] -> IO BuildResult
+buildDerivation (Store store) derivationPath derivation extraInputs =
   let extraInputsMerged = C8.intercalate "\n" (fromMaybe [] extraInputs)
       materializeDerivation = if isNothing extraInputs then 1 else 0
    in alloca $ \successPtr ->

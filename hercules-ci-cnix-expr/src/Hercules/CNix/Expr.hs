@@ -8,10 +8,7 @@ module Hercules.CNix.Expr
     rawValueType,
     module Hercules.CNix.Store,
     module Hercules.CNix.Expr.Typed,
-    type NixStore,
     type EvalState,
-    type Ref,
-    type SecretKey,
   )
 where
 
@@ -116,10 +113,10 @@ logInfo t = do
   }|]
 
 withEvalState ::
-  Ptr (Ref NixStore) ->
+  Store ->
   (Ptr EvalState -> IO a) ->
   IO a
-withEvalState store =
+withEvalState (Store store) =
   bracket
     ( liftIO
         [C.throwBlock| EvalState* {
@@ -131,10 +128,10 @@ withEvalState store =
 
 withEvalStateConduit ::
   MonadResource m =>
-  Ptr (Ref NixStore) ->
+  Store ->
   (Ptr EvalState -> ConduitT i o m r) ->
   ConduitT i o m r
-withEvalStateConduit store =
+withEvalStateConduit (Store store) =
   bracketP
     ( liftIO
         [C.throwBlock| EvalState* {

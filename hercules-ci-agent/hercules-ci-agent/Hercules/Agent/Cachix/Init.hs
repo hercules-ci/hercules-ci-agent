@@ -5,11 +5,11 @@ module Hercules.Agent.Cachix.Init where
 import Cachix.Client.Env (cachixVersion)
 import qualified Cachix.Client.Push as Cachix.Push
 import qualified Cachix.Client.Secrets as Cachix.Secrets
-import qualified Cachix.Client.Store as Cachix.Store
 import Cachix.Client.URI (defaultCachixBaseUrl)
 import qualified Data.Map as M
 import Hercules.Agent.Cachix.Env as Env
 import qualified Hercules.Agent.Config as Config
+import Hercules.CNix.Store (openStore)
 import Hercules.Error
 import qualified Hercules.Formats.CachixCache as CachixCache
 import qualified Katip as K
@@ -35,7 +35,7 @@ newEnv _config cks = do
   K.katipAddContext (K.sl "caches" (M.keys cks)) $
     K.logLocM K.DebugS ("Cachix init " <> K.logStr (show (M.keys cks) :: Text))
   pcs <- liftIO $ toPushCaches cks
-  store <- liftIO Cachix.Store.openStore
+  store <- liftIO openStore
   httpManager <- newTlsManagerWith customManagerSettings
   pure
     Env.Env
