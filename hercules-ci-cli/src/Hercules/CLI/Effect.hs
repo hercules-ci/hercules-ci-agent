@@ -3,15 +3,18 @@
 
 module Hercules.CLI.Effect where
 
+import Data.Has (Has)
 import qualified Data.Text as T
 import Foreign (ForeignPtr)
+import qualified Hercules.API.Projects as Projects
+import qualified Hercules.API.Projects.CreateUserEffectTokenResponse as CreateUserEffectTokenResponse
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
-import Hercules.CLI.Client (determineDefaultApiBaseUrl)
+import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDefaultApiBaseUrl, projectsClient, runHerculesClient)
 import Hercules.CLI.Common (runAuthenticated)
 import Hercules.CLI.Git (getAllBranches, getHypotheticalRefs)
 import Hercules.CLI.Nix (attrByPath, callCiNix, ciNixAttributeCompleter, withNix)
 import Hercules.CLI.Options (flatCompleter, mkCommand)
-import Hercules.CLI.Project (getProjectEffectData, projectOption)
+import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption)
 import Hercules.CLI.Secret (getSecretsFilePath)
 import Hercules.CNix (NixStore, Ref, getDerivationInputs)
 import Hercules.CNix.Expr (Match (IsAttrs), Value (rtValue), getAttrBool, getDrvFile, match)
@@ -24,6 +27,7 @@ import Katip (initLogEnv, runKatipContextT)
 import Options.Applicative (completer, help, long, metavar, strArgument, strOption)
 import qualified Options.Applicative as Optparse
 import Protolude hiding (evalState, wait, withAsync)
+import RIO (RIO)
 import UnliftIO.Async (wait, withAsync)
 import UnliftIO.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
 import UnliftIO.Temporary (withTempDirectory)
@@ -40,8 +44,9 @@ runParser = do
   attr <- ciAttributeArgument
   projectOptionMaybe <- optional projectOption
   refMaybe <- asRefOptions
+  requireToken <- Optparse.flag True False (long "no-token" <> help "Don't get an API token. Disallows access to state files, but can run in untrusted environment or unconfigured repo.")
   pure $ runAuthenticated do
-    withAsync (getProjectEffectData projectOptionMaybe) \projectPathAsync -> do
+    withAsync (getProjectEffectData projectOptionMaybe requireToken) \projectPathAsync -> do
       withNix \store evalState -> do
         (nixFile, rootValue) <- liftIO $ callCiNix evalState refMaybe
         let attrPath = T.split (== '.') attr
@@ -98,3 +103,18 @@ asRefOption = strOption $ long "as-ref" <> metavar "REF" <> help "Pretend we're 
 
 asRefOptions :: Optparse.Parser (Maybe Text)
 asRefOptions = optional (asRefOption <|> (("refs/heads/" <>) <$> asBranchOption))
+
+getProjectEffectData :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Maybe ProjectPath -> Bool -> RIO r (ProjectPath, Text)
+getProjectEffectData maybeProjectPathParam requireToken = do
+  (projectIdMaybe, path) <- getProjectIdAndPath maybeProjectPathParam
+  if requireToken
+    then do
+      projectId <- case projectIdMaybe of
+        Just x -> pure x
+        Nothing -> do
+          putErrText $ "hci: Can not access " <> show path <> ". Make sure you have installed Hercules CI on the organization and repository and that you have access to it."
+          liftIO exitFailure
+      response <- runHerculesClient (Projects.createUserEffectToken projectsClient projectId)
+      let token = CreateUserEffectTokenResponse.token response
+      pure (path, token)
+    else pure (path, "")

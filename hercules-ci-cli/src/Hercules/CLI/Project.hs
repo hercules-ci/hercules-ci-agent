@@ -6,7 +6,6 @@ import Hercules.API (Id)
 import Hercules.API.Name (Name (Name))
 import Hercules.API.Projects (findProjects)
 import qualified Hercules.API.Projects as Projects
-import qualified Hercules.API.Projects.CreateUserEffectTokenResponse as CreateUserEffectToken
 import Hercules.API.Projects.Project (Project)
 import qualified Hercules.API.Projects.Project as Project
 import qualified Hercules.API.Repos as Repos
@@ -63,21 +62,13 @@ getProjectPath maybeProjectPathParam =
     Nothing -> snd <$> findProjectByCurrentRepo
     Just projectKey -> pure projectKey
 
-getProjectEffectData :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Maybe ProjectPath -> RIO r (ProjectPath, Text)
-getProjectEffectData maybeProjectPathParam = do
-  (projectIdMaybe, path) <- case maybeProjectPathParam of
+getProjectIdAndPath :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Maybe ProjectPath -> RIO r (Maybe (Id Project), ProjectPath)
+getProjectIdAndPath maybeProjectPathParam = do
+  case maybeProjectPathParam of
     Nothing -> findProjectByCurrentRepo
     Just projectKey -> do
       project <- findProjectByKey projectKey
       pure (Project.id <$> project, projectKey)
-  projectId <- case projectIdMaybe of
-    Just x -> pure x
-    Nothing -> do
-      putErrText $ "hci: Could not retrieve project. It may not exist, or you may not have access to it. Project: " <> show path
-      liftIO exitFailure
-  response <- runHerculesClient (Projects.createUserEffectToken projectsClient projectId)
-  let token = CreateUserEffectToken.token response
-  pure (path, token)
 
 findProjectByKey :: (Has HerculesClientToken r, Has HerculesClientEnv r) => ProjectPath -> RIO r (Maybe Project.Project)
 findProjectByKey path =
