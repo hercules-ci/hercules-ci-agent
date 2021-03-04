@@ -42,12 +42,7 @@ let
             {
               # 2020-11-21: cachix + chachix-api needs a patch for ghc 8.10 compat
               # https://github.com/cachix/cachix/pull/331
-              cachix =
-                updateTo "0.6.0" super.cachix (
-                  haskell.lib.disableLibraryProfiling (
-                    self.callPackage ./cachix.nix { }
-                  )
-                );
+              cachix = self.callPackage ./cachix.nix { };
               cachix-api =
                 updateTo "0.6.0" super.cachix-api (self.callPackage ./cachix-api.nix { });
 
