@@ -156,8 +156,8 @@ let
                     '';
                 }
                 );
-              hercules-ci-cnix-expr = haskell.lib.disableLibraryProfiling (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; });
-              hercules-ci-cnix-store = haskell.lib.disableLibraryProfiling (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { });
+              hercules-ci-cnix-expr = callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; };
+              hercules-ci-cnix-store = callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { };
 
               websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });
 
