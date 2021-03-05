@@ -5,12 +5,11 @@
 module Hercules.CLI.Credentials where
 
 import Data.Aeson (FromJSON, ToJSON, eitherDecode)
-import Data.Aeson.Encode.Pretty (Indent (Spaces), confIndent, confTrailingNewline, defConfig, encodePretty')
-import qualified Data.Aeson.Encode.Pretty
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import Hercules.CLI.Client (determineDefaultApiBaseUrl)
+import Hercules.CLI.JSON (writeJsonFile)
 import Hercules.Error
 import qualified Network.URI as URI
 import Protolude
@@ -76,16 +75,7 @@ writeCredentials :: Credentials -> IO ()
 writeCredentials credentials = do
   filePath_ <- getCredentialsFilePath
   createDirectoryIfMissing True (takeDirectory filePath_)
-  BS.writeFile filePath_ $ BL.toStrict $ encodePretty' prettyConf credentials
-
-prettyConf :: Data.Aeson.Encode.Pretty.Config
-prettyConf =
-  defConfig
-    { -- Indentation convention for Nix expressions is also 2
-      confIndent = Spaces 2,
-      -- UNIX convention
-      confTrailingNewline = True
-    }
+  writeJsonFile filePath_ credentials
 
 urlDomain :: Text -> Either Text Text
 urlDomain urlText = do

@@ -23,6 +23,7 @@ library
       Hercules.CLI.Credentials
       Hercules.CLI.Effect
       Hercules.CLI.Git
+      Hercules.CLI.JSON
       Hercules.CLI.Login
       Hercules.CLI.Main
       Hercules.CLI.Nix
@@ -37,6 +38,7 @@ library
   build-depends:
       aeson
     , aeson-pretty
+    , atomic-write
     , attoparsec
     , base >=4.7 && <5
     , bytestring
@@ -74,6 +76,7 @@ library
     , transformers-base
     , unix
     , unliftio
+    , unordered-containers
   default-language: Haskell2010
 
 executable hci
@@ -94,6 +97,7 @@ test-suite hercules-ci-cli-test
   other-modules:
       Spec
       Hercules.CLI.CredentialsSpec
+      Hercules.CLI.JSONSpec
   hs-source-dirs:
       test
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
@@ -101,8 +105,11 @@ test-suite hercules-ci-cli-test
   build-depends:
       aeson
     , base
+    , bytestring
     , containers
     , hercules-ci-cli
     , hspec
+    , protolude
     , QuickCheck
+    , unordered-containers
   default-language: Haskell2010
