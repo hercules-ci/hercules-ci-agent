@@ -5,9 +5,6 @@
 module Hercules.CNix
   ( module Hercules.CNix,
     module Hercules.CNix.Store,
-    type NixStore,
-    type Ref,
-    type SecretKey,
   )
 where
 
@@ -16,7 +13,6 @@ where
 -- TODO: Map Nix-specific C++ exceptions to a CNix exception type
 
 import Hercules.CNix.Store
-import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude hiding (evalState, throwIO)

@@ -8,7 +8,7 @@ import qualified Data.Text as T
 import Hercules.Agent.NixFile (findNixFile)
 import Hercules.CLI.Git (getGitRoot, getRef, getRev)
 import Hercules.CLI.Options (scanOption)
-import Hercules.CNix (NixStore, Ref)
+import Hercules.CNix (NixStore, Ref, Store)
 import Hercules.CNix.Expr as Expr (EvalState, Match (IsAttrs), RawValue, autoCallFunction, evalArgs, evalFile, getAttr, getAttrs, init, isDerivation, match', withEvalState, withStore)
 import Hercules.Error (escalateAs)
 import Options.Applicative as Optparse
@@ -30,11 +30,11 @@ callCiNix evalState passedRef = do
 refBranchToRef :: Maybe Text -> Maybe Text -> Maybe Text
 refBranchToRef ref branch = ref <|> (("refs/heads/" <>) <$> branch)
 
-withNix :: (MonadUnliftIO m) => (Ptr (Ref NixStore) -> Ptr EvalState -> m b) -> m b
-withNix m = do
+withNix :: (MonadUnliftIO m) => (Store -> Ptr EvalState -> m b) -> m b
+withNix f = do
   liftIO Expr.init
   UnliftIO unliftIO <- askUnliftIO
-  liftIO $ withStore \store -> withEvalState store (unliftIO . m store)
+  liftIO $ withStore \store -> withEvalState store (unliftIO . f store)
 
 ciNixAttributeCompleter :: Optparse.Completer
 ciNixAttributeCompleter = mkTextCompleter \partial -> do

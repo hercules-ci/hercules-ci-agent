@@ -42,12 +42,7 @@ let
             {
               # 2020-11-21: cachix + chachix-api needs a patch for ghc 8.10 compat
               # https://github.com/cachix/cachix/pull/331
-              cachix =
-                updateTo "0.6.0" super.cachix (
-                  haskell.lib.disableLibraryProfiling (
-                    self.callPackage ./cachix.nix { }
-                  )
-                );
+              cachix = self.callPackage ./cachix.nix { };
               cachix-api =
                 updateTo "0.6.0" super.cachix-api (self.callPackage ./cachix-api.nix { });
 
@@ -161,8 +156,8 @@ let
                     '';
                 }
                 );
-              hercules-ci-cnix-expr = haskell.lib.disableLibraryProfiling (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; });
-              hercules-ci-cnix-store = haskell.lib.disableLibraryProfiling (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { });
+              hercules-ci-cnix-expr = callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; };
+              hercules-ci-cnix-store = callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { };
 
               websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });
 

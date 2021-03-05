@@ -8,12 +8,11 @@ import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
   )
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
 import Hercules.CNix
-import Hercules.CNix.Store.Context (Derivation)
 import Protolude
 
 retrieveDerivationInfo ::
   MonadIO m =>
-  Ptr (Ref NixStore) ->
+  Store ->
   DerivationInfo.DerivationPathText ->
   m DerivationInfo
 retrieveDerivationInfo store drvPath = liftIO $ do

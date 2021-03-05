@@ -4,7 +4,7 @@
 
 set -xe
 
-cabal2nix cabal://cachix-0.6.0 > nix/cachix.nix
+# cabal2nix cabal://cachix-0.6.0 > nix/cachix.nix
 cabal2nix cabal://cachix-api-0.6.0 > nix/cachix-api.nix
 cabal2nix cabal://nix-narinfo-0.1.0.1 > nix/nix-narinfo.nix
 cabal2nix cabal://servant-websockets-2.0.0 > nix/servant-websockets.nix

@@ -2,7 +2,6 @@
 
 module Hercules.Agent.Cache where
 
-import qualified Cachix.Client.Store as Store
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -14,11 +13,11 @@ import qualified Hercules.Agent.Env as Env
 import qualified Hercules.Agent.Nix as Nix
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 import qualified Hercules.CNix as CNix
+import qualified Hercules.CNix.Store as Store
 import qualified Hercules.Formats.NixCache as NixCache
 import Katip
 import Protolude
 import System.IO (hClose)
-import qualified Unsafe.Coerce
 
 withCaches :: App a -> App a
 withCaches m = do
@@ -81,12 +80,9 @@ newPathSetWith paths = do
     Store.addToPathSet path pathSet
   pure pathSet
 
-castStore :: Ptr (CNix.Ref CNix.NixStore) -> Store.Store
-castStore = Unsafe.Coerce.unsafeCoerce
-
-signClosure :: Ptr (CNix.Ref CNix.NixStore) -> ForeignPtr CNix.SecretKey -> Store.PathSet -> IO (Sum Int, Sum Int)
+signClosure :: CNix.Store -> ForeignPtr CNix.SecretKey -> Store.PathSet -> IO (Sum Int, Sum Int)
 signClosure store key' pathSet = withForeignPtr key' \key -> do
-  closure <- Store.computeFSClosure (castStore store) Store.defaultClosureParams pathSet
+  closure <- Store.computeFSClosure store Store.defaultClosureParams pathSet
   closure
     & Store.traversePathSet
       ( \path -> do

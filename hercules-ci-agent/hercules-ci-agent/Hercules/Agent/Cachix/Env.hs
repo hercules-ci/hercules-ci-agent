@@ -1,7 +1,7 @@
 module Hercules.Agent.Cachix.Env where
 
 import qualified Cachix.Client.Push as Cachix
-import Cachix.Client.Store (Store)
+import Hercules.CNix.Store (Store)
 import Hercules.Formats.CachixCache (CachixCache)
 import Protolude
 import Servant.Client (ClientEnv)

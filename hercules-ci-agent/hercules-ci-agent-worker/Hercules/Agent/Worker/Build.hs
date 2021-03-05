@@ -3,7 +3,6 @@
 
 module Hercules.Agent.Worker.Build where
 
-import Cachix.Client.Store (Store, queryPathInfo, validPathInfoNarHash, validPathInfoNarSize)
 import Conduit
 import Data.Conduit.Katip.Orphans ()
 import Foreign (ForeignPtr)
@@ -20,12 +19,13 @@ import Hercules.CNix
     getDerivationOutputs,
   )
 import qualified Hercules.CNix as CNix
+import Hercules.CNix.Store (Store, queryPathInfo, validPathInfoNarHash, validPathInfoNarSize)
 import Hercules.CNix.Store.Context (Derivation)
 import Katip
 import Protolude hiding (yield)
 import Unsafe.Coerce
 
-runBuild :: (MonadIO m, KatipContext m) => Ptr (Ref NixStore) -> Command.Build.Build -> ConduitT i Event m ()
+runBuild :: (MonadIO m, KatipContext m) => Store -> Command.Build.Build -> ConduitT i Event m ()
 runBuild store build = do
   let extraPaths = Command.Build.inputDerivationOutputPaths build
       drvPath = encodeUtf8 $ Command.Build.drvPath build
@@ -50,14 +50,14 @@ runBuild store build = do
   yield $ Event.BuildResult buildResult
 
 -- TODO: case distinction on BuildStatus enumeration
-enrichResult :: Ptr (Ref NixStore) -> ForeignPtr Derivation -> Build.BuildResult -> IO Event.BuildResult.BuildResult
+enrichResult :: Store -> ForeignPtr Derivation -> Build.BuildResult -> IO Event.BuildResult.BuildResult
 enrichResult _ _ result@Build.BuildResult {isSuccess = False} =
   pure $
     Event.BuildResult.BuildFailure {errorMessage = Build.errorMessage result}
 enrichResult store derivation _ = do
   drvOuts <- getDerivationOutputs derivation
   outputInfos <- for drvOuts $ \drvOut -> do
-    vpi <- queryPathInfo (coerceStore store) (derivationOutputPath drvOut)
+    vpi <- queryPathInfo store (derivationOutputPath drvOut)
     hash_ <- validPathInfoNarHash vpi
     let size = validPathInfoNarSize vpi
     pure
@@ -68,7 +68,3 @@ enrichResult store derivation _ = do
           size = size
         }
   pure $ Event.BuildResult.BuildSuccess outputInfos
-
--- TODO factor out cnix library and avoid unsafeCoerce https://github.com/hercules-ci/hercules-ci-agent/issues/223
-coerceStore :: Ptr (Ref NixStore) -> Store
-coerceStore = unsafeCoerce

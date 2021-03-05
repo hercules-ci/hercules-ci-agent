@@ -1,4 +1,4 @@
-resolver: nightly-2021-01-01
+resolver: lts-17.5
 
 # paths to local packages
 packages:
@@ -17,17 +17,12 @@ extra-deps:
       # gc root: refs/tags/0.16.1-completion-control-1
       c4d558158dcf97bb39b409c24f519b2358c64b6f
   # REMINDER: sync with scripts/generate-nix
-  # - git: https://github.com/hercules-ci/cachix.git
-  #   commit:
-  #     # ghc >=8.10:
-  #     9cfe586a9ed173f87d741063bced024335e394ba
-  #     # ghc < 8.10:
-  #     # 33a040faa8c5c0d7d27b8147fd95245b3808bd98
-  #   subdirs:
-  #     - cachix
-  #     - cachix-api
-  - cachix-0.6.0
-  - cachix-api-0.6.0
+  - git: https://github.com/hercules-ci/cachix.git
+    commit:
+      84a0a55359a58030ca604117faa8883ec8632009
+    subdirs:
+      - cachix
+      - cachix-api
   - inline-c-0.9.0.0
   - inline-c-cpp-0.4.0.2
   - ListLike-4.7.4@sha256:613b2967df738010e8f6f6b7c47d615f6fe42081f68eba7f946d5de7552aa8a4,3778

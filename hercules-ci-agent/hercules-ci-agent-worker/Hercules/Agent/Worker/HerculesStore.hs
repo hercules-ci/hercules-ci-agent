@@ -19,7 +19,9 @@ import Hercules.Agent.Worker.HerculesStore.Context
   ( HerculesStore,
     context,
   )
-import Hercules.CNix.Store.Context (NixStore, Ref)
+import Hercules.CNix (Store)
+import Hercules.CNix.Expr (Store (Store))
+import Hercules.CNix.Store.Context (Ref)
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude
@@ -48,10 +50,10 @@ C.include "hercules-aliases.h"
 C.using "namespace nix"
 
 withHerculesStore ::
-  Ptr (Ref NixStore) ->
+  Store ->
   (Ptr (Ref HerculesStore) -> IO a) ->
   IO a
-withHerculesStore wrappedStore =
+withHerculesStore (Store wrappedStore) =
   bracket
     ( liftIO
         [C.block| refHerculesStore* {
@@ -62,7 +64,7 @@ withHerculesStore wrappedStore =
     )
     (\x -> liftIO [C.exp| void { delete $(refHerculesStore* x) } |])
 
-nixStore :: Ptr (Ref HerculesStore) -> Ptr (Ref NixStore)
+nixStore :: Ptr (Ref HerculesStore) -> Store
 nixStore = coerce
 
 printDiagnostics :: Ptr (Ref HerculesStore) -> IO ()

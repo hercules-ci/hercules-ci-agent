@@ -14,8 +14,10 @@
 , dhall
 , directory
 , ed25519
+, fetchgit
 , filepath
 , fsnotify
+, hercules-ci-cnix-store
 , here
 , hspec
 , hspec-discover
@@ -25,6 +27,7 @@
 , http-types
 , inline-c
 , inline-c-cpp
+, lib
 , lzma-conduit
 , megaparsec
 , memory
@@ -43,7 +46,6 @@
 , servant-client
 , servant-client-core
 , servant-conduit
-, stdenv
 , stm
 , temporary
 , text
@@ -55,7 +57,13 @@
 mkDerivation {
   pname = "cachix";
   version = "0.6.0";
-  sha256 = "d49ad3f405b1ddcceda0f11319f78bcebf5c9a677fd84d087b9b5e7bad98c3ab";
+  src = fetchgit {
+    url = "https://github.com/hercules-ci/cachix";
+    sha256 = "07xnq20rrnr0c7kyq8ngg3dzd4s11i2gzmvzm7nmg9sqwjgr40j4";
+    rev = "84a0a55359a58030ca604117faa8883ec8632009";
+    fetchSubmodules = true;
+  };
+  postUnpack = "sourceRoot+=/cachix; echo source root reset to $sourceRoot";
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [
@@ -75,6 +83,7 @@ mkDerivation {
     ed25519
     filepath
     fsnotify
+    hercules-ci-cnix-store
     here
     http-client
     http-client-tls
@@ -122,5 +131,5 @@ mkDerivation {
   ];
   homepage = "https://github.com/cachix/cachix#readme";
   description = "Command line client for Nix binary cache hosting https://cachix.org";
-  license = stdenv.lib.licenses.asl20;
+  license = lib.licenses.asl20;
 }
