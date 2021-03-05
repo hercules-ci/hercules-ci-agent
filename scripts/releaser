@@ -25,6 +25,9 @@ import qualified Distribution.Verbosity as Verbosity
 
 gitLog from to paths = do
   lines <$> readProcess "git" (["log", "--format=oneline", (from <>".."<> to), "--"] <> paths) mempty
+    `catch` \e -> do
+      hPutStrLn stderr $ "ignoring git log error: " <> show (e :: SomeException)
+      pure "first release?"
 
 main :: IO ()
 main = do
