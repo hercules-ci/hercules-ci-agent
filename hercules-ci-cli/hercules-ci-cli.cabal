@@ -51,6 +51,7 @@ library
     , hercules-ci-api-core
     , hercules-ci-cnix-expr
     , hercules-ci-cnix-store
+    , hercules-ci-optparse-applicative
     , hostname
     , http-client
     , http-client-tls
@@ -59,7 +60,6 @@ library
     , lifted-base
     , monad-control
     , network-uri
-    , optparse-applicative
     , process
     , protolude
     , rio

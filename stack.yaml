@@ -14,8 +14,8 @@ extra-deps:
   - git: https://github.com/hercules-ci/optparse-applicative.git
     commit:
       # PR: https://github.com/pcapriotti/optparse-applicative/pull/414
-      # gc root: refs/tags/0.16.1-completion-control-1
-      c4d558158dcf97bb39b409c24f519b2358c64b6f
+      # gc root: refs/tags/0.16.1-fork-1
+      f9d1242f9889d2e09ff852db9dc2d231d9a3e8d8
   # REMINDER: sync with scripts/generate-nix
   - git: https://github.com/hercules-ci/cachix.git
     commit:

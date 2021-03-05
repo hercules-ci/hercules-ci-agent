@@ -9,6 +9,7 @@ cabal2nix cabal://cachix-api-0.6.0 > nix/cachix-api.nix
 cabal2nix cabal://nix-narinfo-0.1.0.1 > nix/nix-narinfo.nix
 cabal2nix cabal://servant-websockets-2.0.0 > nix/servant-websockets.nix
 cabal2nix cabal://websockets-0.12.6.1 > nix/websockets.nix
+cabal2nix https://github.com/hercules-ci/optparse-applicative > nix/hercules-ci-optparse-applicative.nix
 
 pre-commit run --files \
   nix/cachix.nix \
@@ -16,4 +17,5 @@ pre-commit run --files \
   nix/nix-narinfo.nix \
   nix/servant-websockets.nix \
   nix/websockets.nix \
+  nix/hercules-ci-optparse-applicative.nix \
   ;
