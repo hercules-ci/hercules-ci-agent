@@ -20,6 +20,7 @@ import Distribution.Simple.Utils (tryFindPackageDesc)
 import Distribution.Verbosity (silent)
 import Control.Monad
 import Data.Char(isSpace)
+import qualified Distribution.Verbosity as Verbosity
 
 
 gitLog from to paths = do
@@ -153,7 +154,7 @@ cabalWriteVersion :: FilePath -> String -> IO ()
 cabalWriteVersion dir versionStr = do
   if validCabalVersion versionStr
   then do
-    cabalFile <- tryFindPackageDesc dir
+    cabalFile <- tryFindPackageDesc Verbosity.normal dir
     cabalinfo <- cabalRead dir
     cabal <- T.readFile cabalFile
     case cabal =~ ("version:[ \t]*" ++ version cabalinfo) of
