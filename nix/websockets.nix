@@ -11,11 +11,11 @@
 , criterion
 , entropy
 , HUnit
+, lib
 , network
 , QuickCheck
 , random
 , SHA
-, stdenv
 , streaming-commons
 , test-framework
 , test-framework-hunit
@@ -87,5 +87,5 @@ mkDerivation {
   doCheck = false;
   homepage = "http://jaspervdj.be/websockets";
   description = "A sensible and clean way to write WebSocket-capable servers in Haskell";
-  license = stdenv.lib.licenses.bsd3;
+  license = lib.licenses.bsd3;
 }

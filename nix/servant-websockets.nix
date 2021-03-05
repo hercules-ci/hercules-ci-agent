@@ -5,10 +5,10 @@
 , bytestring
 , conduit
 , exceptions
+, lib
 , monad-control
 , resourcet
 , servant-server
-, stdenv
 , text
 , wai
 , wai-websockets
@@ -49,5 +49,5 @@ mkDerivation {
   ];
   homepage = "https://github.com/moesenle/servant-websockets#readme";
   description = "Small library providing WebSocket endpoints for servant";
-  license = stdenv.lib.licenses.bsd3;
+  license = lib.licenses.bsd3;
 }

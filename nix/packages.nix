@@ -48,8 +48,8 @@ let
 
               nix-narinfo = self.callPackage ./nix-narinfo.nix { };
 
-              optparse-applicative_hercules-ci =
-                super.callPackage ./optparse-applicative.nix { };
+              hercules-ci-optparse-applicative =
+                super.callPackage ./hercules-ci-optparse-applicative.nix { };
               protolude =
                 updateTo "0.3" super.protolude (super.callPackage ./protolude-0.3.nix { });
               servant-auth =
@@ -136,7 +136,6 @@ let
                       haskell.lib.disableLibraryProfiling (
                         allowInconsistentDependencies (
                           callPkg super "hercules-ci-cli" ../hercules-ci-cli {
-                            optparse-applicative = self.optparse-applicative_hercules-ci;
                             hercules-ci-agent = overrideCabal self.hercules-ci-agent (o: {
                               isLibrary = true;
                               isExecutable = false;
