@@ -104,7 +104,7 @@ test-suite hercules-api-agent-unit-tests
   ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
-    , base >=4.7 && <5
+    , base
     , bytestring
     , containers
     , cookie

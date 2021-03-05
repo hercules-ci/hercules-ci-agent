@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           hercules-ci-cnix-store
-version:        0.1.0
+version:        0.1.0.0
 synopsis:       Haskell bindings for Nix's libstore
 category:       Nix
 homepage:       https://docs.hercules-ci.com
@@ -11,6 +11,8 @@ maintainer:     info@hercules-ci.com
 copyright:      2018-2020 Hercules CI
 license:        Apache-2.0
 build-type:     Simple
+extra-source-files:
+    CHANGELOG.md
 
 source-repository head
   type: git
@@ -51,7 +53,7 @@ library
 
   hs-source-dirs: src
   build-depends:
-      base
+      base >= 4.7 && <5
     , inline-c
     , inline-c-cpp
     , bytestring

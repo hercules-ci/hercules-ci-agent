@@ -176,7 +176,7 @@ executable hercules-ci-agent
       aeson
     , async
     , attoparsec
-    , base >=4.7 && <5
+    , base
     , base64-bytestring
     , binary
     , binary-conduit
@@ -271,7 +271,7 @@ executable hercules-ci-agent-worker
   build-depends:
       aeson
     , async
-    , base >=4.7 && <5
+    , base
     , binary
     , binary-conduit
     , bytestring
@@ -341,7 +341,7 @@ test-suite hercules-test
       aeson
     , async
     , attoparsec
-    , base >=4.7 && <5
+    , base
     , binary
     , binary-conduit
     , bytestring
