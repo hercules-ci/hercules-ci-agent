@@ -4,8 +4,8 @@
 , containers
 , filepath
 , hspec
+, lib
 , QuickCheck
-, stdenv
 , text
 }:
 mkDerivation {
@@ -26,5 +26,5 @@ mkDerivation {
   ];
   homepage = "https://github.com/sorki/nix-narinfo";
   description = "Parse and render .narinfo files";
-  license = stdenv.lib.licenses.bsd3;
+  license = lib.licenses.bsd3;
 }

@@ -14,6 +14,7 @@
 , http-media
 , jose
 , lens
+, lib
 , memory
 , nix-narinfo
 , protolude
@@ -24,7 +25,6 @@
 , servant-client
 , servant-swagger
 , servant-swagger-ui-core
-, stdenv
 , string-conv
 , swagger2
 , text
@@ -90,5 +90,5 @@ mkDerivation {
   testToolDepends = [ hspec-discover ];
   homepage = "https://github.com/cachix/cachix#readme";
   description = "Servant HTTP API specification for https://cachix.org";
-  license = stdenv.lib.licenses.asl20;
+  license = lib.licenses.asl20;
 }
