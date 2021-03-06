@@ -10,7 +10,7 @@ copyright:      2018-2020 Hercules CI
 license:        Apache-2.0
 build-type:     Simple
 extra-source-files:
-    ChangeLog.md
+    CHANGELOG.md
 
 source-repository head
   type: git
