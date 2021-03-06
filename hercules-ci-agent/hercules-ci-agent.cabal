@@ -101,7 +101,6 @@ library
     , monad-control
     , mtl
     , network-uri
-    , optparse-applicative
     , protolude >= 0.3
     , process
     , process-extras
@@ -288,7 +287,6 @@ executable hercules-ci-agent-worker
     , monad-control
     , mtl
     , network-uri
-    , optparse-applicative
     , protolude
     , process
     , process-extras
@@ -349,7 +347,6 @@ test-suite hercules-test
     , lifted-async
     , lifted-base
     , monad-control
-    , optparse-applicative
     , process
     , protolude
     , safe-exceptions
