@@ -44,7 +44,7 @@ add = do
   mkJson <- JSON.options
   secretName <- Optparse.strArgument (Optparse.metavar "SECRET_NAME" <> Optparse.help "Organization/account-wide name for the secret")
   pure $ runAuthenticated do
-    secretData <- liftIO $ mkJson
+    secretData <- liftIO mkJson
     projectPath <- getProjectPath projectOptionMaybe
     secretsFilePath <- liftIO $ getSecretsFilePath projectPath
     liftIO $
@@ -59,7 +59,7 @@ add = do
     let secrets' = secrets & M.insert secretName (A.object ["kind" A..= A.String "Secret", "data" A..= secretData])
     liftIO $ writeJsonFile secretsFilePath secrets'
     putErrText $ "hci: successfully wrote " <> secretName <> " to " <> toS secretsFilePath
-    putErrText $ "NOTE: Remember to synchronize this file with your agents!"
+    putErrText "NOTE: Remember to synchronize this file with your agents!"
 
 getSecretsFilePath :: ProjectPath -> IO FilePath
 getSecretsFilePath projectPath = do
