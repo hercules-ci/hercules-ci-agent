@@ -2,7 +2,7 @@ resolver: lts-17.5
 
 # paths to local packages
 packages:
-  - hercules-ci-cnix-store
+  # - hercules-ci-cnix-store
   - hercules-ci-cnix-expr
   - hercules-ci-api
   - hercules-ci-api-core
@@ -11,6 +11,8 @@ packages:
   - hercules-ci-cli
   - tests/agent-test
 extra-deps:
+  # Putting hercules-ci-cnix-store in packages confuses hie-bios wrt cachix deps
+  - ./hercules-ci-cnix-store
   - git: https://github.com/hercules-ci/optparse-applicative.git
     commit:
       # PR: https://github.com/pcapriotti/optparse-applicative/pull/414
@@ -39,6 +41,10 @@ extra-deps:
 
 install-ghc: false  # we're using nixpkgs' ghc
 system-ghc: true    # nixpkgs ghc is perceived as 'system ghc'
+
+ghc-options:
+  # trick stack repl to remove optparse-applicative, so we only get the fork in HLS
+  hercules-ci-agent-test: -hide-package optparse-applicative
 
 nix:
   packages: []      # use shell instead
