@@ -7,6 +7,7 @@ where
 
 import Hercules.CLI.Client (prettyPrintHttpErrors)
 import qualified Hercules.CLI.Effect as Effect
+import qualified Hercules.CLI.Exception as Exception
 import qualified Hercules.CLI.Login as Login
 import Hercules.CLI.Options (mkCommand)
 import qualified Hercules.CLI.Secret as Secret
@@ -15,9 +16,11 @@ import qualified Options.Applicative as Optparse
 import Protolude
 
 main :: IO ()
-main = prettyPrintErrors $
-  prettyPrintHttpErrors $ do
-    join $ Optparse.execParser opts
+main =
+  prettyPrintErrors $
+    Exception.handleUserException $
+      prettyPrintHttpErrors $ do
+        join $ Optparse.execParser opts
 
 prettyPrintErrors :: IO a -> IO a
 prettyPrintErrors = handle \e ->

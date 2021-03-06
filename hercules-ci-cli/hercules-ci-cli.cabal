@@ -22,6 +22,7 @@ library
       Hercules.CLI.Common
       Hercules.CLI.Credentials
       Hercules.CLI.Effect
+      Hercules.CLI.Exception
       Hercules.CLI.Git
       Hercules.CLI.JSON
       Hercules.CLI.Login

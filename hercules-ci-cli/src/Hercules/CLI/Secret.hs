@@ -6,7 +6,7 @@ module Hercules.CLI.Secret where
 import qualified Data.Aeson as A
 import qualified Data.Map as M
 import qualified Data.Text as T
-import Hercules.CLI.Common (runAuthenticated)
+import Hercules.CLI.Common (exitMsg, runAuthenticated)
 import Hercules.CLI.JSON as JSON
 import Hercules.CLI.Options (mkCommand)
 import Hercules.CLI.Project (ProjectPath (projectPathOwner, projectPathSite), getProjectPath, projectOption)
@@ -49,15 +49,12 @@ add = do
     secretsFilePath <- liftIO $ getSecretsFilePath projectPath
     liftIO $
       doesFileExist secretsFilePath >>= \case
-        False -> do
-          putErrText $ "hci: ERROR: No secrets file found. If the account is correct, use `hci init-local`. (path: " <> toS secretsFilePath <> ")"
-          exitFailure
+        False -> exitMsg $ "No secrets file found. If the account is correct, use `hci init-local`. (path: " <> toS secretsFilePath <> ")"
         True -> pass
     secrets <- liftIO $ readJsonFile secretsFilePath
     case M.lookup secretName secrets of
       Just _ -> do
-        putErrText $ "hci: ERROR: Secret " <> secretName <> " already exists in " <> toS secretsFilePath <> "."
-        liftIO exitFailure
+        exitMsg $ "Secret " <> secretName <> " already exists in " <> toS secretsFilePath <> "."
       Nothing -> pass
     let secrets' = secrets & M.insert secretName (A.object ["kind" A..= A.String "Secret", "data" A..= secretData])
     liftIO $ writeJsonFile secretsFilePath secrets'

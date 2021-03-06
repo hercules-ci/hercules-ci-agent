@@ -11,6 +11,7 @@ import qualified Hercules.API.Projects.Project as Project
 import qualified Hercules.API.Repos as Repos
 import qualified Hercules.API.Repos.RepoKey as RepoKey
 import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, projectsClient, reposClient, runHerculesClient, runHerculesClientEither)
+import Hercules.CLI.Common (exitMsg)
 import qualified Hercules.CLI.Git as Git
 import Hercules.CLI.Options (attoparsecReader, packSome)
 import Network.HTTP.Types (Status (Status, statusCode))
@@ -87,8 +88,7 @@ findProjectByCurrentRepo = do
   rs <- runHerculesClientEither (Repos.parseGitURL reposClient url)
   case rs of
     Left (FailureResponse _req Response {responseStatusCode = Status {statusCode = 404}}) -> do
-      putErrText "hci: Repository not recognized by Hercules CI. Make sure you're in the right repository, and if you're running Hercules CI Enterprise, make sure you're using the right HERCULES_CI_API_BASE_URL. Alternatively, use the --project option."
-      liftIO exitFailure
+      exitMsg "Repository not recognized by Hercules CI. Make sure you're in the right repository, and if you're running Hercules CI Enterprise, make sure you're using the right HERCULES_CI_API_BASE_URL. Alternatively, use the --project option."
     Left e -> throwIO e
     Right r ->
       pure
@@ -112,9 +112,7 @@ findProject project = do
       )
   case rs of
     [] -> do
-      putErrText $ "Project not found: " <> show project
-      liftIO exitFailure
+      exitMsg $ "Project not found: " <> show project
     [p] -> pure p
     _ -> do
-      putErrText $ "Project ambiguous: " <> show project
-      liftIO exitFailure
+      exitMsg $ "Project ambiguous: " <> show project
