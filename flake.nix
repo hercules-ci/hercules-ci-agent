@@ -206,17 +206,17 @@
                     if test -n "''${HIE_BIOS_OUTPUT:-}"; then
                         echo | stack "$@"
 
-                        # Internal packages appear in -package flags for some
-                        # reason, unlike normal packages. This filters them out.
-                        sed -e 's/^-package=z-.*-z-.*$//' \
-                            -e 's/^-package-id=hercules-ci-agent.*$//' \
-                            -i $HIE_BIOS_OUTPUT
+                        # # Internal packages appear in -package flags for some
+                        # # reason, unlike normal packages. This filters them out.
+                        # sed -e 's/^-package=z-.*-z-.*$//' \
+                        #     -e 's/^-package-id=hercules-ci-agent.*$//' \
+                        #     -i $HIE_BIOS_OUTPUT
 
-                        # To support the CPP in Hercules.Agent.StoreFFI
-                        echo '-DGHCIDE=1' >>$HIE_BIOS_OUTPUT
+                        # # To support the CPP in Hercules.Agent.StoreFFI
+                        # echo '-DGHCIDE=1' >>$HIE_BIOS_OUTPUT
 
-                        # Hack to include the correct snapshot directory
-                        echo "-package-db=$(dirname $(stack path --snapshot-doc-root))/pkgdb" >> $HIE_BIOS_OUTPUT
+                        # # Hack to include the correct snapshot directory
+                        # echo "-package-db=$(dirname $(stack path --snapshot-doc-root))/pkgdb" >> $HIE_BIOS_OUTPUT
                     else
                         exec stack "$@"
                     fi

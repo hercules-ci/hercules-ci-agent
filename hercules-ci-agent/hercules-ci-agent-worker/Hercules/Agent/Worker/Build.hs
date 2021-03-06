@@ -14,8 +14,6 @@ import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.BuildResult as Event.BuildResult
 import Hercules.CNix
   ( DerivationOutput (derivationOutputName, derivationOutputPath),
-    NixStore,
-    Ref,
     getDerivationOutputs,
   )
 import qualified Hercules.CNix as CNix
@@ -23,7 +21,6 @@ import Hercules.CNix.Store (Store, queryPathInfo, validPathInfoNarHash, validPat
 import Hercules.CNix.Store.Context (Derivation)
 import Katip
 import Protolude hiding (yield)
-import Unsafe.Coerce
 
 runBuild :: (MonadIO m, KatipContext m) => Store -> Command.Build.Build -> ConduitT i Event m ()
 runBuild store build = do

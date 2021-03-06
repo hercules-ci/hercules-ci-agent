@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -12,11 +13,12 @@ import Control.Exception
   )
 import qualified Data.ByteString.Unsafe as BS
 import Data.Coerce (coerce)
+import qualified Foreign.C
 import Foreign.C.String (withCString)
 import Foreign.StablePtr (castStablePtrToPtr, newStablePtr)
-import Hercules.Agent.StoreFFI (mkBuilderCallback)
 import Hercules.Agent.Worker.HerculesStore.Context
-  ( HerculesStore,
+  ( ExceptionPtr,
+    HerculesStore,
     context,
   )
 import Hercules.CNix (Store)
@@ -87,3 +89,14 @@ setBuilderCallback s callback = do
   [C.throwBlock| void {
     (*$(refHerculesStore* s))->setBuilderCallback($(void (*p)(const char *, exception_ptr *) ));
   }|]
+
+type BuilderCallback = Foreign.C.CString -> Ptr ExceptionPtr -> IO ()
+
+-- Work around a problem in ghcide with foreign imports.
+#ifndef __GHCIDE__
+foreign import ccall "wrapper"
+  mkBuilderCallback :: BuilderCallback -> IO (FunPtr BuilderCallback)
+#else
+mkBuilderCallback :: BuilderCallback -> IO (FunPtr BuilderCallback)
+mkBuilderCallback = panic "This is a stub to work around a ghcide issue. Please compile without -D__GHCIDE__"
+#endif

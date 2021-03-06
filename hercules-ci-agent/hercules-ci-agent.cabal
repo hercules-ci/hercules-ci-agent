@@ -101,7 +101,6 @@ library
     , monad-control
     , mtl
     , network-uri
-    , optparse-applicative
     , protolude >= 0.3
     , process
     , process-extras
@@ -119,14 +118,6 @@ library
     , websockets
     , wuss
   default-language: Haskell2010
-
--- ugly hack to avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
-library internal-ffi
-  exposed-modules:
-      Hercules.Agent.StoreFFI
-  hs-source-dirs: src-internal-ffi
-  build-depends:       base, protolude
-  default-language:    Haskell2010
 
 executable hercules-ci-agent
   main-is: Main.hs
@@ -286,7 +277,6 @@ executable hercules-ci-agent-worker
     , hercules-ci-api-core
     , hercules-ci-cnix-store
     , hercules-ci-cnix-expr
-    , internal-ffi
     , inline-c
     , inline-c-cpp
     , katip
@@ -297,7 +287,6 @@ executable hercules-ci-agent-worker
     , monad-control
     , mtl
     , network-uri
-    , optparse-applicative
     , protolude
     , process
     , process-extras
@@ -358,7 +347,6 @@ test-suite hercules-test
     , lifted-async
     , lifted-base
     , monad-control
-    , optparse-applicative
     , process
     , protolude
     , safe-exceptions

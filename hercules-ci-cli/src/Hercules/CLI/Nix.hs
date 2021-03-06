@@ -8,11 +8,10 @@ import qualified Data.Text as T
 import Hercules.Agent.NixFile (findNixFile)
 import Hercules.CLI.Git (getGitRoot, getRef, getRev)
 import Hercules.CLI.Options (scanOption)
-import Hercules.CNix (NixStore, Ref, Store)
+import Hercules.CNix (Store)
 import Hercules.CNix.Expr as Expr (EvalState, Match (IsAttrs), RawValue, autoCallFunction, evalArgs, evalFile, getAttr, getAttrs, init, isDerivation, match', withEvalState, withStore)
 import Hercules.Error (escalateAs)
 import Options.Applicative as Optparse
-import Options.Applicative.Types as Optparse
 import Protolude hiding (evalState)
 import UnliftIO (MonadUnliftIO, UnliftIO (UnliftIO), askUnliftIO)
 
