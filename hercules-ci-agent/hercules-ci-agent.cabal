@@ -120,14 +120,6 @@ library
     , wuss
   default-language: Haskell2010
 
--- ugly hack to avoid https://gitlab.haskell.org/ghc/ghc/issues/16477
-library internal-ffi
-  exposed-modules:
-      Hercules.Agent.StoreFFI
-  hs-source-dirs: src-internal-ffi
-  build-depends:       base, protolude
-  default-language:    Haskell2010
-
 executable hercules-ci-agent
   main-is: Main.hs
   other-modules:
@@ -286,7 +278,6 @@ executable hercules-ci-agent-worker
     , hercules-ci-api-core
     , hercules-ci-cnix-store
     , hercules-ci-cnix-expr
-    , internal-ffi
     , inline-c
     , inline-c-cpp
     , katip
