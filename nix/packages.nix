@@ -73,7 +73,7 @@ let
                     callPkg super "hercules-ci-agent" ../hercules-ci-agent {
                       bdw-gc = pkgs.boehmgc-hercules;
                     };
-                  bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git nix ] ++ lib.optional (pkgs.stdenv.isLinux) pkgs.runc;
+                  bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git nix ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
 
                 in
                 generateOptparseApplicativeCompletion "hercules-ci-agent" (buildFromSdist (
@@ -134,15 +134,13 @@ let
                   generateOptparseApplicativeCompletion "hci" (
                     justStaticExecutables (
                       haskell.lib.disableLibraryProfiling (
-                        allowInconsistentDependencies (
-                          callPkg super "hercules-ci-cli" ../hercules-ci-cli {
-                            hercules-ci-agent = overrideCabal self.hercules-ci-agent (o: {
-                              isLibrary = true;
-                              isExecutable = false;
-                              postFixup = "";
-                            });
-                          }
-                        )
+                        callPkg super "hercules-ci-cli" ../hercules-ci-cli {
+                          hercules-ci-agent = overrideCabal self.hercules-ci-agent (o: {
+                            isLibrary = true;
+                            isExecutable = false;
+                            postFixup = "";
+                          });
+                        }
                       )
                     )
                   )
@@ -151,7 +149,7 @@ let
                   postInstall =
                     o.postInstall or ""
                     + ''
-                      wrapProgram $out/bin/hci --prefix PATH : ${makeBinPath (lib.optional (pkgs.stdenv.isLinux) pkgs.runc)}
+                      wrapProgram $out/bin/hci --prefix PATH : ${makeBinPath (lib.optional pkgs.stdenv.isLinux pkgs.runc)}
                     '';
                 }
                 );
