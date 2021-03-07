@@ -59,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Attributes can now be marked to require or ignore a build failure in the
    derivation it references directly.
-   ([support#34](https://github.com/hercules-ci/support/issues/34))
+   (see [support#34](https://github.com/hercules-ci/support/issues/34))
 
  - `concurrentTasks` now has a default, `"auto"` for ease of setup and to help
    avoid underutilization.
