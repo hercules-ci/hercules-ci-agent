@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           hercules-ci-cnix-expr
-version:        0.1.0
+version:        0.1.0.0
 synopsis:       Bindings for the Nix evaluator
 category:       Nix, CI, Testing, DevOps
 homepage:       https://docs.hercules-ci.com
