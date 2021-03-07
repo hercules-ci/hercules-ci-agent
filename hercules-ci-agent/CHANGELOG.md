@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Upcoming
+## [0.8.0]
 
 ### Added
 
@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - The `hci` command (flake: `defaultApp`)
     - `hci login` to authenticate yourself
     - `hci state` to work with Effects state files
+    - `hci effect` to run effects locally
 
  - Commit metadata as a `ci.nix` argument. Make your `ci.nix` a function:
 
@@ -400,6 +401,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
+[0.8.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.5...hercules-ci-agent-0.8.0
+[0.7.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.4...hercules-ci-agent-0.7.5
 [0.7.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.3...hercules-ci-agent-0.7.4
 [0.7.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.2...hercules-ci-agent-0.7.3
 [0.7.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.1...hercules-ci-agent-0.7.2
