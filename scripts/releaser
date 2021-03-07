@@ -45,7 +45,10 @@ main = do
     releasePackage "hercules-ci-cnix-store" (bumpExactVersion "hercules-ci-cnix-store")
   whenConfirmed "Update hercules-ci-cnix-expr?" $
     releasePackage "hercules-ci-cnix-expr" (bumpExactVersion "hercules-ci-cnix-expr")
-  releasePackage "hercules-ci-agent" bumpVersionInNix
+  whenConfirmed "Update hercules-ci-agent?" $
+    releasePackage "hercules-ci-agent" (bumpExactVersion "hercules-ci-agent")
+  whenConfirmed "Update hercules-ci-cli?" $
+    releasePackage "hercules-ci-cli" (bumpExactVersion "hercules-ci-cli")
 
 whenConfirmed :: String -> IO () -> IO ()
 whenConfirmed s m = confirm s >>= \b -> when b m
@@ -65,10 +68,6 @@ bumpExactVersion package old new = do
     , "sed -i $(git ls-files | grep '\\.cabal') -e 's/" <> package <> " == " <> old <> "/" <> package <> " == " <> new <> "/g'"
     ]
     mempty
-
-bumpVersionInNix :: String -> String -> IO ()
-bumpVersionInNix old new = do
-  void $ readProcess "sed" (["-i", "-e", "s/agentVersion = \"" <> old <> "\"/agentVersion = \"" <> new <> "\"/", "for-upstream/common.nix"]) mempty
 
 releasePackage :: String -> (String -> String -> IO ()) -> IO ()
 releasePackage pkg extraBumps = do
