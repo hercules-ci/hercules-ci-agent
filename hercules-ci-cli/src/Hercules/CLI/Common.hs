@@ -1,7 +1,12 @@
-module Hercules.CLI.Common where
+module Hercules.CLI.Common
+  ( runAuthenticated,
+    exitMsg,
+  )
+where
 
 import Hercules.CLI.Client
 import Hercules.CLI.Credentials (determineDomain, readPersonalToken)
+import Hercules.CLI.Exception (exitMsg)
 import Protolude
 import RIO (RIO, runRIO)
 import Servant.Auth.Client (Token (Token))

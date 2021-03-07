@@ -4,6 +4,7 @@ module Hercules.CLI.Git where
 
 import Data.List (dropWhileEnd)
 import qualified Data.Text as T
+import Hercules.CLI.Exception (exitMsg)
 import Protolude
 import System.Directory (doesDirectoryExist)
 import System.Process (readProcess)
@@ -77,8 +78,7 @@ getBranchUpstream = do
   if refsRemotes `isPrefixOf` upstreamRef
     then pure $ toS $ takeWhile (/= '/') $ drop (length refsRemotes) upstreamRef
     else do
-      putErrText "hci: upstream branch is not remote"
-      exitFailure
+      exitMsg "upstream branch is not remote"
 
 getRemoteURL :: Text -> IO Text
 getRemoteURL remoteName =

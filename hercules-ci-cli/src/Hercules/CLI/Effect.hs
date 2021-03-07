@@ -11,6 +11,7 @@ import qualified Hercules.API.Projects.CreateUserEffectTokenResponse as CreateUs
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
 import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDefaultApiBaseUrl, projectsClient, runHerculesClient)
 import Hercules.CLI.Common (runAuthenticated)
+import Hercules.CLI.Exception (exitMsg)
 import Hercules.CLI.Git (getAllBranches, getHypotheticalRefs)
 import Hercules.CLI.Nix (attrByPath, callCiNix, ciNixAttributeCompleter, withNix)
 import Hercules.CLI.Options (flatCompleter, mkCommand)
@@ -53,19 +54,16 @@ runParser = do
         valMaybe <- liftIO $ attrByPath evalState rootValue (map encodeUtf8 attrPath)
         attrValue <- case valMaybe of
           Nothing -> do
-            putErrText $ "hci: Could not find an attribute at path " <> show attrPath <> " in " <> toS nixFile
-            liftIO exitFailure
+            exitMsg $ "Could not find an attribute at path " <> show attrPath <> " in " <> toS nixFile
           Just v -> liftIO (match evalState v) >>= escalate
         effectAttrs <- case attrValue of
           IsAttrs attrs -> pure attrs
           _ -> do
-            putErrText $ "hci: Attribute is not an Effect at path " <> show attrPath <> " in " <> toS nixFile
-            liftIO exitFailure
+            exitMsg $ "Attribute is not an Effect at path " <> show attrPath <> " in " <> toS nixFile
 
         isEffect <- liftIO $ getAttrBool evalState effectAttrs "isEffect" >>= escalate
         when (isEffect /= Just True) do
-          putErrText $ "hci: Attribute is not an Effect at path " <> show attrPath <> " in " <> toS nixFile
-          liftIO exitFailure
+          exitMsg $ "Attribute is not an Effect at path " <> show attrPath <> " in " <> toS nixFile
         drvPath <- getDrvFile evalState (rtValue effectAttrs)
         derivation <- prepareDerivation store drvPath
         apiBaseURL <- liftIO determineDefaultApiBaseUrl
@@ -112,8 +110,7 @@ getProjectEffectData maybeProjectPathParam requireToken = do
       projectId <- case projectIdMaybe of
         Just x -> pure x
         Nothing -> do
-          putErrText $ "hci: Can not access " <> show path <> ". Make sure you have installed Hercules CI on the organization and repository and that you have access to it."
-          liftIO exitFailure
+          exitMsg $ "Can not access " <> show path <> ". Make sure you have installed Hercules CI on the organization and repository and that you have access to it."
       response <- runHerculesClient (Projects.createUserEffectToken projectsClient projectId)
       let token = CreateUserEffectTokenResponse.token response
       pure (path, token)

@@ -22,7 +22,7 @@ import System.Posix.User
 
 commandParser :: Optparse.Parser (IO ())
 commandParser = pure do
-  hostname <- liftIO $ getHostName
+  hostname <- liftIO getHostName
   username <- getLoginName
   clientEnv <- Hercules.CLI.Client.init
   runRIO ((), clientEnv) do
@@ -32,7 +32,7 @@ commandParser = pure do
         CLIAuthorizationRequestCreate
           { description = toS username <> "@" <> toS hostname
           }
-    putErrText $ "Please confirm your login at "
+    putErrText "Please confirm your login at "
     putErrText $ "  " <> CLIAuthorizationRequestCreateResponse.browserURL r
     putErrText "Waiting for confirmation..."
     let tmpTok = CLIAuthorizationRequestCreateResponse.temporaryCLIToken r
