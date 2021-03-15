@@ -40,9 +40,9 @@ initLocal = do
         liftIO $ writeFile secretsFilePath "{}"
         putErrText $ "hci: Secrets file created. Path: " <> toS secretsFilePath
 add = do
-  projectOptionMaybe <- optional projectOption
-  mkJson <- JSON.options
   secretName <- Optparse.strArgument (Optparse.metavar "SECRET_NAME" <> Optparse.help "Organization/account-wide name for the secret")
+  mkJson <- JSON.options
+  projectOptionMaybe <- optional projectOption
   pure $ runAuthenticated do
     secretData <- liftIO mkJson
     projectPath <- getProjectPath projectOptionMaybe
