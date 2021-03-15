@@ -14,7 +14,7 @@ import Hercules.CLI.Common (runAuthenticated)
 import Hercules.CLI.Exception (exitMsg)
 import Hercules.CLI.Git (getAllBranches, getHypotheticalRefs)
 import Hercules.CLI.Nix (attrByPath, callCiNix, ciNixAttributeCompleter, withNix)
-import Hercules.CLI.Options (flatCompleter, mkCommand)
+import Hercules.CLI.Options (flatCompleter, mkCommand, subparser)
 import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption)
 import Hercules.CLI.Secret (getSecretsFilePath)
 import Hercules.CNix (Store)
@@ -35,7 +35,7 @@ import UnliftIO.Temporary (withTempDirectory)
 
 commandParser, runParser :: Optparse.Parser (IO ())
 commandParser =
-  Optparse.subparser
+  subparser
     ( mkCommand
         "run"
         (Optparse.progDesc "Run an effect")

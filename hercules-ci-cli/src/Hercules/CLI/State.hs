@@ -8,7 +8,7 @@ import qualified Hercules.API.Projects.Project as Project
 import Hercules.API.State
 import Hercules.CLI.Client
 import Hercules.CLI.Common (runAuthenticated)
-import Hercules.CLI.Options (mkCommand)
+import Hercules.CLI.Options (mkCommand, subparser)
 import Hercules.CLI.Project (findProject, projectOption)
 import Options.Applicative (bashCompleter, completer, help, long, metavar, strOption)
 import qualified Options.Applicative as Optparse
@@ -19,7 +19,7 @@ import Servant.Conduit ()
 
 commandParser, getCommandParser, putCommandParser :: Optparse.Parser (IO ())
 commandParser =
-  Optparse.subparser
+  subparser
     ( mkCommand
         "get"
         (Optparse.progDesc "Download a state file")

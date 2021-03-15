@@ -4,8 +4,20 @@ module Hercules.CLI.Options where
 
 import qualified Data.Attoparsec.Text as A
 import qualified Data.Text as T
-import Options.Applicative
+import Options.Applicative hiding (helper)
+import qualified Options.Applicative as Optparse
 import Protolude
+
+-- | Custom execParser that provides help text when input is incomplete.
+execParser :: ParserInfo a -> IO a
+execParser = Optparse.customExecParser (Optparse.prefs Optparse.showHelpOnEmpty)
+
+-- | We omit --help from the help text and completion.
+helper :: Parser (a -> a)
+helper = helperWith (short 'h' <> long "help" <> internal)
+
+subparser :: Mod CommandFields a -> Parser a
+subparser = Optparse.subparser
 
 mkCommand ::
   [Char] ->

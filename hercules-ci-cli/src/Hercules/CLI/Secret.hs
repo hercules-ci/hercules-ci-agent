@@ -8,7 +8,7 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Hercules.CLI.Common (exitMsg, runAuthenticated)
 import Hercules.CLI.JSON as JSON
-import Hercules.CLI.Options (mkCommand)
+import Hercules.CLI.Options (mkCommand, subparser)
 import Hercules.CLI.Project (ProjectPath (projectPathOwner, projectPathSite), getProjectPath, projectOption)
 import qualified Options.Applicative as Optparse
 import Protolude
@@ -17,7 +17,7 @@ import UnliftIO.Directory (XdgDirectory (XdgConfig), createDirectoryIfMissing, d
 
 commandParser, initLocal, add :: Optparse.Parser (IO ())
 commandParser =
-  Optparse.subparser
+  subparser
     ( mkCommand
         "init-local"
         (Optparse.progDesc "Create a local secrets file in ~/.config/hercules-ci/secrets/<site>/<owner>")
