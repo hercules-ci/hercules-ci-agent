@@ -1,0 +1,8 @@
+:descriptions: true
+
+= `hci` Command Reference
+
+The `hci` command provides subcommands that help you perform or automate various tasks.
+
+include::hci:partial$nav-items.adoc[]
+
