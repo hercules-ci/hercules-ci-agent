@@ -16,7 +16,7 @@ pkgs.haskell.lib.buildStackProject {
 
     pkgs.zlib
     pkgs.openssl
-    pkgs.nix
+    pkgs.nixUnstable
     pkgs.boost
   ];
   # Block any inherited shellHook when nesting shells without nix-shell --pure,
