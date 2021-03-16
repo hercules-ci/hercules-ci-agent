@@ -1,11 +1,12 @@
 { haskellPackages
 , haskell
 , pkgs
-, nix
+, nixUnstable
 , pre-commit-hooks-nix
 , ...
 }:
 let
+  nix = nixUnstable;
   haskellPackages_ = haskellPackages;
   inherit (pkgs) recurseIntoAttrs lib;
   inherit (pkgs.lib) cleanSource makeBinPath optionalAttrs;
@@ -153,8 +154,8 @@ let
                     '';
                 }
                 );
-              hercules-ci-cnix-expr = callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; };
-              hercules-ci-cnix-store = callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { };
+              hercules-ci-cnix-expr = callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; inherit nix; };
+              hercules-ci-cnix-store = callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { inherit nix; };
 
               websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });
 
