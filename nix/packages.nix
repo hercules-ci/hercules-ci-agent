@@ -2,6 +2,8 @@
 , haskell
 , pkgs
 , nixUnstable
+  # TODO propagatedBuildInputs upstream
+, nlohmann_json
 , pre-commit-hooks-nix
 , ...
 }:
@@ -154,8 +156,22 @@ let
                     '';
                 }
                 );
-              hercules-ci-cnix-expr = callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; inherit nix; };
-              hercules-ci-cnix-store = callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { inherit nix; };
+              hercules-ci-cnix-expr =
+                addBuildDepends
+                  (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; inherit nix; })
+                  [
+                    # https://github.com/NixOS/nix/pull/4904
+                    nlohmann_json
+                  ]
+              ;
+              hercules-ci-cnix-store =
+                addBuildDepends
+                  (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { inherit nix; })
+                  [
+                    # https://github.com/NixOS/nix/pull/4904
+                    nlohmann_json
+                  ]
+              ;
 
               websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });
 
