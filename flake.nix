@@ -71,6 +71,7 @@
                               cabal2nix
                               nix-prefetch-git
                               niv
+                              valgrind
                               ;
                             inherit pkgs;
                           };
@@ -259,6 +260,7 @@
                   devTools.jq
                   devTools.cabal2nix
                   devTools.nix-prefetch-git
+                  devTools.valgrind
                   internal.haskellPackages.ghc
                   internal.haskellPackages.ghcide
                   internal.haskellPackages.haskell-language-server
