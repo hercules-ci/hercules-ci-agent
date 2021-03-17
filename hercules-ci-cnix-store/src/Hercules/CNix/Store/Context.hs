@@ -12,22 +12,11 @@ import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Types as C
 import Protolude
 
--- | A C++ STL @std::set@, to be used in phantom types.
-data StdSet a
-
--- | A C++ STL @<a>::iterator@
-data Iterator a
-
 -- | A C++ @std::string@
 data StdString
 
 -- | A Nix @ref@, to be used in phantom types.
 data Ref a
-
--- | A Nix @PathSet@ aka @std::set<Path>@ (Nix <= 2.3.*: aka @std::set<std::string>>@)
-type PathSet = StdSet StdString
-
-type PathSetIterator = Iterator StdString
 
 -- | A Nix @Strings@ aka @std::list<std::string>@
 data Strings
@@ -50,15 +39,21 @@ data StringPairs
 
 data SecretKey
 
+data NixStorePath
+
+data NixStorePathWithOutputs
+
+data CDerivation
+
 context :: C.Context
 context =
   C.cppCtx <> C.fptrCtx
     <> C.bsCtx
       { C.ctxTypesTable =
           M.singleton (C.TypeName "refStore") [t|Ref NixStore|]
+            <> M.singleton (C.TypeName "nix::StorePath") [t|NixStorePath|]
+            <> M.singleton (C.TypeName "nix::StorePathWithOutputs") [t|NixStorePathWithOutputs|]
             <> M.singleton (C.TypeName "refValidPathInfo") [t|Ref ValidPathInfo|]
-            <> M.singleton (C.TypeName "PathSet") [t|PathSet|]
-            <> M.singleton (C.TypeName "PathSetIterator") [t|PathSetIterator|]
             <> M.singleton (C.TypeName "Strings") [t|Strings|]
             <> M.singleton (C.TypeName "StringsIterator") [t|StringsIterator|]
             <> M.singleton (C.TypeName "StringPairs") [t|StringPairs|]

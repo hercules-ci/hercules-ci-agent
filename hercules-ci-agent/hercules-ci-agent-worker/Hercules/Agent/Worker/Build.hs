@@ -17,7 +17,7 @@ import Hercules.CNix
     getDerivationOutputs,
   )
 import qualified Hercules.CNix as CNix
-import Hercules.CNix.Store (Store, queryPathInfo, validPathInfoNarHash, validPathInfoNarSize)
+import Hercules.CNix.Store (Store, queryPathInfo, validPathInfoNarHash32, validPathInfoNarSize)
 import Hercules.CNix.Store.Context (Derivation)
 import Katip
 import Protolude hiding (yield)
@@ -55,7 +55,7 @@ enrichResult store derivation _ = do
   drvOuts <- getDerivationOutputs derivation
   outputInfos <- for drvOuts $ \drvOut -> do
     vpi <- queryPathInfo store (derivationOutputPath drvOut)
-    hash_ <- validPathInfoNarHash vpi
+    hash_ <- validPathInfoNarHash32 vpi
     let size = validPathInfoNarSize vpi
     pure
       Event.BuildResult.OutputInfo
