@@ -83,10 +83,7 @@ let
                   overrideCabal
                     (
                       addBuildDepends
-                        (addSetupDepends
-                          (enableDWARFDebugging basePkg)
-                          (lib.optional (lib.versionAtLeast super.ghc.version "8.10") self.Cabal_3_2_1_0)
-                        )
+                        (enableDWARFDebugging basePkg)
                         [ pkgs.makeWrapper pkgs.boost pkgs.boehmgc ]
                     )
                     (
