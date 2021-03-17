@@ -3,11 +3,9 @@ let
   pkgs = import ./default.nix { };
 in
 pkgs.haskell.lib.buildStackProject {
-  # Override ghc to get a working cabal with GHC 8.10.2
-  # See https://github.com/commercialhaskell/stackage/issues/5762
-  # TODO: when updating GHC, revert this to
+  # TODO: revert this to
   # inherit ghc;
-  ghc = pkgs.haskell.packages.ghc8102.ghcWithPackages (p: [ p.Cabal_3_2_1_0 ]);
+  ghc = pkgs.haskell.compiler.ghc8104;
   name = "hercules-ci-stack-shell";
   buildInputs = [
     # Static linking avoids the error
@@ -17,6 +15,7 @@ pkgs.haskell.lib.buildStackProject {
     pkgs.zlib
     pkgs.openssl
     pkgs.nixUnstable
+    pkgs.nlohmann_json
     pkgs.boost
   ];
   # Block any inherited shellHook when nesting shells without nix-shell --pure,

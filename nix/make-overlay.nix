@@ -26,7 +26,7 @@ self: pkgs:
     }
   );
 
-  nix = pkgs.nix.override (
+  nix = pkgs.nixUnstable.override (
     args:
     args
     // {

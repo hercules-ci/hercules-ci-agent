@@ -2,17 +2,18 @@ resolver: lts-17.5
 
 # paths to local packages
 packages:
-  # - hercules-ci-cnix-store
-  - hercules-ci-cnix-expr
-  - hercules-ci-api
-  - hercules-ci-api-core
-  - hercules-ci-api-agent
-  - hercules-ci-agent
-  - hercules-ci-cli
-  - tests/agent-test
+  - hercules-ci-cnix-store
+  - cachix/cachix
+  # - hercules-ci-cnix-expr
+  # - hercules-ci-api
+  # - hercules-ci-api-core
+  # - hercules-ci-api-agent
+  # - hercules-ci-agent
+  # - hercules-ci-cli
+  # - tests/agent-test
 extra-deps:
   # Putting hercules-ci-cnix-store in packages confuses hie-bios wrt cachix deps
-  - ./hercules-ci-cnix-store
+  # - ./hercules-ci-cnix-store
   - git: https://github.com/hercules-ci/optparse-applicative.git
     commit:
       # PR: https://github.com/pcapriotti/optparse-applicative/pull/414
@@ -23,9 +24,9 @@ extra-deps:
     commit:
       84a0a55359a58030ca604117faa8883ec8632009
     subdirs:
-      - cachix
+      # - cachix
       - cachix-api
-  - inline-c-0.9.0.0
+  - inline-c-0.9.1.4
   - inline-c-cpp-0.4.0.2
   - ListLike-4.7.4@sha256:613b2967df738010e8f6f6b7c47d615f6fe42081f68eba7f946d5de7552aa8a4,3778
   - process-extras-0.7.4@sha256:4e79289131415796c181889c4a226ebab7fc3b0d27b164f65e1aad123ae9b9e3,1759
