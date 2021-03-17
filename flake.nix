@@ -238,7 +238,7 @@
                     #!/bin/sh
                     export PATH="${internal.haskellPackages.stack}/bin:$PATH"
                     if test -n "''${HIE_BIOS_OUTPUT:-}"; then
-                        echo | stack "$@"
+                        echo | stack --test "$@"
 
                         # # Internal packages appear in -package flags for some
                         # # reason, unlike normal packages. This filters them out.
