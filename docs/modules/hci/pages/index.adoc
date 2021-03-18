@@ -4,5 +4,7 @@
 
 The `hci` command provides subcommands that help you perform or automate various tasks.
 
+It's short for _H_{blank}ercules _CI_.
+
 include::hci:partial$nav-items.adoc[]
 
