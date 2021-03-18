@@ -9,7 +9,7 @@ import Hercules.CLI.Client (prettyPrintHttpErrors)
 import qualified Hercules.CLI.Effect as Effect
 import qualified Hercules.CLI.Exception as Exception
 import qualified Hercules.CLI.Login as Login
-import Hercules.CLI.Options (mkCommand)
+import Hercules.CLI.Options (execParser, helper, mkCommand, subparser)
 import qualified Hercules.CLI.Secret as Secret
 import qualified Hercules.CLI.State as State
 import qualified Options.Applicative as Optparse
@@ -20,7 +20,7 @@ main =
   prettyPrintErrors $
     Exception.handleUserException $
       prettyPrintHttpErrors $ do
-        join $ Optparse.execParser opts
+        join $ execParser opts
 
 prettyPrintErrors :: IO a -> IO a
 prettyPrintErrors = handle \e ->
@@ -33,12 +33,12 @@ prettyPrintErrors = handle \e ->
 opts :: Optparse.ParserInfo (IO ())
 opts =
   Optparse.info
-    (commands <**> Optparse.helper)
+    (commands <**> helper)
     (Optparse.fullDesc <> Optparse.header "Command line interface to Hercules CI")
 
 commands :: Optparse.Parser (IO ())
 commands =
-  Optparse.subparser
+  subparser
     ( mkCommand
         "login"
         (Optparse.progDesc "Configure token for authentication to hercules-ci.com")

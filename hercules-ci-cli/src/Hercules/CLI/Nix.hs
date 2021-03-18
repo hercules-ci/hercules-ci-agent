@@ -6,6 +6,7 @@ import qualified Data.List as L
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Hercules.Agent.NixFile (findNixFile)
+import Hercules.CLI.Exception (UserException (UserException))
 import Hercules.CLI.Git (getGitRoot, getRef, getRev)
 import Hercules.CLI.Options (scanOption)
 import Hercules.CNix (Store)
@@ -20,7 +21,7 @@ callCiNix evalState passedRef = do
   gitRoot <- getGitRoot
   gitRev <- getRev
   gitRef <- getRef
-  nixFile <- findNixFile gitRoot >>= escalateAs FatalError
+  nixFile <- findNixFile gitRoot >>= escalateAs UserException
   let ref = fromMaybe gitRef passedRef
   args <- evalArgs evalState ["--arg", "src", "{ ref = ''" <> encodeUtf8 ref <> "''; rev = ''" <> encodeUtf8 gitRev <> "''; outPath = ''" <> encodeUtf8 (toS gitRoot) <> "''; }"]
   rootValueOrFunction <- evalFile evalState nixFile

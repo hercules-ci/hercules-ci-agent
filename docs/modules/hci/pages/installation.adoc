@@ -1,0 +1,103 @@
+
+= Installing the `hci` command
+
+The `hci` command can be installed in many ways.
+
+If you use `nixos-21.05` or `nixos-unstable`, the recommended method is xref:install-via-nixpkgs[via Nixpkgs], `pkgs.hci`.
+
+If you want to use the latest version, the recommended method is xref:install-into-flake[by flake].
+
+A binary cache is available to speed up non-Nixpkgs installation methods.
+
+```console
+$ cachix use hercules-ci
+```
+
+[[install-into-shell-via-nixpkgs]]
+== Install into shell via Nixpkgs
+
+Available since version `21.05`.
+
+Update your project's `shell.nix` file to include `pkgs.hci` in `nativeBuildInputs`.
+For example:
+
+```nix
+pkgs.mkShell {
+  nativeBuildInputs = [
+    pkgs.hci
+  ];
+}
+```
+
+[[install-latest-into-flake]]
+== Install latest into flake
+
+Add `hercules-ci-agent` to your `inputs` and add the `defaultApp` to your
+`devShell`. For example:
+
+```nix
+{
+  inputs = {
+    # ...
+    hercules-ci-agent.url = "github:hercules-ci/hercules-ci-agent/master";
+  };
+
+  outputs =
+    # ...
+    {
+      # ...
+      devShell = pkgs.mkShell {
+        nativeBuildInputs = [
+          # ...
+          hercules-ci-agent.defaultApp.${system}
+        ];
+      };
+    }
+}
+```
+
+[[install-latest-into-shell]]
+== Install latest into `shell.nix`
+
+```nix
+let
+  pkgs = #...
+
+  # Update hash or pin differently
+  hercules-ci-agentSrc = builtins.fetchTarball "https://github.com/hercules-ci/hercules-ci-agent/archive/f0974a6897663dace4f7e28457fdfeef19b7fbde.tar.gz";
+
+  hci = (import hercules-ci-agentSrc).defaultApp.${pkgs.system};
+in
+pkgs.mkShell {
+  nativeBuildInputs = [
+    hci
+  ];
+}
+```
+
+[[install-latest-into-system]]
+== Install latest into a system configuration
+
+This configuration module works for NixOS and nix-darwin:
+
+```nix
+{ pkgs, ... }:
+let
+  # Update hash or pin differently
+  hercules-ci-agentSrc = builtins.fetchTarball "https://github.com/hercules-ci/hercules-ci-agent/archive/f0974a6897663dace4f7e28457fdfeef19b7fbde.tar.gz";
+
+  hci = (import hercules-ci-agentSrc).defaultApp.${pkgs.system};
+in
+{
+  environment.systemPackages = [
+    hci
+  ];
+}
+```
+
+[[install-latest-into-user-profile]]
+== Install latest into user profile
+
+```shell
+$ nix-env -iA hercules-ci-cli -f https://github.com/hercules-ci/hercules-ci-agent/archive/master.tar.gz
+```

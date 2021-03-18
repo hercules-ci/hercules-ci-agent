@@ -3,3 +3,4 @@ title: Hercules CI Agent
 version: 'master'
 nav:
 - modules/ROOT/nav.adoc
+- modules/hci/nav.adoc

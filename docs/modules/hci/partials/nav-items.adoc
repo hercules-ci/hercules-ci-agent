@@ -1,0 +1,20 @@
+* xref:login.adoc[`hci login`] +
+ifeval::[{descriptions} == true]
+Configure token for authentication to hercules-ci.com.
+endif::[]
+* xref:secret/add.adoc[`hci secret add`] +
+ifeval::[{descriptions} == true]
+Insert a secret into the local `secrets.json`.
+endif::[]
+* xref:secret/init-local.adoc[`hci secret init-local`] +
+ifeval::[{descriptions} == true]
+Create a local `secrets.json` file for the current account.
+endif::[]
+* xref:state/get.adoc[`hci state get`] +
+ifeval::[{descriptions} == true]
+Download a state file.
+endif::[]
+* xref:state/put.adoc[`hci state put`] +
+ifeval::[{descriptions} == true]
+Upload a state file.
+endif::[]

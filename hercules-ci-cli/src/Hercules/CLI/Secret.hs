@@ -8,7 +8,7 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Hercules.CLI.Common (exitMsg, runAuthenticated)
 import Hercules.CLI.JSON as JSON
-import Hercules.CLI.Options (mkCommand)
+import Hercules.CLI.Options (mkCommand, subparser)
 import Hercules.CLI.Project (ProjectPath (projectPathOwner, projectPathSite), getProjectPath, projectOption)
 import qualified Options.Applicative as Optparse
 import Protolude
@@ -17,7 +17,7 @@ import UnliftIO.Directory (XdgDirectory (XdgConfig), createDirectoryIfMissing, d
 
 commandParser, initLocal, add :: Optparse.Parser (IO ())
 commandParser =
-  Optparse.subparser
+  subparser
     ( mkCommand
         "init-local"
         (Optparse.progDesc "Create a local secrets file in ~/.config/hercules-ci/secrets/<site>/<owner>")
@@ -40,9 +40,9 @@ initLocal = do
         liftIO $ writeFile secretsFilePath "{}"
         putErrText $ "hci: Secrets file created. Path: " <> toS secretsFilePath
 add = do
-  projectOptionMaybe <- optional projectOption
-  mkJson <- JSON.options
   secretName <- Optparse.strArgument (Optparse.metavar "SECRET_NAME" <> Optparse.help "Organization/account-wide name for the secret")
+  mkJson <- JSON.options
+  projectOptionMaybe <- optional projectOption
   pure $ runAuthenticated do
     secretData <- liftIO mkJson
     projectPath <- getProjectPath projectOptionMaybe

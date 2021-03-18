@@ -1,0 +1,19 @@
+= `hci state get`
+
+`hci state get --project PROJECT --name NAME --file FILE`
+
+Download a state file.
+
+== Parameters
+
+=== `--project PROJECT`
+
+Project path, e.g. `github/my-org/my-project`.
+
+=== `--name NAME`
+
+Name of the state file.
+
+=== `--file FILE`
+
+Local path of the state file or `-` for stdout.
