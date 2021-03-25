@@ -32,7 +32,7 @@ instance FromJSON DerivationInfo where
       fixup = _Object . at "requiredSystemFeatures" %~ (<|> Just (A.Array mempty))
 
 data OutputInfo = OutputInfo
-  { path :: Text,
+  { path :: Maybe Text,
     isFixed :: Bool
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

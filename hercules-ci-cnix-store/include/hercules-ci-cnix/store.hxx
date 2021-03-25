@@ -1,6 +1,8 @@
 
 #pragma once
 
+#include <nix/path-info.hh>
+
 typedef nix::ref<nix::Store> refStore;
 
 typedef nix::Strings::iterator StringsIterator;

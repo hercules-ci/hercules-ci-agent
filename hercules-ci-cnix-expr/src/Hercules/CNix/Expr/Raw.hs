@@ -58,24 +58,18 @@ rawValueType :: RawValue -> IO RawValueType
 rawValueType (RawValue v) =
   f
     <$> [C.block| int {
-      switch ($(Value* v)->type) {
-        case tInt:         return 1;
-        case tBool:        return 2;
-        case tString:      return 3;
-        case tPath:        return 4;
-        case tNull:        return 5;
-        case tAttrs:       return 6;
-        case tList1:       return 7;
-        case tList2:       return 8;
-        case tListN:       return 9;
-        case tThunk:       return 10;
-        case tApp:         return 11;
-        case tLambda:      return 12;
-        case tBlackhole:   return 13;
-        case tPrimOp:      return 14;
-        case tPrimOpApp:   return 15;
-        case tExternal:    return 16;
-        case tFloat:       return 17;
+      switch ($(Value* v)->type()) {
+        case nInt:         return 1;
+        case nBool:        return 2;
+        case nString:      return 3;
+        case nPath:        return 4;
+        case nNull:        return 5;
+        case nAttrs:       return 6;
+        case nList:        return 7;
+        case nFunction:    return 8;
+        case nExternal:    return 9;
+        case nFloat:       return 10;
+        case nThunk:       return 11;
         default: return 0;
       }
     }|]
@@ -87,16 +81,10 @@ rawValueType (RawValue v) =
     f 5 = Null
     f 6 = Attrs
     f 7 = List
-    f 8 = List
-    f 9 = List
-    f 10 = Thunk
-    f 11 = App
-    f 12 = Lambda
-    f 13 = Blackhole
-    f 14 = PrimOp
-    f 15 = PrimOpApp
-    f 16 = External
-    f 17 = Float
+    f 8 = Lambda
+    f 9 = External
+    f 10 = Float
+    f 11 = Thunk
     f _ = Other
 
 forceValue :: Exception a => Ptr EvalState -> RawValue -> IO (Either a ())

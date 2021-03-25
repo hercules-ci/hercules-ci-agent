@@ -13,6 +13,9 @@ import qualified Hercules.Agent.Env as Env
 import qualified Hercules.Agent.Nix as Nix
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 import qualified Hercules.CNix as CNix
+import Hercules.CNix.Std.Set (StdSet, toListFP)
+import qualified Hercules.CNix.Std.Set as Std.Set
+import Hercules.CNix.Store (StorePath)
 import qualified Hercules.CNix.Store as Store
 import qualified Hercules.Formats.NixCache as NixCache
 import Katip
@@ -42,7 +45,7 @@ push ::
   -- | Cache name
   Text ->
   -- | Paths, which do not have to form a closure
-  [Text] ->
+  [StorePath] ->
   -- | Number of concurrent upload threads
   Int ->
   App ()
@@ -58,14 +61,13 @@ push cacheName paths concurrency = katipAddContext (sl "cacheName" cacheName) do
         throwIO $ FatalError $ "Agent does not have a binary cache named " <> show cacheName <> " in its configuration."
   fromMaybe failNothing (maybeNix <|> maybeCachix)
 
-nixPush :: NixCache.NixCache -> [Text] -> Int -> App ()
-nixPush cacheConf pathsText _concurrency = do
-  let paths = map encodeUtf8 pathsText
+nixPush :: NixCache.NixCache -> [StorePath] -> Int -> App ()
+nixPush cacheConf paths _concurrency = do
   keys <- liftIO $ for (NixCache.signingKeys cacheConf) (CNix.parseSecretKey . encodeUtf8)
   CNix.withStore $ \store -> do
-    (Sum total, Sum signed) <-
-      mconcat <$> for keys \key -> liftIO $ do
-        pathSet <- paths & newPathSetWith
+    (Sum total, Sum signed) <- liftIO do
+      pathSet <- Std.Set.fromListFP paths
+      mconcat <$> for keys \key -> do
         signClosure store key pathSet
     katipAddContext (sl "num-signatures" signed <> sl "num-paths" total) $
       logLocM DebugS "Signed"
@@ -73,18 +75,11 @@ nixPush cacheConf pathsText _concurrency = do
     CNix.withStoreFromURI (NixCache.storeURI cacheConf) $ \cache -> do
       liftIO (CNix.copyClosure store cache paths)
 
-newPathSetWith :: [ByteString] -> IO Store.PathSet
-newPathSetWith paths = do
-  pathSet <- Store.newEmptyPathSet
-  for_ paths \path ->
-    Store.addToPathSet path pathSet
-  pure pathSet
-
-signClosure :: CNix.Store -> ForeignPtr CNix.SecretKey -> Store.PathSet -> IO (Sum Int, Sum Int)
+signClosure :: CNix.Store -> ForeignPtr CNix.SecretKey -> StdSet Store.NixStorePath -> IO (Sum Int, Sum Int)
 signClosure store key' pathSet = withForeignPtr key' \key -> do
-  closure <- Store.computeFSClosure store Store.defaultClosureParams pathSet
+  closure <- Store.computeFSClosure store Store.defaultClosureParams pathSet >>= toListFP
   closure
-    & Store.traversePathSet
+    & traverse
       ( \path -> do
           CNix.signPath store key path
       )

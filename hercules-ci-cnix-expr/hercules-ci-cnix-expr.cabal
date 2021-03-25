@@ -65,6 +65,7 @@ library
     , inline-c-cpp
     , protolude >= 0.3
     , text
+    , unliftio
   default-language: Haskell2010
   include-dirs:
       include

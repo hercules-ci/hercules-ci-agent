@@ -12,11 +12,12 @@ import Hercules.Agent.Cachix.Info (activePushCaches)
 import Hercules.Agent.Env as Agent.Env hiding (activePushCaches)
 import qualified Hercules.Agent.EnvironmentInfo as EnvInfo
 import Hercules.Agent.Log
+import Hercules.CNix.Store (StorePath)
 import Hercules.Error
 import qualified Hercules.Formats.CachixCache as CachixCache
 import Protolude
 
-push :: Text -> [Text] -> Int -> App ()
+push :: Text -> [StorePath] -> Int -> App ()
 push cache paths workers = withNamedContext "cache" cache $ do
   Agent.Cachix.Env
     { pushCaches = pushCaches,
@@ -36,7 +37,7 @@ push cache paths workers = withNamedContext "cache" cache $ do
             pushParamsStore = nixStore,
             pushParamsClientEnv = clientEnv,
             pushParamsStrategy = \storePath ->
-              let ctx = withNamedContext "path" storePath
+              let ctx = withNamedContext "path" (show storePath :: Text)
                in Cachix.Push.PushStrategy
                     { onAlreadyPresent = pass,
                       onAttempt = \retryStatus size ->

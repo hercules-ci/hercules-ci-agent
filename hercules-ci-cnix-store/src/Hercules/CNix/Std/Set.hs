@@ -15,6 +15,9 @@ module Hercules.CNix.Std.Set
     Hercules.CNix.Std.Set.new,
     size,
     toSet,
+    fromList,
+    fromListP,
+    fromListFP,
     Hercules.CNix.Std.Set.toList,
     insert,
     insertP,
@@ -25,6 +28,7 @@ where
 
 import Control.Exception (mask_)
 import Data.Coerce (Coercible, coerce)
+import Data.Foldable (for_)
 import qualified Data.Set as S
 import Data.Traversable (for)
 import qualified Data.Vector.Storable as VS
@@ -124,6 +128,24 @@ new = mask_ $ do
 
 size :: HasStdSet a => StdSet a -> IO Int
 size (StdSet fptr) = fromIntegral <$> withForeignPtr fptr cSize
+
+fromList :: HasStdSetCopyable a => [a] -> IO (StdSet a)
+fromList as = do
+  set <- new
+  for_ as $ insert set
+  pure set
+
+fromListP :: HasStdSet a => [Ptr a] -> IO (StdSet a)
+fromListP as = do
+  set <- new
+  for_ as $ insertP set
+  pure set
+
+fromListFP :: (Coercible a' (ForeignPtr a), HasStdSet a) => [a'] -> IO (StdSet a)
+fromListFP as = do
+  set <- new
+  for_ as $ insertFP set
+  pure set
 
 toSet :: (HasStdSetCopyable a, Storable a, Ord a) => StdSet a -> IO (S.Set a)
 toSet stdSet = do
