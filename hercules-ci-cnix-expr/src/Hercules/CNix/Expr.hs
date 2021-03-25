@@ -20,6 +20,7 @@ import Conduit
 import qualified Data.Map as M
 import Foreign (nullPtr)
 import qualified Foreign.C.String
+import Hercules.CNix.Encapsulation (moveToForeignPtrWrapper)
 import Hercules.CNix.Expr.Context
 import Hercules.CNix.Expr.Raw
 import Hercules.CNix.Expr.Typed
@@ -28,6 +29,7 @@ import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude hiding (evalState, throwIO)
+import qualified UnliftIO
 
 C.context (Hercules.CNix.Store.Context.context <> Hercules.CNix.Expr.Context.evalContext)
 
@@ -141,6 +143,17 @@ withEvalStateConduit (Store store) =
     )
     (\x -> liftIO [C.throwBlock| void { delete $(EvalState* x); } |])
 
+withEvalStateStore :: (MonadUnliftIO m) => Ptr EvalState -> (Store -> m a) -> m a
+withEvalStateStore evalState =
+  UnliftIO.bracket
+    ( Store
+        <$> liftIO
+          [C.exp| const refStore * { 
+      &$(EvalState *evalState)->store
+    }|]
+    )
+    (liftIO . releaseStore)
+
 evalFile :: Ptr EvalState -> FilePath -> IO RawValue
 evalFile evalState filename = do
   filename' <- Foreign.C.String.newCString filename
@@ -178,8 +191,7 @@ evalArgs evalState args = do
         throw nix::Error("Could not evaluate automatic arguments");
       }
       Value *r = new (NoGC) Value ();
-      r->type = tAttrs;
-      r->attrs = autoArgs;
+      r->mkAttrs(autoArgs);
       return r;
     }|]
 
@@ -217,20 +229,16 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
   (0 /=)
     <$> [C.throwBlock| int {
           Value *v = $(Value *v);
-          EvalState *evalState = $(EvalState *evalState);
-          Symbol rfd = evalState->symbols.create("recurseForDerivations");
-          Bindings::iterator iter = v->attrs->find(rfd);
+          EvalState &evalState = *$(EvalState *evalState);
+          Bindings::iterator iter = v->attrs->find(evalState.sRecurseForDerivations);
           if (iter == v->attrs->end()) {
             return 0;
           } else {
-            evalState->forceValue(*iter->value);
-            if (iter->value->type == ValueType::tBool) {
-              return iter->value->boolean ? 1 : 0;
-            } else {
-              // They can be empty attrsets???
-              // Observed in nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
-              return 1;
-            }
+            // Previously this bool was unpacked manually and included a special
+            // case to return true when it is not a bool. That logic was added
+            // because an empty attrset was found here, observed in
+            // nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
+            return evalState.forceBool(*iter->value, *iter->pos);
           }
         } |]
 
@@ -268,21 +276,22 @@ getAttrs (Value (RawValue v)) = do
         gather acc' =<< [C.exp| Attr *{ &$(Attr *i)[1] }|]
   gather mempty begin
 
-getDrvFile :: MonadIO m => Ptr EvalState -> RawValue -> m ByteString
-getDrvFile evalState (RawValue v) =
-  unsafeMallocBS
-    [C.throwBlock| const char *{
+getDrvFile :: MonadIO m => Ptr EvalState -> RawValue -> m StorePath
+getDrvFile evalState (RawValue v) = liftIO do
+  moveToForeignPtrWrapper
+    =<< [C.throwBlock| nix::StorePath *{
       EvalState &state = *$(EvalState *evalState);
       auto drvInfo = getDerivation(state, *$(Value *v), false);
       if (!drvInfo)
         throw EvalError("Not a valid derivation");
 
       std::string drvPath = drvInfo->queryDrvPath();
+      StorePath storePath = state.store->parseStorePath(drvPath);
 
       // write it (?)
-      auto drv = state.store->derivationFromPath(drvPath);
+      auto drv = state.store->derivationFromPath(storePath);
 
-      return strdup(drvPath.c_str());
+      return new StorePath(storePath);
     }|]
 
 getAttrBool :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Either SomeException (Maybe Bool))

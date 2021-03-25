@@ -22,6 +22,8 @@ C.include "<nix/derivations.hh>"
 _ = Proxy :: Proxy NixStorePath
 
 instanceStdVector "nix::StorePath *"
+instanceStdVectorCopyable "nix::StorePath *"
 instanceStdSet "nix::StorePath"
 
 instanceStdVector "nix::StorePathWithOutputs *"
+instanceStdVector "nix::StorePathWithOutputs"

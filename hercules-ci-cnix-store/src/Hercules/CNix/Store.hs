@@ -25,6 +25,8 @@ import Foreign.Storable (peek)
 import Hercules.CNix.Encapsulation (HasEncapsulation (..))
 import Hercules.CNix.Std.Set (StdSet, stdSetCtx)
 import qualified Hercules.CNix.Std.Set as Std.Set
+import Hercules.CNix.Std.String (stdStringCtx)
+import qualified Hercules.CNix.Std.String as Std.String
 import Hercules.CNix.Std.Vector
 import qualified Hercules.CNix.Std.Vector as Std.Vector
 import Hercules.CNix.Store.Context
@@ -48,7 +50,7 @@ import Protolude
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Prelude
 
-C.context (context <> stdVectorCtx <> stdSetCtx)
+C.context (context <> stdVectorCtx <> stdSetCtx <> stdStringCtx)
 
 C.include "<cstring>"
 
@@ -259,7 +261,48 @@ clearSubstituterCaches =
 
 newtype StorePathWithOutputs = StorePathWithOutputs (ForeignPtr C.NixStorePathWithOutputs)
 
-buildPaths :: Store -> StdVector StorePathWithOutputs -> IO ()
+instance HasEncapsulation C.NixStorePathWithOutputs StorePathWithOutputs where
+  moveToForeignPtrWrapper x = StorePathWithOutputs <$> newForeignPtr finalizeStorePathWithOutputs x
+
+finalizeStorePathWithOutputs :: FinalizerPtr C.NixStorePathWithOutputs
+{-# NOINLINE finalizeStorePathWithOutputs #-}
+finalizeStorePathWithOutputs =
+  unsafePerformIO
+    [C.exp|
+      void (*)(nix::StorePathWithOutputs *) {
+        [](StorePathWithOutputs *v) {
+          delete v;
+        }
+      }
+    |]
+
+newStorePathWithOutputs :: StorePath -> [ByteString] -> IO StorePathWithOutputs
+newStorePathWithOutputs storePath outputs = do
+  set <- Std.Set.new
+  for_ outputs (\o -> Std.String.withString o (Std.Set.insertP set))
+  moveToForeignPtrWrapper
+    =<< [C.exp| nix::StorePathWithOutputs * {
+    new StorePathWithOutputs {*$fptr-ptr:(nix::StorePath *storePath), *$fptr-ptr:(std::set<std::string>* set)}
+  }|]
+
+getStorePath :: StorePathWithOutputs -> IO StorePath
+getStorePath swo = mask_ do
+  moveToForeignPtrWrapper
+    =<< [C.exp| nix::StorePath * {
+    new StorePath($fptr-ptr:(nix::StorePathWithOutputs *swo)->path)
+  }|]
+
+getOutputs :: StorePathWithOutputs -> IO [ByteString]
+getOutputs swo = mask_ do
+  traverse Std.String.moveToByteString =<< toListP =<< moveToForeignPtrWrapper
+    =<< [C.throwBlock| std::vector<std::string>* {
+      auto r = new std::vector<std::string>();
+      for (auto s : $fptr-ptr:(nix::StorePathWithOutputs *swo)->outputs)
+        r->push_back(s);
+      return r;
+    }|]
+
+buildPaths :: Store -> StdVector C.NixStorePathWithOutputs -> IO ()
 buildPaths (Store store) (StdVector paths) = do
   [C.throwBlock| void {
     std::vector<StorePathWithOutputs> &paths = *$fptr-ptr:(std::vector<nix::StorePathWithOutputs>* paths);
@@ -367,11 +410,12 @@ getDerivationOutputs (Store store) (Derivation derivation) =
                     StorePath *& path = *$(nix::StorePath **pathP);
                     int &fim = *$(int *fimP);
                     int &hashType = *$(int *hashTypeP);
-                    const char *&hashValue = *$(const char **hashValueP);
+                    char *&hashValue = *$(char **hashValueP);
                     int &hashSize = *$(int *hashSizeP);
 
                     std::string nameString = i->first;
                     name = strdup(nameString.c_str());
+                    path = nullptr;
                     std::visit(overloaded {
                       [&](DerivationOutputInputAddressed doi) -> void {
                         typ = 0;
@@ -409,7 +453,7 @@ getDerivationOutputs (Store store) (Derivation derivation) =
                             break;
                         }
                         hashSize = dof.hash.hash.hashSize;
-                        hashValue = (const char*)malloc(hashSize);
+                        hashValue = (char*)malloc(hashSize);
                         std::memcpy((void*)(hashValue),
                                     (void*)(dof.hash.hash.hash),
                                     hashSize);
@@ -454,28 +498,35 @@ getDerivationOutputs (Store store) (Derivation derivation) =
                   name <- unsafePackMallocCString =<< peek nameP
                   path <- moveStorePathMaybe =<< peek pathP
                   typ <- peek typP
-                  fim <- peek fimP <&> \case 0 -> Flat; 1 -> Recursive; _ -> panic "getDerivationOutputs: unknown fim"
-                  hashType <-
-                    peek hashTypeP <&> \case
-                      0 -> MD5
-                      1 -> SHA1
-                      2 -> SHA256
-                      3 -> SHA512
-                      _ -> panic "getDerivationOutputs: unknown hashType"
-                  hashValue <- peek hashValueP
-                  hashSize <- peek hashSizeP
-                  hashString <- SBS.packCStringLen (hashValue, fromIntegral hashSize)
-                  free hashValue
+                  let getFileIngestionMethod = peek fimP <&> \case 0 -> Flat; 1 -> Recursive; _ -> panic "getDerivationOutputs: unknown fim"
+                      getHashType =
+                        peek hashTypeP <&> \case
+                          0 -> MD5
+                          1 -> SHA1
+                          2 -> SHA256
+                          3 -> SHA512
+                          _ -> panic "getDerivationOutputs: unknown hashType"
+                  detail <- case typ of
+                    0 -> pure $ DerivationOutputInputAddressed (fromMaybe (panic "getDerivationOutputs: impossible DOIA path missing") path)
+                    1 -> do
+                      hashValue <- peek hashValueP
+                      hashSize <- peek hashSizeP
+                      hashString <- SBS.packCStringLen (hashValue, fromIntegral hashSize)
+                      free hashValue
+                      hashType <- getHashType
+                      fim <- getFileIngestionMethod
+                      pure $ DerivationOutputCAFixed (FixedOutputHash fim (Hash hashType hashString)) (fromMaybe (panic "getDerivationOutputs: impossible DOCF path missing") path)
+                    2 -> do
+                      hashType <- getHashType
+                      fim <- getFileIngestionMethod
+                      pure $ DerivationOutputCAFloating fim hashType
+                    3 -> pure DerivationOutputDeferred
+                    _ -> panic "getDerivationOutputs: impossible getDerivationOutputs typ"
                   pure
                     ( DerivationOutput
                         { derivationOutputName = name,
                           derivationOutputPath = path,
-                          derivationOutputDetail = case typ of
-                            0 -> DerivationOutputInputAddressed (fromMaybe (panic "getDerivationOutputs: impossible DOIA path missing") path)
-                            1 -> DerivationOutputCAFixed (FixedOutputHash fim (Hash hashType hashString)) (fromMaybe (panic "getDerivationOutputs: impossible DOCF path missing") path)
-                            2 -> DerivationOutputCAFloating fim hashType
-                            3 -> DerivationOutputDeferred
-                            _ -> panic "getDerivationOutputs: impossible getDerivationOutputs typ"
+                          derivationOutputDetail = detail
                         }
                         :
                     )
@@ -515,7 +566,7 @@ getDerivationArguments derivation =
 getDerivationSources :: Derivation -> IO [StorePath]
 getDerivationSources derivation = mask_ do
   vec <-
-    Std.Vector.move
+    moveToForeignPtrWrapper
       =<< [C.throwBlock| std::vector<nix::StorePath*>* {
         auto r = new std::vector<StorePath *>();
         for (auto s : $fptr-ptr:(Derivation *derivation)->inputSrcs)
@@ -772,7 +823,7 @@ validPathInfoDeriver vpi =
 validPathInfoReferences :: ForeignPtr (Ref ValidPathInfo) -> IO [StorePath]
 validPathInfoReferences vpi = do
   sps <-
-    Std.Vector.move
+    moveToForeignPtrWrapper
       =<< [C.throwBlock| std::vector<nix::StorePath *>* {
         auto sps = new std::vector<nix::StorePath *>();
         for (StorePath sp : (*$fptr-ptr:(refValidPathInfo* vpi))->references)

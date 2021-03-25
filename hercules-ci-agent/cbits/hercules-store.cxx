@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstring>
+#include <memory>
 #include <math.h>
 #include <nix/config.h>
 #include <nix/shared.hh>
@@ -9,6 +10,7 @@
 #include <nix/derivations.hh>
 #include <nix/affinity.hh>
 #include <nix/globals.hh>
+#include <nix/callback.hh>
 
 #include "hercules-store.hh"
 
@@ -23,120 +25,97 @@ std::string WrappingStore::getUri() {
   return "wrapped:" + wrappedStore->getUri();
 };
 
-bool WrappingStore::isValidPathUncached(const Path& path) {
-  return wrappedStore->isValidPath(path);  // not ideal
+bool WrappingStore::isValidPathUncached(const StorePath & path) {
+  return wrappedStore->isValidPath(path);  // caches again. Not much we can do.
 }
 
-PathSet WrappingStore::queryValidPaths(const PathSet& paths,
+StorePathSet WrappingStore::queryValidPaths(const StorePathSet& paths,
                                        SubstituteFlag maybeSubstitute) {
   return wrappedStore->queryValidPaths(paths, maybeSubstitute);
 }
-PathSet WrappingStore::queryAllValidPaths() {
+StorePathSet WrappingStore::queryAllValidPaths() {
   return wrappedStore->queryAllValidPaths();
 }
 
 // protected:
-void WrappingStore::queryPathInfoUncached(
-    const Path& path,
-    Callback<std::shared_ptr<ValidPathInfo>> callback) noexcept {
-  unsupported("queryPathInfoUncached");
-  /*
-      Callback<ref<ValidPathInfo>>
-     callback2([&callback](std::future<ref<ValidPathInfo>> vpi){
-        std::shared_ptr<ValidPathInfo> !@#$%^&*
-        callback(vpi);
-      });
-      return wrappedStore->queryPathInfo(path, callback2); // not ideal
-  */
+void WrappingStore::queryPathInfoUncached(const StorePath & path,
+      Callback<std::shared_ptr<const ValidPathInfo>> callback) noexcept {
+
+  auto callbackPtr = std::make_shared<decltype(callback)>(std::move(callback));
+
+  wrappedStore->queryPathInfo(path, {[=](std::future<ref<const ValidPathInfo>> vpi){
+    (*callbackPtr)(std::move(vpi.get().get_ptr()));
+  }});
 }
 
 // public:
 
-void WrappingStore::queryReferrers(const Path& path, PathSet& referrers) {
+void WrappingStore::queryReferrers(const StorePath& path, StorePathSet& referrers) {
   wrappedStore->queryReferrers(path, referrers);
 }
 
-PathSet WrappingStore::queryValidDerivers(const Path& path) {
+StorePathSet WrappingStore::queryValidDerivers(const StorePath& path) {
   return wrappedStore->queryValidDerivers(path);
 }
 
-PathSet WrappingStore::queryDerivationOutputs(const Path& path) {
+StorePathSet WrappingStore::queryDerivationOutputs(const StorePath& path) {
   return wrappedStore->queryDerivationOutputs(path);
 }
 
-StringSet WrappingStore::queryDerivationOutputNames(const Path& path) {
-  return wrappedStore->queryDerivationOutputNames(path);
-}
-
-Path WrappingStore::queryPathFromHashPart(const string& hashPart) {
+std::optional<StorePath> WrappingStore::queryPathFromHashPart(const std::string & hashPart) {
   return wrappedStore->queryPathFromHashPart(hashPart);
 }
 
-PathSet WrappingStore::querySubstitutablePaths(const PathSet& paths) {
+StorePathSet WrappingStore::querySubstitutablePaths(const StorePathSet& paths) {
   return wrappedStore->querySubstitutablePaths(paths);
 }
 
-void WrappingStore::querySubstitutablePathInfos(const PathSet& paths,
-                                                SubstitutablePathInfos& infos) {
+void WrappingStore::querySubstitutablePathInfos(const StorePathCAMap & paths,
+      SubstitutablePathInfos & infos) {
   wrappedStore->querySubstitutablePathInfos(paths, infos);
 }
 
-bool WrappingStore::wantMassQuery() {
-  return wrappedStore->wantMassQuery();
+void WrappingStore::addToStore(const ValidPathInfo & info, Source & narSource,
+    RepairFlag repair, CheckSigsFlag checkSigs) {
+  wrappedStore->addToStore(info, narSource, repair, checkSigs);
 }
 
-void WrappingStore::addToStore(const ValidPathInfo& info,
-                               Source& narSource,
-                               RepairFlag repair,
-                               CheckSigsFlag checkSigs,
-                               std::shared_ptr<FSAccessor> accessor) {
-  wrappedStore->addToStore(info, narSource, repair, checkSigs, accessor);
+StorePath WrappingStore::addToStore(const string & name, const Path & srcPath,
+      FileIngestionMethod method, HashType hashAlgo,
+      PathFilter & filter, RepairFlag repair) {
+  return wrappedStore->addToStore(name, srcPath, method, hashAlgo, filter, repair);
 }
 
-void WrappingStore::addToStore(const ValidPathInfo& info,
-                               const ref<std::string>& nar,
-                               RepairFlag repair,
-                               CheckSigsFlag checkSigs,
-                               std::shared_ptr<FSAccessor> accessor) {
-  wrappedStore->addToStore(info, nar, repair, checkSigs, accessor);
+StorePath WrappingStore::addToStoreFromDump(Source & dump, const string & name,
+      FileIngestionMethod method, HashType hashAlgo, RepairFlag repair) {
+  return wrappedStore->addToStoreFromDump(dump, name, method, hashAlgo, repair);
 }
 
-Path WrappingStore::addToStore(const string& name,
-                               const Path& srcPath,
-                               bool recursive,
-                               HashType hashAlgo,
-                               PathFilter& filter,
-                               RepairFlag repair) {
-  return wrappedStore->addToStore(name, srcPath, recursive, hashAlgo, filter,
-                                  repair);
-}
-
-Path WrappingStore::addTextToStore(const string& name,
-                                   const string& s,
-                                   const PathSet& references,
-                                   RepairFlag repair) {
+StorePath WrappingStore::addTextToStore(const string & name, const string & s,
+      const StorePathSet & references, RepairFlag repair) {
   return wrappedStore->addTextToStore(name, s, references, repair);
 }
 
-void WrappingStore::narFromPath(const Path& path, Sink& sink) {
+void WrappingStore::narFromPath(const StorePath& path, Sink& sink) {
   wrappedStore->narFromPath(path, sink);
 }
 
-void WrappingStore::buildPaths(const PathSet& paths, BuildMode buildMode) {
+void WrappingStore::buildPaths(
+      const std::vector<StorePathWithOutputs> & paths, BuildMode buildMode) {
   wrappedStore->buildPaths(paths, buildMode);
 }
 
-BuildResult WrappingStore::buildDerivation(const Path& drvPath,
+BuildResult WrappingStore::buildDerivation(const StorePath& drvPath,
                                            const BasicDerivation& drv,
                                            BuildMode buildMode) {
   return wrappedStore->buildDerivation(drvPath, drv, buildMode);
 }
 
-void WrappingStore::ensurePath(const Path& path) {
+void WrappingStore::ensurePath(const StorePath& path) {
   wrappedStore->ensurePath(path);
 }
 
-void WrappingStore::addTempRoot(const Path& path) {
+void WrappingStore::addTempRoot(const StorePath& path) {
   wrappedStore->addTempRoot(path);
 }
 
@@ -165,13 +144,13 @@ ref<FSAccessor> WrappingStore::getFSAccessor() {
   return wrappedStore->getFSAccessor();
 }
 
-void WrappingStore::addSignatures(const Path& storePath,
+void WrappingStore::addSignatures(const StorePath& storePath,
                                   const StringSet& sigs) {
   wrappedStore->addSignatures(storePath, sigs);
 };
 
-void WrappingStore::computeFSClosure(const PathSet& paths,
-                                     PathSet& out,
+void WrappingStore::computeFSClosure(const StorePathSet& paths,
+                                     StorePathSet& out,
                                      bool flipDirection,
                                      bool includeOutputs,
                                      bool includeDerivers) {
@@ -179,17 +158,14 @@ void WrappingStore::computeFSClosure(const PathSet& paths,
                                  includeDerivers);
 }
 
-void WrappingStore::queryMissing(const PathSet& targets,
-                                 PathSet& willBuild,
-                                 PathSet& willSubstitute,
-                                 PathSet& unknown,
-                                 unsigned long long& downloadSize,
-                                 unsigned long long& narSize) {
+void WrappingStore::queryMissing(const std::vector<StorePathWithOutputs> & targets,
+      StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
+      uint64_t & downloadSize, uint64_t & narSize) {
   wrappedStore->queryMissing(targets, willBuild, willSubstitute, unknown,
                              downloadSize, narSize);
 }
 
-std::shared_ptr<std::string> WrappingStore::getBuildLog(const Path& path) {
+std::shared_ptr<std::string> WrappingStore::getBuildLog(const StorePath& path) {
   return wrappedStore->getBuildLog(path);
 }
 
@@ -197,20 +173,38 @@ void WrappingStore::connect() {
   wrappedStore->connect();
 };
 
-int WrappingStore::getPriority() {
-  return wrappedStore->getPriority();
-}
-
 Path WrappingStore::toRealPath(const Path& storePath) {
   return wrappedStore->toRealPath(storePath);
 };
 
+Roots WrappingStore::findRoots(bool censor) {
+  return wrappedStore->findRoots(censor);
+}
+
+unsigned int WrappingStore::getProtocol() {
+  return wrappedStore->getProtocol();
+}
+
+void WrappingStore::createUser(const std::string & userName, uid_t userId) {
+  wrappedStore->createUser(userName, userId);
+}
+
 /////
 
 HerculesStore::HerculesStore(const Params& params, ref<Store> storeToWrap)
-    : WrappingStore(params, storeToWrap) {}
+    : StoreConfig(params)
+    , WrappingStore(params, storeToWrap) {}
 
-void HerculesStore::ensurePath(const Path& path) {
+const std::string HerculesStore::name() {
+  return "wrapped " + wrappedStore->name();
+}
+
+std::optional<const Realisation> HerculesStore::queryRealisation(const DrvOutput &drvOut) {
+  // TODO (ca-derivations) use?
+  return wrappedStore->queryRealisation(drvOut);
+}
+
+void HerculesStore::ensurePath(const StorePath& path) {
   /* We avoid asking substituters for paths, since
      those would yield negative pathInfo caches on remote store.
 
@@ -221,7 +215,8 @@ void HerculesStore::ensurePath(const Path& path) {
   */
   if (!wrappedStore->isValidPath(path)) {
     std::exception_ptr exceptionToThrow(nullptr);
-    builderCallback(strdup(path.c_str()), &exceptionToThrow);
+    // FIXME probably need this
+    // builderCallback(path, &exceptionToThrow);
     if (exceptionToThrow != nullptr) {
       std::rethrow_exception(exceptionToThrow);
     }
@@ -231,41 +226,38 @@ void HerculesStore::ensurePath(const Path& path) {
 };
 
 // Avoid substituting in evaluator, see `ensurePath` for more details
-void HerculesStore::queryMissing(const PathSet& targets,
-                                 PathSet& willBuild,
-                                 PathSet& willSubstitute,
-                                 PathSet& unknown,
-                                 unsigned long long& downloadSize,
-                                 unsigned long long& narSize) {
+void HerculesStore::queryMissing(const std::vector<StorePathWithOutputs> & targets,
+      StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
+      uint64_t & downloadSize, uint64_t & narSize) {
 };
 
-void HerculesStore::buildPaths(const PathSet& paths, BuildMode buildMode) {
-  for (Path path : paths) {
-    std::exception_ptr exceptionToThrow(nullptr);
-    builderCallback(strdup(path.c_str()), &exceptionToThrow);
-    if (exceptionToThrow != nullptr) {
-      std::rethrow_exception(exceptionToThrow);
-    }
+void HerculesStore::buildPaths(const std::vector<StorePathWithOutputs> & paths, BuildMode buildMode) {
+  std::exception_ptr exceptionToThrow(nullptr);
+
+  // responsibility for delete is transferred to builderCallback
+  auto pathsPtr = new std::vector<StorePathWithOutputs>(paths);
+
+  builderCallback(pathsPtr, &exceptionToThrow);
+
+  if (exceptionToThrow != nullptr) {
+    std::rethrow_exception(exceptionToThrow);
   }
 }
 
-BuildResult HerculesStore::buildDerivation(const Path& drvPath,
-                                           const BasicDerivation& drv,
-                                           BuildMode buildMode) {
-  unsupported("buildDerivation");
+BuildResult HerculesStore::buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
+    BuildMode buildMode) {
 
-  std::cerr << "building derivation " << drvPath << std::endl;
-  auto r = wrappedStore->buildDerivation(drvPath, drv, buildMode);
-  std::cerr << "built derivation " << drvPath << std::endl;
-  return r;
+  unsupported("buildDerivation");
+  // unreachable
+  return wrappedStore->buildDerivation(drvPath, drv, buildMode);
 }
 
 void HerculesStore::printDiagnostics() {
-  for (std::string path : ensuredPaths) {
-    std::cerr << path << std::endl;
+  for (auto path : ensuredPaths) {
+    std::cerr << path.to_string() << std::endl;
   }
 }
 
-void HerculesStore::setBuilderCallback(void (* newBuilderCallback)(const char *, std::exception_ptr *exceptionToThrow)) {
+void HerculesStore::setBuilderCallback(void (* newBuilderCallback)(std::vector<nix::StorePathWithOutputs>*, std::exception_ptr *exceptionToThrow)) {
   builderCallback = newBuilderCallback;
 }

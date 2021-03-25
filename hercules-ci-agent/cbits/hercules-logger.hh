@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nix/config.h>
+#include <nix/error.hh>
 #include <nix/shared.hh>
 #include <nix/sync.hh>
 #include <nix/logging.hh>
@@ -45,6 +46,8 @@ private:
       const std::string & s, const Fields & fields, nix::ActivityId parent) override;
   void stopActivity(nix::ActivityId act) override;
   void result(nix::ActivityId act, nix::ResultType type, const Fields & fields) override;
+
+  void logEI(const nix::ErrorInfo &ei) override;
 
   std::unique_ptr<LogEntry> pop();
   void popMany(int max, std::queue<std::unique_ptr<LogEntry>> &out);

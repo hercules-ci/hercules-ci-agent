@@ -49,6 +49,7 @@ context :: C.Context
 context =
   C.cppCtx <> C.fptrCtx
     <> C.bsCtx
+    <> mempty
       { C.ctxTypesTable =
           M.singleton (C.TypeName "refStore") [t|Ref NixStore|]
             <> M.singleton (C.TypeName "nix::StorePath") [t|NixStorePath|]

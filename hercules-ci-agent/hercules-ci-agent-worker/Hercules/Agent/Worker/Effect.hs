@@ -4,13 +4,12 @@
 module Hercules.Agent.Worker.Effect where
 
 import Control.Monad.Catch (MonadThrow)
-import GHC.ForeignPtr (ForeignPtr)
 import Hercules.Agent.Worker.Build.Prefetched (buildDerivation)
 import qualified Hercules.Agent.Worker.Build.Prefetched as Build
 import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Command.Effect
 import Hercules.CNix (Store)
 import qualified Hercules.CNix as CNix
-import Hercules.CNix.Store.Context (Derivation)
+import Hercules.CNix.Store (Derivation)
 import qualified Hercules.Effect as Effect
 import Katip (KatipContext)
 import Protolude
@@ -22,25 +21,26 @@ runEffect store command = do
   dir <- getCurrentDirectory
   Effect.runEffect derivation (Command.Effect.token command) (Command.Effect.secretsPath command) (Command.Effect.apiBaseURL command) dir
 
-prepareDerivation :: MonadIO m => Store -> Command.Effect.Effect -> m (ForeignPtr Derivation)
+prepareDerivation :: MonadIO m => Store -> Command.Effect.Effect -> m Derivation
 prepareDerivation store command = do
   let extraPaths = Command.Effect.inputDerivationOutputPaths command
       drvPath = encodeUtf8 $ Command.Effect.drvPath command
-      ensureDeps = for_ extraPaths $ \input ->
-        liftIO $ CNix.ensurePath store input
+      ensureDeps = for_ extraPaths $ \input -> liftIO $ do
+        CNix.ensurePath store =<< CNix.parseStorePath store input
+  drvStorePath <- liftIO $ CNix.parseStorePath store drvPath
   liftIO $ do
     ensureDeps `catch` \e -> do
       CNix.logInfo $ "while retrieving dependencies: " <> toS (displayException (e :: SomeException))
       CNix.logInfo "unable to retrieve dependency; attempting fallback to local build"
-      CNix.ensurePath store drvPath
-      derivation <- CNix.getDerivation store drvPath
+      CNix.ensurePath store drvStorePath
+      derivation <- CNix.getDerivation store drvStorePath
       depDrvPaths <- CNix.getDerivationInputs derivation
       for_ depDrvPaths \(depDrv, _outputs) -> do
         depDerivation <- CNix.getDerivation store depDrv
         _nixBuildResult <- liftIO $ buildDerivation store depDrv depDerivation mempty
         pass
   derivation <-
-    liftIO (Build.getDerivation store drvPath) >>= \case
+    liftIO (Build.getDerivation store drvStorePath) >>= \case
       Just drv -> pure drv
       Nothing -> panic $ "Could not retrieve derivation " <> show drvPath <> " from local store or binary caches."
   sources <- liftIO $ CNix.getDerivationSources derivation

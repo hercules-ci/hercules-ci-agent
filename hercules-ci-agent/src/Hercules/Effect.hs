@@ -8,10 +8,9 @@ import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
-import Foreign (ForeignPtr)
 import Hercules.Agent.Sensitive (Sensitive (Sensitive, reveal), revealContainer)
+import Hercules.CNix (Derivation)
 import Hercules.CNix.Store (getDerivationArguments, getDerivationBuilder, getDerivationEnv)
-import Hercules.CNix.Store.Context (Derivation)
 import Hercules.Effect.Container (BindMount (BindMount))
 import qualified Hercules.Effect.Container as Container
 import Hercules.Error (escalateAs)
@@ -63,7 +62,7 @@ writeSecrets sourceFile secretsMap extraSecrets destinationDirectory = write . f
                       { data_ = Formats.Secret.data_ secret
                       }
 
-runEffect :: (MonadThrow m, KatipContext m) => ForeignPtr Derivation -> Sensitive Text -> FilePath -> Text -> FilePath -> m ExitCode
+runEffect :: (MonadThrow m, KatipContext m) => Derivation -> Sensitive Text -> FilePath -> Text -> FilePath -> m ExitCode
 runEffect derivation token secretsPath apiBaseURL dir = do
   drvBuilder <- liftIO $ getDerivationBuilder derivation
   drvArgs <- liftIO $ getDerivationArguments derivation

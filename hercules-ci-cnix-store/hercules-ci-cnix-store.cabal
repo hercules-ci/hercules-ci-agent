@@ -47,6 +47,9 @@ library
       Hercules.CNix
       Hercules.CNix.Encapsulation
       Hercules.CNix.Std.Set
+      Hercules.CNix.Std.String
+      Hercules.CNix.Std.String.Context
+      Hercules.CNix.Std.String.Instances
       Hercules.CNix.Std.Vector
       Hercules.CNix.Store
       Hercules.CNix.Store.Context

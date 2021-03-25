@@ -26,67 +26,65 @@ class WrappingStore : public Store {
 
 protected:
 
-  virtual bool isValidPathUncached(const Path & path) override;
+  virtual bool isValidPathUncached(const StorePath & path) override;
 
 public:
 
-  virtual PathSet queryValidPaths(const PathSet & paths,
+  virtual StorePathSet queryValidPaths(const StorePathSet & paths,
       SubstituteFlag maybeSubstitute = NoSubstitute) override;
-  virtual PathSet queryAllValidPaths() override;
+  virtual StorePathSet queryAllValidPaths() override;
 
 protected:
-  virtual void queryPathInfoUncached(const Path & path,
-        Callback<std::shared_ptr<ValidPathInfo>> callback) noexcept override;
+  virtual void queryPathInfoUncached(const StorePath & path,
+      Callback<std::shared_ptr<const ValidPathInfo>> callback) noexcept override;
 
 public:
 
-  virtual void queryReferrers(const Path & path,
-      PathSet & referrers) override;
+  virtual void queryReferrers(const StorePath & path,
+      StorePathSet & referrers) override;
 
-  virtual PathSet queryValidDerivers(const Path & path) override;
+  virtual StorePathSet queryValidDerivers(const StorePath & path) override;
 
-  virtual PathSet queryDerivationOutputs(const Path & path) override;
+  virtual StorePathSet queryDerivationOutputs(const StorePath & path) override;
 
-  virtual StringSet queryDerivationOutputNames(const Path & path) override;
+  virtual std::optional<StorePath> queryPathFromHashPart(const std::string & hashPart) override;
 
-  virtual Path queryPathFromHashPart(const string & hashPart) override;
+  virtual StorePathSet querySubstitutablePaths(const StorePathSet & paths) override;
 
-  virtual PathSet querySubstitutablePaths(const PathSet & paths) override;
-
-  virtual void querySubstitutablePathInfos(const PathSet & paths,
-        SubstitutablePathInfos & infos) override;
-
-  virtual bool wantMassQuery() override;
+  virtual void querySubstitutablePathInfos(const StorePathCAMap & paths,
+      SubstitutablePathInfos & infos) override;
 
   virtual void addToStore(const ValidPathInfo & info, Source & narSource,
-        RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs,
-        std::shared_ptr<FSAccessor> accessor = 0) override;
+      RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs) override;
 
-  virtual void addToStore(const ValidPathInfo & info, const ref<std::string> & nar,
-        RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs,
-        std::shared_ptr<FSAccessor> accessor = 0) override;
+  virtual StorePath addToStore(const string & name, const Path & srcPath,
+      FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256,
+      PathFilter & filter = defaultPathFilter, RepairFlag repair = NoRepair) override;
 
-  virtual Path addToStore(const string & name, const Path & srcPath,
-        bool recursive = true, HashType hashAlgo = htSHA256,
-        PathFilter & filter = defaultPathFilter, RepairFlag repair = NoRepair) override;
+  virtual StorePath addToStoreFromDump(Source & dump, const string & name,
+      FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256, RepairFlag repair = NoRepair) override;
 
-  virtual Path addTextToStore(const string & name, const string & s,
-        const PathSet & references, RepairFlag repair = NoRepair) override;
+  virtual StorePath addTextToStore(const string & name, const string & s,
+      const StorePathSet & references, RepairFlag repair = NoRepair) override;
 
-  virtual void narFromPath(const Path & path, Sink & sink) override;
+  virtual void narFromPath(const StorePath & path, Sink & sink) override;
 
-  virtual void buildPaths(const PathSet & paths, BuildMode buildMode = bmNormal) override;
+  virtual void buildPaths(
+      const std::vector<StorePathWithOutputs> & paths,
+      BuildMode buildMode = bmNormal) override;
 
-  virtual BuildResult buildDerivation(const Path & drvPath, const BasicDerivation & drv,
-        BuildMode buildMode = bmNormal) override;
+  virtual BuildResult buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
+      BuildMode buildMode = bmNormal) override;
 
-  virtual void ensurePath(const Path & path) override;
+  virtual void ensurePath(const StorePath & path) override;
 
-  virtual void addTempRoot(const Path & path) override;
+  virtual void addTempRoot(const StorePath & path) override;
 
   virtual void addIndirectRoot(const Path & path) override;
 
   virtual void syncWithGC() override;
+
+  virtual Roots findRoots(bool censor) override;
 
   virtual void collectGarbage(const GCOptions & options, GCResults & results) override;
 
@@ -96,54 +94,59 @@ public:
 
   virtual ref<FSAccessor> getFSAccessor() override;
 
-  virtual void addSignatures(const Path & storePath, const StringSet & sigs) override;
+  virtual void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 
-    
-  virtual void computeFSClosure(const PathSet & paths,
-      PathSet & out, bool flipDirection = false,
+  virtual void computeFSClosure(const StorePathSet & paths,
+      StorePathSet & out, bool flipDirection = false,
       bool includeOutputs = false, bool includeDerivers = false) override;
 
-  virtual void queryMissing(const PathSet & targets,
-        PathSet & willBuild, PathSet & willSubstitute, PathSet & unknown,
-        unsigned long long & downloadSize, unsigned long long & narSize) override;
+  virtual void queryMissing(const std::vector<StorePathWithOutputs> & targets,
+      StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
+      uint64_t & downloadSize, uint64_t & narSize) override;
 
-  virtual std::shared_ptr<std::string> getBuildLog(const Path & path) override;
+  virtual std::shared_ptr<std::string> getBuildLog(const StorePath & path) override;
+
+  virtual unsigned int getProtocol() override;
 
   virtual void connect() override;
 
-  virtual int getPriority() override;
-
   virtual Path toRealPath(const Path & storePath) override;
+
+  virtual void createUser(const std::string & userName, uid_t userId) override;
+
 };
 
 class HerculesStore : public WrappingStore {
 public:
-  PathSet ensuredPaths;
-  void (* builderCallback)(const char *, std::exception_ptr *exceptionToThrow);
+  StorePathSet ensuredPaths;
+  void (* builderCallback)(std::vector<nix::StorePathWithOutputs>*, std::exception_ptr *exceptionToThrow);
 
   HerculesStore(const Params & params, ref<Store> storeToWrap);
 
+  virtual const std::string name() override;
+
   // Overrides
 
-  virtual void ensurePath(const Path & path) override;
+  virtual std::optional<const Realisation> queryRealisation(const DrvOutput &) override;
 
-  virtual void buildPaths(const PathSet & paths, BuildMode buildMode = bmNormal) override;
+  virtual void ensurePath(const StorePath & path) override;
 
-  virtual BuildResult buildDerivation(const Path & drvPath, const BasicDerivation & drv,
-        BuildMode buildMode = bmNormal) override;
+  virtual void buildPaths(
+      const std::vector<StorePathWithOutputs> & paths,
+      BuildMode buildMode = bmNormal) override;
 
-  virtual void queryMissing(const PathSet& targets,
-                            PathSet& willBuild,
-                            PathSet& willSubstitute,
-                            PathSet& unknown,
-                            unsigned long long& downloadSize,
-                            unsigned long long& narSize) override;
+  virtual BuildResult buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
+      BuildMode buildMode = bmNormal) override;
+
+  virtual void queryMissing(const std::vector<StorePathWithOutputs> & targets,
+      StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
+      uint64_t & downloadSize, uint64_t & narSize) override;
 
   // Additions
 
   void printDiagnostics();
 
-  void setBuilderCallback(void (* newBuilderCallback)(const char *, std::exception_ptr *exceptionToThrow));
+  void setBuilderCallback(void (* newBuilderCallback)(std::vector<nix::StorePathWithOutputs>*, std::exception_ptr *exceptionToThrow));
 
   void inhibitBuilds();
   void uninhibitBuilds();

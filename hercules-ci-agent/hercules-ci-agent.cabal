@@ -352,6 +352,7 @@ test-suite hercules-test
     , process
     , protolude
     , safe-exceptions
+    , temporary
     , text
     , transformers-base
     , unliftio-core
