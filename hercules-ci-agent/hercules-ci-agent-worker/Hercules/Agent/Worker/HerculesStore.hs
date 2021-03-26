@@ -47,6 +47,8 @@ C.include "<nix/affinity.hh>"
 
 C.include "<nix/globals.hh>"
 
+C.include "<nix-compat.hh>"
+
 C.include "hercules-aliases.h"
 
 C.using "namespace nix"

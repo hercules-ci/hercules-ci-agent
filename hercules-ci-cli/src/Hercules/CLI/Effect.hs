@@ -80,7 +80,7 @@ runParser = do
 prepareDerivation :: MonadIO m => Store -> StorePath -> m Derivation
 prepareDerivation store drvPath = do
   derivation <- liftIO $ CNix.getDerivation store drvPath
-  inputs <- liftIO $ getDerivationInputs derivation
+  inputs <- liftIO $ getDerivationInputs store derivation
   storePathsWithOutputs <- liftIO Std.Vector.new
   liftIO $ for_ inputs \(input, outputs) -> do
     swo <- newStorePathWithOutputs input outputs

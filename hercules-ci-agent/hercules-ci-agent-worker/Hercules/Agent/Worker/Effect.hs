@@ -34,7 +34,7 @@ prepareDerivation store command = do
       CNix.logInfo "unable to retrieve dependency; attempting fallback to local build"
       CNix.ensurePath store drvStorePath
       derivation <- CNix.getDerivation store drvStorePath
-      depDrvPaths <- CNix.getDerivationInputs derivation
+      depDrvPaths <- CNix.getDerivationInputs store derivation
       for_ depDrvPaths \(depDrv, _outputs) -> do
         depDerivation <- CNix.getDerivation store depDrv
         _nixBuildResult <- liftIO $ buildDerivation store depDrv depDerivation mempty
@@ -43,7 +43,7 @@ prepareDerivation store command = do
     liftIO (Build.getDerivation store drvStorePath) >>= \case
       Just drv -> pure drv
       Nothing -> panic $ "Could not retrieve derivation " <> show drvPath <> " from local store or binary caches."
-  sources <- liftIO $ CNix.getDerivationSources derivation
+  sources <- liftIO $ CNix.getDerivationSources store derivation
   for_ sources \src -> do
     liftIO $ CNix.ensurePath store src
   pure derivation

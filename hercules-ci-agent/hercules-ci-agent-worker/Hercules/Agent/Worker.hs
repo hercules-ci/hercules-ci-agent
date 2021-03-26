@@ -450,7 +450,8 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
             withDrvInProgress st drvStorePath $ do
               liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing
               derivation <- liftIO $ getDerivation store drvStorePath
-              drvOutputs <- liftIO $ getDerivationOutputs store derivation
+              drvName <- liftIO $ getDerivationNameFromPath drvStorePath
+              drvOutputs <- liftIO $ getDerivationOutputs store drvName derivation
               outputPath <-
                 case find (\o -> derivationOutputName o == outputName) drvOutputs of
                   Nothing -> panic $ "output " <> show outputName <> " does not exist on " <> pathText

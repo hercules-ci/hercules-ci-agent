@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -58,6 +59,8 @@ C.include "<nix/derivations.hh>"
 C.include "<nix/affinity.hh>"
 
 C.include "<nix/globals.hh>"
+
+C.include "<nix-compat.hh>"
 
 C.include "hercules-ci-cnix/expr.hxx"
 
@@ -191,7 +194,12 @@ evalArgs evalState args = do
         throw nix::Error("Could not evaluate automatic arguments");
       }
       Value *r = new (NoGC) Value ();
+#ifdef NIX_2_4
       r->mkAttrs(autoArgs);
+#else
+      r->type = tAttrs;
+      r->attrs = autoArgs;
+#endif
       return r;
     }|]
 
@@ -230,6 +238,7 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
     <$> [C.throwBlock| int {
           Value *v = $(Value *v);
           EvalState &evalState = *$(EvalState *evalState);
+#ifdef NIX_2_4
           Bindings::iterator iter = v->attrs->find(evalState.sRecurseForDerivations);
           if (iter == v->attrs->end()) {
             return 0;
@@ -240,6 +249,22 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
             // nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
             return evalState.forceBool(*iter->value, *iter->pos);
           }
+#else
+          Symbol rfd = evalState.symbols.create("recurseForDerivations");
+          Bindings::iterator iter = v->attrs->find(rfd);
+          if (iter == v->attrs->end()) {
+            return 0;
+          } else {
+            evalState.forceValue(*iter->value);
+            if (iter->value->type == ValueType::tBool) {
+              return iter->value->boolean ? 1 : 0;
+            } else {
+              // They can be empty attrsets???
+              // Observed in nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
+              return 1;
+            }
+          }
+#endif
         } |]
 
 getAttr :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Maybe RawValue)
@@ -286,10 +311,10 @@ getDrvFile evalState (RawValue v) = liftIO do
         throw EvalError("Not a valid derivation");
 
       std::string drvPath = drvInfo->queryDrvPath();
-      StorePath storePath = state.store->parseStorePath(drvPath);
+      StorePath storePath = compatParseStorePathStrict(*state.store, drvPath);
 
       // write it (?)
-      auto drv = state.store->derivationFromPath(storePath);
+      auto drv = state.store->derivationFromPath(compatPath(*state.store, storePath));
 
       return new StorePath(storePath);
     }|]

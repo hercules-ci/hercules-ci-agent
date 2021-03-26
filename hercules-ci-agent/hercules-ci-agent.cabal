@@ -14,9 +14,14 @@ build-type:     Simple
 extra-source-files:
     CHANGELOG.md
     cbits/hercules-aliases.h
-    cbits/hercules-store.hh
     cbits/hercules-logger.hh
+    cbits/nix-2.3/hercules-store.hh
+    cbits/nix-2.4/hercules-store.hh
     testdata/vm-test-run-agent-test.drv
+
+flag nix-2_4
+  description: Build for Nix >=2.4pre*
+  default: False
 
 source-repository head
   type: git
@@ -243,8 +248,14 @@ executable hercules-ci-agent-worker
   hs-source-dirs:
       hercules-ci-agent-worker
   cxx-sources:
-      cbits/hercules-store.cxx
       cbits/hercules-logger.cxx
+  if flag(nix-2_4)
+    cxx-sources:
+      cbits/nix-2.4/hercules-store.cxx
+  else
+    cxx-sources:
+      cbits/nix-2.3/hercules-store.cxx
+      
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
     -Werror=incomplete-patterns -Werror=missing-fields
@@ -259,6 +270,12 @@ executable hercules-ci-agent-worker
     -with-rtsopts=-maxN8
   include-dirs:
       cbits
+  if flag(nix-2_4)
+    include-dirs:
+      cbits/nix-2.4
+  else
+    include-dirs:
+      cbits/nix-2.3
   extra-libraries:
       boost_context
   build-depends:

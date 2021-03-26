@@ -18,6 +18,10 @@ source-repository head
   type: git
   location: https://github.com/hercules-ci/hercules-ci-agent
 
+flag nix-2_4
+  description: Build for Nix >=2.4pre*
+  default: False
+
 -- match the C++ language standard Nix is using
 common cxx-opts
   cxx-options:
@@ -73,8 +77,17 @@ library
       hercules-ci-cnix/expr.hxx
   extra-libraries:
       boost_context
-  pkgconfig-depends:
-      nix-store >= 2.0
-    , nix-expr >= 2.0
-    , nix-main >= 2.0
-    , bdw-gc
+
+  if flag(nix-2_4)
+    cpp-options:
+        -DNIX_2_4
+    pkgconfig-depends:
+        nix-store >= 2.4
+      , nix-expr >= 2.4
+      , nix-main >= 2.4
+  else
+    pkgconfig-depends:
+        nix-store >= 2.0
+      , nix-expr >= 2.0
+      , nix-main >= 2.0
+      , bdw-gc

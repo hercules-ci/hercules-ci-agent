@@ -18,8 +18,8 @@ spec = do
     it "parses vm-test-run-agent-test.drv correctly" $
       withTempStore $ \store -> do
         s <- BS.readFile "testdata/vm-test-run-agent-test.drv"
-        drv <- getDerivationFromString store "testdata/vm-test-run-agent-test.drv" s
-        d <- retrieveDerivationInfo' store "testdata/vm-test-run-agent-test.drv" drv
+        drv <- getDerivationFromString store "vm-test-run-agent-test" s
+        d <- retrieveDerivationInfo' store "testdata/vm-test-run-agent-test.drv" "vm-test-run-agent-test" drv
         derivationPath d `shouldBe` "testdata/vm-test-run-agent-test.drv"
         platform d `shouldBe` "x86_64-linux"
         requiredSystemFeatures d `shouldBe` ["kvm", "nixos-test"]

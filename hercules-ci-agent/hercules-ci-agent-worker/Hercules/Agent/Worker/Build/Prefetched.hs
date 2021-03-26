@@ -38,6 +38,8 @@ C.include "<nix/globals.hh>"
 
 C.include "<nix/fs-accessor.hh>"
 
+C.include "<nix-compat.hh>"
+
 C.include "<hercules-ci-cnix/store.hxx>"
 
 C.using "namespace nix"
@@ -103,7 +105,7 @@ getDerivation (Store store) derivationPath =
 
       for (nix::ref<nix::Store> & currentStore : stores) {
         try {
-          derivation = new nix::Derivation(currentStore->derivationFromPath(derivationPath));
+          derivation = new nix::Derivation(currentStore->derivationFromPath(compatPath(*currentStore, derivationPath)));
           break;
         } catch (nix::Interrupted &e) {
           throw e;
@@ -139,10 +141,14 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
       StorePath derivationPath = *$fptr-ptr:(nix::StorePath *derivationPath);
 
       if ($(bool materializeDerivation)) {
-        store.ensurePath(derivationPath);
+        store.ensurePath(compatPath(store, derivationPath));
+#ifdef NIX_2_4
         auto derivation = store.derivationFromPath(derivationPath);
         StorePathWithOutputs storePathWithOutputs { .path = derivationPath, .outputs = derivation.outputNames() };
         std::vector<nix::StorePathWithOutputs> paths{storePathWithOutputs};
+#else
+        nix::PathSet paths{compatPath(store, derivationPath)};
+#endif
         try {
           store.buildPaths(paths);
           status = -1;
@@ -166,11 +172,15 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
         std::istringstream stream(extraInputsMerged);
 
         while (std::getline(stream, extraInput)) {
+#ifdef NIX_2_4
           auto path = store.parseStorePath(extraInput);
+#else
+          auto path = extraInput;
+#endif
           derivation->inputSrcs.insert(path);
         }
 
-        nix::BuildResult result = store.buildDerivation(derivationPath, *derivation);
+        nix::BuildResult result = store.buildDerivation(compatPath(store, derivationPath), *derivation);
 
         switch (result.status) {
           case nix::BuildResult::Built:
