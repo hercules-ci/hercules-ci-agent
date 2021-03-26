@@ -33,7 +33,7 @@
 , memory
 , mmorph
 , netrc
-, nixUnstable
+, nix
 , optparse-applicative
 , process
 , protolude
@@ -116,7 +116,7 @@ mkDerivation {
     versions
   ];
   librarySystemDepends = [ boost ];
-  libraryPkgconfigDepends = [ nixUnstable ];
+  libraryPkgconfigDepends = [ nix ];
   executableHaskellDepends = [ base cachix-api ];
   executableToolDepends = [ hspec-discover ];
   testHaskellDepends = [
