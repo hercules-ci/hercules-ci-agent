@@ -1,5 +1,7 @@
+#pragma once
 #include <nix/store-api.hh>
 #include <nix/derivation-output.hh>
+#include <nix/derivations.hh>
 #include <nix/path-compat.hh>
 
 // derivations.cc
@@ -66,6 +68,10 @@ inline nix::StorePathSet compatParseStorePathSet(const nix::Store &store, const 
     r.insert(compatParseStorePath(store, sp));
   }
   return r;
+}
+
+namespace nix {
+  StorePathWithOutputs parsePathWithOutputs(const Store &store, const std::string & s);
 }
 
 // util.hh

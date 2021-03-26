@@ -26,12 +26,14 @@ void HerculesLogger::log(nix::Verbosity lvl, const nix::FormatOrString & fs) {
   }));
 }
 
+#ifdef NIX_2_4
 // TODO structured
 void HerculesLogger::logEI(const nix::ErrorInfo & ei) {
   std::stringstream oss;
   showErrorInfo(oss, ei, false);
   log(ei.level, oss.str());
 }
+#endif
 
 void HerculesLogger::startActivity(nix::ActivityId act, nix::Verbosity lvl, nix::ActivityType type,
     const std::string & s, const Fields & fields, nix::ActivityId parent) {

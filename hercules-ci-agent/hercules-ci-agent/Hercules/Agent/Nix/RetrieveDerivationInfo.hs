@@ -19,13 +19,14 @@ retrieveDerivationInfo ::
 retrieveDerivationInfo store drvPath = liftIO $ do
   drv <- getDerivation store drvPath
   path <- storePathToPath store drvPath
-  retrieveDerivationInfo' store path drv
+  drvName <- getDerivationNameFromPath drvPath
+  retrieveDerivationInfo' store path drvName drv
 
-retrieveDerivationInfo' :: Store -> ByteString -> Derivation -> IO DerivationInfo
-retrieveDerivationInfo' store drvPath drv = do
-  sourceStorePaths <- getDerivationSources drv
-  inputDrvStorePaths <- getDerivationInputs drv
-  outputs <- getDerivationOutputs store drv
+retrieveDerivationInfo' :: Store -> ByteString -> ByteString -> Derivation -> IO DerivationInfo
+retrieveDerivationInfo' store drvPath drvName drv = do
+  sourceStorePaths <- getDerivationSources store drv
+  inputDrvStorePaths <- getDerivationInputs store drv
+  outputs <- getDerivationOutputs store drvName drv
   env <- getDerivationEnv drv
   platform <- getDerivationPlatform drv
   let requiredSystemFeatures = maybe [] splitFeatures $ M.lookup "requiredSystemFeatures" env

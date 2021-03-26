@@ -36,6 +36,7 @@ runBuild store build = do
       CNix.logInfo $ "while retrieving dependencies: " <> toS (displayException e)
       CNix.logInfo "unable to retrieve dependency; attempting fallback to local build"
       pure True
+  drvName <- liftIO $ CNix.getDerivationNameFromPath drvStorePath
   derivationMaybe <- liftIO $ Build.getDerivation store drvStorePath
   derivation <- case derivationMaybe of
     Just drv -> pure drv
@@ -43,16 +44,16 @@ runBuild store build = do
   nixBuildResult <- liftIO $ buildDerivation store drvStorePath derivation (extraPaths <$ guard (not materialize))
   katipAddContext (sl "result" (show nixBuildResult :: Text)) $
     logLocM DebugS "Build result"
-  buildResult <- liftIO $ enrichResult store derivation nixBuildResult
+  buildResult <- liftIO $ enrichResult store drvName derivation nixBuildResult
   yield $ Event.BuildResult buildResult
 
 -- TODO: case distinction on BuildStatus enumeration
-enrichResult :: Store -> CNix.Derivation -> Build.BuildResult -> IO Event.BuildResult.BuildResult
-enrichResult _ _ result@Build.BuildResult {isSuccess = False} =
+enrichResult :: Store -> ByteString -> CNix.Derivation -> Build.BuildResult -> IO Event.BuildResult.BuildResult
+enrichResult _ _ _ result@Build.BuildResult {isSuccess = False} =
   pure $
     Event.BuildResult.BuildFailure {errorMessage = Build.errorMessage result}
-enrichResult store derivation _ = do
-  drvOuts <- getDerivationOutputs store derivation
+enrichResult store drvName derivation _ = do
+  drvOuts <- getDerivationOutputs store drvName derivation
   outputInfos <- for drvOuts $ \drvOut -> do
     -- FIXME: ca-derivations: always get the built path
     vpi <- for (derivationOutputPath drvOut) (queryPathInfo store)

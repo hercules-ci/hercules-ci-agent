@@ -21,7 +21,7 @@ extra-deps:
   # REMINDER: sync with scripts/generate-nix
   - git: https://github.com/hercules-ci/cachix.git
     commit:
-      e149113d5bed0204c94a232a52fade96d1d7f29a
+      6f56b1b8eff48674cde7945bf0436d5bf0875aac
     subdirs:
       - cachix
       - cachix-api

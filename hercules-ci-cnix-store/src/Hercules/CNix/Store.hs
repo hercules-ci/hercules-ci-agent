@@ -375,7 +375,6 @@ getDerivationFromString ::
   -- | Contents
   ByteString ->
   IO Derivation
-
 #ifdef NIX_2_4
 getDerivationFromString (Store store) name contents = do
   moveToForeignPtrWrapper
@@ -393,6 +392,26 @@ getDerivationFromString _store name contents = do
       Path tmpFile = (Path) tmpDir + "/" + name;
       writeFile(tmpFile, contents, 0600);
       return new Derivation(readDerivation(tmpFile));
+    }|]
+#endif
+
+getDerivationNameFromPath :: StorePath -> IO ByteString
+getDerivationNameFromPath storePath =
+  BS.unsafePackMallocCString
+
+#ifdef NIX_2_4
+    =<< [C.throwBlock| const char *{
+      StorePath &sp = *$fptr-ptr:(nix::StorePath *storePath);
+      std::string s = Derivation::nameFromPath(sp);
+      return strdup(s.c_str());
+    }|]
+#else
+    =<< [C.throwBlock| const char *{
+      StorePath &sp = *$fptr-ptr:(nix::StorePath *storePath);
+      std::string pathName(sp.name());
+      assert(isDerivation(pathName));
+      std::string drvName = std::string(pathName, 0, pathName.size() - drvExtension.size());
+      return strdup(drvName.c_str());
     }|]
 #endif
 
@@ -610,20 +629,21 @@ getDerivationArguments derivation =
     deleteStrings
     toByteStrings
 
-getDerivationSources :: Derivation -> IO [StorePath]
-getDerivationSources derivation = mask_ do
+getDerivationSources :: Store -> Derivation -> IO [StorePath]
+getDerivationSources (Store store) derivation = mask_ do
   vec <-
     moveToForeignPtrWrapper
       =<< [C.throwBlock| std::vector<nix::StorePath*>* {
+        Store &store = **$(refStore* store);
         auto r = new std::vector<StorePath *>();
         for (auto s : $fptr-ptr:(Derivation *derivation)->inputSrcs)
-          r->push_back(new StorePath(s));
+          r->push_back(new StorePath(compatParseStorePath(store, s)));
         return r;
       }|]
   traverse moveStorePath =<< Std.Vector.toList vec
 
-getDerivationInputs :: Derivation -> IO [(StorePath, [ByteString])]
-getDerivationInputs derivation =
+getDerivationInputs :: Store -> Derivation -> IO [(StorePath, [ByteString])]
+getDerivationInputs (Store store) derivation =
   bracket
     [C.exp| DerivationInputsIterator* {
       new DerivationInputsIterator($fptr-ptr:(Derivation *derivation)->inputDrvs.begin())
@@ -634,7 +654,12 @@ getDerivationInputs derivation =
       if isEnd
         then pure []
         else do
-          name <- [C.exp| nix::StorePath *{ new StorePath((*$(DerivationInputsIterator *i))->first) }|] >>= moveStorePath
+          name <-
+            [C.throwBlock| nix::StorePath *{
+              Store &store = **$(refStore* store);
+              return new StorePath(compatParseStorePath(store, (*$(DerivationInputsIterator *i))->first));
+            }|]
+              >>= moveStorePath
           outs <-
             bracket
               [C.block| Strings*{ 
@@ -814,7 +839,7 @@ followLinksToStorePath (Store store) bs =
     =<< [C.throwBlock| nix::StorePath *{
       Store &store = **$(refStore* store);
       std::string s = std::string($bs-ptr:bs, $bs-len:bs);
-      return new StorePath(store.followLinksToStorePath(s));
+      return new StorePath(compatParseStorePath(store, store.followLinksToStorePath(s)));
     }|]
 
 queryPathInfo ::
