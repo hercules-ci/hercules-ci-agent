@@ -1,14 +1,13 @@
 { haskellPackages
 , haskell
 , pkgs
-, nixUnstable
+, nix
   # TODO propagatedBuildInputs upstream
 , nlohmann_json
 , pre-commit-hooks-nix
 , ...
 }:
 let
-  nix = nixUnstable;
   haskellPackages_ = haskellPackages;
   inherit (pkgs) recurseIntoAttrs lib;
   inherit (pkgs.lib) cleanSource makeBinPath optionalAttrs;

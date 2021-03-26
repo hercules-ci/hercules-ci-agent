@@ -14,7 +14,7 @@ pkgs.haskell.lib.buildStackProject {
 
     pkgs.zlib
     pkgs.openssl
-    pkgs.nixUnstable
+    pkgs.nix
     pkgs.nlohmann_json
     pkgs.boost
   ];

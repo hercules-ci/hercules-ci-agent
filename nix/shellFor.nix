@@ -11,7 +11,7 @@ pkgs.hercules-ci-agent-packages.internal.haskellPackages.shellFor {
   ];
   buildInputs = [
     pkgs.boost
-    pkgs.nixUnstable
+    pkgs.nix
   ];
   nativeBuildInputs = [
     pkgs.yaml2json
