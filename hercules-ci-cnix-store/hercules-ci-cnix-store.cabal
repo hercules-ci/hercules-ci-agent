@@ -19,6 +19,10 @@ source-repository head
   type: git
   location: https://github.com/hercules-ci/hercules-ci-agent
 
+flag nix-2_4
+  description: Build for Nix >=2.4pre*
+  default: False
+
 -- match the C++ language standard Nix is using
 common cxx-opts
   cxx-options:
@@ -56,6 +60,15 @@ library
       Hercules.CNix.Store.Instances
   include-dirs:
       include
+  if !flag(nix-2_4)
+    include-dirs:
+        compat-2.3/include
+  else
+    include-dirs:
+        compat-2.4/include
+    cpp-options:
+        -DNIX_2_4
+
   install-includes:
       hercules-ci-cnix/store.hxx
 
