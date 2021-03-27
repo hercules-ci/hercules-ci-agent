@@ -50,5 +50,5 @@ std::pair<std::string_view, StringSet> nix::parsePathWithOutputs(std::string_vie
 
 StorePathWithOutputs nix::parsePathWithOutputs(const Store &store, const std::string & s) {
     auto [path, outputs] = nix::parsePathWithOutputs(s);
-    return {compatParseStorePath(store, std::string(path)), std::move(outputs)};
+    return {parseStorePath(store, std::string(path)), std::move(outputs)};
 }

@@ -78,15 +78,16 @@ library
     cxx-sources:
         compat-2.3/derivation-output.cxx
         compat-2.3/path.cxx
+    install-includes:
+        nix/path-info.hh
+        nix/path.hh
+        nix/path-compat.hh
+        nix/derivation-output.hh
+        nix/content-address.hh
 
   install-includes:
       hercules-ci-cnix/store.hxx
       nix-compat.hh
-      nix/path-info.hh
-      nix/path.hh
-      nix/path-compat.hh
-      nix/derivation-output.hh
-      nix/content-address.hh
 
   hs-source-dirs: src
   build-depends:

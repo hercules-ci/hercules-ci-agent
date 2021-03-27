@@ -44,7 +44,7 @@ inline compat::nix::DerivationOutput parseDerivationOutput(const nix::Store & st
         validatePath(pathS);
         return compat::nix::DerivationOutput {
             .output = nix::DerivationOutputInputAddressed {
-                .path = compatParseStorePathStrict(store, pathS),
+                .path = parseStorePath(store, pathS),
             }
         };
     }
@@ -58,17 +58,26 @@ inline void compatComputeFSClosure(nix::Store &store, nix::StorePathSet &pathSet
   nix::PathSet simpleClosurePaths;
   store.computeFSClosure(compatPathSet(store, pathSet), simpleClosurePaths, flipDirection, includeOutputs, includeDerivers);
   for (auto sp : simpleClosurePaths) {
-    closurePaths.insert(compatParseStorePath(store, sp));
+    closurePaths.insert(parseStorePath(store, sp));
   }
 }
 
-inline nix::StorePathSet compatParseStorePathSet(const nix::Store &store, const nix::PathSet &pathSet) {
+inline nix::StorePathSet parseStorePathSet(const nix::Store &store, const nix::PathSet &pathSet) {
   nix::StorePathSet r;
   for (auto sp : pathSet) {
-    r.insert(compatParseStorePath(store, sp));
+    // TODO merge?
+    r.insert(parseStorePath(store, sp));
   }
   return r;
 }
+#define parseStorePathSet23(store, pathSet) parseStorePathSet(store, pathSet)
+
+inline std::optional<nix::StorePath> parseOptionalStorePath(const nix::Store &store, const nix::Path path) {
+  if (path != "unknown-deriver" && path != "")
+    return parseStorePath(store, path);
+  return {};
+}
+#define parseOptionalStorePath23(store, path) parseOptionalStorePath(store, path)
 
 namespace nix {
   StorePathWithOutputs parsePathWithOutputs(const Store &store, const std::string & s);

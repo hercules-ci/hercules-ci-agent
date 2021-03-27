@@ -250,12 +250,14 @@ executable hercules-ci-agent-worker
   cxx-sources:
       cbits/hercules-logger.cxx
   if flag(nix-2_4)
+    cpp-options:
+        -DNIX_2_4
     cxx-sources:
       cbits/nix-2.4/hercules-store.cxx
   else
     cxx-sources:
       cbits/nix-2.3/hercules-store.cxx
-      
+
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
     -Werror=incomplete-patterns -Werror=missing-fields

@@ -311,10 +311,10 @@ getDrvFile evalState (RawValue v) = liftIO do
         throw EvalError("Not a valid derivation");
 
       std::string drvPath = drvInfo->queryDrvPath();
-      StorePath storePath = compatParseStorePathStrict(*state.store, drvPath);
+      StorePath storePath = parseStorePath(*state.store, drvPath);
 
       // write it (?)
-      auto drv = state.store->derivationFromPath(compatPath(*state.store, storePath));
+      auto drv = state.store->derivationFromPath(printPath23(*state.store, storePath));
 
       return new StorePath(storePath);
     }|]

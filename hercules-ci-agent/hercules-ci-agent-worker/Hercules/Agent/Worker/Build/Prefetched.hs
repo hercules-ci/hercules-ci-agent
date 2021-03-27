@@ -105,7 +105,7 @@ getDerivation (Store store) derivationPath =
 
       for (nix::ref<nix::Store> & currentStore : stores) {
         try {
-          derivation = new nix::Derivation(currentStore->derivationFromPath(compatPath(*currentStore, derivationPath)));
+          derivation = new nix::Derivation(currentStore->derivationFromPath(printPath23(*currentStore, derivationPath)));
           break;
         } catch (nix::Interrupted &e) {
           throw e;
@@ -141,13 +141,13 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
       StorePath derivationPath = *$fptr-ptr:(nix::StorePath *derivationPath);
 
       if ($(bool materializeDerivation)) {
-        store.ensurePath(compatPath(store, derivationPath));
+        store.ensurePath(printPath23(store, derivationPath));
 #ifdef NIX_2_4
         auto derivation = store.derivationFromPath(derivationPath);
         StorePathWithOutputs storePathWithOutputs { .path = derivationPath, .outputs = derivation.outputNames() };
         std::vector<nix::StorePathWithOutputs> paths{storePathWithOutputs};
 #else
-        nix::PathSet paths{compatPath(store, derivationPath)};
+        nix::PathSet paths{printPath23(store, derivationPath)};
 #endif
         try {
           store.buildPaths(paths);
@@ -180,7 +180,7 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
           derivation->inputSrcs.insert(path);
         }
 
-        nix::BuildResult result = store.buildDerivation(compatPath(store, derivationPath), *derivation);
+        nix::BuildResult result = store.buildDerivation(printPath23(store, derivationPath), *derivation);
 
         switch (result.status) {
           case nix::BuildResult::Built:

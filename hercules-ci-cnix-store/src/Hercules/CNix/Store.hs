@@ -266,7 +266,7 @@ storePathToPath (Store store) (StorePath sp) =
     =<< [C.block| const char *{
       Store & store = **$(refStore* store);
       StorePath &sp = *$fptr-ptr:(nix::StorePath *sp);
-      std::string s(compatPath(store, sp));
+      std::string s(printPath23(store, sp));
       return strdup(s.c_str());
     }|]
 #endif
@@ -276,7 +276,7 @@ ensurePath (Store store) (StorePath storePath) =
   [C.throwBlock| void {
     Store &store = **$(refStore* store);
     StorePath &storePath = *$fptr-ptr:(nix::StorePath *storePath);
-    store.ensurePath(compatPath(store, storePath));
+    store.ensurePath(printPath23(store, storePath));
   } |]
 
 clearPathInfoCache :: Store -> IO ()
@@ -342,7 +342,7 @@ buildPaths (Store store) (StdVector paths) = do
   [C.throwBlock| void {
     Store &store = **$(refStore* store);
     std::vector<StorePathWithOutputs> &paths = *$fptr-ptr:(std::vector<nix::StorePathWithOutputs>* paths);
-    store.buildPaths(compatOutputPathSet(store, paths));
+    store.buildPaths(printPathSet23(store, paths));
   }|]
 
 buildPath :: Store -> StorePathWithOutputs -> IO ()
@@ -351,7 +351,7 @@ buildPath (Store store) (StorePathWithOutputs spwo) = do
     Store &store = **$(refStore* store);
     std::vector<StorePathWithOutputs> paths;
     paths.push_back(*$fptr-ptr:(nix::StorePathWithOutputs *spwo));
-    store.buildPaths(compatOutputPathSet(store, paths));
+    store.buildPaths(printPathSet23(store, paths));
   }|]
 
 newtype Derivation = Derivation (ForeignPtr C.Derivation)
@@ -376,7 +376,7 @@ getDerivation (Store store) (StorePath spwo) = do
     =<< [C.throwBlock| Derivation *{
       Store &store = **$(refStore* store);
       return new Derivation(
-          store.derivationFromPath(compatPath(store, *$fptr-ptr:(nix::StorePath *spwo)))
+          store.derivationFromPath(printPath23(store, *$fptr-ptr:(nix::StorePath *spwo)))
         );
     } |]
 
@@ -415,7 +415,7 @@ getDerivationNameFromPath storePath =
 #ifdef NIX_2_4
     =<< [C.throwBlock| const char *{
       StorePath &sp = *$fptr-ptr:(nix::StorePath *storePath);
-      std::string s = Derivation::nameFromPath(sp);
+      std::string s(Derivation::nameFromPath(sp));
       return strdup(s.c_str());
     }|]
 #else
@@ -650,7 +650,7 @@ getDerivationSources (Store store) derivation = mask_ do
         Store &store = **$(refStore* store);
         auto r = new std::vector<StorePath *>();
         for (auto s : $fptr-ptr:(Derivation *derivation)->inputSrcs)
-          r->push_back(new StorePath(compatParseStorePath(store, s)));
+          r->push_back(new StorePath(parseStorePath23(store, s)));
         return r;
       }|]
   traverse moveStorePath =<< Std.Vector.toList vec
@@ -670,7 +670,7 @@ getDerivationInputs (Store store) derivation =
           name <-
             [C.throwBlock| nix::StorePath *{
               Store &store = **$(refStore* store);
-              return new StorePath(compatParseStorePath(store, (*$(DerivationInputsIterator *i))->first));
+              return new StorePath(parseStorePath23(store, (*$(DerivationInputsIterator *i))->first));
             }|]
               >>= moveStorePath
           outs <-
@@ -825,7 +825,7 @@ signPath (Store store) secretKey (StorePath path) =
     nix::ref<nix::Store> store = *$(refStore *store);
     const StorePath &storePath = *$fptr-ptr:(nix::StorePath *path);
     const SecretKey &secretKey = *$(SecretKey *secretKey);
-    auto currentInfo = store->queryPathInfo(compatPath(*store, storePath));
+    auto currentInfo = store->queryPathInfo(printPath23(*store, storePath));
 
     auto info2(*currentInfo);
     info2.sigs.clear();
@@ -840,7 +840,7 @@ signPath (Store store) secretKey (StorePath path) =
     if (currentInfo->sigs.count(sig)) {
       return 0;
     } else {
-      store->addSignatures(compatPath(*store, storePath), info2.sigs);
+      store->addSignatures(printPath23(*store, storePath), info2.sigs);
       return 1;
     }
   }|]
@@ -852,7 +852,7 @@ followLinksToStorePath (Store store) bs =
     =<< [C.throwBlock| nix::StorePath *{
       Store &store = **$(refStore* store);
       std::string s = std::string($bs-ptr:bs, $bs-len:bs);
-      return new StorePath(compatParseStorePath(store, store.followLinksToStorePath(s)));
+      return new StorePath(parseStorePath23(store, store.followLinksToStorePath(s)));
     }|]
 
 queryPathInfo ::
@@ -866,7 +866,7 @@ queryPathInfo (Store store) (StorePath path) = do
     [C.throwBlock| refValidPathInfo* {
       Store &store = **$(refStore* store);
       StorePath &path = *$fptr-ptr:(nix::StorePath *path);
-      return new refValidPathInfo(store.queryPathInfo(compatPath(store, path)));
+      return new refValidPathInfo(store.queryPathInfo(printPath23(store, path)));
     }|]
   newForeignPtr finalizeRefValidPathInfo vpi
 
@@ -905,7 +905,7 @@ validPathInfoDeriver (Store store) vpi =
   moveStorePathMaybe
     =<< [C.throwBlock| nix::StorePath * {
       Store &store = **$(refStore* store);
-      std::optional<StorePath> deriver = compatParseStorePathStrict(store, (*$fptr-ptr:(refValidPathInfo* vpi))->deriver);
+      std::optional<StorePath> deriver = parseOptionalStorePath23(store, (*$fptr-ptr:(refValidPathInfo* vpi))->deriver);
       return deriver ? new StorePath(*deriver) : nullptr;
     }|]
 
@@ -917,7 +917,7 @@ validPathInfoReferences (Store store) vpi = do
       =<< [C.throwBlock| std::vector<nix::StorePath *>* {
         Store &store = **$(refStore* store);
         auto sps = new std::vector<nix::StorePath *>();
-        for (auto sp : compatParseStorePathSet(store, (*$fptr-ptr:(refValidPathInfo* vpi))->references))
+        for (auto sp : parseStorePathSet23(store, (*$fptr-ptr:(refValidPathInfo* vpi))->references))
           sps->push_back(new StorePath(sp));
         return sps;
       }|]
