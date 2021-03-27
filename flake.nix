@@ -35,9 +35,14 @@
               nixpkgsSource = nixos-unstable;
               isDevVersion = true;
             };
+            "nixos-unstable-nixUnstable" = {
+              nixpkgsSource = nixos-unstable;
+              isDevVersion = true;
+              isNixUnstable = true;
+            };
           }
           (
-            _name: { nixpkgsSource, isDevVersion ? false }:
+            _name: { nixpkgsSource, isDevVersion ? false, isNixUnstable ? false }:
               dimension "System"
                 {
                   "aarch64-linux" = {
@@ -51,7 +56,12 @@
                   let
                     pkgs =
                       import nixpkgsSource {
-                        overlays = [ (import ./nix/make-overlay.nix inputs) dev-and-test-overlay ];
+                        overlays = [ (import ./nix/make-overlay.nix { inherit inputs isNixUnstable; }) dev-and-test-overlay ]
+                          ++ lib.optionals isNixUnstable [
+                          (final: prev: {
+                            nix = prev.nixUnstable;
+                          })
+                        ];
                         config = { };
                         inherit system;
                       };

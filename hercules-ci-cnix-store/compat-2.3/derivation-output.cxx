@@ -17,7 +17,7 @@ static std::string outputPathName(std::string_view drvName, std::string_view out
 }
 
 StorePath DerivationOutputCAFixed::path(const Store & store, std::string_view drvName, std::string_view outputName) const {
-    return compatParseStorePathStrict(store, store.makeFixedOutputPath(
+    return parseStorePath(store, store.makeFixedOutputPath(
         hash.method == FileIngestionMethod::Recursive, hash.hash,
         outputPathName(drvName, outputName)));
 }
