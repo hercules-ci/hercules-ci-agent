@@ -1,5 +1,9 @@
+{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE NumericUnderscores #-}
+
 module BuildSpec where
 
+import Control.Concurrent.STM.TVar (readTVar)
 import qualified Data.Map as M
 import qualified Data.UUID.V4 as UUID
 import qualified Hercules.API.Agent.Build.BuildEvent as BuildEvent
@@ -12,9 +16,11 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Id (Id (Id))
+import qualified Hercules.API.Logs.LogEntry as LogEntry
 import qualified Hercules.API.TaskStatus as TaskStatus
 import MockTasksApi
 import Protolude
+import System.Timeout (timeout)
 import Test.Hspec
 import Prelude
   ( error,
@@ -103,3 +109,16 @@ spec = describe "Build" $
             `shouldBe` "sha256:15apcm9ksmd22hmxkmnncndgx1mx55nfan199rvbam8ygycr671b"
           sz `shouldBe` 120
       _ -> failWith $ "Didn't expect this: " <> show be
+    x <- timeout 30_000_000 do
+      atomically do
+        entries <- readTVar (logEntries $ serverState srv)
+        guard $
+          isJust $
+            entries & find \case LogEntry.Result {rtype = LogEntry.ResultTypeBuildLogLine, fields = f} | toList f == [LogEntry.String "hello on stderr"] -> True; _ -> False
+        guard $
+          isJust $
+            entries & find \case LogEntry.Result {rtype = LogEntry.ResultTypeBuildLogLine, fields = f} | toList f == [LogEntry.String "hello on stdout"] -> True; _ -> False
+      pass
+    case x of
+      Nothing -> failWith "Did not receive log in time."
+      Just _ -> pass
