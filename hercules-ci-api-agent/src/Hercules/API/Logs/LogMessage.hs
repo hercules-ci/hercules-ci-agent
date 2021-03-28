@@ -9,5 +9,6 @@ import Hercules.API.Prelude
 
 data LogMessage
   = LogEntries (Vector LogEntry)
+  | Start {storeProtocolVersion :: !Int, clientProtocolVersion :: !Int}
   | End {i :: !Word64, ms :: !Word64}
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

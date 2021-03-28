@@ -71,6 +71,8 @@ C.include "<nix/globals.hh>"
 
 C.include "<nix/path.hh>"
 
+C.include "<nix/worker-protocol.hh>"
+
 C.include "<variant>"
 
 C.include "hercules-ci-cnix/store.hxx"
@@ -136,6 +138,21 @@ storeUri (Store store) =
     [C.block| const char* {
        std::string uri = (*$(refStore* store))->getUri();
        return strdup(uri.c_str());
+     } |]
+
+getStoreProtocolVersion :: Store -> IO Int
+getStoreProtocolVersion (Store store) =
+  fromIntegral
+    <$> [C.throwBlock| int {
+       Store &store = **$(refStore* store);
+       return store.getProtocol();
+     } |]
+
+getClientProtocolVersion :: IO Int
+getClientProtocolVersion =
+  fromIntegral
+    <$> [C.throwBlock| int {
+       return PROTOCOL_VERSION;
      } |]
 
 -- | Store-agnostic store path representation: hash and name. Does not have a storedir or subpath inside the store path.
