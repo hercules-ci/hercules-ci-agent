@@ -28,6 +28,15 @@ let
     ;
   callPkg = super: name: srcPath: args: overrideSrc (super.callCabal2nix name srcPath args) { src = srcPath; };
 
+  addNixVersionFlag = pkg:
+    overrideCabal pkg (o: {
+      preConfigure = (o.preConfigure or "") + ''
+        if pkg-config --atleast-version 2.4pre nix-store; then
+          configureFlags="$configureFlags --flag nix-2_4"
+        fi
+      '';
+    });
+
   updateTo = v: stdPkg: altPkg:
     if lib.versionAtLeast stdPkg.version v
     then stdPkg
@@ -82,7 +91,7 @@ let
                   overrideCabal
                     (
                       addBuildDepends
-                        (enableDWARFDebugging basePkg)
+                        (enableDWARFDebugging (addNixVersionFlag basePkg))
                         [ pkgs.makeWrapper pkgs.boost pkgs.boehmgc ]
                     )
                     (
@@ -152,15 +161,15 @@ let
                     '';
                 }
                 );
-              hercules-ci-cnix-expr =
-                addBuildDepends
+              hercules-ci-cnix-expr = addNixVersionFlag
+                (addBuildDepends
                   (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; inherit nix; })
-                  [ nlohmann_json ]
+                  [ nlohmann_json ])
               ;
-              hercules-ci-cnix-store =
-                addBuildDepends
+              hercules-ci-cnix-store = addNixVersionFlag
+                (addBuildDepends
                   (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { inherit nix; })
-                  [ nlohmann_json ]
+                  [ nlohmann_json ])
               ;
 
               websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });
