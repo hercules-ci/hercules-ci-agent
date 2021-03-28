@@ -8,6 +8,8 @@ module MockTasksApi
     runEval,
     runBuild,
     ServerHandle (),
+    serverState,
+    logEntries,
   )
 where
 
@@ -66,7 +68,8 @@ import qualified Hercules.API.Agent.Socket.ServicePayload as SP
 import Hercules.API.Agent.Tasks (TasksAPI (..))
 import Hercules.API.Id
 import Hercules.API.Logs (LogsAPI (..))
-import Hercules.API.Logs.LogMessage (LogMessage)
+import Hercules.API.Logs.LogEntry (LogEntry)
+import Hercules.API.Logs.LogMessage (LogMessage (LogEntries))
 import Hercules.API.Task (Task)
 import qualified Hercules.API.Task as Task
 import qualified Hercules.API.TaskStatus as TaskStatus
@@ -117,10 +120,14 @@ data ServerState = ServerState
             (Id (Task BuildTask.BuildTask))
             [BuildEvent.BuildEvent]
         ),
-    drvTasks :: IORef (Map Text (Id (Task BuildTask.BuildTask)))
+    drvTasks :: IORef (Map Text (Id (Task BuildTask.BuildTask))),
+    logEntries :: TVar [LogEntry]
   }
 
 newtype ServerHandle = ServerHandle ServerState
+
+serverState :: ServerHandle -> ServerState
+serverState (ServerHandle st) = st
 
 enqueue :: ServerHandle -> AgentTask.AgentTask -> IO ()
 enqueue (ServerHandle st) t = do
@@ -193,6 +200,7 @@ withServer doIt = do
   bt <- newIORef mempty
   dt <- newIORef mempty
   d <- newTVarIO mempty
+  le <- newTVarIO mempty
   let st =
         ServerState
           { queue = q,
@@ -201,7 +209,8 @@ withServer doIt = do
             buildEvents = be,
             buildTasks = bt,
             drvTasks = dt,
-            done = d
+            done = d,
+            logEntries = le
           }
       runServer =
         Control.Exception.Safe.handleAny
@@ -265,7 +274,7 @@ endpoints server =
     :<|> (toSourceIO & liftA & liftA & ($ sourceball))
 
 logSocket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
-logSocket _server conn = do
+logSocket server conn = do
   let send :: MonadIO m => [Frame SI.ServiceInfo SI.ServiceInfo] -> m ()
       send = send' conn
       -- FIXME
@@ -281,12 +290,14 @@ logSocket _server conn = do
       Frame.Ack {} -> pass
       Frame.Oob {} -> pass
       Frame.Msg {p = payload, n = number} -> do
-        processLogPayload payload
+        processLogPayload server payload
         send [Frame.Ack number]
 
-processLogPayload :: LogMessage -> Handler ()
-processLogPayload _m = do
-  -- print _m
+processLogPayload :: ServerState -> LogMessage -> Handler ()
+processLogPayload server (LogEntries les) = do
+  liftIO $ atomically do
+    modifyTVar (logEntries server) (toList les ++)
+processLogPayload _ _ =
   pass
 
 socket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
