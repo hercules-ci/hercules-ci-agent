@@ -221,8 +221,10 @@ runCommand herculesState ch command = do
   -- TODO don't do this
   mainThread <- liftIO myThreadId
   UnliftIO unlift <- askUnliftIO
+  protocolVersion <- liftIO do
+    getStoreProtocolVersion (wrappedStore herculesState)
   case command of
-    Command.Eval eval -> Logger.withLoggerConduit (logger $ Eval.logSettings eval) $
+    Command.Eval eval -> Logger.withLoggerConduit (logger (Eval.logSettings eval) protocolVersion) $
       Logger.withTappedStderr Logger.tapper $
         connectCommand ch $ do
           void $
@@ -253,12 +255,12 @@ runCommand herculesState ch command = do
             _ -> pass
     Command.Build build ->
       katipAddNamespace "Build" $
-        Logger.withLoggerConduit (logger $ Build.logSettings build) $
+        Logger.withLoggerConduit (logger (Build.logSettings build) protocolVersion) $
           Logger.withTappedStderr Logger.tapper $
             connectCommand ch $ runBuild (wrappedStore herculesState) build
     Command.Effect effect ->
       katipAddNamespace "Effect" $
-        Logger.withLoggerConduit (logger $ Effect.logSettings effect) $
+        Logger.withLoggerConduit (logger (Effect.logSettings effect) protocolVersion) $
           Logger.withTappedStderr Logger.tapper $
             connectCommand ch $ do
               runEffect (wrappedStore herculesState) effect >>= \case
@@ -267,8 +269,8 @@ runCommand herculesState ch command = do
     _ ->
       panic "Not a valid starting command"
 
-logger :: (MonadIO m, MonadUnliftIO m, KatipContext m) => LogSettings.LogSettings -> ConduitM () (Vector LogEntry) m () -> m ()
-logger logSettings_ entriesSource = do
+logger :: (MonadIO m, MonadUnliftIO m, KatipContext m) => LogSettings.LogSettings -> Int -> ConduitM () (Vector LogEntry) m () -> m ()
+logger logSettings_ storeProtocolVersion entriesSource = do
   socketConfig <- liftIO $ makeSocketConfig logSettings_
   let withPings socket m =
         withAsync
@@ -279,13 +281,17 @@ logger logSettings_ entriesSource = do
               atomically $ Socket.write socket ping
           )
           (const m)
+  clientProtocolVersion <- liftIO getClientProtocolVersion
   Socket.withReliableSocket socketConfig $ \socket -> withPings socket do
     let conduit =
-          entriesSource
-            .| Logger.unbatch
-            .| Logger.filterProgress
-            .| renumber 0
-            .| batchAndEnd
+          ( do
+              yield LogMessage.Start {storeProtocolVersion = storeProtocolVersion, clientProtocolVersion = clientProtocolVersion}
+              entriesSource
+                .| Logger.unbatch
+                .| Logger.filterProgress
+                .| renumber 0
+                .| batchAndEnd
+          )
             .| socketSink socket
         batch = Logger.batch .| mapC (LogMessage.LogEntries . V.fromList)
         batchAndEnd =
