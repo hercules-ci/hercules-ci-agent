@@ -56,7 +56,7 @@
                   let
                     pkgs =
                       import nixpkgsSource {
-                        overlays = [ (import ./nix/make-overlay.nix { inherit inputs isNixUnstable; }) dev-and-test-overlay ]
+                        overlays = [ (import ./nix/make-overlay.nix inputs) dev-and-test-overlay ]
                           ++ lib.optionals isNixUnstable [
                           (final: prev: {
                             nix = prev.nixUnstable;
