@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Hercules.Agent.EnvironmentInfo where
 
 import Control.Lens
@@ -66,7 +68,9 @@ getNixInfo :: IO NixInfo
 getNixInfo = do
   let stdinEmpty = ""
   version <- Process.readProcess "nix" ["--version"] stdinEmpty
-  rawJson <- Process.readProcess "nix" ["show-config", "--json"] stdinEmpty
+  rawJson <-
+    Process.readProcess "nix" ["show-config", "--json"] stdinEmpty `catch` \(_ :: SomeException) ->
+      Process.readProcess "nix" ["show-config", "--json", "--experimental-features", "nix-command"] stdinEmpty
   cfg <-
     case Aeson.eitherDecode (LBS.fromStrict $ encodeUtf8 $ toS rawJson) of
       Left e -> panic $ "Could not parse nix show-config --json: " <> show e
