@@ -319,7 +319,9 @@ spec = describe "Evaluation" $ do
           [EvaluateEvent.AttributeError ae] -> do
             AttributeErrorEvent.expressionPath ae `shouldBe` []
             toS (AttributeErrorEvent.errorMessage ae)
-              `shouldContain` "evaluation aborted with the following error message: 'I refuse to do anything today.'"
+              `shouldContain` "evaluation aborted with the following error message"
+            toS (AttributeErrorEvent.errorMessage ae)
+              `shouldContain` "I refuse to do anything today."
           _ -> failWith $ "Events should be a single attribute, not: " <> show r
   context "when one of the attributes has an abort expression" $
     it "returns the message as an error alongside the successful derivations" $
@@ -342,7 +344,9 @@ spec = describe "Evaluation" $ do
             AttributeErrorEvent.expressionPath ae
               `shouldBe` ["a-message-for-you"]
             toS (AttributeErrorEvent.errorMessage ae)
-              `shouldContain` "evaluation aborted with the following error message: 'I am not doing this today.'"
+              `shouldContain` "evaluation aborted with the following error message"
+            toS (AttributeErrorEvent.errorMessage ae)
+              `shouldContain` "I am not doing this today."
           _ -> failWith $ "Wrong. It should not be: " <> show r
   context "when the source produces too many attributes" $
     it "yields an error message" $
