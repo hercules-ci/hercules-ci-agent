@@ -75,6 +75,7 @@ inline nix::StorePathSet parseStorePathSet(const nix::Store &store, const nix::P
 inline std::optional<nix::StorePath> parseOptionalStorePath(const nix::Store &store, const nix::Path path) {
   if (path != "unknown-deriver" && path != "")
     return parseStorePath(store, path);
+  return {};
 }
 #define parseOptionalStorePath23(store, path) parseOptionalStorePath(store, path)
 
