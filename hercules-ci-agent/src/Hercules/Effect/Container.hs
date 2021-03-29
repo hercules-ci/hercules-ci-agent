@@ -76,6 +76,11 @@ run dir config = do
           { cwd = Just dir
           }
       configJsonPath = dir </> "config.json"
+      runcRootPath = dir </> "runc-root"
+      -- Although runc run --root says
+      --    root directory for storage of container state (this should be located in tmpfs)
+      -- this is not a requirement. See https://github.com/opencontainers/runc/issues/2054
+      rootfsPath = dir </> "rootfs"
   (exit, _out, err) <- readCreateProcessWithExitCode createConfigJsonSpec ""
   case exit of
     ExitSuccess -> pass
@@ -87,8 +92,9 @@ run dir config = do
     Right a -> pure a
     Left e -> throwIO (FatalError $ "decoding runc config.json template: " <> show e)
   let configJson = effectToRuncSpec config template
-  BS.writeFile (dir </> "config.json") (BL.toStrict $ encode configJson)
-  createDirectory (dir </> "rootfs")
+  BS.writeFile (configJsonPath) (BL.toStrict $ encode configJson)
+  createDirectory rootfsPath
+  createDirectory runcRootPath
   name <- do
     uuid <- UUID.nextRandom
     pure $ "hercules-ci-" <> show uuid
@@ -103,7 +109,7 @@ run dir config = do
         ( do
             terminalHandle <- fdToHandle terminal
             let createProcSpec =
-                  (System.Process.proc runcExe ["run", name])
+                  (System.Process.proc runcExe ["--root", runcRootPath, "run", name])
                     { std_in = UseHandle terminalHandle, -- can't pass /dev/null :(
                       std_out = UseHandle terminalHandle,
                       std_err = UseHandle terminalHandle,
