@@ -36,12 +36,15 @@ extractAgentInfo = do
           { hostname = toS hostname,
             agentVersion = CabalInfo.herculesAgentVersion, -- TODO: Add git revision
             nixVersion = nixExeVersion nix,
+            nixClientProtocolVersion = 0, -- FIXME
+            nixDaemonProtocolVersion = 0, -- FIXME
             platforms = nixPlatforms nix,
             cachixPushCaches = cachixPushCaches,
             pushCaches = pushCaches,
             systemFeatures = nixSystemFeatures nix,
             substituters = nixSubstituters nix, -- TODO: Add cachix substituters
-            concurrentTasks = fromIntegral concurrentTasks
+            concurrentTasks = fromIntegral concurrentTasks,
+            labels = mempty -- FIXME
           }
   logLocM DebugS $ "Determined environment info: " <> logStr (show s :: Text)
   pure s
