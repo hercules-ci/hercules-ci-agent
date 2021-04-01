@@ -124,6 +124,7 @@
       nixosModules.agent-service =
         { pkgs, ... }:
         {
+          _file = "${toString ./flake.nix}#nixosModules.agent-service";
           imports = [ ./internal/nix/nixos/default.nix ];
 
           # This module replaces what's provided by NixOS
@@ -138,6 +139,7 @@
       nixosModules.agent-profile =
         { pkgs, ... }:
         {
+          _file = "${toString ./flake.nix}#nixosModules.agent-profile";
           imports = [
             ./internal/nix/nixos/default.nix
             ./internal/nix/deploy-keys.nix
@@ -156,6 +158,7 @@
       darwinModules.agent-service =
         { pkgs, ... }:
         {
+          _file = "${toString ./flake.nix}#darwinModules.agent-service";
           imports = [ ./internal/nix/nix-darwin/default.nix ];
 
           # This module replaces what's provided by nix-darwin
@@ -170,6 +173,7 @@
       darwinModules.agent-profile =
         { pkgs, ... }:
         {
+          _file = "${toString ./flake.nix}#darwinModules.agent-profile";
           imports = [
             ./internal/nix/nix-darwin/default.nix
             ./internal/nix/gc.nix
