@@ -97,6 +97,14 @@
                 )
           );
 
+      flakeModule = { lib, ... }: {
+        _file = "${toString ./flake.nix}##flakeModule";
+        config = {
+          services.hercules-ci-agent.settings.labels.source = "flake";
+          services.hercules-ci-agent.settings.labels.revision = if self?rev then self.rev else lib.mkIf false null;
+        };
+      };
+
     in
     {
       # non-standard attribute
@@ -122,16 +130,20 @@
 
       # A module like the one in Nixpkgs
       nixosModules.agent-service =
-        { pkgs, ... }:
+        { lib, pkgs, ... }:
         {
           _file = "${toString ./flake.nix}#nixosModules.agent-service";
-          imports = [ ./internal/nix/nixos/default.nix ];
+          imports = [
+            flakeModule
+            ./internal/nix/nixos/default.nix
+          ];
 
           # This module replaces what's provided by NixOS
           disabledModules = [ "services/continuous-integration/hercules-ci-agent/default.nix" ];
 
           config = {
             services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
+            services.hercules-ci-agent.settings.labels.module = "nixos-service";
           };
         };
 
@@ -141,6 +153,7 @@
         {
           _file = "${toString ./flake.nix}#nixosModules.agent-profile";
           imports = [
+            flakeModule
             ./internal/nix/nixos/default.nix
             ./internal/nix/deploy-keys.nix
             ./internal/nix/gc.nix
@@ -151,6 +164,7 @@
 
           config = {
             services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
+            services.hercules-ci-agent.settings.labels.module = "nixos-profile";
           };
         };
 
@@ -159,13 +173,17 @@
         { pkgs, ... }:
         {
           _file = "${toString ./flake.nix}#darwinModules.agent-service";
-          imports = [ ./internal/nix/nix-darwin/default.nix ];
+          imports = [
+            flakeModule
+            ./internal/nix/nix-darwin/default.nix
+          ];
 
           # This module replaces what's provided by nix-darwin
           disabledModules = [ "services/hercules-ci-agent" ];
 
           config = {
             services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
+            services.hercules-ci-agent.settings.labels.module = "darwin-service";
           };
         };
 
@@ -175,6 +193,7 @@
         {
           _file = "${toString ./flake.nix}#darwinModules.agent-profile";
           imports = [
+            flakeModule
             ./internal/nix/nix-darwin/default.nix
             ./internal/nix/gc.nix
           ];
@@ -184,6 +203,7 @@
 
           config = {
             services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
+            services.hercules-ci-agent.settings.labels.module = "darwin-profile";
           };
         };
 
