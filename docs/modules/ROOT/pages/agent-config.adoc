@@ -70,6 +70,17 @@ NOTE: When scaling, it is generally better to have a double-size machine than tw
 because each split of resources causes inefficiencies; particularly with regards
 to build latency because of extra downloads.
 
+[[labels]]
+== labels
+
+Optional. A key-value map of user data.
+
+This data will be available to organization members in the dashboard and API.
+
+The values can be of any TOML type that corresponds to a JSON type, but arrays
+can not contain tables/objects due to limitations of the TOML library. Values
+that involving arrays of non-primitive types may not be representable currently.
+
 [[logLevel]]
 == logLevel
 

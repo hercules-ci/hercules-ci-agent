@@ -14,6 +14,9 @@ module Hercules.Agent.Config
   )
 where
 
+import qualified Data.Aeson as A
+import Data.Scientific (floatingOrInteger, fromFloatDigits)
+import qualified Data.Vector as V
 import GHC.Conc (getNumProcessors)
 import Katip (Severity (..))
 import Protolude hiding (to)
@@ -50,7 +53,8 @@ data Config purpose = Config
     workDirectory :: Item purpose 'Required FilePath,
     clusterJoinTokenPath :: Item purpose 'Required FilePath,
     binaryCachesPath :: Item purpose 'Required FilePath,
-    logLevel :: Item purpose 'Required Severity
+    logLevel :: Item purpose 'Required Severity,
+    labels :: Item purpose 'Required (Map Text A.Value)
   }
   deriving (Generic)
 
@@ -80,6 +84,50 @@ tomlCodec =
     .= binaryCachesPath
     <*> dioptional (Toml.enumBounded "logLevel")
     .= logLevel
+    <*> dioptional (Toml.tableMap _KeyText embedJson "labels")
+    .= labels
+
+embedJson :: Key -> TomlCodec A.Value
+embedJson key =
+  Codec
+    { codecRead =
+        codecRead (match (embedJsonBiMap key) key)
+          <!> codecRead (A.Object <$> Toml.tableHashMap _KeyText embedJson key),
+      codecWrite = panic "embedJson.write: not implemented" $ \case
+        A.String s -> A.String <$> codecWrite (Toml.text key) s
+        A.Number sci -> A.Number . fromRational . toRational <$> codecWrite (Toml.double key) (fromRational $ toRational sci)
+        A.Bool b -> A.Bool <$> codecWrite (Toml.bool key) b
+        A.Array a -> A.Array . V.fromList <$> codecWrite (Toml.arrayOf (embedJsonBiMap key) key) (Protolude.toList a)
+        A.Object o -> A.Object <$> codecWrite (Toml.tableHashMap _KeyText embedJson key) o
+        A.Null -> eitherToTomlState (Left ("null is not supported in TOML" :: Text))
+    }
+
+embedJsonBiMap :: Key -> TomlBiMap A.Value AnyValue
+embedJsonBiMap key =
+  BiMap
+    { forward = panic "embedJsonBiMap.forward: not implemented" $ \case
+        A.String s -> pure $ AnyValue $ Text s
+        A.Number sci -> case floatingOrInteger sci of
+          Left fl -> pure $ AnyValue $ Double fl -- lossy
+          Right i -> pure $ AnyValue $ Integer i
+        A.Bool b -> pure $ AnyValue $ Bool b
+        A.Array _a -> Left $ ArbitraryError "Conversion from JSON array of arrays to TOML not implemented yet"
+        A.Object _o -> Left $ ArbitraryError "Conversion from JSON array of objects to TOML is not supported"
+        A.Null -> Left $ ArbitraryError "JSON null is not supported in TOML",
+      backward = anyValueToJSON
+    }
+
+anyValueToJSON :: AnyValue -> Either TomlBiMapError A.Value
+anyValueToJSON = \case
+  AnyValue (Bool b) -> pure (A.Bool b)
+  AnyValue (Integer i) -> pure (A.Number $ fromIntegral i)
+  AnyValue (Double d) -> pure (A.Number $ fromFloatDigits d)
+  AnyValue (Text t) -> pure (A.String t)
+  AnyValue (Zoned _zt) -> Left (ArbitraryError "Conversion from TOML zoned time to JSON not implemented yet. Use a string.")
+  AnyValue (Local _zt) -> Left (ArbitraryError "Conversion from TOML local time to JSON not implemented yet. Use a string.")
+  AnyValue (Day _d) -> Left (ArbitraryError "Conversion from TOML day to JSON not implemented yet. Use a string.")
+  AnyValue (Hours _h) -> Left (ArbitraryError "Conversion from TOML hours to JSON not implemented yet. Use a string.")
+  AnyValue (Array a) -> A.Array <$> sequence (V.fromList (a <&> AnyValue <&> anyValueToJSON))
 
 matchLeft :: Either a b -> Maybe a
 matchLeft (Left a) = Just a
@@ -152,5 +200,6 @@ finalizeConfig loc input = do
         baseDirectory = baseDir,
         staticSecretsDirectory = staticSecretsDir,
         workDirectory = workDir,
-        logLevel = logLevel input & fromMaybe InfoS
+        logLevel = logLevel input & fromMaybe InfoS,
+        labels = fromMaybe mempty $ labels input
       }
