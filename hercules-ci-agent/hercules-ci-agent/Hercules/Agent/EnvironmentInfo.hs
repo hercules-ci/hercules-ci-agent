@@ -26,11 +26,11 @@ import qualified System.Process as Process
 
 extractAgentInfo :: App AgentInfo.AgentInfo
 extractAgentInfo = do
+  cfg <- asks Env.config
   hostname <- liftIO getHostName
   nix <- liftIO getNixInfo
   cachixPushCaches <- Cachix.Info.activePushCaches
   pushCaches <- Env.activePushCaches
-  concurrentTasks <- asks (Config.concurrentTasks . Env.config)
   let s =
         AgentInfo.AgentInfo
           { hostname = toS hostname,
@@ -43,8 +43,8 @@ extractAgentInfo = do
             pushCaches = pushCaches,
             systemFeatures = nixSystemFeatures nix,
             substituters = nixSubstituters nix, -- TODO: Add cachix substituters
-            concurrentTasks = fromIntegral concurrentTasks,
-            labels = mempty -- FIXME
+            concurrentTasks = fromIntegral $ Config.concurrentTasks cfg,
+            labels = Config.labels cfg
           }
   logLocM DebugS $ "Determined environment info: " <> logStr (show s :: Text)
   pure s

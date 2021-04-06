@@ -97,11 +97,17 @@
                 )
           );
 
-      flakeModule = { lib, ... }: {
+      flakeModule = { lib, options, pkgs, ... }: {
         _file = "${toString ./flake.nix}##flakeModule";
         config = {
-          services.hercules-ci-agent.settings.labels.source = "flake";
-          services.hercules-ci-agent.settings.labels.revision = if self?rev then self.rev else lib.mkIf false null;
+          services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent; # defaultPriority below
+          services.hercules-ci-agent.settings.labels.agent.source = "flake";
+          services.hercules-ci-agent.settings.labels.agent.revision =
+            lib.mkIf
+              (self?rev
+                && options.services.hercules-ci-agent.package.highestPrio == lib.modules.defaultPriority
+              )
+              self.rev;
         };
       };
 
@@ -142,7 +148,6 @@
           disabledModules = [ "services/continuous-integration/hercules-ci-agent/default.nix" ];
 
           config = {
-            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
             services.hercules-ci-agent.settings.labels.module = "nixos-service";
           };
         };
@@ -163,7 +168,6 @@
           disabledModules = [ "services/continuous-integration/hercules-ci-agent/default.nix" ];
 
           config = {
-            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
             services.hercules-ci-agent.settings.labels.module = "nixos-profile";
           };
         };
@@ -182,7 +186,6 @@
           disabledModules = [ "services/hercules-ci-agent" ];
 
           config = {
-            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
             services.hercules-ci-agent.settings.labels.module = "darwin-service";
           };
         };
@@ -202,7 +205,6 @@
           disabledModules = [ "services/hercules-ci-agent" ];
 
           config = {
-            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent;
             services.hercules-ci-agent.settings.labels.module = "darwin-profile";
           };
         };
