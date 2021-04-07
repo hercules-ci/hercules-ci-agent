@@ -203,6 +203,7 @@ executable hercules-ci-agent
     , process-extras
     , protolude
     , safe-exceptions
+    , scientific
     , servant >=0.14.1
     , servant-auth-client
     , servant-client
@@ -219,6 +220,7 @@ executable hercules-ci-agent
     , unliftio
     , unordered-containers
     , uuid
+    , vector
     , websockets
     , wuss
   default-language: Haskell2010

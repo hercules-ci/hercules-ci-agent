@@ -26,22 +26,25 @@ import qualified System.Process as Process
 
 extractAgentInfo :: App AgentInfo.AgentInfo
 extractAgentInfo = do
+  cfg <- asks Env.config
   hostname <- liftIO getHostName
   nix <- liftIO getNixInfo
   cachixPushCaches <- Cachix.Info.activePushCaches
   pushCaches <- Env.activePushCaches
-  concurrentTasks <- asks (Config.concurrentTasks . Env.config)
   let s =
         AgentInfo.AgentInfo
           { hostname = toS hostname,
             agentVersion = CabalInfo.herculesAgentVersion, -- TODO: Add git revision
             nixVersion = nixExeVersion nix,
+            nixClientProtocolVersion = 0, -- FIXME
+            nixDaemonProtocolVersion = 0, -- FIXME
             platforms = nixPlatforms nix,
             cachixPushCaches = cachixPushCaches,
             pushCaches = pushCaches,
             systemFeatures = nixSystemFeatures nix,
             substituters = nixSubstituters nix, -- TODO: Add cachix substituters
-            concurrentTasks = fromIntegral concurrentTasks
+            concurrentTasks = fromIntegral $ Config.concurrentTasks cfg,
+            labels = Config.labels cfg
           }
   logLocM DebugS $ "Determined environment info: " <> logStr (show s :: Text)
   pure s
