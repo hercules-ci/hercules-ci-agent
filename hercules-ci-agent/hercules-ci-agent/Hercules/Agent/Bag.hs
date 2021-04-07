@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Hercules.Agent.Bag
@@ -21,7 +22,7 @@ import Protolude
 
 -- | Partitioning and validation for heterogeneous JSON maps
 newtype ParseBag a b = ParseBag {getReadBag :: Compose (Partitioner (WithKey Text a)) Parser b}
-  deriving (Functor, Applicative)
+  deriving newtype (Functor, Applicative)
 
 -- | Text argument: Map key, a: thing you're parsing. Return 'Nothing' to skip the object and let another part handle it.
 part :: (Text -> a -> Maybe (Parser b)) -> ParseBag a (Map Text b)
