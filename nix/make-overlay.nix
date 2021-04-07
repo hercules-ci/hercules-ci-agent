@@ -7,7 +7,11 @@ self: pkgs:
 
   # overrides
   hercules-ci-agent =
-    pkgs.haskell.lib.justStaticExecutables self.hercules-ci-agent-packages.hercules-ci-agent;
+    pkgs.haskell.lib.justStaticExecutables self.hercules-ci-agent-packages.hercules-ci-agent // {
+      # Intentionally not setting passthru. If someone overrides this, `rev`
+      # alone is not enough for troubleshooting; we need the whole expression.
+      rev = inputs.self.rev or "";
+    };
 
   inherit (self.hercules-ci-agent-packages) pre-commit-check;
 

@@ -97,18 +97,26 @@
                 )
           );
 
-      flakeModule = { lib, options, pkgs, ... }: {
+      flakeModule = { config, lib, options, pkgs, ... }: {
         _file = "${toString ./flake.nix}##flakeModule";
-        config = {
-          services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent; # defaultPriority below
-          services.hercules-ci-agent.settings.labels.agent.source = "flake";
-          services.hercules-ci-agent.settings.labels.agent.revision =
-            lib.mkIf
-              (self?rev
-                && options.services.hercules-ci-agent.package.highestPrio == lib.modules.defaultPriority
-              )
-              self.rev;
-        };
+        config =
+          let
+            mkIfNotNull = x: lib.mkIf (x != null) x;
+          in
+          {
+            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent; # defaultPriority below
+            services.hercules-ci-agent.settings.labels.agent.source = "flake";
+            services.hercules-ci-agent.settings.labels.agent.revision =
+              mkIfNotNull (
+                if (self?rev
+                  && options.services.hercules-ci-agent.package.highestPrio == lib.modules.defaultPriority
+                )
+                then self.rev
+                else if config.services.hercules-ci-agent.package ? rev
+                then config.services.hercules-ci-agent.package.rev
+                else null
+              );
+          };
       };
 
     in

@@ -73,15 +73,15 @@ in
         nixUserIsTrusted = true;
         labels =
           let
-            ifNotNull = x: mkIf (x != null) x;
+            mkIfNotNull = x: mkIf (x != null) x;
           in
           {
-            nixos.configurationRevision = ifNotNull config.system.configurationRevision;
+            nixos.configurationRevision = mkIfNotNull config.system.configurationRevision;
             nixos.release = config.system.nixos.release;
-            nixos.label = ifNotNull config.system.nixos.label;
+            nixos.label = mkIfNotNull config.system.nixos.label;
             nixos.codeName = config.system.nixos.codeName;
             nixos.tags = config.system.nixos.tags;
-            nixos.systemName = ifNotNull config.system.name;
+            nixos.systemName = mkIfNotNull config.system.name;
           };
       };
     };
