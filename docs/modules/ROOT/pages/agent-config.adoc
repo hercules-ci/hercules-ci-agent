@@ -79,7 +79,7 @@ This data will be available to organization members in the dashboard and API.
 
 The values can be of any TOML type that corresponds to a JSON type, but arrays
 can not contain tables/objects due to limitations of the TOML library. Values
-that involving arrays of non-primitive types may not be representable currently.
+involving arrays of non-primitive types may not be representable currently.
 
 [[logLevel]]
 == logLevel

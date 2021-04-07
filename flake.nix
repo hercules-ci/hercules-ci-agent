@@ -144,7 +144,7 @@
 
       # A module like the one in Nixpkgs
       nixosModules.agent-service =
-        { lib, pkgs, ... }:
+        { pkgs, ... }:
         {
           _file = "${toString ./flake.nix}#nixosModules.agent-service";
           imports = [
