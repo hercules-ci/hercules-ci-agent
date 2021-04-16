@@ -44,6 +44,7 @@ library
   import: cxx-opts
   exposed-modules:
       Hercules.CNix
+      Hercules.CNix.Util
       Hercules.CNix.Store.Context
       Hercules.CNix.Store
   include-dirs:
