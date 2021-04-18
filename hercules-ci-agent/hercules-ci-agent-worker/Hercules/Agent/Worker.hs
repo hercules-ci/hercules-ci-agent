@@ -63,7 +63,7 @@ import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCa
 import Hercules.CNix.Expr.Context (EvalState)
 import qualified Hercules.CNix.Expr.Raw
 import Hercules.CNix.Expr.Typed (Value)
-import Hercules.CNix.Util (setInterruptThrown, triggerInterrupt)
+import Hercules.CNix.Util (triggerInterrupt)
 import Hercules.Error
 import Katip
 import qualified Language.C.Inline.Cpp.Exceptions as C

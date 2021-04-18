@@ -103,7 +103,8 @@ embedJson key =
     }
 
 embedJsonBiMap :: Key -> TomlBiMap A.Value AnyValue
-embedJsonBiMap key =
+embedJsonBiMap _key =
+  -- TODO: use key for error reporting
   BiMap
     { forward = panic "embedJsonBiMap.forward: not implemented" $ \case
         A.String s -> pure $ AnyValue $ Text s
