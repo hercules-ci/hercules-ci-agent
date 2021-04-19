@@ -31,6 +31,7 @@ import qualified Data.Vector as V
 import qualified Hercules.API.Agent.LifeCycle.ServiceInfo
 import Hercules.API.Logs.LogEntry (LogEntry)
 import qualified Hercules.API.Logs.LogEntry as LogEntry
+import Hercules.API.Logs.LogHello (LogHello (LogHello, clientProtocolVersion, storeProtocolVersion))
 import Hercules.API.Logs.LogMessage (LogMessage)
 import qualified Hercules.API.Logs.LogMessage as LogMessage
 import Hercules.Agent.Sensitive
@@ -270,8 +271,8 @@ runCommand herculesState ch command = do
       panic "Not a valid starting command"
 
 logger :: (MonadIO m, MonadUnliftIO m, KatipContext m) => LogSettings.LogSettings -> Int -> ConduitM () (Vector LogEntry) m () -> m ()
-logger logSettings_ storeProtocolVersion entriesSource = do
-  socketConfig <- liftIO $ makeSocketConfig logSettings_
+logger logSettings_ storeProtocolVersionValue entriesSource = do
+  socketConfig <- liftIO $ makeSocketConfig logSettings_ storeProtocolVersionValue
   let withPings socket m =
         withAsync
           ( liftIO $ forever do
@@ -281,17 +282,13 @@ logger logSettings_ storeProtocolVersion entriesSource = do
               atomically $ Socket.write socket ping
           )
           (const m)
-  clientProtocolVersion <- liftIO getClientProtocolVersion
   Socket.withReliableSocket socketConfig $ \socket -> withPings socket do
     let conduit =
-          ( do
-              yield LogMessage.Start {storeProtocolVersion = storeProtocolVersion, clientProtocolVersion = clientProtocolVersion}
-              entriesSource
-                .| Logger.unbatch
-                .| Logger.filterProgress
-                .| renumber 0
-                .| batchAndEnd
-          )
+          entriesSource
+            .| Logger.unbatch
+            .| Logger.filterProgress
+            .| renumber 0
+            .| batchAndEnd
             .| socketSink socket
         batch = Logger.batch .| mapC (LogMessage.LogEntries . V.fromList)
         batchAndEnd =
@@ -345,14 +342,21 @@ withKatip m = do
   bracket (liftIO makeLogEnv) (liftIO . closeScribes) $ \logEnv ->
     runKatipContextT logEnv initialContext extraNs m
 
-makeSocketConfig :: Monad m => LogSettings.LogSettings -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
-makeSocketConfig l = do
+makeSocketConfig :: MonadIO m => LogSettings.LogSettings -> Int -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
+makeSocketConfig l storeProtocolVersionValue = do
+  clientProtocolVersionValue <- liftIO getClientProtocolVersion
   baseURL <- case Network.URI.parseURI $ toS $ LogSettings.baseURL l of
     Just x -> pure x
     Nothing -> panic "LogSettings: invalid base url"
   pure
     Socket.SocketConfig
-      { makeHello = pure (LogMessage.LogEntries mempty),
+      { makeHello =
+          pure $
+            LogMessage.Hello
+              LogHello
+                { clientProtocolVersion = clientProtocolVersionValue,
+                  storeProtocolVersion = storeProtocolVersionValue
+                },
         checkVersion = Socket.checkVersion',
         baseURL = baseURL,
         path = LogSettings.path l,
