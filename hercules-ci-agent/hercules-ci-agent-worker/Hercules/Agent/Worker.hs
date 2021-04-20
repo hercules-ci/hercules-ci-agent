@@ -31,6 +31,7 @@ import qualified Data.Vector as V
 import qualified Hercules.API.Agent.LifeCycle.ServiceInfo
 import Hercules.API.Logs.LogEntry (LogEntry)
 import qualified Hercules.API.Logs.LogEntry as LogEntry
+import Hercules.API.Logs.LogHello (LogHello (LogHello, clientProtocolVersion, storeProtocolVersion))
 import Hercules.API.Logs.LogMessage (LogMessage)
 import qualified Hercules.API.Logs.LogMessage as LogMessage
 import Hercules.Agent.Sensitive
@@ -63,7 +64,7 @@ import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCa
 import Hercules.CNix.Expr.Context (EvalState)
 import qualified Hercules.CNix.Expr.Raw
 import Hercules.CNix.Expr.Typed (Value)
-import Hercules.CNix.Util (setInterruptThrown, triggerInterrupt)
+import Hercules.CNix.Util (triggerInterrupt)
 import Hercules.Error
 import Katip
 import qualified Language.C.Inline.Cpp.Exceptions as C
@@ -221,8 +222,10 @@ runCommand herculesState ch command = do
   -- TODO don't do this
   mainThread <- liftIO myThreadId
   UnliftIO unlift <- askUnliftIO
+  protocolVersion <- liftIO do
+    getStoreProtocolVersion (wrappedStore herculesState)
   case command of
-    Command.Eval eval -> Logger.withLoggerConduit (logger $ Eval.logSettings eval) $
+    Command.Eval eval -> Logger.withLoggerConduit (logger (Eval.logSettings eval) protocolVersion) $
       Logger.withTappedStderr Logger.tapper $
         connectCommand ch $ do
           void $
@@ -253,12 +256,12 @@ runCommand herculesState ch command = do
             _ -> pass
     Command.Build build ->
       katipAddNamespace "Build" $
-        Logger.withLoggerConduit (logger $ Build.logSettings build) $
+        Logger.withLoggerConduit (logger (Build.logSettings build) protocolVersion) $
           Logger.withTappedStderr Logger.tapper $
             connectCommand ch $ runBuild (wrappedStore herculesState) build
     Command.Effect effect ->
       katipAddNamespace "Effect" $
-        Logger.withLoggerConduit (logger $ Effect.logSettings effect) $
+        Logger.withLoggerConduit (logger (Effect.logSettings effect) protocolVersion) $
           Logger.withTappedStderr Logger.tapper $
             connectCommand ch $ do
               runEffect (wrappedStore herculesState) effect >>= \case
@@ -267,9 +270,9 @@ runCommand herculesState ch command = do
     _ ->
       panic "Not a valid starting command"
 
-logger :: (MonadIO m, MonadUnliftIO m, KatipContext m) => LogSettings.LogSettings -> ConduitM () (Vector LogEntry) m () -> m ()
-logger logSettings_ entriesSource = do
-  socketConfig <- liftIO $ makeSocketConfig logSettings_
+logger :: (MonadIO m, MonadUnliftIO m, KatipContext m) => LogSettings.LogSettings -> Int -> ConduitM () (Vector LogEntry) m () -> m ()
+logger logSettings_ storeProtocolVersionValue entriesSource = do
+  socketConfig <- liftIO $ makeSocketConfig logSettings_ storeProtocolVersionValue
   let withPings socket m =
         withAsync
           ( liftIO $ forever do
@@ -339,14 +342,21 @@ withKatip m = do
   bracket (liftIO makeLogEnv) (liftIO . closeScribes) $ \logEnv ->
     runKatipContextT logEnv initialContext extraNs m
 
-makeSocketConfig :: Monad m => LogSettings.LogSettings -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
-makeSocketConfig l = do
+makeSocketConfig :: MonadIO m => LogSettings.LogSettings -> Int -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
+makeSocketConfig l storeProtocolVersionValue = do
+  clientProtocolVersionValue <- liftIO getClientProtocolVersion
   baseURL <- case Network.URI.parseURI $ toS $ LogSettings.baseURL l of
     Just x -> pure x
     Nothing -> panic "LogSettings: invalid base url"
   pure
     Socket.SocketConfig
-      { makeHello = pure (LogMessage.LogEntries mempty),
+      { makeHello =
+          pure $
+            LogMessage.Hello
+              LogHello
+                { clientProtocolVersion = clientProtocolVersionValue,
+                  storeProtocolVersion = storeProtocolVersionValue
+                },
         checkVersion = Socket.checkVersion',
         baseURL = baseURL,
         path = LogSettings.path l,

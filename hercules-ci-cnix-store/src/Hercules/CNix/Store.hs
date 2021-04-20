@@ -55,6 +55,8 @@ C.include "<nix/affinity.hh>"
 
 C.include "<nix/globals.hh>"
 
+C.include "<nix/worker-protocol.hh>"
+
 C.include "hercules-ci-cnix/store.hxx"
 
 C.using "namespace nix"
@@ -106,6 +108,21 @@ storeUri (Store store) =
     [C.block| const char* {
        std::string uri = (*$(refStore* store))->getUri();
        return strdup(uri.c_str());
+     } |]
+
+getStoreProtocolVersion :: Store -> IO Int
+getStoreProtocolVersion (Store store) =
+  fromIntegral
+    <$> [C.throwBlock| int {
+       Store &store = **$(refStore* store);
+       return store.getProtocol();
+     } |]
+
+getClientProtocolVersion :: IO Int
+getClientProtocolVersion =
+  fromIntegral
+    <$> [C.throwBlock| int {
+       return PROTOCOL_VERSION;
      } |]
 
 ensurePath :: Store -> ByteString -> IO ()

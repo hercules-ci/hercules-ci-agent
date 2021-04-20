@@ -20,6 +20,7 @@ import Hercules.Agent.Cachix.Info as Cachix.Info
 import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env as Env
 import Hercules.Agent.Log
+import qualified Hercules.CNix.Store as Store
 import Network.HostName (getHostName)
 import Protolude hiding (to)
 import qualified System.Process as Process
@@ -31,13 +32,15 @@ extractAgentInfo = do
   nix <- liftIO getNixInfo
   cachixPushCaches <- Cachix.Info.activePushCaches
   pushCaches <- Env.activePushCaches
+  nixClientProtocolVersion <- liftIO Store.getClientProtocolVersion
+  nixStoreProtocolVersion <- liftIO $ Store.withStore Store.getStoreProtocolVersion
   let s =
         AgentInfo.AgentInfo
           { hostname = toS hostname,
             agentVersion = CabalInfo.herculesAgentVersion, -- TODO: Add git revision
             nixVersion = nixExeVersion nix,
-            nixClientProtocolVersion = 0, -- FIXME
-            nixDaemonProtocolVersion = 0, -- FIXME
+            nixClientProtocolVersion = nixClientProtocolVersion,
+            nixDaemonProtocolVersion = nixStoreProtocolVersion,
             platforms = nixPlatforms nix,
             cachixPushCaches = cachixPushCaches,
             pushCaches = pushCaches,
