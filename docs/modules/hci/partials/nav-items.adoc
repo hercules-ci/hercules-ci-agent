@@ -1,4 +1,8 @@
 * xref:installation.adoc[Installation]
+* xref:effect/run.adoc[`hci effect run`] +
+ifeval::[{descriptions} == true]
+Run an effect locally.
+endif::[]
 * xref:login.adoc[`hci login`] +
 ifeval::[{descriptions} == true]
 Configure token for authentication to hercules-ci.com.
