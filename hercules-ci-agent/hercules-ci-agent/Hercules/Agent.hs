@@ -56,6 +56,7 @@ import qualified Hercules.Agent.Options as Options
 import Hercules.Agent.STM
 import Hercules.Agent.Socket as Socket
 import Hercules.Agent.Token (withAgentToken)
+import Hercules.CNix.Util (triggerInterrupt)
 import Hercules.Error
   ( cap,
     exponential,
@@ -73,13 +74,36 @@ import Protolude hiding
     withAsync,
     withMVar,
   )
+import System.Mem.Weak (deRefWeak)
+import System.Posix (Handler (Catch), installHandler, raiseSignal, sigINT, sigTERM)
 import System.Posix.Resource
 import UnliftIO.Exception (catch)
 import qualified Prelude
 
+extendSigINT :: IO ()
+extendSigINT = do
+  mainThread <- myThreadId
+  weakId <- mkWeakThreadId mainThread
+  _oldHandler <-
+    installHandler
+      sigINT
+      ( Catch do
+          -- GHC RTS default behavior
+          mt <- deRefWeak weakId
+          for_ mt \t -> do
+            throwTo t (toException UserInterrupt)
+          -- Nix
+          triggerInterrupt
+      )
+      Nothing
+  pass
+
 main :: IO ()
 main = do
+  -- TODO remove CNix dependency from agent main process
   Init.initCNix
+  _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
+  extendSigINT
   opts <- Options.parse
   let cfgPath = Options.configFile opts
   cfg <- Config.finalizeConfig cfgPath =<< Config.readConfig cfgPath
