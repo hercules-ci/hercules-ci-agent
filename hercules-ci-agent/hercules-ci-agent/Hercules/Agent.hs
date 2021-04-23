@@ -100,7 +100,7 @@ extendSigINT = do
 
 main :: IO ()
 main = do
-  -- TODO remove CNix dependency from agent main process
+  -- TODO remove CNix dependency from agent main process.
   Init.initCNix
   _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
   extendSigINT
