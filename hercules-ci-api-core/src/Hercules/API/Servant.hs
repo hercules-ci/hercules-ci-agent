@@ -28,38 +28,39 @@ import Prelude
 --
 -- Ideally, this functionality would be built into a new combinator.
 useApi ::
-  (GenericServant f mode, GenericServant g mode) =>
-  (f mode -> ToServant g mode) ->
-  f mode ->
-  g mode
+  forall subapi api mode.
+  (GenericServant api mode, GenericServant subapi mode) =>
+  (api mode -> ToServant subapi mode) ->
+  api mode ->
+  subapi mode
 useApi = (Servant.API.Generic.fromServant .)
 
 -- | Like 'useApi' but constrains the @auth@ type variable that's passed to
 -- subapis.
 useApiE ::
-  forall m api rg a.
-  (GenericServant (api a) m, GenericServant (rg a) m) =>
-  (api a m -> ToServant (rg a) m) ->
-  api a m ->
-  rg a m
+  forall subapi api mode a.
+  (GenericServant (api a) mode, GenericServant (subapi a) mode) =>
+  (api a mode -> ToServant (subapi a) mode) ->
+  api a mode ->
+  subapi a mode
 useApiE = useApi
 
 -- | @flip 'useApi'
 enterApi ::
-  forall g f mode.
-  (GenericServant f mode, GenericServant g mode) =>
-  f mode ->
-  (f mode -> ToServant g mode) ->
-  g mode
+  forall subapi api mode.
+  (GenericServant api mode, GenericServant subapi mode) =>
+  api mode ->
+  (api mode -> ToServant subapi mode) ->
+  subapi mode
 enterApi = flip useApi
 
 -- | @flip 'useApiE'
 enterApiE ::
-  forall m api rg a.
-  (GenericServant (api a) m, GenericServant (rg a) m) =>
-  api a m ->
-  (api a m -> ToServant (rg a) m) ->
-  rg a m
+  forall subapi api mode a.
+  (GenericServant (api a) mode, GenericServant (subapi a) mode) =>
+  api a mode ->
+  (api a mode -> ToServant (subapi a) mode) ->
+  subapi a mode
 enterApiE = flip useApi
 
 -- | 'Control.Monad.void' specialised to 'NoContent' to soothe the
