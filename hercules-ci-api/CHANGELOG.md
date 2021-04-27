@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0.0] - Unreleased
+
+### Added
+
+ - Account: manageInstallationURL, installationIsSelection
+ - AccountInstallationStatus
+ - signOut
+ - Agent labels
+ - By name variations of account and state endpoints
+
 ## [0.6.0.1] - 2020-04-21
 
 ### Fixed
@@ -76,7 +86,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[0.6.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.4.0.0...hercules-ci-api-0.6.0.0
+[0.6.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.0.1...hercules-ci-api-0.7.0.0
+[0.6.0.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.0.0...hercules-ci-api-0.6.0.1
+[0.6.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.5.0.0...hercules-ci-api-0.6.0.0
 [0.5.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.4.0.0...hercules-ci-api-0.5.0.0
 [0.4.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.3.0.0...hercules-ci-api-0.4.0.0
 [0.3.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.1.0.0...hercules-ci-api-0.3.0.0

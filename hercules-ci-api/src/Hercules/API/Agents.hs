@@ -22,16 +22,14 @@ import Servant.API.Generic
 
 data AgentsAPI auth f = AgentsAPI
   { clusterJoinTokensByAccount ::
-      f
-        :- Summary "List all cluster join tokens in an account." -- TODO rename
+      f :- Summary "List all cluster join tokens in an account."
         :> "accounts"
         :> Capture' '[Required, Strict] "accountId" (Id Account)
         :> "clusterJoinTokens"
         :> auth
         :> Get '[JSON] [ClusterJoinToken],
     clusterJoinTokenCreate ::
-      f
-        :- Summary "Generate a new cluster join token for agents to be added to this account."
+      f :- Summary "Generate a new cluster join token for agents to be added to this account."
         :> "accounts"
         :> Capture' '[Required, Strict] "accountId" (Id Account)
         :> "clusterJoinTokens"
@@ -39,8 +37,7 @@ data AgentsAPI auth f = AgentsAPI
         :> auth
         :> Post '[JSON] FullClusterJoinToken,
     clusterJoinTokenDelete ::
-      f
-        :- Summary "Delete an cluster join token in the account. No new agents will be able to join this account with the specified token."
+      f :- Summary "Delete an cluster join token in the account. No new agents will be able to join this account with the specified token."
         :> "accounts"
         :> Capture' '[Required, Strict] "accountId" (Id Account)
         :> "clusterJoinTokens"
@@ -48,8 +45,7 @@ data AgentsAPI auth f = AgentsAPI
         :> auth
         :> Delete '[JSON] NoContent,
     agentSessionsByAccount ::
-      f
-        :- Summary "Show the agents sessions owned by the account."
+      f :- Summary "Show the agents sessions owned by the account."
         :> "accounts"
         :> Capture' '[Required, Strict] "accountId" (Id Account)
         :> "agentSessions"

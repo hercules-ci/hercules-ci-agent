@@ -19,6 +19,8 @@ data DerivationEvent
   | Succeeded DerivationEventSucceeded
   | Cancelled DerivationEventCancelled
   | Built DerivationEventBuilt
+  | HasCancelled DerivationEventHasCancelled
+  | HasCancelledForReset DerivationEventHasCancelledForReset
   deriving (Generic, Show, Eq, NFData, ToSchema)
 
 instance FromJSON DerivationEvent where
@@ -38,6 +40,8 @@ eventTime (Failed (DerivationEventFailed {time = t})) = t
 eventTime (Succeeded (DerivationEventSucceeded {time = t})) = t
 eventTime (Cancelled (DerivationEventCancelled {time = t})) = t
 eventTime (Built (DerivationEventBuilt {time = t})) = t
+eventTime (HasCancelled (DerivationEventHasCancelled {time = t})) = t
+eventTime (HasCancelledForReset (DerivationEventHasCancelledForReset {time = t})) = t
 
 data DerivationEventQueued = DerivationEventQueued
   { time :: UTCTime,
@@ -83,5 +87,15 @@ data DerivationEventCancelled = DerivationEventCancelled
 data DerivationEventBuilt = DerivationEventBuilt
   { time :: UTCTime,
     outputs :: [BuiltOutput]
+  }
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+
+data DerivationEventHasCancelledForReset = DerivationEventHasCancelledForReset
+  { time :: UTCTime
+  }
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+
+data DerivationEventHasCancelled = DerivationEventHasCancelled
+  { time :: UTCTime
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
