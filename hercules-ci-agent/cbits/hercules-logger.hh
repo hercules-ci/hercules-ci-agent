@@ -32,7 +32,7 @@ private:
   uint64_t getMs();
 
  public:
-  HerculesLogger();
+  inline HerculesLogger() {};
 
   struct LogEntry {
     int entryType;

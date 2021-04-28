@@ -1,10 +1,5 @@
 #include "hercules-logger.hh"
 
-HerculesLogger::HerculesLogger()
-{
-
-}
-
 void HerculesLogger::push(std::unique_ptr<LogEntry> entry) {
   auto state(state_.lock());
   state->queue.push(std::move(entry));
