@@ -20,16 +20,18 @@ library
     Hercules.API
     Hercules.API.Accounts
     Hercules.API.Accounts.Account
+    Hercules.API.Accounts.AccountInstallationStatus
     Hercules.API.Accounts.AccountSettings
     Hercules.API.Accounts.AccountSettingsPatch
     Hercules.API.Accounts.CLIAuthorizationRequest
     Hercules.API.Accounts.CLIAuthorizationRequestCreate
     Hercules.API.Accounts.CLIAuthorizationRequestCreateResponse
     Hercules.API.Accounts.CLIAuthorizationRequestStatus
+    Hercules.API.Accounts.CLIToken
+    Hercules.API.Accounts.CLITokensResponse
     Hercules.API.Agents
     Hercules.API.Agents.AgentInfo
     Hercules.API.Agents.AgentSession
-    Hercules.API.Agents.AgentSessionCreated
     Hercules.API.Agents.ClusterJoinToken
     Hercules.API.Agents.CreateClusterJoinToken
     Hercules.API.Agents.FullClusterJoinToken
@@ -55,6 +57,7 @@ library
     Hercules.API.Evaluation.AttributeError
     Hercules.API.Evaluation.Evaluation
     Hercules.API.Health
+    Hercules.API.Labels
     Hercules.API.Message
     Hercules.API.Organizations
     Hercules.API.Organizations.BillingInfo
@@ -155,7 +158,7 @@ executable hercules-gen-swagger
 
   build-depends:
       aeson
-    , base
+    , base                     >=4.7    && <5
     , bytestring
     , containers
     , cookie
@@ -168,7 +171,7 @@ executable hercules-gen-swagger
     , memory
     , network-uri
     , profunctors
-    , servant
+    , servant                  >=0.14.1
     , servant-auth
     , servant-auth-swagger
     , servant-swagger

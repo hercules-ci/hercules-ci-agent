@@ -19,6 +19,11 @@ module Hercules.API.Prelude
     FromJSON,
     ToSchema,
     schemaCompatibleOptions,
+
+    -- * Servant
+    Hercules.API.Servant.Substitute,
+    Hercules.API.Servant.Placeholder,
+    Hercules.API.Servant.enterApiE,
   )
 where
 
@@ -37,6 +42,7 @@ import Data.Time (UTCTime)
 import GHC.Generics (Generic)
 import Hercules.API.Id (Id)
 import Hercules.API.Name (Name)
+import qualified Hercules.API.Servant
 import Prelude
 
 schemaCompatibleOptions :: Aeson.Options

@@ -12,8 +12,7 @@ import Servant.API.Generic
 
 data BuildAPI auth f = BuildAPI
   { restartDerivation ::
-      f
-        :- Summary "Restart a failed derivation"
+      f :- Summary "Restart a derivation"
         :> "accounts"
         :> Capture "accountId" (Id Account)
         :> "derivations"
@@ -22,8 +21,7 @@ data BuildAPI auth f = BuildAPI
         :> auth
         :> Post '[PlainText, JSON] NoContent,
     readDerivationLogText ::
-      f
-        :- Summary "Read a derivation build log"
+      f :- Summary "Read a derivation build log"
         :> Description "This interface may change."
         :> "accounts"
         :> Capture "accountId" (Id Account)

@@ -8,6 +8,7 @@ module Hercules.API
     servantClientApi,
     swagger,
     useApi,
+    enterApiE,
     API,
     ClientAuth,
     HerculesAPI (..),
@@ -37,13 +38,13 @@ import Hercules.API.Build as Client
   )
 import Hercules.API.Effects (EffectsAPI)
 import Hercules.API.Health (HealthAPI)
-import Hercules.API.Id (Id)
-import Hercules.API.Name (Name)
 import Hercules.API.Organizations (OrganizationsAPI)
 import Hercules.API.Orphans ()
+import Hercules.API.Prelude
 import Hercules.API.Projects (ProjectsAPI)
 import Hercules.API.Repos (ReposAPI)
 import Hercules.API.Result (Result (..))
+import Hercules.API.Servant (useApi)
 import Hercules.API.State (StateAPI)
 import Servant.API
 import Servant.API.Generic
@@ -51,7 +52,6 @@ import Servant.Auth
 import Servant.Auth.Swagger ()
 import Servant.Swagger
 import Servant.Swagger.UI.Core (SwaggerSchemaUI)
-import Prelude
 
 -- TODO remove health so we get clientapi
 data HerculesAPI auth f = HerculesAPI
@@ -94,7 +94,7 @@ servantClientApi :: Proxy (ClientServantAPI auth)
 servantClientApi = Proxy
 
 type API auth =
-  (HerculesServantAPI auth)
+  HerculesServantAPI auth
     :<|> "api"
     :> SwaggerSchemaUI "v1" "swagger.json"
 
@@ -113,18 +113,6 @@ swagger =
     & info
       . description
     ?~ "You have reached the Hercules Continuous Integration Application Programming Interface. This user interface provides human friendly access to the various endpoints. To get started with Hercules CI, see hercules-ci.com. Happy building! —the Hercules team"
-
--- | Postcomposes 'Servant.API.Generic.fromServant' to an accessor,
--- preserving the mode parameter, because otherwise the mode parameter
--- can not be inferred.
---
--- Ideally, this functionality would be built into a new combinator.
-useApi ::
-  (GenericServant f mode, GenericServant g mode) =>
-  (f mode -> ToServant g mode) ->
-  f mode ->
-  g mode
-useApi = (Servant.API.Generic.fromServant .)
 
 -- | 'Control.Monad.void' specialised to 'NoContent' to soothe the
 -- compiler that rightfully warns about throwing away a do notation

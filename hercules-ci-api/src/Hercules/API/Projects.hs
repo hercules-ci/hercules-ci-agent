@@ -29,16 +29,14 @@ import Servant.API.Generic
 
 data ProjectsAPI auth f = ProjectsAPI
   { projectsByOwner ::
-      f
-        :- Summary "List all projects owned by an account."
+      f :- Summary "List all projects owned by an account."
         :> "accounts"
         :> Capture' '[Required, Strict] "accountId" (Id Account)
         :> "projects"
         :> auth
         :> Get '[JSON] [Project],
     findProjects ::
-      f
-        :- Summary "Find projects"
+      f :- Summary "Find projects"
         :> "projects"
         :> QueryParam' '[Optional] "site" (Name SourceHostingSite)
         :> QueryParam' '[Optional] "account" (Name Account)
@@ -46,31 +44,27 @@ data ProjectsAPI auth f = ProjectsAPI
         :> auth
         :> Get '[JSON] [Project],
     createProject ::
-      f
-        :- Summary "Create a new project."
+      f :- Summary "Create a new project."
         :> "projects"
         :> auth
         :> ReqBody '[JSON] CreateProject
         :> Post '[JSON] (Id Project),
     patchProject ::
-      f
-        :- Summary "Modify a project"
+      f :- Summary "Modify a project"
         :> "projects"
         :> Capture' '[Required, Strict] "projectId" (Id Project)
         :> ReqBody '[JSON] PatchProject
         :> auth
         :> Patch '[JSON] Project,
     createUserEffectToken ::
-      f
-        :- Summary "Create a token for local effect execution"
+      f :- Summary "Create a token for local effect execution"
         :> "projects"
         :> Capture' '[Required, Strict] "projectId" (Id Project)
         :> auth
         :> "create-user-effect-token"
         :> Post '[JSON] CreateUserEffectTokenResponse,
     projectJobs ::
-      f
-        :- Summary "List all jobs in a project"
+      f :- Summary "List all jobs in a project"
         :> Description "A list of a project's revisions and their details and status."
         :> "projects"
         :> Capture' '[Required, Strict] "project" (Id Project)
@@ -78,8 +72,7 @@ data ProjectsAPI auth f = ProjectsAPI
         :> auth
         :> Get '[JSON] [Job],
     findJobs ::
-      f
-        :- Summary "Find jobs"
+      f :- Summary "Find jobs"
         :> "jobs"
         :> QueryParam' '[Optional, Description "Currently only \"github\" or omit entirely"] "site" (Name SourceHostingSite)
         :> QueryParam' '[Optional, Description "Account name filter"] "account" (Name Account)
@@ -89,8 +82,7 @@ data ProjectsAPI auth f = ProjectsAPI
         :> auth
         :> Get '[JSON] [ProjectAndJobs],
     projectJobEvaluation ::
-      f
-        :- Summary "List all attributes in a job"
+      f :- Summary "List all attributes in a job"
         :> Description "A list of all attributes that have been produced as part of the evaluation of a job."
         :> "jobs"
         :> Capture' '[Required, Strict] "jobId" (Id Job)
@@ -98,8 +90,7 @@ data ProjectsAPI auth f = ProjectsAPI
         :> auth
         :> Get '[JSON] EvaluationDetail,
     jobDerivationFailureGraph ::
-      f
-        :- Summary "Find all failures in an evaluation's derivations"
+      f :- Summary "Find all failures in an evaluation's derivations"
         :> Description
              "Returns all derivations that have failures in their dependency closures."
         :> "jobs"

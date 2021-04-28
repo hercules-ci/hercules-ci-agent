@@ -1,10 +1,13 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Hercules.API.Agents.AgentSession where
 
 import Hercules.API.Agents.ClusterJoinToken
   ( ClusterJoinToken,
   )
+import Hercules.API.Labels
 import Hercules.API.Prelude
 
 data AgentSession = AgentSession
@@ -20,6 +23,7 @@ data AgentSession = AgentSession
     substituters :: [Text],
     creation :: UTCTime,
     lastSeen :: Maybe UTCTime,
-    available :: Bool
+    available :: Bool,
+    labels :: Labels
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

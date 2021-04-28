@@ -17,23 +17,20 @@ import Servant.API.Generic
 
 data OrganizationsAPI auth f = OrganizationsAPI
   { findOrganizations ::
-      f
-        :- Summary "Get all organizations user has admin access to"
+      f :- Summary "Get all organizations user has admin access to"
         :> auth
         :> "api"
         :> "organizations"
         :> Get '[JSON] [Organization],
     createOrganization ::
-      f
-        :- Summary "Create a new organization"
+      f :- Summary "Create a new organization"
         :> auth
         :> "api"
         :> "organizations"
         :> ReqBody '[JSON] CreateOrganization
         :> Post '[JSON] Organization,
     connectAccountToOrganization ::
-      f
-        :- Summary "Connect an account to an organization"
+      f :- Summary "Connect an account to an organization"
         :> auth
         :> "api"
         :> "organizations"
@@ -42,8 +39,7 @@ data OrganizationsAPI auth f = OrganizationsAPI
         :> Capture "accountId" (Id Account)
         :> Post '[JSON] NoContent,
     paymentLinkForOrganization ::
-      f
-        :- Summary "Generate payment link for an organization"
+      f :- Summary "Generate payment link for an organization"
         :> auth
         :> "api"
         :> "organizations"

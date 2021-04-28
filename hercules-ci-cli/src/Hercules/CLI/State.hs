@@ -4,6 +4,7 @@
 module Hercules.CLI.State where
 
 import Conduit (ConduitT, mapC, runConduitRes, sinkFile, sourceHandle, stdinC, stdoutC, (.|))
+import Hercules.API (enterApiE)
 import qualified Hercules.API.Projects.Project as Project
 import Hercules.API.State
 import Hercules.CLI.Client
@@ -36,7 +37,9 @@ getCommandParser = do
   pure do
     runAuthenticated do
       projectId <- Project.id <$> findProject project
-      runHerculesClientStream (getProjectStateData stateClient projectId name) \case
+      let projectStateClient = stateClient `enterApiE` \api -> byProjectId api projectId
+      -- TODO: version
+      runHerculesClientStream (getStateData projectStateClient name Nothing) \case
         Left e -> dieWithHttpError e
         Right (Headers r _) -> do
           runConduitRes $
@@ -58,7 +61,8 @@ putCommandParser = do
               liftIO $ withBinaryFile file ReadMode \h ->
                 runRIO r $ f (sourceHandle h .| mapC RawBytes)
       withStream \stream -> do
-        _noContent <- runHerculesClient (putProjectStateData stateClient projectId name (toSourceIO stream))
+        let projectStateClient = stateClient `enterApiE` \api -> byProjectId api projectId
+        _noContent <- runHerculesClient (putStateData projectStateClient name (toSourceIO stream))
         pass
     putErrText $ "hci: State file upload successful for " <> name
 

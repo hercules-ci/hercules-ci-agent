@@ -35,6 +35,8 @@ data Account = Account
     -- Hercules CI on this account.
     isInstallable :: Bool,
     membershipRole :: Maybe MembershipRole,
-    sourceHostingSites :: Maybe (Map Text SourceHostingSite)
+    sourceHostingSites :: Maybe (Map Text SourceHostingSite),
+    manageInstallationURL :: Maybe Text,
+    installationIsSelection :: Maybe Bool
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
