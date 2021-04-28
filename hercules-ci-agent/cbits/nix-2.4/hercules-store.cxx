@@ -44,7 +44,7 @@ void WrappingStore::queryPathInfoUncached(const StorePath & path,
   auto callbackPtr = std::make_shared<decltype(callback)>(std::move(callback));
 
   wrappedStore->queryPathInfo(path, {[=](std::future<ref<const ValidPathInfo>> vpi){
-    (*callbackPtr)(std::move(vpi.get().get_ptr()));
+    (*callbackPtr)(vpi.get().get_ptr());
   }});
 }
 
