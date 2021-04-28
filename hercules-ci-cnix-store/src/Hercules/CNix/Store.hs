@@ -140,6 +140,15 @@ storeUri (Store store) =
        return strdup(uri.c_str());
      } |]
 
+-- | Usually @"/nix/store"@
+storeDir :: MonadIO m => Store -> m ByteString
+storeDir (Store store) =
+  unsafeMallocBS
+    [C.block| const char* {
+       std::string uri = (*$(refStore* store))->storeDir;
+       return strdup(uri.c_str());
+     } |]
+
 getStoreProtocolVersion :: Store -> IO Int
 getStoreProtocolVersion (Store store) =
   fromIntegral
