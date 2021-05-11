@@ -15,6 +15,7 @@ import GHC.IO.Exception (IOErrorType (HardwareFault))
 import Protolude
 import System.Directory (createDirectory)
 import System.FilePath ((</>))
+import System.IO (hClose)
 import System.IO.Error (ioeGetErrorType)
 import System.Posix.IO (closeFd, fdToHandle)
 import System.Posix.Terminal (openPseudoTerminal)
@@ -92,27 +93,21 @@ run dir config = do
     Right a -> pure a
     Left e -> throwIO (FatalError $ "decoding runc config.json template: " <> show e)
   let configJson = effectToRuncSpec config template
-  BS.writeFile (configJsonPath) (BL.toStrict $ encode configJson)
+  BS.writeFile configJsonPath (BL.toStrict $ encode configJson)
   createDirectory rootfsPath
   createDirectory runcRootPath
   name <- do
     uuid <- UUID.nextRandom
     pure $ "hercules-ci-" <> show uuid
-  (exitCode, _) <- bracket
-    openPseudoTerminal
-    ( \(fd1, fd2) -> handle (\(_e :: SomeException) -> pass) do
-        closeFd fd1
-        when (fd2 /= fd1) (closeFd fd2)
-    )
-    $ \(master, terminal) -> do
+  (exitCode, _) <- withPseudoTerminalHandles $
+    \(master, terminal) -> do
       concurrently
         ( do
-            terminalHandle <- fdToHandle terminal
             let createProcSpec =
                   (System.Process.proc runcExe ["--root", runcRootPath, "run", name])
-                    { std_in = UseHandle terminalHandle, -- can't pass /dev/null :(
-                      std_out = UseHandle terminalHandle,
-                      std_err = UseHandle terminalHandle,
+                    { std_in = UseHandle terminal, -- can't pass /dev/null :(
+                      std_out = UseHandle terminal,
+                      std_err = UseHandle terminal,
                       cwd = Just dir
                     }
             withCreateProcess createProcSpec \_subStdin _noOut _noErr processHandle -> do
@@ -128,9 +123,8 @@ run dir config = do
                               )
         )
         ( do
-            masterHandle <- fdToHandle master
             let shovel =
-                  handleEOF (BS.hGetLine masterHandle) >>= \case
+                  handleEOF (BS.hGetLine master) >>= \case
                     "" -> pass
                     someBytes | "@nix" `BS.isPrefixOf` someBytes -> do
                       -- TODO use it (example @nix { "action": "setPhase", "phase": "effectPhase" })
@@ -142,3 +136,29 @@ run dir config = do
             shovel
         )
   pure exitCode
+
+-- | Like 'openPseudoTerminalHandles' but closes the handles after the
+-- function is done.
+withPseudoTerminalHandles :: ((Handle, Handle) -> IO a) -> IO a
+withPseudoTerminalHandles =
+  bracket
+    openPseudoTerminalHandles
+    ( \(master, terminal) -> do
+        hClose master `catch` \(_ :: SomeException) -> pass
+        hClose terminal `catch` \(_ :: SomeException) -> pass
+    )
+
+-- | Like 'openPseudoTerminal' but returning handles, in a resource-safe manner.
+openPseudoTerminalHandles :: IO (Handle, Handle)
+openPseudoTerminalHandles =
+  mask_ do
+    (masterFd, terminalFd) <- openPseudoTerminal
+
+    ( do
+        master <- fdToHandle masterFd
+        terminal <- fdToHandle terminalFd
+        pure (master, terminal)
+      )
+      `onException` do
+        closeFd masterFd
+        when (terminalFd /= masterFd) (closeFd terminalFd)
