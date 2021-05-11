@@ -92,7 +92,7 @@ run dir config = do
     Right a -> pure a
     Left e -> throwIO (FatalError $ "decoding runc config.json template: " <> show e)
   let configJson = effectToRuncSpec config template
-  BS.writeFile (configJsonPath) (BL.toStrict $ encode configJson)
+  BS.writeFile configJsonPath (BL.toStrict $ encode configJson)
   createDirectory rootfsPath
   createDirectory runcRootPath
   name <- do
