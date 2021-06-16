@@ -352,24 +352,15 @@ getOutputs swo = mask_ do
 
 buildPaths :: Store -> StdVector C.NixStorePathWithOutputs -> IO ()
 buildPaths (Store store) (StdVector paths) = do
-#ifdef NIX_2_4
   [C.throwBlock| void {
     Store &store = **$(refStore* store);
     std::vector<StorePathWithOutputs> &paths = *$fptr-ptr:(std::vector<nix::StorePathWithOutputs>* paths);
-    store.buildPaths(toDerivedPaths(paths));
+    store.buildPaths(toDerivedPaths24(printPathSet23(store, paths)));
   }|]
-#else
-  [C.throwBlock| void {
-    Store &store = **$(refStore* store);
-    std::vector<StorePathWithOutputs> &paths = *$fptr-ptr:(std::vector<nix::StorePathWithOutputs>* paths);
-    store.buildPaths(printPathSet23(store, paths));
-  }|]
-#endif
 
 buildPath :: Store -> StorePathWithOutputs -> IO ()
 buildPath store spwo = do
   buildPaths store =<< Std.Vector.fromListFP [spwo]
-
 
 newtype Derivation = Derivation (ForeignPtr C.Derivation)
 
