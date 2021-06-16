@@ -146,6 +146,11 @@
                   hercules-ci-agent
                   hercules-ci-cli
                   ;
+
+                hercules-ci-agent-nixUnstable =
+                  allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-agent;
+                hercules-ci-cli-nixUnstable =
+                  allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-cli;
               }
           )
           defaultTarget;
