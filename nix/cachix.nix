@@ -59,8 +59,8 @@ mkDerivation {
   version = "0.6.0";
   src = fetchgit {
     url = "https://github.com/hercules-ci/cachix";
-    sha256 = "sha256:1zix42qdsdm1c1pq109c0l2ra0dn06h3mlnmlmhf37jra8mgyg4m";
-    rev = "10592c569e6475856e18db70e7fc0e6cfecea723";
+    sha256 = "sha256-A1fyUhMQqFPzop+agH3DsmrD8DQgag1BMz5Arzp9q+w=";
+    rev = "f24e3048fbc81a98e9ad7a7bcfe877c2bc1b4b9b";
     fetchSubmodules = true;
   };
   postUnpack = "sourceRoot+=/cachix; echo source root reset to $sourceRoot";
