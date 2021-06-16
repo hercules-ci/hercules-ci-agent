@@ -146,17 +146,6 @@ withEvalStateConduit (Store store) =
     )
     (\x -> liftIO [C.throwBlock| void { delete $(EvalState* x); } |])
 
-withEvalStateStore :: (MonadUnliftIO m) => Ptr EvalState -> (Store -> m a) -> m a
-withEvalStateStore evalState =
-  UnliftIO.bracket
-    ( Store
-        <$> liftIO
-          [C.exp| const refStore * { 
-      &$(EvalState *evalState)->store
-    }|]
-    )
-    (liftIO . releaseStore)
-
 evalFile :: Ptr EvalState -> FilePath -> IO RawValue
 evalFile evalState filename = do
   filename' <- Foreign.C.String.newCString filename
