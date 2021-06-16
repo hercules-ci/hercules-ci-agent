@@ -22,6 +22,7 @@ module Hercules.CNix.Std.Vector
     toListFP,
     Hercules.CNix.Std.Vector.toList,
     Hercules.CNix.Std.Vector.fromList,
+    fromListFP,
     pushBack,
     pushBackP,
     pushBackFP,
@@ -143,6 +144,12 @@ fromList :: HasStdVectorCopyable a => [a] -> IO (StdVector a)
 fromList as = do
   vec <- Hercules.CNix.Std.Vector.new
   for_ as $ \a -> pushBack vec a
+  pure vec
+
+fromListFP :: (Coercible a' (ForeignPtr a), HasStdVector a) => [a'] -> IO (StdVector a)
+fromListFP as = do
+  vec <- Hercules.CNix.Std.Vector.new
+  for_ as $ \a -> pushBackFP vec a
   pure vec
 
 toList :: (HasStdVectorCopyable a, Storable a) => StdVector a -> IO [a]
