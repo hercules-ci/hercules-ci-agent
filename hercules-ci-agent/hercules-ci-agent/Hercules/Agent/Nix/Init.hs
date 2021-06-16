@@ -7,7 +7,8 @@ import Protolude
 newEnv :: IO Env
 newEnv = do
   nixInfo <- EnvironmentInfo.getNixInfo
-  when (EnvironmentInfo.nixNarinfoCacheNegativeTTL nixInfo /= Just 0) $ do
+  print nixInfo
+  when (EnvironmentInfo.nixNarinfoCacheNegativeTTL nixInfo /= 0) $ do
     putErrText
       "\n\
       \We have detected that the setting narinfo-cache-negative-ttl is non-zero.\n\

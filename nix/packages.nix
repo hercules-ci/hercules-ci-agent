@@ -84,7 +84,7 @@ let
                     callPkg super "hercules-ci-agent" ../hercules-ci-agent {
                       bdw-gc = pkgs.boehmgc-hercules;
                     };
-                  bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git nix ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
+                  bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
 
                 in
                 generateOptparseApplicativeCompletion "hercules-ci-agent" (buildFromSdist (

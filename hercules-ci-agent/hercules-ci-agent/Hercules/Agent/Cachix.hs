@@ -66,7 +66,7 @@ getSubstituters = do
   cks <- asks (Agent.Cachix.cacheKeys . Agent.Env.cachixEnv)
   nixInfo <- liftIO EnvInfo.getNixInfo
   pure
-    ( EnvInfo.nixSubstituters nixInfo
+    ( map (decodeUtf8With lenientDecode) (EnvInfo.nixSubstituters nixInfo)
         ++ map (\c -> "https://" <> c <> ".cachix.org") (M.keys cks)
     )
 
@@ -74,4 +74,7 @@ getTrustedPublicKeys :: App [Text]
 getTrustedPublicKeys = do
   cks <- asks (Agent.Cachix.cacheKeys . Agent.Env.cachixEnv)
   nixInfo <- liftIO EnvInfo.getNixInfo
-  pure (EnvInfo.nixTrustedPublicKeys nixInfo ++ concatMap CachixCache.publicKeys cks)
+  pure
+    ( map (decodeUtf8With lenientDecode) (EnvInfo.nixTrustedPublicKeys nixInfo)
+        ++ concatMap CachixCache.publicKeys cks
+    )
