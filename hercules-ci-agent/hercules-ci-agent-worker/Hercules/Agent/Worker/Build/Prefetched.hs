@@ -150,7 +150,7 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
         nix::PathSet paths{printPath23(store, derivationPath)};
 #endif
         try {
-          store.buildPaths(paths);
+          store.buildPaths(toDerivedPaths24(paths));
           status = -1;
           success = true;
           errorMessage = strdup("");

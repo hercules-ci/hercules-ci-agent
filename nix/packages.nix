@@ -207,7 +207,7 @@ recurseIntoAttrs {
   inherit (internal) hercules-ci-api-swagger tests;
 
   pre-commit-check =
-    (import (pre-commit-hooks-nix + "/nix") { inherit (pkgs) system; }).packages.run {
+    (import (pre-commit-hooks-nix + "/nix") { inherit (pkgs) system; }).run {
       src = ../.;
       tools = {
         inherit (pkgs) ormolu;

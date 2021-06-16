@@ -75,6 +75,10 @@ C.include "<variant>"
 
 C.include "<nix/worker-protocol.hh>"
 
+#ifdef NIX_2_4
+C.include "<nix/path-with-outputs.hh>"
+#endif
+
 C.include "hercules-ci-cnix/store.hxx"
 
 C.include "nix-compat.hh"
@@ -348,20 +352,24 @@ getOutputs swo = mask_ do
 
 buildPaths :: Store -> StdVector C.NixStorePathWithOutputs -> IO ()
 buildPaths (Store store) (StdVector paths) = do
+#ifdef NIX_2_4
+  [C.throwBlock| void {
+    Store &store = **$(refStore* store);
+    std::vector<StorePathWithOutputs> &paths = *$fptr-ptr:(std::vector<nix::StorePathWithOutputs>* paths);
+    store.buildPaths(toDerivedPaths(paths));
+  }|]
+#else
   [C.throwBlock| void {
     Store &store = **$(refStore* store);
     std::vector<StorePathWithOutputs> &paths = *$fptr-ptr:(std::vector<nix::StorePathWithOutputs>* paths);
     store.buildPaths(printPathSet23(store, paths));
   }|]
+#endif
 
 buildPath :: Store -> StorePathWithOutputs -> IO ()
-buildPath (Store store) (StorePathWithOutputs spwo) = do
-  [C.throwBlock| void {
-    Store &store = **$(refStore* store);
-    std::vector<StorePathWithOutputs> paths;
-    paths.push_back(*$fptr-ptr:(nix::StorePathWithOutputs *spwo));
-    store.buildPaths(printPathSet23(store, paths));
-  }|]
+buildPath store spwo = do
+  buildPaths store =<< Std.Vector.fromListFP [spwo]
+
 
 newtype Derivation = Derivation (ForeignPtr C.Derivation)
 

@@ -101,7 +101,7 @@ void WrappingStore::narFromPath(const StorePath& path, Sink& sink) {
 }
 
 void WrappingStore::buildPaths(
-      const std::vector<StorePathWithOutputs> & paths, BuildMode buildMode) {
+      const std::vector<DerivedPath> & paths, BuildMode buildMode) {
   wrappedStore->buildPaths(paths, buildMode);
 }
 
@@ -158,7 +158,7 @@ void WrappingStore::computeFSClosure(const StorePathSet& paths,
                                  includeDerivers);
 }
 
-void WrappingStore::queryMissing(const std::vector<StorePathWithOutputs> & targets,
+void WrappingStore::queryMissing(const std::vector<DerivedPath> & targets,
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) {
   wrappedStore->queryMissing(targets, willBuild, willSubstitute, unknown,
@@ -226,16 +226,29 @@ void HerculesStore::ensurePath(const StorePath& path) {
 };
 
 // Avoid substituting in evaluator, see `ensurePath` for more details
-void HerculesStore::queryMissing(const std::vector<StorePathWithOutputs> & targets,
+void HerculesStore::queryMissing(const std::vector<DerivedPath> & targets,
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) {
 };
 
-void HerculesStore::buildPaths(const std::vector<StorePathWithOutputs> & paths, BuildMode buildMode) {
+void HerculesStore::buildPaths(const std::vector<DerivedPath> & derivedPaths, BuildMode buildMode) {
   std::exception_ptr exceptionToThrow(nullptr);
 
   // responsibility for delete is transferred to builderCallback
-  auto pathsPtr = new std::vector<StorePathWithOutputs>(paths);
+  auto pathsPtr = new std::vector<StorePathWithOutputs>();
+  std::vector<StorePathWithOutputs> &paths = *pathsPtr;
+
+  // TODO: don't ignore the Opaques
+  for (auto & derivedPath : derivedPaths) {
+    std::visit(overloaded {
+      [&](DerivedPath::Built built) {
+          paths.push_back(StorePathWithOutputs { built.drvPath, built.outputs });
+      },
+      [&](DerivedPath::Opaque opaque) {
+          // TODO: pass this to the callback as well
+      },
+    }, derivedPath.raw());
+  }
 
   builderCallback(pathsPtr, &exceptionToThrow);
 

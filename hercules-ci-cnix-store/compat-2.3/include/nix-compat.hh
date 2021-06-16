@@ -79,6 +79,8 @@ inline std::optional<nix::StorePath> parseOptionalStorePath(const nix::Store &st
 }
 #define parseOptionalStorePath23(store, path) parseOptionalStorePath(store, path)
 
+#define toDerivedPaths24(x) (x)
+
 namespace nix {
   StorePathWithOutputs parsePathWithOutputs(const Store &store, const std::string & s);
 }

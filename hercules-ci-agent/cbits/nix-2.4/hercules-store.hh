@@ -9,6 +9,7 @@
 #include <nix/derivations.hh>
 #include <nix/affinity.hh>
 #include <nix/globals.hh>
+#include <nix-compat.hh>
 #include "HsFFI.h"
 
 using namespace nix;
@@ -70,7 +71,7 @@ public:
   virtual void narFromPath(const StorePath & path, Sink & sink) override;
 
   virtual void buildPaths(
-      const std::vector<StorePathWithOutputs> & paths,
+      const std::vector<DerivedPath> & paths,
       BuildMode buildMode = bmNormal) override;
 
   virtual BuildResult buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
@@ -100,7 +101,7 @@ public:
       StorePathSet & out, bool flipDirection = false,
       bool includeOutputs = false, bool includeDerivers = false) override;
 
-  virtual void queryMissing(const std::vector<StorePathWithOutputs> & targets,
+  virtual void queryMissing(const std::vector<DerivedPath> & targets,
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) override;
 
@@ -132,13 +133,13 @@ public:
   virtual void ensurePath(const StorePath & path) override;
 
   virtual void buildPaths(
-      const std::vector<StorePathWithOutputs> & paths,
+      const std::vector<DerivedPath> & paths,
       BuildMode buildMode = bmNormal) override;
 
   virtual BuildResult buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
       BuildMode buildMode = bmNormal) override;
 
-  virtual void queryMissing(const std::vector<StorePathWithOutputs> & targets,
+  virtual void queryMissing(const std::vector<DerivedPath> & targets,
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) override;
 
