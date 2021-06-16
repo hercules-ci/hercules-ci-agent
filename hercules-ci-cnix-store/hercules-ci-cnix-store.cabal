@@ -50,6 +50,7 @@ library
   exposed-modules:
       Hercules.CNix
       Hercules.CNix.Encapsulation
+      Hercules.CNix.Settings
       Hercules.CNix.Std.Set
       Hercules.CNix.Std.String
       Hercules.CNix.Std.String.Context
