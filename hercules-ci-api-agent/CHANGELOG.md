@@ -5,7 +5,17 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## 0.3.1.0 - 2020-04-21
+## 0.4.0.0 - 2021-06-22
+
+### Changed
+
+ - `OutputInfo.path` is optional
+
+### Added
+
+ - `ResultTypeBuildLogLine`
+
+## 0.3.1.0 - 2021-04-21
 
 ### Added
 

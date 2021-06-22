@@ -1,6 +1,11 @@
 #pragma once
 
 #include <nix/config.h>
+
+#ifdef NIX_2_4
+#include <nix/error.hh>
+#endif
+
 #include <nix/shared.hh>
 #include <nix/sync.hh>
 #include <nix/logging.hh>
@@ -27,7 +32,7 @@ private:
   uint64_t getMs();
 
  public:
-  HerculesLogger();
+  inline HerculesLogger() {};
 
   struct LogEntry {
     int entryType;
@@ -45,6 +50,10 @@ private:
       const std::string & s, const Fields & fields, nix::ActivityId parent) override;
   void stopActivity(nix::ActivityId act) override;
   void result(nix::ActivityId act, nix::ResultType type, const Fields & fields) override;
+
+#ifdef NIX_2_4
+  void logEI(const nix::ErrorInfo &ei) override;
+#endif
 
   std::unique_ptr<LogEntry> pop();
   void popMany(int max, std::queue<std::unique_ptr<LogEntry>> &out);

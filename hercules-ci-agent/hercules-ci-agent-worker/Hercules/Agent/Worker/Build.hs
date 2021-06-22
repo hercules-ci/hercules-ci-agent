@@ -5,7 +5,6 @@ module Hercules.Agent.Worker.Build where
 
 import Conduit
 import Data.Conduit.Katip.Orphans ()
-import Foreign (ForeignPtr)
 import Hercules.Agent.Worker.Build.Prefetched (buildDerivation)
 import qualified Hercules.Agent.Worker.Build.Prefetched as Build
 import qualified Hercules.Agent.WorkerProtocol.Command.Build as Command.Build
@@ -17,8 +16,7 @@ import Hercules.CNix
     getDerivationOutputs,
   )
 import qualified Hercules.CNix as CNix
-import Hercules.CNix.Store (Store, queryPathInfo, validPathInfoNarHash, validPathInfoNarSize)
-import Hercules.CNix.Store.Context (Derivation)
+import Hercules.CNix.Store (Store, queryPathInfo, validPathInfoNarHash32, validPathInfoNarSize)
 import Katip
 import Protolude hiding (yield)
 
@@ -26,8 +24,10 @@ runBuild :: (MonadIO m, KatipContext m) => Store -> Command.Build.Build -> Condu
 runBuild store build = do
   let extraPaths = Command.Build.inputDerivationOutputPaths build
       drvPath = encodeUtf8 $ Command.Build.drvPath build
-  x <- for extraPaths $ \input -> do
-    liftIO $ try $ CNix.ensurePath store input
+  drvStorePath <- liftIO $ CNix.parseStorePath store drvPath
+  x <- for extraPaths $ \input -> liftIO $ do
+    storePath <- CNix.parseStorePath store input
+    try $ CNix.ensurePath store storePath
   materialize <- case sequenceA x of
     Right _ ->
       -- no error, proceed with requested materialization setting
@@ -36,32 +36,35 @@ runBuild store build = do
       CNix.logInfo $ "while retrieving dependencies: " <> toS (displayException e)
       CNix.logInfo "unable to retrieve dependency; attempting fallback to local build"
       pure True
-  derivationMaybe <- liftIO $ Build.getDerivation store drvPath
+  drvName <- liftIO $ CNix.getDerivationNameFromPath drvStorePath
+  derivationMaybe <- liftIO $ Build.getDerivation store drvStorePath
   derivation <- case derivationMaybe of
     Just drv -> pure drv
-    Nothing -> panic $ "Could not retrieve derivation " <> show drvPath <> " from local store or binary caches."
-  nixBuildResult <- liftIO $ buildDerivation store drvPath derivation (extraPaths <$ guard (not materialize))
+    Nothing -> panic $ "Could not retrieve derivation " <> show drvStorePath <> " from local store or binary caches."
+  nixBuildResult <- liftIO $ buildDerivation store drvStorePath derivation (extraPaths <$ guard (not materialize))
   katipAddContext (sl "result" (show nixBuildResult :: Text)) $
     logLocM DebugS "Build result"
-  buildResult <- liftIO $ enrichResult store derivation nixBuildResult
+  buildResult <- liftIO $ enrichResult store drvName derivation nixBuildResult
   yield $ Event.BuildResult buildResult
 
 -- TODO: case distinction on BuildStatus enumeration
-enrichResult :: Store -> ForeignPtr Derivation -> Build.BuildResult -> IO Event.BuildResult.BuildResult
-enrichResult _ _ result@Build.BuildResult {isSuccess = False} =
+enrichResult :: Store -> ByteString -> CNix.Derivation -> Build.BuildResult -> IO Event.BuildResult.BuildResult
+enrichResult _ _ _ result@Build.BuildResult {isSuccess = False} =
   pure $
     Event.BuildResult.BuildFailure {errorMessage = Build.errorMessage result}
-enrichResult store derivation _ = do
-  drvOuts <- getDerivationOutputs derivation
+enrichResult store drvName derivation _ = do
+  drvOuts <- getDerivationOutputs store drvName derivation
   outputInfos <- for drvOuts $ \drvOut -> do
-    vpi <- queryPathInfo store (derivationOutputPath drvOut)
-    hash_ <- validPathInfoNarHash vpi
-    let size = validPathInfoNarSize vpi
+    -- FIXME: ca-derivations: always get the built path
+    vpi <- for (derivationOutputPath drvOut) (queryPathInfo store)
+    hash_ <- traverse validPathInfoNarHash32 vpi
+    path <- traverse (CNix.storePathToPath store) (derivationOutputPath drvOut)
+    let size = fmap validPathInfoNarSize vpi
     pure
       Event.BuildResult.OutputInfo
         { name = derivationOutputName drvOut,
-          path = derivationOutputPath drvOut,
-          hash = hash_,
-          size = size
+          path = fromMaybe "" path,
+          hash = fromMaybe "" hash_,
+          size = fromMaybe 0 size
         }
   pure $ Event.BuildResult.BuildSuccess outputInfos

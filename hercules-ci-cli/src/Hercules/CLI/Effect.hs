@@ -5,7 +5,6 @@ module Hercules.CLI.Effect where
 
 import Data.Has (Has)
 import qualified Data.Text as T
-import Foreign (ForeignPtr)
 import qualified Hercules.API.Projects as Projects
 import qualified Hercules.API.Projects.CreateUserEffectTokenResponse as CreateUserEffectTokenResponse
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
@@ -19,9 +18,9 @@ import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption)
 import Hercules.CLI.Secret (getSecretsFilePath)
 import Hercules.CNix (Store)
 import Hercules.CNix.Expr (Match (IsAttrs), Value (rtValue), getAttrBool, getDrvFile, match)
-import Hercules.CNix.Store (buildPaths, getDerivationInputs)
+import qualified Hercules.CNix.Std.Vector as Std.Vector
+import Hercules.CNix.Store (Derivation, StorePath, buildPaths, getDerivationInputs, newStorePathWithOutputs)
 import qualified Hercules.CNix.Store as CNix
-import Hercules.CNix.Store.Context (Derivation)
 import Hercules.Effect (runEffect)
 import Hercules.Error (escalate)
 import Katip (initLogEnv, runKatipContextT)
@@ -78,12 +77,15 @@ runParser = do
           runKatipContextT logEnv () mempty $ runEffect derivation (Sensitive token) secretsJson apiBaseURL workDir
         throwIO exitCode
 
-prepareDerivation :: MonadIO m => Store -> ByteString -> m (ForeignPtr Derivation)
+prepareDerivation :: MonadIO m => Store -> StorePath -> m Derivation
 prepareDerivation store drvPath = do
   derivation <- liftIO $ CNix.getDerivation store drvPath
-  inputs <- liftIO $ getDerivationInputs derivation
-  let paths = [input <> "!" <> output | (input, outputs) <- inputs, output <- outputs]
-  liftIO $ buildPaths store paths
+  inputs <- liftIO $ getDerivationInputs store derivation
+  storePathsWithOutputs <- liftIO Std.Vector.new
+  liftIO $ for_ inputs \(input, outputs) -> do
+    swo <- newStorePathWithOutputs input outputs
+    Std.Vector.pushBackFP storePathsWithOutputs swo
+  liftIO $ buildPaths store storePathsWithOutputs
   pure derivation
 
 ciAttributeArgument :: Optparse.Parser Text

@@ -14,7 +14,6 @@ import qualified Control.Exception.Lifted as EL
 import Control.Monad.Except
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control
-import qualified Data.ByteString as BS
 import qualified Data.Conduit
 import Data.Conduit.Extras (sinkChan, sinkChanTerminate, sourceChan)
 import Data.Conduit.Katip.Orphans ()
@@ -64,6 +63,9 @@ import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCa
 import Hercules.CNix.Expr.Context (EvalState)
 import qualified Hercules.CNix.Expr.Raw
 import Hercules.CNix.Expr.Typed (Value)
+import Hercules.CNix.Std.Vector (StdVector)
+import qualified Hercules.CNix.Std.Vector as Std.Vector
+import Hercules.CNix.Store.Context (NixStorePathWithOutputs)
 import Hercules.CNix.Util (triggerInterrupt)
 import Hercules.Error
 import Katip
@@ -82,8 +84,8 @@ import Prelude ()
 import qualified Prelude
 
 data HerculesState = HerculesState
-  { drvsCompleted :: TVar (Map Text (UUID, BuildResult.BuildStatus)),
-    drvsInProgress :: IORef (Set Text),
+  { drvsCompleted :: TVar (Map StorePath (UUID, BuildResult.BuildStatus)),
+    drvsInProgress :: IORef (Set StorePath),
     herculesStore :: Ptr (Ref HerculesStore),
     wrappedStore :: Store,
     shortcutChannel :: Chan (Maybe Event)
@@ -252,7 +254,8 @@ runCommand herculesState ch command = do
                 logLocM
                   DebugS
                   "Received remote build result"
-              liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (M.insert path (attempt, result))
+              storePath <- liftIO $ CNix.parseStorePath (wrappedStore herculesState) (encodeUtf8 path)
+              liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (M.insert storePath (attempt, result))
             _ -> pass
     Command.Build build ->
       katipAddNamespace "Build" $
@@ -371,7 +374,7 @@ autoArgArgs kvs = do
     Eval.LiteralArg s -> ["--argstr", encodeUtf8 k, s]
     Eval.ExprArg s -> ["--arg", encodeUtf8 k, s]
 
-withDrvInProgress :: MonadUnliftIO m => HerculesState -> Text -> m a -> m a
+withDrvInProgress :: MonadUnliftIO m => HerculesState -> StorePath -> m a -> m a
 withDrvInProgress HerculesState {drvsInProgress = ref} drvPath =
   bracket acquire release . const
   where
@@ -435,54 +438,66 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
   UnliftIO unlift <- lift askUnliftIO
   let decode = decodeUtf8With lenientDecode
   liftIO $
-    setBuilderCallback hStore $ \path -> unlift $
-      katipAddContext (sl "fullpath" (decode path)) $ do
-        logLocM DebugS "Building"
-        let (plainDrv, bangOut) = BS.span (/= fromIntegral (ord '!')) path
-            outputName = BS.dropWhile (== fromIntegral (ord '!')) bangOut
-            plainDrvText = decode plainDrv
-        withDrvInProgress st plainDrvText $ do
-          liftIO $ writeChan shortcutChan $ Just $ Event.Build plainDrvText (decode outputName) Nothing
-          derivation <- liftIO $ getDerivation store plainDrv
-          outputPath <- liftIO $ getDerivationOutputPath derivation outputName
-          katipAddContext (sl "outputPath" (decode outputPath)) $
-            logLocM DebugS "Naively calling ensurePath"
-          liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e0 -> do
-            katipAddContext (sl "message" (show (e0 :: SomeException) :: Text)) $
-              logLocM DebugS "Recovering from failed wrapped.ensurePath"
-            (attempt0, result) <-
-              liftIO $
-                atomically $ do
-                  c <- readTVar drvsCompl
-                  anyAlternative $ M.lookup plainDrvText c
-            liftIO $ maybeThrowBuildException result plainDrvText
-            liftIO clearSubstituterCaches
-            liftIO $ clearPathInfoCache store
-            liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e1 -> do
-              katipAddContext (sl "message" (show (e1 :: SomeException) :: Text)) $
-                logLocM DebugS "Recovering from fresh ensurePath"
-              liftIO $ writeChan shortcutChan $ Just $ Event.Build plainDrvText (decode outputName) (Just attempt0)
-              -- TODO sync
-              result' <-
-                liftIO $
-                  atomically $ do
-                    c <- readTVar drvsCompl
-                    (attempt1, r) <- anyAlternative $ M.lookup plainDrvText c
-                    guard (attempt1 /= attempt0)
-                    pure r
-              liftIO $ maybeThrowBuildException result' plainDrvText
-              liftIO clearSubstituterCaches
-              liftIO $ clearPathInfoCache store
-              liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e2 ->
-                liftIO $
-                  throwIO $
-                    BuildException
-                      plainDrvText
-                      ( Just $
-                          "It could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
-                            <> show (e2 :: SomeException)
-                      )
-        logLocM DebugS "Built"
+    setBuilderCallback hStore $
+      traverseSPWOs $ \storePathWithOutputs -> unlift $ do
+        drvStorePath <- liftIO $ getStorePath storePathWithOutputs
+        drvPath <- liftIO $ CNix.storePathToPath store drvStorePath
+        let pathText = decode drvPath
+        outputs <- liftIO $ getOutputs storePathWithOutputs
+        katipAddContext (sl "fullpath" pathText) $
+          for_ outputs $ \outputName -> do
+            logLocM DebugS "Building"
+            withDrvInProgress st drvStorePath $ do
+              liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing
+              derivation <- liftIO $ getDerivation store drvStorePath
+              drvName <- liftIO $ getDerivationNameFromPath drvStorePath
+              drvOutputs <- liftIO $ getDerivationOutputs store drvName derivation
+              outputPath <-
+                case find (\o -> derivationOutputName o == outputName) drvOutputs of
+                  Nothing -> panic $ "output " <> show outputName <> " does not exist on " <> pathText
+                  Just o -> case derivationOutputPath o of
+                    Just x -> pure x
+                    Nothing ->
+                      -- FIXME ca-derivations
+                      panic $ "output path unknown for output " <> show outputName <> " on " <> pathText <> ". ca-derivations is not supported yet."
+              katipAddContext (sl "outputPath" (show outputPath :: Text)) $
+                logLocM DebugS "Naively calling ensurePath"
+              liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e0 -> do
+                katipAddContext (sl "message" (show (e0 :: SomeException) :: Text)) $
+                  logLocM DebugS "Recovering from failed wrapped.ensurePath"
+                (attempt0, result) <-
+                  liftIO $
+                    atomically $ do
+                      c <- readTVar drvsCompl
+                      anyAlternative $ M.lookup drvStorePath c
+                liftIO $ maybeThrowBuildException result (decode drvPath)
+                liftIO clearSubstituterCaches
+                liftIO $ clearPathInfoCache store
+                liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e1 -> do
+                  katipAddContext (sl "message" (show (e1 :: SomeException) :: Text)) $
+                    logLocM DebugS "Recovering from fresh ensurePath"
+                  liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) (Just attempt0)
+                  -- TODO sync
+                  result' <-
+                    liftIO $
+                      atomically $ do
+                        c <- readTVar drvsCompl
+                        (attempt1, r) <- anyAlternative $ M.lookup drvStorePath c
+                        guard (attempt1 /= attempt0)
+                        pure r
+                  liftIO $ maybeThrowBuildException result' (decode drvPath)
+                  liftIO clearSubstituterCaches
+                  liftIO $ clearPathInfoCache store
+                  liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e2 ->
+                    liftIO $
+                      throwIO $
+                        BuildException
+                          (decode drvPath)
+                          ( Just $
+                              "It could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
+                                <> show (e2 :: SomeException)
+                          )
+            logLocM DebugS "Built"
   withEvalStateConduit store $ \evalState -> do
     katipAddContext (sl "storeURI" (decode s)) $
       logLocM DebugS "EvalState loaded."
@@ -493,16 +508,22 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
       do
         imprt <- liftIO $ evalFile evalState (toS $ Eval.file eval)
         applied <- liftIO (autoCallFunction evalState imprt args)
-        walk evalState args applied
+        walk store evalState args applied
     yield Event.EvaluationDone
+
+traverseSPWOs :: (StorePathWithOutputs -> IO ()) -> StdVector NixStorePathWithOutputs -> IO ()
+traverseSPWOs f v = do
+  v' <- Std.Vector.toListFP v
+  traverse_ f v'
 
 walk ::
   (MonadUnliftIO m, KatipContext m) =>
+  Store ->
   Ptr EvalState ->
   Value NixAttrs ->
   RawValue ->
   ConduitT i Event m ()
-walk evalState = walk' True [] 10
+walk store evalState = walk' True [] 10
   where
     handleErrors path = Data.Conduit.handleC (yieldAttributeError path)
     walk' ::
@@ -531,7 +552,8 @@ walk evalState = walk' True [] 10
                 isDeriv <- liftIO $ isDerivation evalState v
                 if isDeriv
                   then do
-                    drvPath <- getDrvFile evalState v
+                    drvStorePath <- getDrvFile evalState v
+                    drvPath <- liftIO $ CNix.storePathToPath store drvStorePath
                     typE <- runExceptT do
                       isEffect <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "isEffect")
                       case isEffect of

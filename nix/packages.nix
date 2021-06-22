@@ -2,6 +2,8 @@
 , haskell
 , pkgs
 , nix
+  # TODO propagatedBuildInputs upstream
+, nlohmann_json
 , pre-commit-hooks-nix
 , ...
 }:
@@ -25,6 +27,15 @@ let
     overrideSrc
     ;
   callPkg = super: name: srcPath: args: overrideSrc (super.callCabal2nix name srcPath args) { src = srcPath; };
+
+  addNixVersionFlag = pkg:
+    overrideCabal pkg (o: {
+      preConfigure = (o.preConfigure or "") + ''
+        if pkg-config --atleast-version 2.4pre nix-store; then
+          configureFlags="$configureFlags --flag nix-2_4"
+        fi
+      '';
+    });
 
   updateTo = v: stdPkg: altPkg:
     if lib.versionAtLeast stdPkg.version v
@@ -73,17 +84,14 @@ let
                     callPkg super "hercules-ci-agent" ../hercules-ci-agent {
                       bdw-gc = pkgs.boehmgc-hercules;
                     };
-                  bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git nix ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
+                  bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
 
                 in
                 generateOptparseApplicativeCompletion "hercules-ci-agent" (buildFromSdist (
                   overrideCabal
                     (
                       addBuildDepends
-                        (addSetupDepends
-                          (enableDWARFDebugging basePkg)
-                          (lib.optional (lib.versionAtLeast super.ghc.version "8.10") self.Cabal_3_2_1_0)
-                        )
+                        (enableDWARFDebugging (addNixVersionFlag basePkg))
                         [ pkgs.makeWrapper pkgs.boost pkgs.boehmgc ]
                     )
                     (
@@ -153,8 +161,22 @@ let
                     '';
                 }
                 );
-              hercules-ci-cnix-expr = callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; };
-              hercules-ci-cnix-store = callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { };
+              hercules-ci-cnix-expr = addNixVersionFlag
+                (addBuildDepends
+                  (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; inherit nix; })
+                  [
+                    # https://github.com/NixOS/nix/pull/4904
+                    nlohmann_json
+                  ])
+              ;
+              hercules-ci-cnix-store = addNixVersionFlag
+                (addBuildDepends
+                  (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { inherit nix; })
+                  [
+                    # https://github.com/NixOS/nix/pull/4904
+                    nlohmann_json
+                  ])
+              ;
 
               websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });
 
@@ -171,7 +193,8 @@ let
           { } //
         # isx86_64: Don't run the VM tests on aarch64 to save time
         optionalAttrs (pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64) {
-          agent-functional-test = pkgs.nixosTest ../tests/agent-test.nix;
+          agent-functional-test = pkgs.nixosTest (import ../tests/agent-test.nix { daemonIsNixUnstable = false; });
+          agent-functional-test-daemon-nixUnstable = pkgs.nixosTest (import ../tests/agent-test.nix { daemonIsNixUnstable = true; });
         } // optionalAttrs pkgs.stdenv.isDarwin {
           nix-darwin-example = pkgs.callPackage ../tests/nix-darwin-example.nix { };
         };
@@ -184,7 +207,7 @@ recurseIntoAttrs {
   inherit (internal) hercules-ci-api-swagger tests;
 
   pre-commit-check =
-    (import (pre-commit-hooks-nix + "/nix") { inherit (pkgs) system; }).packages.run {
+    (import (pre-commit-hooks-nix + "/nix") { inherit (pkgs) system; }).run {
       src = ../.;
       tools = {
         inherit (pkgs) ormolu;

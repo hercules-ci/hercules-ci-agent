@@ -12,10 +12,12 @@ where
 -- TODO: No more NixStore when EvalState is already there
 -- TODO: Map Nix-specific C++ exceptions to a CNix exception type
 
+import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Hercules.CNix.Store
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude hiding (evalState, throwIO)
+import System.IO.Unsafe (unsafePerformIO)
 
 C.context context
 
@@ -96,3 +98,11 @@ appendString ss s =
   [C.block| void {
     $(Strings *ss)->push_back(std::string($bs-ptr:s, $bs-len:s));
   }|]
+
+nixVersion :: ByteString
+nixVersion = unsafePerformIO $ do
+  p <-
+    [C.exp| const char* {
+      strdup(nix::nixVersion.c_str())
+    }|]
+  unsafePackMallocCString p

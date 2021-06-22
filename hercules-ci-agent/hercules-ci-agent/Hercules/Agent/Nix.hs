@@ -8,8 +8,6 @@ import Hercules.Agent.EnvironmentInfo (getNixInfo, nixNetrcFile)
 import Hercules.Agent.Nix.Env as Nix.Env
 import Protolude
 import System.Directory (doesFileExist)
-import System.Process (readProcess)
-import qualified System.Process
 
 withExtraOptions :: [(Text, Text)] -> App a -> App a
 withExtraOptions extraOpts = local $ \env ->
@@ -23,35 +21,10 @@ withExtraOptions extraOpts = local $ \env ->
 askExtraOptions :: MonadReader Agent.Env.Env m => m [(Text, Text)]
 askExtraOptions = asks (extraOptions . nixEnv)
 
-getExtraOptionArguments :: MonadReader Agent.Env.Env m => m [Text]
-getExtraOptionArguments = do
-  asks (f . extraOptions . nixEnv)
-  where
-    f = concatMap $ \(opt, val) -> ["--option", opt, val]
-
-readNixProcess ::
-  -- | Command
-  Text ->
-  -- | Options
-  [Text] ->
-  -- | Paths
-  [Text] ->
-  -- | Stdin
-  Text ->
-  App Text
-readNixProcess cmd opts paths stdinText = do
-  extraOpts <- getExtraOptionArguments
-  toS <$> liftIO (readProcess (toS cmd) (map toS (opts <> extraOpts <> ["--"] <> paths)) (toS stdinText))
-
-nixProc :: Text -> [Text] -> [Text] -> App System.Process.CreateProcess
-nixProc exe opts args = do
-  extraOpts <- getExtraOptionArguments
-  pure $ System.Process.proc (toS exe) (map toS (opts <> extraOpts <> ["--"] <> args))
-
 getNetrcLines :: App [Text]
 getNetrcLines = liftIO $ do
   info <- getNixInfo
-  let fm = toS <$> nixNetrcFile info
+  let fm = toS . decodeUtf8With lenientDecode <$> nixNetrcFile info
   fmap fold <$> runMaybeT $ do
     f <- MaybeT $ pure fm
     exs <- lift $ doesFileExist f

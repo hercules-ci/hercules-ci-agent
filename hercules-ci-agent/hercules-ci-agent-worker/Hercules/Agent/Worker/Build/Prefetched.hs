@@ -12,6 +12,7 @@ module Hercules.Agent.Worker.Build.Prefetched where
 import qualified Data.ByteString.Char8 as C8
 import Foreign (FinalizerPtr, ForeignPtr, alloca, newForeignPtr, nullPtr, peek)
 import Foreign.C (peekCString)
+import Hercules.CNix.Encapsulation
 import Hercules.CNix.Store
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
@@ -36,6 +37,8 @@ C.include "<nix/affinity.hh>"
 C.include "<nix/globals.hh>"
 
 C.include "<nix/fs-accessor.hh>"
+
+C.include "<nix-compat.hh>"
 
 C.include "<hercules-ci-cnix/store.hxx>"
 
@@ -90,11 +93,11 @@ nullableForeignPtr :: FinalizerPtr a -> Ptr a -> IO (Maybe (ForeignPtr a))
 nullableForeignPtr _ rawPtr | rawPtr == nullPtr = pure Nothing
 nullableForeignPtr finalize rawPtr = Just <$> newForeignPtr finalize rawPtr
 
-getDerivation :: Store -> ByteString -> IO (Maybe (ForeignPtr Derivation))
+getDerivation :: Store -> StorePath -> IO (Maybe Derivation)
 getDerivation (Store store) derivationPath =
-  nullableForeignPtr finalizeDerivation
+  nullableMoveToForeignPtrWrapper
     =<< [C.throwBlock| Derivation *{
-      std::string derivationPath($bs-ptr:derivationPath, $bs-len:derivationPath);
+      StorePath derivationPath = *$fptr-ptr:(nix::StorePath *derivationPath);
       std::list<nix::ref<nix::Store>> stores = getDefaultSubstituters();
       stores.push_front(*$(refStore* store));
 
@@ -102,14 +105,7 @@ getDerivation (Store store) derivationPath =
 
       for (nix::ref<nix::Store> & currentStore : stores) {
         try {
-          auto accessor = currentStore->getFSAccessor();
-          auto drvText = accessor->readFile(derivationPath);
-
-          Path tmpDir = createTempDir();
-          AutoDelete delTmpDir(tmpDir, true);
-          Path drvTmpPath = tmpDir + "/drv";
-          writeFile(drvTmpPath, drvText, 0600);
-          derivation = new nix::Derivation(nix::readDerivation(drvTmpPath));
+          derivation = new nix::Derivation(currentStore->derivationFromPath(printPath23(*currentStore, derivationPath)));
           break;
         } catch (nix::Interrupted &e) {
           throw e;
@@ -126,7 +122,7 @@ getDerivation (Store store) derivationPath =
     }|]
 
 -- | @buildDerivation derivationPath derivationText@
-buildDerivation :: Store -> ByteString -> ForeignPtr Derivation -> Maybe [ByteString] -> IO BuildResult
+buildDerivation :: Store -> StorePath -> Derivation -> Maybe [ByteString] -> IO BuildResult
 buildDerivation (Store store) derivationPath derivation extraInputs =
   let extraInputsMerged = C8.intercalate "\n" (fromMaybe [] extraInputs)
       materializeDerivation = if isNothing extraInputs then 1 else 0
@@ -142,13 +138,19 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
       const char *&errorMessage = *$(const char **errorMessagePtr);
       time_t &startTime = *$(time_t *startTimePtr);
       time_t &stopTime = *$(time_t *stopTimePtr);
-      std::string derivationPath($bs-ptr:derivationPath, $bs-len:derivationPath);
+      StorePath derivationPath = *$fptr-ptr:(nix::StorePath *derivationPath);
 
       if ($(bool materializeDerivation)) {
-        store.ensurePath(derivationPath);
-        nix::PathSet paths{derivationPath};
+        store.ensurePath(printPath23(store, derivationPath));
+#ifdef NIX_2_4
+        auto derivation = store.derivationFromPath(derivationPath);
+        StorePathWithOutputs storePathWithOutputs { .path = derivationPath, .outputs = derivation.outputNames() };
+        std::vector<nix::StorePathWithOutputs> paths{storePathWithOutputs};
+#else
+        nix::PathSet paths{printPath23(store, derivationPath)};
+#endif
         try {
-          store.buildPaths(paths);
+          store.buildPaths(toDerivedPaths24(paths));
           status = -1;
           success = true;
           errorMessage = strdup("");
@@ -170,10 +172,15 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
         std::istringstream stream(extraInputsMerged);
 
         while (std::getline(stream, extraInput)) {
-          derivation->inputSrcs.insert(extraInput);
+#ifdef NIX_2_4
+          auto path = store.parseStorePath(extraInput);
+#else
+          auto path = extraInput;
+#endif
+          derivation->inputSrcs.insert(path);
         }
 
-        nix::BuildResult result = store.buildDerivation(derivationPath, *derivation);
+        nix::BuildResult result = store.buildDerivation(printPath23(store, derivationPath), *derivation);
 
         switch (result.status) {
           case nix::BuildResult::Built:

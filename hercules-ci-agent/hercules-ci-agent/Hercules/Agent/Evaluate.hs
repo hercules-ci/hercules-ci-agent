@@ -40,9 +40,11 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll as PushedAl
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Servant (noContent)
 import qualified Hercules.Agent.Cache as Agent.Cache
+import qualified Hercules.Agent.Cachix.Env as Cachix.Env
 import qualified Hercules.Agent.Client
 import Hercules.Agent.Env
 import qualified Hercules.Agent.Env as Env
+import Hercules.Agent.Evaluate.TraversalQueue (Queue)
 import qualified Hercules.Agent.Evaluate.TraversalQueue as TraversalQueue
 import Hercules.Agent.Files
 import Hercules.Agent.Log
@@ -66,7 +68,7 @@ import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as WorkerAttribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as WorkerAttributeError
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
-import Hercules.CNix (withStore)
+import Hercules.CNix.Store (Store, StorePath, parseStorePath)
 import Hercules.Error (defaultRetry, quickRetry)
 import qualified Network.HTTP.Client.Conduit as HTTP.Conduit
 import qualified Network.HTTP.Simple as HTTP.Simple
@@ -83,18 +85,19 @@ eventLimit = 50000
 pushEvalWorkers :: Int
 pushEvalWorkers = 16
 
-performEvaluation :: EvaluateTask.EvaluateTask -> App ()
-performEvaluation task' =
-  withProducer (produceEvaluationTaskEvents task') $ \producer ->
+performEvaluation :: Store -> EvaluateTask.EvaluateTask -> App ()
+performEvaluation store task' =
+  withProducer (produceEvaluationTaskEvents store task') $ \producer ->
     withBoundedDelayBatchProducer (1000 * 1000) 1000 producer $ \batchProducer ->
       fix $ \continue ->
         joinSTM $ listen batchProducer (\b -> withSync b (postBatch task' . catMaybes) *> continue) pure
 
 produceEvaluationTaskEvents ::
+  Store ->
   EvaluateTask.EvaluateTask ->
   (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
   App ()
-produceEvaluationTaskEvents task writeToBatch = withWorkDir "eval" $ \tmpdir -> do
+produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpdir -> do
   logLocM DebugS "Retrieving evaluation task"
   let emitSingle = writeToBatch . Syncable
       sync = syncer writeToBatch
@@ -206,7 +209,7 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir "eval" $ \tmpdir -> 
               Message.typ = Message.Error,
               Message.message = e
             }
-    Right file -> TraversalQueue.with $ \derivationQueue ->
+    Right file -> TraversalQueue.with $ \(derivationQueue :: Queue StorePath) ->
       let doIt = do
             Async.Lifted.concurrently_ evaluation emitDrvs
             -- derivationInfo upload has finished
@@ -241,16 +244,17 @@ produceEvaluationTaskEvents task writeToBatch = withWorkDir "eval" $ \tmpdir -> 
               emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll {cache = cache}
           captureAttrDrvAndEmit msg = do
             case msg of
-              EvaluateEvent.Attribute ae ->
-                addTopDerivation (AttributeEvent.derivationPath ae)
+              EvaluateEvent.Attribute ae -> do
+                storePath <- liftIO $ parseStorePath store (encodeUtf8 $ AttributeEvent.derivationPath ae)
+                addTopDerivation storePath
               _ -> pass
             emit msg
           emitDrvs =
-            withStore $ \store -> TraversalQueue.work derivationQueue $ \recurse drvPath -> do
+            TraversalQueue.work derivationQueue $ \recurse drvPath -> do
               drvInfo <- retrieveDerivationInfo store drvPath
-              forM_
-                (M.keys $ DerivationInfo.inputDerivations drvInfo)
-                recurse -- asynchronously
+              for_ (M.keys $ DerivationInfo.inputDerivations drvInfo) \inp -> do
+                inputStorePath <- liftIO $ parseStorePath store (encodeUtf8 inp)
+                recurse inputStorePath -- asynchronously
               emit $ EvaluateEvent.DerivationInfo drvInfo
        in doIt
 
@@ -273,7 +277,7 @@ runEvalProcess ::
   ] ->
   (EvaluateEvent.EvaluateEvent -> App ()) ->
   -- | Upload a derivation, return when done
-  (Text -> App ()) ->
+  (StorePath -> App ()) ->
   App () ->
   Text ->
   App ()
@@ -339,13 +343,16 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                       }
                 continue
               Event.Build drv outputName notAttempt -> do
+                store <- asks (Cachix.Env.nixStore . Env.cachixEnv)
+                storePath <- liftIO (parseStorePath store drv)
+                let drvText = decode drv
                 status <-
-                  withNamedContext "derivation" drv $ do
+                  withNamedContext "derivation" (decode drv) $ do
                     currentIndex <- liftIO $ atomicModifyIORef buildRequiredIndex (\i -> (i + 1, i))
                     emit $
                       EvaluateEvent.BuildRequired
                         BuildRequired.BuildRequired
-                          { BuildRequired.derivationPath = drv,
+                          { BuildRequired.derivationPath = drvText,
                             BuildRequired.index = currentIndex,
                             BuildRequired.outputName = outputName
                           }
@@ -353,21 +360,21 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                           caches <- activePushCaches
                           forM_ caches $ \cache -> do
                             withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations for import from derivation"
-                            Agent.Cache.push cache [drv] pushEvalWorkers
+                            Agent.Cache.push cache [storePath] pushEvalWorkers
                     Async.Lifted.concurrently_
-                      (uploadDerivationInfos drv)
+                      (uploadDerivationInfos storePath)
                       pushDerivations
                     emit $
                       EvaluateEvent.BuildRequest
                         BuildRequest.BuildRequest
-                          { derivationPath = drv,
+                          { derivationPath = drvText,
                             forceRebuild = isJust notAttempt
                           }
                     flush
-                    status <- drvPoller notAttempt drv
+                    status <- drvPoller notAttempt drvText
                     logLocM DebugS $ "Got derivation status " <> logStr (show status :: Text)
                     return status
-                writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drv) status
+                writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drvText) status
                 continue
               Event.Exception e -> panic e
               -- Unused during eval

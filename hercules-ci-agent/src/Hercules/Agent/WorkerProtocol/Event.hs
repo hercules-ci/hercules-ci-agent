@@ -15,7 +15,7 @@ data Event
   | AttributeError AttributeError
   | EvaluationDone
   | Error Text
-  | Build Text Text (Maybe UUID)
+  | Build ByteString Text (Maybe UUID)
   | BuildResult BuildResult
   | EffectResult Int
   | Exception Text

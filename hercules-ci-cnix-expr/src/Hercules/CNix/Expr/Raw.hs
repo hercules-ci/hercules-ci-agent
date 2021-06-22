@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -55,6 +56,39 @@ data RawValueType
 
 -- | You may need to 'forceValue' first.
 rawValueType :: RawValue -> IO RawValueType
+#ifdef NIX_2_4
+rawValueType (RawValue v) =
+  f
+    <$> [C.block| int {
+      switch ($(Value* v)->type()) {
+        case nInt:         return 1;
+        case nBool:        return 2;
+        case nString:      return 3;
+        case nPath:        return 4;
+        case nNull:        return 5;
+        case nAttrs:       return 6;
+        case nList:        return 7;
+        case nFunction:    return 8;
+        case nExternal:    return 9;
+        case nFloat:       return 10;
+        case nThunk:       return 11;
+        default: return 0;
+      }
+    }|]
+  where
+    f 1 = Int
+    f 2 = Bool
+    f 3 = String
+    f 4 = Path
+    f 5 = Null
+    f 6 = Attrs
+    f 7 = List
+    f 8 = Lambda
+    f 9 = External
+    f 10 = Float
+    f 11 = Thunk
+    f _ = Other
+#else
 rawValueType (RawValue v) =
   f
     <$> [C.block| int {
@@ -98,6 +132,7 @@ rawValueType (RawValue v) =
     f 16 = External
     f 17 = Float
     f _ = Other
+#endif
 
 forceValue :: Exception a => Ptr EvalState -> RawValue -> IO (Either a ())
 forceValue evalState (RawValue v) =

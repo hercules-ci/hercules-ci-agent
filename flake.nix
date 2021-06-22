@@ -35,9 +35,14 @@
               nixpkgsSource = nixos-unstable;
               isDevVersion = true;
             };
+            "nixos-unstable-nixUnstable" = {
+              nixpkgsSource = nixos-unstable;
+              isDevVersion = true;
+              isNixUnstable = true;
+            };
           }
           (
-            _name: { nixpkgsSource, isDevVersion ? false }:
+            _name: { nixpkgsSource, isDevVersion ? false, isNixUnstable ? false }:
               dimension "System"
                 {
                   "aarch64-linux" = {
@@ -51,7 +56,12 @@
                   let
                     pkgs =
                       import nixpkgsSource {
-                        overlays = [ (import ./nix/make-overlay.nix inputs) dev-and-test-overlay ];
+                        overlays = [ (import ./nix/make-overlay.nix inputs) dev-and-test-overlay ]
+                          ++ lib.optionals isNixUnstable [
+                          (final: prev: {
+                            nix = prev.nixUnstable;
+                          })
+                        ];
                         config = { };
                         inherit system;
                       };
@@ -71,6 +81,7 @@
                               cabal2nix
                               nix-prefetch-git
                               niv
+                              valgrind
                               ;
                             inherit pkgs;
                           };
@@ -135,6 +146,11 @@
                   hercules-ci-agent
                   hercules-ci-cli
                   ;
+
+                hercules-ci-agent-nixUnstable =
+                  allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-agent;
+                hercules-ci-cli-nixUnstable =
+                  allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-cli;
               }
           )
           defaultTarget;
@@ -238,7 +254,7 @@
                     #!/bin/sh
                     export PATH="${internal.haskellPackages.stack}/bin:$PATH"
                     if test -n "''${HIE_BIOS_OUTPUT:-}"; then
-                        echo | stack "$@"
+                        echo | stack --test "$@"
 
                         # # Internal packages appear in -package flags for some
                         # # reason, unlike normal packages. This filters them out.
@@ -259,6 +275,7 @@
                   devTools.jq
                   devTools.cabal2nix
                   devTools.nix-prefetch-git
+                  devTools.valgrind
                   internal.haskellPackages.ghc
                   internal.haskellPackages.ghcide
                   internal.haskellPackages.haskell-language-server

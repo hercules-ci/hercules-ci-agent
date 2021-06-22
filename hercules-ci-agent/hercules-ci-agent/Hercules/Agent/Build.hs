@@ -17,6 +17,7 @@ import Hercules.API.Servant (noContent)
 import Hercules.API.TaskStatus (TaskStatus)
 import qualified Hercules.API.TaskStatus as TaskStatus
 import qualified Hercules.Agent.Cache as Agent.Cache
+import qualified Hercules.Agent.Cachix.Env as Cachix.Env
 import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
@@ -32,6 +33,7 @@ import qualified Hercules.Agent.WorkerProtocol.Command.Build as Command.Build
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.BuildResult as BuildResult
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
+import qualified Hercules.CNix.Store as CNix
 import Hercules.Error (defaultRetry)
 import qualified Network.URI
 import Protolude
@@ -85,7 +87,8 @@ performBuild buildTask = do
     Just BuildResult.BuildSuccess {outputs = outs'} -> do
       let outs = convertOutputs (BuildTask.derivationPath buildTask) outs'
       reportOutputInfos buildTask outs
-      push buildTask outs
+      store <- asks (Cachix.Env.nixStore . Env.cachixEnv)
+      push store buildTask outs
       reportSuccess buildTask
       pure $ TaskStatus.Successful ()
     Just BuildResult.BuildFailure {} -> pure $ TaskStatus.Terminated ()
@@ -102,12 +105,14 @@ convertOutputs deriver = foldMap $ \oi ->
         hash = decodeUtf8With lenientDecode $ BuildResult.hash oi
       }
 
-push :: BuildTask -> Map Text OutputInfo -> App ()
-push buildTask outs = do
+push :: CNix.Store -> BuildTask -> Map Text OutputInfo -> App ()
+push store buildTask outs = do
   let paths = OutputInfo.path <$> toList outs
   caches <- activePushCaches
   forM_ caches $ \cache -> do
-    Agent.Cache.push cache paths 4
+    -- TODO preserve StorePath instead
+    storePaths <- liftIO $ for paths (CNix.parseStorePath store . encodeUtf8)
+    Agent.Cache.push cache storePaths 4
     emitEvents buildTask [BuildEvent.Pushed $ Pushed.Pushed {cache = cache}]
 
 reportSuccess :: BuildTask -> App ()

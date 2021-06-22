@@ -11,9 +11,7 @@ where
 import Control.Exception
   ( catch,
   )
-import qualified Data.ByteString.Unsafe as BS
 import Data.Coerce (coerce)
-import qualified Foreign.C
 import Foreign.C.String (withCString)
 import Foreign.StablePtr (castStablePtrToPtr, newStablePtr)
 import Hercules.Agent.Worker.HerculesStore.Context
@@ -21,8 +19,10 @@ import Hercules.Agent.Worker.HerculesStore.Context
     HerculesStore,
     context,
   )
-import Hercules.CNix (Store)
+import Hercules.CNix.Encapsulation (moveToForeignPtrWrapper)
 import Hercules.CNix.Expr (Store (Store))
+import Hercules.CNix.Expr.Context (NixStorePathWithOutputs)
+import Hercules.CNix.Std.Vector (CStdVector, StdVector)
 import Hercules.CNix.Store.Context (Ref)
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
@@ -46,6 +46,8 @@ C.include "<nix/derivations.hh>"
 C.include "<nix/affinity.hh>"
 
 C.include "<nix/globals.hh>"
+
+C.include "<nix-compat.hh>"
 
 C.include "hercules-aliases.h"
 
@@ -76,21 +78,21 @@ printDiagnostics s =
   }|]
 
 -- TODO catch pure exceptions from displayException
-setBuilderCallback :: Ptr (Ref HerculesStore) -> (ByteString -> IO ()) -> IO ()
+setBuilderCallback :: Ptr (Ref HerculesStore) -> (StdVector NixStorePathWithOutputs -> IO ()) -> IO ()
 setBuilderCallback s callback = do
   p <-
-    mkBuilderCallback $ \cstr exceptionToThrowPtr ->
-      Control.Exception.catch (BS.unsafePackMallocCString cstr >>= callback) $ \e ->
+    mkBuilderCallback $ \sp exceptionToThrowPtr ->
+      Control.Exception.catch (callback =<< moveToForeignPtrWrapper sp) $ \e ->
         withCString (displayException (e :: SomeException)) $ \renderedException -> do
           stablePtr <- castStablePtrToPtr <$> newStablePtr e
           [C.block| void {
             (*$(exception_ptr *exceptionToThrowPtr)) = std::make_exception_ptr(HaskellException(std::string($(const char* renderedException)), $(void* stablePtr)));
           }|]
   [C.throwBlock| void {
-    (*$(refHerculesStore* s))->setBuilderCallback($(void (*p)(const char *, exception_ptr *) ));
+    (*$(refHerculesStore* s))->setBuilderCallback($(void (*p)(std::vector<nix::StorePathWithOutputs>*, exception_ptr *)));
   }|]
 
-type BuilderCallback = Foreign.C.CString -> Ptr ExceptionPtr -> IO ()
+type BuilderCallback = Ptr (CStdVector NixStorePathWithOutputs) -> Ptr ExceptionPtr -> IO ()
 
 -- Work around a problem in ghcide with foreign imports.
 #ifndef __GHCIDE__

@@ -37,6 +37,7 @@ import Hercules.Agent.AgentSocket (withAgentSocket)
 import qualified Hercules.Agent.Build as Build
 import Hercules.Agent.CabalInfo (herculesAgentVersion)
 import qualified Hercules.Agent.Cache as Cache
+import qualified Hercules.Agent.Cachix.Env as Cachix.Env
 import Hercules.Agent.Client
   ( lifeCycleClient,
     tasksClient,
@@ -117,7 +118,9 @@ run env _cfg = do
                       ServicePayload.StartEvaluation evalTask ->
                         launchTask tasks socket (Task.upcastId $ EvaluateTask.id evalTask) do
                           Cache.withCaches do
-                            Evaluate.performEvaluation evalTask
+                            -- TODO move the store directly under env
+                            store <- asks (Cachix.Env.nixStore . Env.cachixEnv)
+                            Evaluate.performEvaluation store evalTask
                             pure $ TaskStatus.Successful ()
                       ServicePayload.StartBuild buildTask ->
                         launchTask tasks socket (Task.upcastId $ BuildTask.id buildTask) do

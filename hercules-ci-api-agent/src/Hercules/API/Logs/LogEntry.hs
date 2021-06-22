@@ -23,6 +23,9 @@ newtype ResultType = ResultType Word64
 pattern ResultTypeProgress :: ResultType
 pattern ResultTypeProgress = ResultType 105
 
+pattern ResultTypeBuildLogLine :: ResultType
+pattern ResultTypeBuildLogLine = ResultType 101
+
 data Field = Int !Word64 | String !Text
   deriving (Eq, Show, Generic, NFData)
 

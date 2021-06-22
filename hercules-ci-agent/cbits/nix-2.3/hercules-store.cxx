@@ -221,7 +221,10 @@ void HerculesStore::ensurePath(const Path& path) {
   */
   if (!wrappedStore->isValidPath(path)) {
     std::exception_ptr exceptionToThrow(nullptr);
-    builderCallback(strdup(path.c_str()), &exceptionToThrow);
+    auto pathWO = nix::parsePathWithOutputs(*this, path);
+    auto pathsPtr = new std::vector<StorePathWithOutputs>{pathWO};
+    // TODO place outside the loop
+    builderCallback(pathsPtr, &exceptionToThrow);
     if (exceptionToThrow != nullptr) {
       std::rethrow_exception(exceptionToThrow);
     }
@@ -242,7 +245,10 @@ void HerculesStore::queryMissing(const PathSet& targets,
 void HerculesStore::buildPaths(const PathSet& paths, BuildMode buildMode) {
   for (Path path : paths) {
     std::exception_ptr exceptionToThrow(nullptr);
-    builderCallback(strdup(path.c_str()), &exceptionToThrow);
+    auto pathWO = nix::parsePathWithOutputs(*this, path);
+    auto pathsPtr = new std::vector<StorePathWithOutputs>{pathWO};
+    // TODO place outside the loop
+    builderCallback(pathsPtr, &exceptionToThrow);
     if (exceptionToThrow != nullptr) {
       std::rethrow_exception(exceptionToThrow);
     }
@@ -266,6 +272,6 @@ void HerculesStore::printDiagnostics() {
   }
 }
 
-void HerculesStore::setBuilderCallback(void (* newBuilderCallback)(const char *, std::exception_ptr *exceptionToThrow)) {
+void HerculesStore::setBuilderCallback(void (* newBuilderCallback)(std::vector<nix::StorePathWithOutputs>*, std::exception_ptr *exceptionToThrow)) {
   builderCallback = newBuilderCallback;
 }

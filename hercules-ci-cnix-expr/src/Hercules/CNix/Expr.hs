@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -20,6 +21,7 @@ import Conduit
 import qualified Data.Map as M
 import Foreign (nullPtr)
 import qualified Foreign.C.String
+import Hercules.CNix.Encapsulation (moveToForeignPtrWrapper)
 import Hercules.CNix.Expr.Context
 import Hercules.CNix.Expr.Raw
 import Hercules.CNix.Expr.Typed
@@ -28,6 +30,7 @@ import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude hiding (evalState, throwIO)
+import qualified UnliftIO
 
 C.context (Hercules.CNix.Store.Context.context <> Hercules.CNix.Expr.Context.evalContext)
 
@@ -56,6 +59,8 @@ C.include "<nix/derivations.hh>"
 C.include "<nix/affinity.hh>"
 
 C.include "<nix/globals.hh>"
+
+C.include "<nix-compat.hh>"
 
 C.include "hercules-ci-cnix/expr.hxx"
 
@@ -178,8 +183,12 @@ evalArgs evalState args = do
         throw nix::Error("Could not evaluate automatic arguments");
       }
       Value *r = new (NoGC) Value ();
+#ifdef NIX_2_4
+      r->mkAttrs(autoArgs);
+#else
       r->type = tAttrs;
       r->attrs = autoArgs;
+#endif
       return r;
     }|]
 
@@ -217,13 +226,25 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
   (0 /=)
     <$> [C.throwBlock| int {
           Value *v = $(Value *v);
-          EvalState *evalState = $(EvalState *evalState);
-          Symbol rfd = evalState->symbols.create("recurseForDerivations");
+          EvalState &evalState = *$(EvalState *evalState);
+#ifdef NIX_2_4
+          Bindings::iterator iter = v->attrs->find(evalState.sRecurseForDerivations);
+          if (iter == v->attrs->end()) {
+            return 0;
+          } else {
+            // Previously this bool was unpacked manually and included a special
+            // case to return true when it is not a bool. That logic was added
+            // because an empty attrset was found here, observed in
+            // nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
+            return evalState.forceBool(*iter->value, *iter->pos);
+          }
+#else
+          Symbol rfd = evalState.symbols.create("recurseForDerivations");
           Bindings::iterator iter = v->attrs->find(rfd);
           if (iter == v->attrs->end()) {
             return 0;
           } else {
-            evalState->forceValue(*iter->value);
+            evalState.forceValue(*iter->value);
             if (iter->value->type == ValueType::tBool) {
               return iter->value->boolean ? 1 : 0;
             } else {
@@ -232,6 +253,7 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
               return 1;
             }
           }
+#endif
         } |]
 
 getAttr :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Maybe RawValue)
@@ -268,21 +290,22 @@ getAttrs (Value (RawValue v)) = do
         gather acc' =<< [C.exp| Attr *{ &$(Attr *i)[1] }|]
   gather mempty begin
 
-getDrvFile :: MonadIO m => Ptr EvalState -> RawValue -> m ByteString
-getDrvFile evalState (RawValue v) =
-  unsafeMallocBS
-    [C.throwBlock| const char *{
+getDrvFile :: MonadIO m => Ptr EvalState -> RawValue -> m StorePath
+getDrvFile evalState (RawValue v) = liftIO do
+  moveToForeignPtrWrapper
+    =<< [C.throwBlock| nix::StorePath *{
       EvalState &state = *$(EvalState *evalState);
       auto drvInfo = getDerivation(state, *$(Value *v), false);
       if (!drvInfo)
         throw EvalError("Not a valid derivation");
 
       std::string drvPath = drvInfo->queryDrvPath();
+      StorePath storePath = parseStorePath(*state.store, drvPath);
 
       // write it (?)
-      auto drv = state.store->derivationFromPath(drvPath);
+      auto drv = state.store->derivationFromPath(printPath23(*state.store, storePath));
 
-      return strdup(drvPath.c_str());
+      return new StorePath(storePath);
     }|]
 
 getAttrBool :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Either SomeException (Maybe Bool))
