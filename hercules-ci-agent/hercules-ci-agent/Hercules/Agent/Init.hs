@@ -11,6 +11,7 @@ import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import qualified Hercules.Agent.Token as Token
 import qualified Hercules.CNix
+import qualified Hercules.CNix.Util
 import qualified Katip as K
 import qualified Network.HTTP.Client.TLS
 import Protolude
@@ -66,3 +67,4 @@ initCNix :: IO ()
 initCNix = do
   Hercules.CNix.init
   Hercules.CNix.setTalkative
+  Hercules.CNix.Util.installDefaultSigINTHandler
