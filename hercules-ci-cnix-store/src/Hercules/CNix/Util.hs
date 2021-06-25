@@ -51,12 +51,12 @@ installDefaultSigINTHandler = do
     installHandler
       sigINT
       ( Catch do
+          -- Nix
+          triggerInterrupt
           -- GHC RTS default behavior
           mt <- deRefWeak weakId
           for_ mt \t -> do
             throwTo t (toException UserInterrupt)
-          -- Nix
-          triggerInterrupt
       )
       Nothing
   pass
