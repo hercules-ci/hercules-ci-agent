@@ -66,7 +66,7 @@ import Hercules.CNix.Expr.Typed (Value)
 import Hercules.CNix.Std.Vector (StdVector)
 import qualified Hercules.CNix.Std.Vector as Std.Vector
 import Hercules.CNix.Store.Context (NixStorePathWithOutputs)
-import Hercules.CNix.Util (triggerInterrupt)
+import Hercules.CNix.Util (installDefaultSigINTHandler)
 import Hercules.Error
 import Katip
 import qualified Language.C.Inline.Cpp.Exceptions as C
@@ -74,7 +74,6 @@ import qualified Network.URI
 import Protolude hiding (bracket, catch, evalState, wait, withAsync, yield)
 import qualified System.Environment as Environment
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
-import System.Mem.Weak (deRefWeak)
 import System.Posix.IO (dup, fdToHandle, stdError)
 import System.Posix.Signals (Handler (Catch), installHandler, raiseSignal, sigINT, sigTERM)
 import System.Timeout (timeout)
@@ -99,30 +98,12 @@ data BuildException = BuildException
 
 instance Exception BuildException
 
-extendSigINT :: IO ()
-extendSigINT = do
-  mainThread <- myThreadId
-  weakId <- mkWeakThreadId mainThread
-  _oldHandler <-
-    installHandler
-      sigINT
-      ( Catch do
-          -- GHC RTS default behavior
-          mt <- deRefWeak weakId
-          for_ mt \t -> do
-            throwTo t (toException UserInterrupt)
-          -- Nix
-          triggerInterrupt
-      )
-      Nothing
-  pass
-
 main :: IO ()
 main = do
   hSetBuffering stderr LineBuffering
   Hercules.CNix.Expr.init
   _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
-  extendSigINT
+  installDefaultSigINTHandler
   Logger.initLogger
   [options] <- Environment.getArgs
   let allOptions =
