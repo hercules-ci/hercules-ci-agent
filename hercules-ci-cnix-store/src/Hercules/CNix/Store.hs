@@ -287,6 +287,7 @@ storePathToPath (Store store) (StorePath sp) =
 ensurePath :: Store -> StorePath -> IO ()
 ensurePath (Store store) (StorePath storePath) =
   [C.throwBlock| void {
+    ReceiveInterrupts _;
     Store &store = **$(refStore* store);
     StorePath &storePath = *$fptr-ptr:(nix::StorePath *storePath);
     store.ensurePath(printPath23(store, storePath));
@@ -353,6 +354,7 @@ getOutputs swo = mask_ do
 buildPaths :: Store -> StdVector C.NixStorePathWithOutputs -> IO ()
 buildPaths (Store store) (StdVector paths) = do
   [C.throwBlock| void {
+    ReceiveInterrupts _;
     Store &store = **$(refStore* store);
     std::vector<StorePathWithOutputs> &paths = *$fptr-ptr:(std::vector<nix::StorePathWithOutputs>* paths);
     store.buildPaths(toDerivedPaths24(printPathSet23(store, paths)));
@@ -382,6 +384,7 @@ getDerivation :: Store -> StorePath -> IO Derivation
 getDerivation (Store store) (StorePath spwo) = do
   moveToForeignPtrWrapper
     =<< [C.throwBlock| Derivation *{
+      ReceiveInterrupts _;
       Store &store = **$(refStore* store);
       return new Derivation(
           store.derivationFromPath(printPath23(store, *$fptr-ptr:(nix::StorePath *spwo)))
@@ -786,6 +789,7 @@ copyClosure (Store src) (Store dest) pathList = do
   (StdVector pathsVector') <- Std.Vector.fromList (pathList <&> \(StorePath c) -> unsafeForeignPtrToPtr c)
   withForeignPtr pathsVector' \pathsVector ->
     [C.throwBlock| void {
+      ReceiveInterrupts _;
       ref<Store> src = *$(refStore* src);
       ref<Store> dest = *$(refStore* dest);
       std::vector<nix::StorePath *> &pathsVector = *$(std::vector<nix::StorePath*>* pathsVector);
@@ -830,6 +834,7 @@ signPath ::
 signPath (Store store) secretKey (StorePath path) =
   (== 1) <$> do
     [C.throwBlock| int {
+    ReceiveInterrupts _;
     nix::ref<nix::Store> store = *$(refStore *store);
     const StorePath &storePath = *$fptr-ptr:(nix::StorePath *path);
     const SecretKey &secretKey = *$(SecretKey *secretKey);
@@ -858,6 +863,7 @@ followLinksToStorePath :: Store -> ByteString -> IO StorePath
 followLinksToStorePath (Store store) bs =
   moveStorePath
     =<< [C.throwBlock| nix::StorePath *{
+      ReceiveInterrupts _;
       Store &store = **$(refStore* store);
       std::string s = std::string($bs-ptr:bs, $bs-len:bs);
       return new StorePath(parseStorePath23(store, store.followLinksToStorePath(s)));
@@ -872,6 +878,7 @@ queryPathInfo ::
 queryPathInfo (Store store) (StorePath path) = do
   vpi <-
     [C.throwBlock| refValidPathInfo* {
+      ReceiveInterrupts _;
       Store &store = **$(refStore* store);
       StorePath &path = *$fptr-ptr:(nix::StorePath *path);
       return new refValidPathInfo(store.queryPathInfo(printPath23(store, path)));
@@ -957,6 +964,7 @@ computeFSClosure (Store store) params (Std.Set.StdSet startingSet) = do
       inclDrv = countTrue $ includeDerivers params
   ret@(Std.Set.StdSet retSet) <- Std.Set.new
   [C.throwBlock| void {
+    ReceiveInterrupts _;
     Store &store = **$(refStore* store);
     StorePathSet &ret = *$fptr-ptr:(std::set<nix::StorePath>* retSet);
     compatComputeFSClosure(store, *$fptr-ptr:(std::set<nix::StorePath>* startingSet), ret,
