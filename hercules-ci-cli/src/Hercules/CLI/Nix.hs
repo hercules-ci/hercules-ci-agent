@@ -11,6 +11,7 @@ import Hercules.CLI.Git (getGitRoot, getRef, getRev)
 import Hercules.CLI.Options (scanOption)
 import Hercules.CNix (Store)
 import Hercules.CNix.Expr as Expr (EvalState, Match (IsAttrs), RawValue, autoCallFunction, evalArgs, evalFile, getAttr, getAttrs, init, isDerivation, match', withEvalState, withStore)
+import qualified Hercules.CNix.Util as CNix.Util
 import Hercules.Error (escalateAs)
 import Options.Applicative as Optparse
 import Protolude hiding (evalState)
@@ -32,7 +33,9 @@ refBranchToRef ref branch = ref <|> (("refs/heads/" <>) <$> branch)
 
 withNix :: (MonadUnliftIO m) => (Store -> Ptr EvalState -> m b) -> m b
 withNix f = do
-  liftIO Expr.init
+  liftIO do
+    Expr.init
+    CNix.Util.installDefaultSigINTHandler
   UnliftIO unliftIO <- askUnliftIO
   liftIO $ withStore \store -> withEvalState store (unliftIO . f store)
 

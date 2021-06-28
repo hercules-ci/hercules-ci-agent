@@ -97,6 +97,7 @@ getDerivation :: Store -> StorePath -> IO (Maybe Derivation)
 getDerivation (Store store) derivationPath =
   nullableMoveToForeignPtrWrapper
     =<< [C.throwBlock| Derivation *{
+      ReceiveInterrupts _;
       StorePath derivationPath = *$fptr-ptr:(nix::StorePath *derivationPath);
       std::list<nix::ref<nix::Store>> stores = getDefaultSubstituters();
       stores.push_front(*$(refStore* store));
@@ -132,6 +133,7 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
             alloca $ \stopTimePtr ->
               alloca $ \errorMessagePtr -> do
                 [C.throwBlock| void {
+      ReceiveInterrupts _;
       Store &store = **$(refStore* store);
       bool &success = *$(bool *successPtr);
       int &status = *$(int *statusPtr);

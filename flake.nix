@@ -280,7 +280,10 @@
                   internal.haskellPackages.ghcide
                   internal.haskellPackages.haskell-language-server
                 ];
-              inherit (pre-commit-check) shellHook;
+              shellHook = ''
+                ${pre-commit-check.shellHook}
+                export STACK_ROOT=~/.stack-hercules-ci-agent
+              '';
             }
         )
         defaultTarget;

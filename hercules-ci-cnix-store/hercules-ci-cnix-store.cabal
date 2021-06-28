@@ -103,6 +103,7 @@ library
     , containers
     , protolude
     , template-haskell
+    , unix
     , unliftio-core
     , vector
   extra-libraries:

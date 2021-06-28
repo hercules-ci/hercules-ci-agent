@@ -106,3 +106,4 @@ nixVersion = unsafePerformIO $ do
       strdup(nix::nixVersion.c_str())
     }|]
   unsafePackMallocCString p
+{-# NOINLINE nixVersion #-}

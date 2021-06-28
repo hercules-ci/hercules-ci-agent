@@ -30,7 +30,6 @@ import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import Protolude hiding (evalState, throwIO)
-import qualified UnliftIO
 
 C.context (Hercules.CNix.Store.Context.context <> Hercules.CNix.Expr.Context.evalContext)
 
