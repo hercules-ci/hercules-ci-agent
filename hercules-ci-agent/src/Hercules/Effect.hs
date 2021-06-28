@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Hercules.Effect where
@@ -8,6 +9,7 @@ import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
+import Hercules.API.Id (Id, idText)
 import Hercules.Agent.Sensitive (Sensitive (Sensitive, reveal), revealContainer)
 import Hercules.CNix (Derivation)
 import Hercules.CNix.Store (getDerivationArguments, getDerivationBuilder, getDerivationEnv)
@@ -29,8 +31,8 @@ parseDrvSecretsMap drvEnv =
       Right r -> Right r
 
 -- | Write secrets to file based on secretsMap value
-writeSecrets :: (MonadIO m, KatipContext m) => FilePath -> Map Text Text -> Map Text (Sensitive Formats.Secret.Secret) -> FilePath -> m ()
-writeSecrets sourceFile secretsMap extraSecrets destinationDirectory = write . fmap reveal . addExtra =<< gather
+writeSecrets :: (MonadIO m, KatipContext m) => Maybe FilePath -> Map Text Text -> Map Text (Sensitive Formats.Secret.Secret) -> FilePath -> m ()
+writeSecrets sourceFileMaybe secretsMap extraSecrets destinationDirectory = write . fmap reveal . addExtra =<< gather
   where
     addExtra = flip M.union extraSecrets
     write = liftIO . BS.writeFile (destinationDirectory </> "secrets.json") . BL.toStrict . A.encode
@@ -38,15 +40,18 @@ writeSecrets sourceFile secretsMap extraSecrets destinationDirectory = write . f
       if null secretsMap
         then pure mempty
         else do
-          secretsBytes <- liftIO $ BS.readFile sourceFile
-          r <- case A.eitherDecode $ BL.fromStrict secretsBytes of
-            Left e -> do
-              logLocM ErrorS $ "Could not parse secrets file " <> logStr sourceFile <> ": " <> logStr e
-              throwIO $ FatalError "Could not parse secrets file as configured on agent."
-            Right r -> pure (Sensitive r)
+          allSecrets <-
+            sourceFileMaybe & maybe (purer mempty) \sourceFile -> do
+              secretsBytes <- liftIO $ BS.readFile sourceFile
+              case A.eitherDecode $ BL.fromStrict secretsBytes of
+                Left e -> do
+                  logLocM ErrorS $ "Could not parse secrets file " <> logStr sourceFile <> ": " <> logStr e
+                  throwIO $ FatalError "Could not parse secrets file as configured on agent."
+                Right r -> pure (Sensitive r)
+
           createDirectoryIfMissing True destinationDirectory
           secretsMap & M.traverseWithKey \destinationName (secretName :: Text) -> do
-            case revealContainer (r <&> M.lookup secretName) of
+            case revealContainer (allSecrets <&> M.lookup secretName) of
               Nothing ->
                 liftIO $
                   throwIO $
@@ -62,8 +67,21 @@ writeSecrets sourceFile secretsMap extraSecrets destinationDirectory = write . f
                       { data_ = Formats.Secret.data_ secret
                       }
 
-runEffect :: (MonadThrow m, KatipContext m) => Derivation -> Sensitive Text -> FilePath -> Text -> FilePath -> m ExitCode
-runEffect derivation token secretsPath apiBaseURL dir = do
+data RunEffectParams = RunEffectParams
+  { runEffectDerivation :: Derivation,
+    runEffectToken :: Maybe (Sensitive Text),
+    runEffectSecretsConfigPath :: Maybe FilePath,
+    runEffectApiBaseURL :: Text,
+    runEffectDir :: FilePath,
+    runEffectProjectId :: Maybe (Id "project"),
+    runEffectProjectPath :: Maybe Text
+  }
+
+(=:) :: k -> a -> Map k a
+(=:) = M.singleton
+
+runEffect :: (MonadThrow m, KatipContext m) => RunEffectParams -> m ExitCode
+runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsConfigPath = secretsPath, runEffectApiBaseURL = apiBaseURL, runEffectDir = dir} = do
   drvBuilder <- liftIO $ getDerivationBuilder derivation
   drvArgs <- liftIO $ getDerivationArguments derivation
   drvEnv <- liftIO $ getDerivationEnv derivation
@@ -74,15 +92,17 @@ runEffect derivation token secretsPath apiBaseURL dir = do
   secretsDir <- mkDir "secrets"
   runcDir <- mkDir "runc-state"
   let extraSecrets =
-        M.singleton
-          "hercules-ci"
-          ( do
-              tok <- token
-              pure $
-                Formats.Secret.Secret
-                  { data_ = M.singleton "token" $ A.String tok
-                  }
-          )
+        runEffectToken p
+          & maybe
+            mempty
+            ( \token ->
+                "hercules-ci" =: do
+                  tok <- token
+                  pure $
+                    Formats.Secret.Secret
+                      { data_ = M.singleton "token" $ A.String tok
+                      }
+            )
   writeSecrets secretsPath drvSecretsMap extraSecrets (toS secretsDir)
   liftIO $ do
     -- Nix sandbox sets tmp to buildTopDir
@@ -92,7 +112,7 @@ runEffect derivation token secretsPath apiBaseURL dir = do
     -- TODO: implement passAsFile?
     let overridableEnv, onlyImpureOverridableEnv, fixedEnv :: Map Text Text
         overridableEnv =
-          M.fromList
+          M.fromList $
             [ ("PATH", "/path-not-set"),
               ("HOME", "/homeless-shelter"),
               ("NIX_STORE", "/nix/store"), -- TODO store.storeDir
@@ -102,6 +122,9 @@ runEffect derivation token secretsPath apiBaseURL dir = do
               ("HERCULES_CI_API_BASE_URL", apiBaseURL),
               ("HERCULES_CI_SECRETS_JSON", "/secrets/secrets.json")
             ]
+              <> [("HERCULES_CI_PROJECT_ID", idText x) | x <- toList $ runEffectProjectId p]
+              <> [("HERCULES_CI_PROJECT_PATH", x) | x <- toList $ runEffectProjectPath p]
+
         -- NB: this is lossy. Consider using ByteString-based process functions
         drvEnv' = drvEnv & M.mapKeys (decodeUtf8With lenientDecode) & fmap (decodeUtf8With lenientDecode)
         impureEnvVars = mempty -- TODO

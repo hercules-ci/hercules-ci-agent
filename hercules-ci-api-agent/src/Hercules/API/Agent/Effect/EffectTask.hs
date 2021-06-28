@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 
 module Hercules.API.Agent.Effect.EffectTask where
@@ -10,6 +11,8 @@ data EffectTask = EffectTask
     derivationPath :: Text,
     logToken :: Text,
     inputDerivationOutputPaths :: [Text],
-    token :: Text
+    token :: Text,
+    projectId :: Id "project",
+    projectPath :: Text
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

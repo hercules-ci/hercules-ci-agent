@@ -2,7 +2,9 @@ module Hercules.CLI.Project where
 
 import qualified Data.Attoparsec.Text as A
 import Data.Has (Has)
+import qualified Data.UUID
 import Hercules.API (Id)
+import Hercules.API.Id (Id (Id))
 import Hercules.API.Name (Name (Name))
 import Hercules.API.Projects (findProjects)
 import qualified Hercules.API.Projects as Projects
@@ -14,6 +16,7 @@ import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, projectsClie
 import Hercules.CLI.Common (exitMsg)
 import qualified Hercules.CLI.Git as Git
 import Hercules.CLI.Options (attoparsecReader, packSome)
+import Hercules.Error (escalate, escalateAs)
 import Network.HTTP.Types (Status (Status, statusCode))
 import Options.Applicative (bashCompleter, completer, help, long, metavar, option, strOption)
 import qualified Options.Applicative as Optparse
@@ -21,6 +24,7 @@ import Protolude hiding (option)
 import RIO (RIO)
 import Servant.Client.Core (ClientError (FailureResponse), ResponseF (responseStatusCode))
 import Servant.Client.Core.Response (ResponseF (Response))
+import UnliftIO.Environment (lookupEnv)
 import qualified Prelude
 
 data ProjectPath = ProjectPath
@@ -30,9 +34,10 @@ data ProjectPath = ProjectPath
   }
 
 instance Prelude.Show ProjectPath where
-  show = s projectPathSite <> const "/" <> s projectPathOwner <> const "/" <> s projectPathProject
-    where
-      s = (toS .)
+  show = toS . projectPathText
+
+projectPathText :: ProjectPath -> Text
+projectPathText = projectPathSite <> const "/" <> projectPathOwner <> const "/" <> projectPathProject
 
 projectOption :: Optparse.Parser ProjectPath
 projectOption =
@@ -57,16 +62,19 @@ parseProjectPath =
     <* A.char '/'
     <*> packSome (A.satisfy (/= '/'))
 
+parseProjectPathFromText :: Text -> Either [Char] ProjectPath
+parseProjectPathFromText = A.parseOnly parseProjectPath
+
 getProjectPath :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Maybe ProjectPath -> RIO r ProjectPath
 getProjectPath maybeProjectPathParam =
   case maybeProjectPathParam of
-    Nothing -> snd <$> findProjectByCurrentRepo
+    Nothing -> snd <$> findProjectContextually
     Just projectKey -> pure projectKey
 
 getProjectIdAndPath :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Maybe ProjectPath -> RIO r (Maybe (Id Project), ProjectPath)
 getProjectIdAndPath maybeProjectPathParam = do
   case maybeProjectPathParam of
-    Nothing -> findProjectByCurrentRepo
+    Nothing -> findProjectContextually
     Just projectKey -> do
       project <- findProjectByKey projectKey
       pure (Project.id <$> project, projectKey)
@@ -81,6 +89,17 @@ findProjectByKey path =
         (Just $ Name $ projectPathProject path)
     )
     <&> head
+
+findProjectContextually :: (Has HerculesClientToken r, Has HerculesClientEnv r) => RIO r (Maybe (Id Project), ProjectPath)
+findProjectContextually = do
+  projectIdMaybe <- lookupEnv "HERCULES_CI_PROJECT_ID"
+  projectIdPathMaybe <- lookupEnv "HERCULES_CI_PROJECT_PATH"
+  case (,) <$> projectIdMaybe <*> projectIdPathMaybe of
+    Nothing -> findProjectByCurrentRepo
+    Just (id, pathText) -> do
+      projectPath <- parseProjectPathFromText (toS pathText) & escalateAs (\e -> FatalError $ "Invalid HERCULES_CI_PROJECT_PATH supplied: " <> toS e)
+      uuid <- Data.UUID.fromString id & maybeToEither (FatalError "Invalid UUID in HERCULES_CI_PROJECT_ID") & escalate
+      pure (Just (Id uuid), projectPath)
 
 findProjectByCurrentRepo :: (Has HerculesClientToken r, Has HerculesClientEnv r) => RIO r (Maybe (Id Project), ProjectPath)
 findProjectByCurrentRepo = do

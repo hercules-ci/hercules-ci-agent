@@ -4,18 +4,21 @@
 module Hercules.CLI.State where
 
 import Conduit (ConduitT, mapC, runConduitRes, sinkFile, sourceHandle, stdinC, stdoutC, (.|))
-import Hercules.API (enterApiE)
-import qualified Hercules.API.Projects.Project as Project
+import Data.Has (Has)
+import Hercules.API (ClientAuth, enterApiE)
+import Hercules.API.Name (Name (Name))
 import Hercules.API.State
 import Hercules.CLI.Client
 import Hercules.CLI.Common (runAuthenticated)
 import Hercules.CLI.Options (mkCommand, subparser)
-import Hercules.CLI.Project (findProject, projectOption)
+import Hercules.CLI.Project (ProjectPath (projectPathOwner, projectPathProject, projectPathSite), getProjectIdAndPath, projectOption)
 import Options.Applicative (bashCompleter, completer, help, long, metavar, strOption)
 import qualified Options.Applicative as Optparse
 import Protolude hiding (option)
 import RIO (RIO, runRIO, withBinaryFile)
 import Servant.API (Headers (Headers), fromSourceIO, toSourceIO)
+import Servant.Client.Generic (AsClientT)
+import Servant.Client.Internal.HttpClient.Streaming (ClientM)
 import Servant.Conduit ()
 
 commandParser, getCommandParser, putCommandParser :: Optparse.Parser (IO ())
@@ -31,13 +34,12 @@ commandParser =
           putCommandParser
     )
 getCommandParser = do
-  project <- projectOption
+  projectMaybe <- optional projectOption
   name <- nameOption
   file <- fileOption
   pure do
     runAuthenticated do
-      projectId <- Project.id <$> findProject project
-      let projectStateClient = stateClient `enterApiE` \api -> byProjectId api projectId
+      projectStateClient <- getProjectAndClient projectMaybe
       -- TODO: version
       runHerculesClientStream (getStateData projectStateClient name Nothing) \case
         Left e -> dieWithHttpError e
@@ -47,12 +49,12 @@ getCommandParser = do
               "-" -> stdoutC
               _ -> sinkFile file
 putCommandParser = do
-  project <- projectOption
+  projectMaybe <- optional projectOption
   name <- nameOption
   file <- fileOption
   pure do
     runAuthenticated do
-      projectId <- Project.id <$> findProject project
+      projectStateClient <- getProjectAndClient projectMaybe
       let withStream :: (ConduitT a RawBytes IO () -> RIO r b) -> RIO r b
           withStream = case file of
             "-" -> ($ (stdinC .| mapC RawBytes))
@@ -61,7 +63,6 @@ putCommandParser = do
               liftIO $ withBinaryFile file ReadMode \h ->
                 runRIO r $ f (sourceHandle h .| mapC RawBytes)
       withStream \stream -> do
-        let projectStateClient = stateClient `enterApiE` \api -> byProjectId api projectId
         _noContent <- runHerculesClient (putStateData projectStateClient name (toSourceIO stream))
         pass
     putErrText $ "hci: State file upload successful for " <> name
@@ -71,3 +72,12 @@ nameOption = strOption $ long "name" <> metavar "NAME" <> help "Name of the stat
 
 fileOption :: Optparse.Parser FilePath
 fileOption = strOption $ long "file" <> metavar "FILE" <> help "Local path of the state file or - for stdio" <> completer (bashCompleter "file")
+
+getProjectAndClient :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Maybe ProjectPath -> RIO r (ProjectStateResourceGroup ClientAuth (AsClientT ClientM))
+getProjectAndClient projectMaybe = do
+  (projectIdMaybe, projectPath) <- getProjectIdAndPath projectMaybe
+  case projectIdMaybe of
+    Just projectId ->
+      pure (stateClient `enterApiE` \api -> byProjectId api projectId)
+    Nothing ->
+      pure (stateClient `enterApiE` \api -> byProjectName api (Name $ projectPathSite projectPath) (Name $ projectPathOwner projectPath) (Name $ projectPathProject projectPath))

@@ -69,6 +69,7 @@ library
       Hercules.Agent.WorkerProtocol.Event.AttributeError
       Hercules.Agent.WorkerProtocol.Event.BuildResult
       Hercules.Agent.WorkerProtocol.LogSettings
+      Hercules.Agent.WorkerProtocol.Orphans
       Hercules.Effect
       Hercules.Effect.Container
       Data.Conduit.Extras
