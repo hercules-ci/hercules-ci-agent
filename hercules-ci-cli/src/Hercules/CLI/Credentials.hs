@@ -4,16 +4,22 @@
 -- | Manages the ~/.config/hercules-ci/credentials.json
 module Hercules.CLI.Credentials where
 
+import Control.Lens ((^?))
+import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.Aeson (FromJSON, ToJSON, eitherDecode)
+import qualified Data.Aeson as A
+import Data.Aeson.Lens (AsPrimitive (_String), key)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
+import qualified Data.Text as T
 import Hercules.CLI.Client (determineDefaultApiBaseUrl)
 import Hercules.CLI.JSON (writeJsonFile)
 import Hercules.Error
 import qualified Network.URI as URI
 import Protolude
 import System.Directory (XdgDirectory (XdgConfig), createDirectoryIfMissing, doesFileExist, getXdgDirectory)
+import qualified System.Environment
 import System.FilePath (takeDirectory, (</>))
 
 data Credentials = Credentials
@@ -102,3 +108,23 @@ readPersonalToken domain = do
   case M.lookup domain (domains creds) of
     Nothing -> throwIO NoCredentialException {noCredentialDomain = domain}
     Just cred -> pure (personalToken cred)
+
+tryReadEffectToken :: IO (Maybe Text)
+tryReadEffectToken = runMaybeT do
+  inEffect <- MaybeT $ System.Environment.lookupEnv "IN_HERCULES_CI_EFFECT"
+  guard $ inEffect == "true"
+  secretsJsonPath <- MaybeT $ System.Environment.lookupEnv "HERCULES_CI_SECRETS_JSON"
+  liftIO do
+    bs <- BS.readFile secretsJsonPath
+    json <- case eitherDecode (BL.fromStrict bs) of
+      Right x -> pure (x :: A.Value)
+      Left e -> throwIO $ FatalError $ "HERCULES_CI_SECRETS_JSON, " <> T.pack secretsJsonPath <> " has invalid JSON: " <> T.pack e
+    case json ^? key "hercules-ci" . key "data" . key "token" . _String of
+      Just x -> pure x
+      Nothing -> throwIO $ FatalError $ "HERCULES_CI_SECRETS_JSON, " <> T.pack secretsJsonPath <> " doesn't have key hercules-ci.data.token"
+
+readToken :: Text -> IO Text
+readToken domain = do
+  tryReadEffectToken >>= \case
+    Just x -> pure x
+    Nothing -> readPersonalToken domain

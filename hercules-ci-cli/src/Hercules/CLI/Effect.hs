@@ -1,10 +1,12 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
 
 module Hercules.CLI.Effect where
 
 import Data.Has (Has)
 import qualified Data.Text as T
+import Hercules.API.Id (Id (Id, idUUID))
 import qualified Hercules.API.Projects as Projects
 import qualified Hercules.API.Projects.CreateUserEffectTokenResponse as CreateUserEffectTokenResponse
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
@@ -14,14 +16,14 @@ import Hercules.CLI.Exception (exitMsg)
 import Hercules.CLI.Git (getAllBranches, getHypotheticalRefs)
 import Hercules.CLI.Nix (attrByPath, callCiNix, ciNixAttributeCompleter, withNix)
 import Hercules.CLI.Options (flatCompleter, mkCommand, subparser)
-import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption)
+import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption, projectPathText)
 import Hercules.CLI.Secret (getSecretsFilePath)
 import Hercules.CNix (Store)
 import Hercules.CNix.Expr (Match (IsAttrs), Value (rtValue), getAttrBool, getDrvFile, match)
 import qualified Hercules.CNix.Std.Vector as Std.Vector
 import Hercules.CNix.Store (Derivation, StorePath, buildPaths, getDerivationInputs, newStorePathWithOutputs)
 import qualified Hercules.CNix.Store as CNix
-import Hercules.Effect (runEffect)
+import Hercules.Effect (RunEffectParams (..), runEffect)
 import Hercules.Error (escalate)
 import Katip (initLogEnv, runKatipContextT)
 import Options.Applicative (completer, help, long, metavar, strArgument, strOption)
@@ -66,15 +68,25 @@ runParser = do
         drvPath <- getDrvFile evalState (rtValue effectAttrs)
         derivation <- prepareDerivation store drvPath
         apiBaseURL <- liftIO determineDefaultApiBaseUrl
-        (projectPath, token) <- wait projectPathAsync
-        secretsJson <- liftIO $ getSecretsFilePath projectPath
+        ProjectData {pdProjectPath = projectPath, pdProjectId = projectId, pdToken = token} <- wait projectPathAsync
+        secretsJson <- liftIO $ traverse getSecretsFilePath projectPath
         logEnv <- liftIO $ initLogEnv mempty "hci"
         -- withSystemTempDirectory "hci":
         --     ERRO[0000] container_linux.go:370: starting container process caused: process_linux.go:459: container init caused: rootfs_linux.go:59: mounting "/run/user/1000/hci6017/secrets" to rootfs at "/run/user/1000/hci6017/runc-state/rootfs/secrets" caused: operation not permitted
         dataDir <- liftIO $ getAppUserDataDirectory "hercules-ci"
         createDirectoryIfMissing True dataDir
         exitCode <- withTempDirectory dataDir "tmp-effect-" \workDir -> do
-          runKatipContextT logEnv () mempty $ runEffect derivation (Sensitive token) secretsJson apiBaseURL workDir
+          runKatipContextT logEnv () mempty $
+            runEffect
+              RunEffectParams
+                { runEffectDerivation = derivation,
+                  runEffectToken = token,
+                  runEffectSecretsConfigPath = secretsJson,
+                  runEffectApiBaseURL = apiBaseURL,
+                  runEffectDir = workDir,
+                  runEffectProjectId = projectId,
+                  runEffectProjectPath = projectPathText <$> projectPath
+                }
         throwIO exitCode
 
 prepareDerivation :: MonadIO m => Store -> StorePath -> m Derivation
@@ -104,7 +116,13 @@ asRefOption = strOption $ long "as-ref" <> metavar "REF" <> help "Pretend we're 
 asRefOptions :: Optparse.Parser (Maybe Text)
 asRefOptions = optional (asRefOption <|> (("refs/heads/" <>) <$> asBranchOption))
 
-getProjectEffectData :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Maybe ProjectPath -> Bool -> RIO r (ProjectPath, Text)
+data ProjectData = ProjectData
+  { pdProjectPath :: Maybe ProjectPath,
+    pdProjectId :: Maybe (Id "project"),
+    pdToken :: Maybe (Sensitive Text)
+  }
+
+getProjectEffectData :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Maybe ProjectPath -> Bool -> RIO r ProjectData
 getProjectEffectData maybeProjectPathParam requireToken = do
   (projectIdMaybe, path) <- getProjectIdAndPath maybeProjectPathParam
   if requireToken
@@ -114,6 +132,12 @@ getProjectEffectData maybeProjectPathParam requireToken = do
         Nothing -> do
           exitMsg $ "Can not access " <> show path <> ". Make sure you have installed Hercules CI on the organization and repository and that you have access to it."
       response <- runHerculesClient (Projects.createUserEffectToken projectsClient projectId)
-      let token = CreateUserEffectTokenResponse.token response
-      pure (path, token)
-    else pure (path, "")
+      let token = Sensitive (CreateUserEffectTokenResponse.token response)
+      pure ProjectData {pdProjectPath = Just path, pdProjectId = Just $ Id $ idUUID projectId, pdToken = Just token}
+    else
+      pure
+        ProjectData
+          { pdProjectPath = Nothing,
+            pdProjectId = Nothing,
+            pdToken = Nothing
+          }

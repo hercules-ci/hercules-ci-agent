@@ -64,7 +64,9 @@ performEffect effectTask = withWorkDir "effect" $ \workDir -> do
               materializeDerivation = materialize,
               secretsPath = toS $ Config.staticSecretsDirectory config </> "secrets.json",
               token = Sensitive (EffectTask.token effectTask),
-              apiBaseURL = Config.herculesApiBaseURL config
+              apiBaseURL = Config.herculesApiBaseURL config,
+              projectId = EffectTask.projectId effectTask,
+              projectPath = EffectTask.projectPath effectTask
             }
   exitCode <- runWorker procSpec (stderrLineHandler "Effect worker") commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> logStr (show exitCode :: Text)

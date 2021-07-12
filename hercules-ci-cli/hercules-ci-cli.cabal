@@ -61,6 +61,8 @@ library
     , http-client-tls
     , http-types
     , katip
+    , lens
+    , lens-aeson
     , lifted-base
     , monad-control
     , network-uri
@@ -75,10 +77,12 @@ library
     , servant-client-core
     , temporary
     , text
+    , transformers
     , transformers-base
     , unix
     , unliftio
     , unordered-containers
+    , uuid
   default-language: Haskell2010
 
 executable hci
