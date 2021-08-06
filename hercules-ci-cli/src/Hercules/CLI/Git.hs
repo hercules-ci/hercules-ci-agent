@@ -73,7 +73,9 @@ getUpstreamURL = do
 
 getBranchUpstream :: IO Text
 getBranchUpstream = do
-  upstreamRef <- readProcessString "git" ["rev-parse", "--symbolic-full-name", "@{u}"] mempty
+  upstreamRef <-
+    readProcessString "git" ["rev-parse", "--symbolic-full-name", "@{u}"] mempty
+      `onException` putErrText "hci: could not determine current branch's upstream"
   let refsRemotes = "refs/remotes/"
   if refsRemotes `isPrefixOf` upstreamRef
     then pure $ toS $ takeWhile (/= '/') $ drop (length refsRemotes) upstreamRef
