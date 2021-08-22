@@ -15,6 +15,7 @@ data Project = Project
     repoId :: Id Repo,
     enabled :: Bool,
     siteSlug :: Name SourceHostingSite,
+    ownerSlug :: Name Account,
     slug :: Name Project,
     displayName :: Text,
     imageURL :: Maybe Text,
