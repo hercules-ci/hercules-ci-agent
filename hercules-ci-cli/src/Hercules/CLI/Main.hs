@@ -49,7 +49,7 @@ commands =
           State.commandParser
         <> mkCommand
           "effect"
-          (Optparse.progDesc "Run effects")
+          (Optparse.progDesc "Run effects locally")
           Effect.commandParser
         <> mkCommand
           "secret"
