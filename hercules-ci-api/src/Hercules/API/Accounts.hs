@@ -13,6 +13,8 @@ import Hercules.API.Accounts.CLIAuthorizationRequestCreate (CLIAuthorizationRequ
 import Hercules.API.Accounts.CLIAuthorizationRequestCreateResponse (CLIAuthorizationRequestCreateResponse)
 import Hercules.API.Accounts.CLIAuthorizationRequestStatus (CLIAuthorizationRequestStatus)
 import Hercules.API.Accounts.CLITokensResponse (CLITokensResponse)
+import Hercules.API.Accounts.NotificationSettings (NotificationSettings)
+import Hercules.API.Accounts.NotificationSettingsPatch (NotificationSettingsPatch)
 import Hercules.API.Prelude hiding (id)
 import Hercules.API.SourceHostingSite.SourceHostingSite
   ( SourceHostingSite,
@@ -53,6 +55,25 @@ data AccountsAPI auth f = AccountsAPI
   { accountByAuth ::
       f
         :- Substitute ("accounts" :> "me" :> Placeholder) (ToServantApi (AccountResourceGroup auth)),
+    accountByAuthGetNotificationSettings ::
+      f
+        :- Summary "Retrieve notification settings"
+        :> "accounts"
+        :> "me"
+        :> "settings"
+        :> "notifications"
+        :> auth
+        :> Get '[JSON] NotificationSettings,
+    accountByAuthPatchNotificationSettings ::
+      f
+        :- Summary "Update notification settings"
+        :> "accounts"
+        :> "me"
+        :> "settings"
+        :> "notifications"
+        :> ReqBody '[JSON] NotificationSettingsPatch
+        :> auth
+        :> Patch '[JSON] NotificationSettings,
     accountById ::
       f
         :- Substitute

@@ -40,7 +40,10 @@ data FrontendRoutes view f = FrontendRoutes
         :> Capture' [Required, Strict] "project" (Name Project)
         :> "jobs"
         :> Capture' [Required, Strict] "jobIndex" Int
-        :> view
+        :> view,
+    notificationSettings ::
+      f
+        :- "settings" :> "notifications" :> view
   }
   deriving (Generic)
 

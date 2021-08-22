@@ -6,6 +6,6 @@ import Hercules.API.Prelude
 
 data DerivationOutput = DerivationOutput
   { outputName :: Text,
-    outputPath :: Text
+    outputPath :: Maybe Text
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

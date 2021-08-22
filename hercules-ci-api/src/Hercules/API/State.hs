@@ -12,6 +12,9 @@ import Hercules.API.Prelude
 import Hercules.API.Projects.Project (Project)
 import Hercules.API.SourceHostingSite.SourceHostingSite (SourceHostingSite)
 import Hercules.API.State.ProjectState (ProjectState)
+import Hercules.API.State.StateLockAcquireRequest (StateLockAcquireRequest)
+import Hercules.API.State.StateLockAcquireResponse (StateLockAcquireResponse, StateLockAcquiredResponse)
+import Hercules.API.State.StateLockUpdateRequest (StateLockUpdateRequest)
 import Servant.API
 import Servant.API.Generic
 
@@ -47,7 +50,14 @@ data ProjectStateResourceGroup auth f = ProjectStateResourceGroup
         :> "data"
         :> QueryParam' '[Optional, Strict] "version" Int
         :> auth
-        :> StreamGet NoFraming OctetStream (Headers '[ContentLength, ContentDisposition] (SourceIO RawBytes))
+        :> StreamGet NoFraming OctetStream (Headers '[ContentLength, ContentDisposition] (SourceIO RawBytes)),
+    acquireLock ::
+      f :- Summary "Acquire a lock"
+        :> "lock"
+        :> Capture' '[Required, Strict] "lockName" Text
+        :> ReqBody '[JSON] StateLockAcquireRequest
+        :> auth
+        :> Post '[JSON] StateLockAcquireResponse
   }
   deriving (Generic)
 
@@ -71,6 +81,17 @@ data StateAPI auth f = StateAPI
                  :> Capture' '[Required, Strict] "project" (Name Project)
                  :> Placeholder
              )
-             (ToServantApi (ProjectStateResourceGroup auth))
+             (ToServantApi (ProjectStateResourceGroup auth)),
+    updateLockLease ::
+      f :- "lock-leases"
+        :> Capture' '[Required, Strict] "lockLeaseId" (Id "StateLockLease")
+        :> ReqBody '[JSON] StateLockUpdateRequest
+        :> auth
+        :> Post '[JSON] StateLockAcquiredResponse,
+    deleteLockLease ::
+      f :- "lock-leases"
+        :> Capture' '[Required, Strict] "lockLeaseId" (Id "StateLockLease")
+        :> auth
+        :> Delete '[JSON] NoContent
   }
   deriving (Generic)
