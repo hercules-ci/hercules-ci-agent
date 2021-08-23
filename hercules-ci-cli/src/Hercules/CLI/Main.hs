@@ -8,6 +8,7 @@ where
 import Hercules.CLI.Client (prettyPrintHttpErrors)
 import qualified Hercules.CLI.Effect as Effect
 import qualified Hercules.CLI.Exception as Exception
+import qualified Hercules.CLI.Lock as Lock
 import qualified Hercules.CLI.Login as Login
 import Hercules.CLI.Options (execParser, helper, mkCommand, subparser)
 import qualified Hercules.CLI.Secret as Secret
@@ -49,10 +50,14 @@ commands =
           State.commandParser
         <> mkCommand
           "effect"
-          (Optparse.progDesc "Run effects")
+          (Optparse.progDesc "Run effects locally")
           Effect.commandParser
         <> mkCommand
           "secret"
           (Optparse.progDesc "Manipulate locally stored secrets")
           Secret.commandParser
+        <> mkCommand
+          "lock"
+          (Optparse.progDesc "Opt-in locking for use with state")
+          Lock.commandParser
     )

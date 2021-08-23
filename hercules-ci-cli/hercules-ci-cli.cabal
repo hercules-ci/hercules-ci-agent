@@ -26,6 +26,7 @@ library
       Hercules.CLI.Exception
       Hercules.CLI.Git
       Hercules.CLI.JSON
+      Hercules.CLI.Lock
       Hercules.CLI.Login
       Hercules.CLI.Main
       Hercules.CLI.Nix
@@ -68,6 +69,7 @@ library
     , network-uri
     , process
     , protolude
+    , retry
     , rio
     , safe-exceptions
     , servant
@@ -81,6 +83,7 @@ library
     , transformers-base
     , unix
     , unliftio
+    , unliftio-core
     , unordered-containers
     , uuid
   default-language: Haskell2010

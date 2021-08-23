@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+ - Notification settings
+ - Email info
+ - State locks: opt-in locks to be used in conjunction with state files. Use of locks is not enforced.
+
+### Changed
+
+ - `DerivationOutput.outputPath` is now nullable when retrieving build info
+
 ## [0.7.0.0] - 2021-06-22
 
 ### Added

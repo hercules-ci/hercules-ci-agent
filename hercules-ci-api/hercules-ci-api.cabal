@@ -29,6 +29,9 @@ library
     Hercules.API.Accounts.CLIAuthorizationRequestStatus
     Hercules.API.Accounts.CLIToken
     Hercules.API.Accounts.CLITokensResponse
+    Hercules.API.Accounts.NotificationSettings
+    Hercules.API.Accounts.NotificationSettingsPatch
+    Hercules.API.Accounts.SimpleAccount
     Hercules.API.Agents
     Hercules.API.Agents.AgentInfo
     Hercules.API.Agents.AgentSession
@@ -77,10 +80,15 @@ library
     Hercules.API.Repos.RepoKey
     Hercules.API.Result
     Hercules.API.Servant.Status
+    Hercules.API.SourceHostingSite.SimpleSite
     Hercules.API.SourceHostingSite.SourceHostingSite
     Hercules.API.State
     Hercules.API.State.ProjectState
     Hercules.API.State.StateFile
+    Hercules.API.State.StateLockAcquireRequest
+    Hercules.API.State.StateLockAcquireResponse
+    Hercules.API.State.StateLockLease
+    Hercules.API.State.StateLockUpdateRequest
     Hercules.API.State.StateVersion
     Hercules.Frontend
 

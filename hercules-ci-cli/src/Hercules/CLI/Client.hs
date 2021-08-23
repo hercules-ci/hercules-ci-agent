@@ -23,7 +23,9 @@ import Servant.API
 import Servant.API.Generic
 import Servant.Auth.Client (Token)
 import qualified Servant.Client
+import Servant.Client.Core (ClientError, ResponseF)
 import qualified Servant.Client.Core as Client
+import qualified Servant.Client.Core.ClientError as ClientError
 import Servant.Client.Generic (AsClientT)
 import Servant.Client.Streaming (ClientM, responseStatusCode, showBaseUrl)
 import qualified Servant.Client.Streaming
@@ -126,3 +128,35 @@ dieWithHttpError e = do
 
 prettyPrintHttpErrors :: IO a -> IO a
 prettyPrintHttpErrors = handle dieWithHttpError
+
+-- | Low indicating the inclusiveness of the boundaries. Low is included. High is excluded.
+-- A pair where `fst` > `snd` forms an empty range.
+inLowRange :: Ord a => a -> (a, a) -> Bool
+a `inLowRange` (p, q) = a >= p && a < q
+
+-- In a library, this should support 429 with Retry-After
+shouldRetryResponse :: Either ClientError r -> Bool
+shouldRetryResponse (Left e) = shouldRetryClientError e
+shouldRetryResponse _ = False
+
+code :: ResponseF a -> Int
+code = statusCode . responseStatusCode
+
+shouldRetryClientError :: ClientError -> Bool
+shouldRetryClientError (ClientError.FailureResponse _ resp) | code resp == 501 = False -- 501 Not Implemented
+shouldRetryClientError (ClientError.FailureResponse _ resp) | code resp == 505 = False -- 505 HTTP Version Not Supported
+shouldRetryClientError (ClientError.FailureResponse _ resp) | code resp == 408 = True -- 408 Request Timeout
+shouldRetryClientError (ClientError.FailureResponse _ resp) | code resp `inLowRange` (500, 600) = True
+shouldRetryClientError (ClientError.DecodeFailure _ _) = False -- Server programming error or API incompatibility
+shouldRetryClientError (ClientError.UnsupportedContentType _ _) = False
+shouldRetryClientError (ClientError.InvalidContentTypeHeader _) = False
+shouldRetryClientError (ClientError.ConnectionError _) = True
+shouldRetryClientError _ = False
+
+-- | ClientError printer that won't leak sensitive info.
+clientErrorSummary :: ClientError -> Text
+clientErrorSummary (ClientError.FailureResponse _ resp) = "status " <> show (responseStatusCode resp)
+clientErrorSummary ClientError.DecodeFailure {} = "decode failure"
+clientErrorSummary ClientError.UnsupportedContentType {} = "unsupported content type"
+clientErrorSummary ClientError.InvalidContentTypeHeader {} = "invalid content type header"
+clientErrorSummary (ClientError.ConnectionError e) = "connection error: " <> show e

@@ -1,7 +1,7 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE BlockArguments #-}
 
-module Hercules.CLI.State where
+module Hercules.CLI.State (commandParser, getProjectAndClient) where
 
 import Conduit (ConduitT, mapC, runConduitRes, sinkFile, sourceHandle, stdinC, stdoutC, (.|))
 import Data.Has (Has)
