@@ -69,6 +69,7 @@ library
     , network-uri
     , process
     , protolude
+    , retry
     , rio
     , safe-exceptions
     , servant
