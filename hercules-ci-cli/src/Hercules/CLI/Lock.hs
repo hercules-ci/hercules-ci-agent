@@ -202,9 +202,11 @@ retryOnFailEither shortDesc req =
         pure r
     )
 
+-- NB: fullJitterBackoff is broken, https://github.com/Soostone/retry/issues/46
 failureRetryPolicy :: MonadIO m => RetryPolicyM m
 failureRetryPolicy = capDelay (120 * 1000 * 1000) (fullJitterBackoff 100000)
 
+-- NB: fullJitterBackoff is broken, https://github.com/Soostone/retry/issues/46
 waitRetryPolicy :: MonadIO m => RetryPolicyM m
 waitRetryPolicy = capDelay (10 * 1000 * 1000) (fullJitterBackoff 500000)
 
