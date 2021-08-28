@@ -29,7 +29,12 @@ import Hercules.CNix.Store
 import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
-import Protolude hiding (evalState, throwIO)
+import Protolude hiding (evalState)
+import System.Directory (makeAbsolute)
+
+#ifndef NIX_2_4
+import Paths_hercules_ci_cnix_expr ( getDataFileName )
+#endif
 
 C.context (Hercules.CNix.Store.Context.context <> Hercules.CNix.Expr.Context.evalContext)
 
@@ -61,6 +66,14 @@ C.include "<nix/globals.hh>"
 
 C.include "<nix-compat.hh>"
 
+#ifdef NIX_2_4
+
+C.include "<nix/flake/flake.hh>"
+
+C.include "<nix/flake/flakeref.hh>"
+
+#endif
+
 C.include "hercules-ci-cnix/expr.hxx"
 
 C.include "<gc/gc.h>"
@@ -79,6 +92,11 @@ init =
     [C.throwBlock| void {
       nix::initNix();
       nix::initGC();
+#ifdef NIX_2_4
+      Strings features(nix::settings.experimentalFeatures.get());
+      features.push_back("flakes");
+      nix::settings.experimentalFeatures.assign(features);
+#endif
     } |]
 
 setTalkative :: IO ()
@@ -339,3 +357,90 @@ getAttrList evalState attrset attrName = do
         pure $ Right (Just b)
       Right _ -> do
         pure $ Right Nothing
+
+-- | Parse a string and eval it.
+valueFromExpressionString ::
+  Ptr EvalState ->
+  -- | The string to parse
+  ByteString ->
+  -- | Base path for path exprs
+  ByteString ->
+  IO RawValue
+valueFromExpressionString evalState s basePath = do
+  mkRawValue
+    =<< [C.throwBlock| Value *{
+      EvalState &evalState = *$(EvalState *evalState);
+      Expr *expr = evalState.parseExprFromString(std::string($bs-ptr:s, $bs-len:s), std::string($bs-ptr:basePath, $bs-len:basePath));
+      Value *r = new (NoGC) Value();
+      evalState.eval(expr, *r);
+      return r;
+  }|]
+
+apply :: Ptr EvalState -> RawValue -> RawValue -> IO RawValue
+apply evalState (RawValue f) (RawValue a) = do
+  mkRawValue
+    =<< [C.throwBlock| Value *{
+      EvalState &evalState = *$(EvalState *evalState);
+      Value *r = new (NoGC) Value();
+      evalState.callFunction(*$(Value *f), *$(Value *a), *r, noPos);
+      return r;
+  }|]
+
+mkPath :: ByteString -> IO (Value NixPath)
+mkPath path =
+  Value
+    <$> ( mkRawValue
+            =<< [C.throwBlock| Value *{
+      Value *r = new (NoGC) Value();
+      std::string s($bs-ptr:path, $bs-len:path);
+      mkPath(*r, s.c_str());
+      return r;
+  }|]
+        )
+
+getLocalFlake :: Ptr EvalState -> Text -> IO (Value NixAttrs)
+
+#ifdef NIX_2_4
+getLocalFlake evalState path = do
+  absPath <- encodeUtf8 . toS <$> makeAbsolute (toS path)
+  Value <$> (mkRawValue =<< [C.throwBlock| Value *{
+    EvalState &evalState = *$(EvalState *evalState);
+    Value *r = new (NoGC) Value();
+    std::string path($bs-ptr:absPath, $bs-len:absPath);
+    auto flakeRef = nix::parseFlakeRef(path, {}, true);
+    nix::flake::callFlake(evalState,
+      nix::flake::lockFlake(evalState, flakeRef,
+        nix::flake::LockFlags {
+          .updateLockFile = false,
+          .useRegistries = false,
+          .allowMutable = false,
+        }),
+      *r);
+    return r;
+  }|])
+#else
+getLocalFlake evalState path = do
+  flakeCompatFile <- getDataFileName "vendor/flake-compat/default.nix"
+  flakeCompat <- evalFile evalState =<< makeAbsolute flakeCompatFile
+  (Value (RawValue flakeSource)) <- mkPath . encodeUtf8 . toS =<< makeAbsolute (toS path)
+  flakeCompatArgs <- mkRawValue =<< [C.throwBlock| Value * {
+    EvalState &evalState = *$(EvalState *evalState);
+    Value *r = new (NoGC) Value();
+    evalState.mkAttrs(*r, 1);
+    Symbol sSrc = evalState.symbols.create("src");
+    *evalState.allocAttr(*r, sSrc) = *$(Value *flakeSource);
+    r->attrs->sort();
+    return r;
+  }|]
+  flakeCompatResult <- apply evalState flakeCompat flakeCompatArgs
+  flakeCompatAttrs <- match evalState flakeCompatResult >>= \case
+    Right (IsAttrs a) -> pure a
+    Left e -> throwIO e
+    _ -> panic "flake-compat must return attrs"
+  result <- getAttr evalState flakeCompatAttrs "defaultNix"
+  for result (match evalState) >>= \case
+    Just (Right (IsAttrs a)) -> pure a
+    Just (Left e) -> throwIO e
+    Nothing -> panic "flake-compat must have defaultNix attr"
+    _ -> panic "flake must be attrs"
+#endif

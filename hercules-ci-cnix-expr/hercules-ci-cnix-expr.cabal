@@ -14,6 +14,11 @@ build-type:     Simple
 extra-source-files:
     CHANGELOG.md
 
+data-dir: data
+data-files:
+  vendor/flake-compat/*.nix
+  vendor/flake-compat/COPYING
+
 source-repository head
   type: git
   location: https://github.com/hercules-ci/hercules-ci-agent
@@ -52,6 +57,8 @@ library
       Hercules.CNix.Expr.Context
       Hercules.CNix.Expr.Raw
       Hercules.CNix.Expr.Typed
+  other-modules:
+      Paths_hercules_ci_cnix_expr
 
   hs-source-dirs:
       src
@@ -62,6 +69,8 @@ library
     , base >=4.7 && <5
     , bytestring
     , conduit
+    , directory
+    , filepath
     , hercules-ci-cnix-store
     , containers
     , exceptions
@@ -91,3 +100,29 @@ library
       , nix-expr >= 2.0
       , nix-main >= 2.0
       , bdw-gc
+
+
+test-suite hercules-ci-cnix-expr-tests
+  type: exitcode-stdio-1.0
+  main-is: TestMain.hs
+  other-modules:
+      Hercules.CNix.ExprSpec
+      Hercules.CNix.Store.TestUtil
+      Spec
+  hs-source-dirs:
+      test
+  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
+  ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base
+    , bytestring
+    , containers
+    , hercules-ci-cnix-expr
+    , hercules-ci-cnix-store
+    , hspec
+    , protolude
+    , QuickCheck
+    , temporary
+  build-tool-depends:
+      hspec-discover:hspec-discover == 2.*
+  default-language: Haskell2010
