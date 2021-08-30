@@ -26,3 +26,9 @@ Live install into home:
 Start installed agent
 
     hercules_ci_agent_bindir=$HOME/.local/bin ~/.local/bin/hercules-ci-agent
+
+`nixUnstable` with `cabal-install`:
+
+    cd hercules-ci-cnix-store-expr
+    nix-shell ../nix/shellFor-nixUnstable.nix
+    cabal v2-test -fnix-2_4 --enable-debug-info --disable-library-stripping --disable-executable-stripping
