@@ -56,7 +56,7 @@ C.using "namespace nix"
 -- because otherwise the type would not be known.
 newtype Value a = Value {rtValue :: RawValue}
 
-data NixInt
+type NixInt = Int64
 
 data NixFloat
 

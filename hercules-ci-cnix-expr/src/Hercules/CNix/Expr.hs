@@ -1,7 +1,10 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Hercules.CNix.Expr
   ( module Hercules.CNix.Expr,
@@ -18,7 +21,13 @@ where
 -- TODO: Map Nix-specific C++ exceptions to a CNix exception type
 
 import Conduit
+import qualified Data.Aeson as A
+import Data.Coerce (coerce)
+import qualified Data.HashMap.Lazy as H
 import qualified Data.Map as M
+import qualified Data.Scientific as Sci
+import Data.Vector (Vector)
+import qualified Data.Vector as V
 import Foreign (nullPtr)
 import qualified Foreign.C.String
 import Hercules.CNix.Encapsulation (moveToForeignPtrWrapper)
@@ -399,7 +408,6 @@ mkPath path =
         )
 
 getLocalFlake :: Ptr EvalState -> Text -> IO (Value NixAttrs)
-
 #ifdef NIX_2_4
 getLocalFlake evalState path = do
   absPath <- encodeUtf8 . toS <$> makeAbsolute (toS path)
@@ -444,3 +452,219 @@ getLocalFlake evalState path = do
     Nothing -> panic "flake-compat must have defaultNix attr"
     _ -> panic "flake must be attrs"
 #endif
+
+traverseWithKey_ :: Applicative f => (k -> a -> f ()) -> Map k a -> f ()
+traverseWithKey_ f = M.foldrWithKey (\k a more -> f k a *> more) (pure ())
+
+class ToRawValue a where
+  toRawValue :: Ptr EvalState -> a -> IO RawValue
+  default toRawValue :: ToValue a => Ptr EvalState -> a -> IO RawValue
+  toRawValue evalState a = rtValue <$> toValue evalState a
+
+class ToRawValue a => ToValue a where
+  type NixTypeFor a :: *
+  toValue :: Ptr EvalState -> a -> IO (Value (NixTypeFor a))
+
+-- | Identity
+instance ToRawValue RawValue where
+  toRawValue _ = pure
+
+-- | Upcast
+instance ToRawValue (Value a)
+
+-- | Identity
+instance ToValue (Value a) where
+  type NixTypeFor (Value a) = a
+  toValue _ = pure
+
+instance ToRawValue C.CBool
+
+instance ToValue C.CBool where
+  type NixTypeFor C.CBool = Bool
+  toValue _ b =
+    coerce
+      <$> [C.block| Value *{
+      Value *r = new (NoGC) Value();
+      mkBool(*r, $(bool b));
+      return r;
+    }|]
+
+instance ToRawValue Bool
+
+instance ToValue Bool where
+  type NixTypeFor Bool = Bool
+  toValue es False = toValue es (0 :: C.CBool)
+  toValue es True = toValue es (1 :: C.CBool)
+
+-- | The native Nix integer type
+instance ToRawValue Int64
+
+-- | The native Nix integer type
+instance ToValue Int64 where
+  type NixTypeFor Int64 = NixInt
+  toValue _ i =
+    coerce
+      <$> [C.block| Value *{
+    Value *r = new (NoGC) Value();
+    mkInt(*r, $(int64_t i));
+    return r;
+  }|]
+
+instance ToRawValue Int
+
+instance ToValue Int where
+  type NixTypeFor Int = NixInt
+  toValue es i = toValue es (fromIntegral i :: Int64)
+
+instance ToRawValue C.CDouble
+
+instance ToValue C.CDouble where
+  type NixTypeFor C.CDouble = NixFloat
+  toValue _ f =
+    coerce
+      <$> [C.block| Value *{
+        Value *r = new (NoGC) Value();
+        mkFloat(*r, $(double f));
+        return r;
+      }|]
+
+instance ToRawValue Double
+
+instance ToValue Double where
+  type NixTypeFor Double = NixFloat
+  toValue es f = toValue es (fromRational (toRational f) :: C.CDouble)
+
+-- | Nix String
+instance ToValue ByteString where
+  type NixTypeFor ByteString = NixString
+  toValue _ s =
+    coerce
+      <$> [C.block| Value *{
+    Value *r = new (NoGC) Value();
+    std::string s($bs-ptr:s, $bs-len:s);
+    mkString(*r, s, {});
+    return r;
+  }|]
+
+-- | Nix String
+instance ToRawValue ByteString
+
+-- | UTF-8
+instance ToRawValue Text
+
+-- | UTF-8
+instance ToValue Text where
+  type NixTypeFor Text = NixString
+  toValue es s = toValue es (encodeUtf8 s)
+
+instance ToRawValue a => ToRawValue (Map ByteString a)
+
+instance ToRawValue a => ToValue (Map ByteString a) where
+  type NixTypeFor (Map ByteString a) = NixAttrs
+  toValue evalState attrs = do
+    let l :: C.CInt
+        l = fromIntegral (length attrs)
+    v <-
+      [C.block| Value* {
+          EvalState &evalState = *$(EvalState *evalState);
+          Value *v = new (NoGC) Value();
+          evalState.mkAttrs(*v, $(int l));
+          return v;
+        }|]
+    attrs & traverseWithKey_ \k a -> do
+      RawValue aRaw <- toRawValue evalState a
+      [C.block| void {
+          EvalState &evalState = *$(EvalState *evalState);
+          std::string k($bs-ptr:k, $bs-len:k);
+          Value &a = *$(Value *aRaw);
+          *evalState.allocAttr(*$(Value *v), evalState.symbols.create(k)) = a;
+        }|]
+    [C.block| void {
+        $(Value *v)->attrs->sort();
+      }|]
+    Value <$> mkRawValue v
+
+mkNull :: IO RawValue
+mkNull =
+  coerce
+    <$> [C.block| Value* {
+          Value *v = new (NoGC) Value();
+          mkNull(*v);
+          return v;
+        }|]
+
+instance ToRawValue A.Value where
+  toRawValue es (A.Bool b) = toRawValue es b
+  toRawValue es (A.String s) = toRawValue es s
+  toRawValue es (A.Object fs) = toRawValue es fs
+  toRawValue _es A.Null = mkNull
+  toRawValue es (A.Number n) | Just i <- Sci.toBoundedInteger n = toRawValue es (i :: Int64)
+  toRawValue es (A.Number f) = toRawValue es (Sci.toRealFloat f :: Double)
+  toRawValue es (A.Array a) = toRawValue es a
+
+-- | For deriving-via of 'ToRawValue' using 'ToJSON'.
+newtype ViaJSON a = ViaJSON a
+
+instance A.ToJSON a => ToRawValue (ViaJSON a) where
+  toRawValue es (ViaJSON a) = toRawValue es (A.toJSON a)
+
+hmTraverseWithKey_ :: Applicative f => (k -> a -> f ()) -> H.HashMap k a -> f ()
+hmTraverseWithKey_ f = H.foldrWithKey (\k a more -> f k a *> more) (pure ())
+
+instance ToRawValue a => ToRawValue (H.HashMap Text a)
+
+instance ToRawValue a => ToValue (H.HashMap Text a) where
+  type NixTypeFor (H.HashMap Text a) = NixAttrs
+  toValue evalState attrs = do
+    let l :: C.CInt
+        l = fromIntegral (length attrs)
+    v <-
+      [C.block| Value* {
+          EvalState &evalState = *$(EvalState *evalState);
+          Value *v = new (NoGC) Value();
+          evalState.mkAttrs(*v, $(int l));
+          return v;
+        }|]
+    attrs & hmTraverseWithKey_ \k' a -> do
+      RawValue aRaw <- toRawValue evalState a
+      let k = encodeUtf8 k'
+      [C.block| void {
+          EvalState &evalState = *$(EvalState *evalState);
+          std::string k($bs-ptr:k, $bs-len:k);
+          Value &a = *$(Value *aRaw);
+          *evalState.allocAttr(*$(Value *v), evalState.symbols.create(k)) = a;
+        }|]
+    [C.block| void {
+        $(Value *v)->attrs->sort();
+      }|]
+    Value <$> mkRawValue v
+
+instance ToRawValue a => ToRawValue (Vector a)
+
+instance ToRawValue a => ToValue (Vector a) where
+  type NixTypeFor (Vector a) = NixList
+  toValue evalState vec =
+    coerce <$> do
+      let l :: C.CInt
+          l = fromIntegral (length vec)
+      v <-
+        [C.block| Value* {
+          EvalState &evalState = *$(EvalState *evalState);
+          Value *v = new (NoGC) Value();
+          evalState.mkList(*v, $(int l));
+          return v;
+        }|]
+      vec & V.imapM_ \i a -> do
+        RawValue aRaw <- toRawValue evalState a
+        let ix = fromIntegral i
+        [C.block| void {
+          Value &v = *$(Value *v);
+          v.listElems()[$(int ix)] = $(Value *aRaw);
+        }|]
+      Value <$> mkRawValue v
+
+instance ToRawValue a => ToRawValue [a]
+
+instance ToRawValue a => ToValue [a] where
+  type NixTypeFor [a] = NixList
+  toValue es l = toValue es (V.fromList l)

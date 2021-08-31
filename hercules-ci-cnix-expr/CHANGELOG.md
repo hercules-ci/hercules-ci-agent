@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
  - `getLocalFlake` using either flake-compat or Nix 2.4pre
 
+ - `ToValue` and `ToRawValue` classes for converting Haskell values to Nix values.
+
 ## 0.2.0.0 - 2021-06-22
 
 ### Added
