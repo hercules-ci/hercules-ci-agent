@@ -101,7 +101,8 @@ void WrappingStore::narFromPath(const StorePath& path, Sink& sink) {
 }
 
 void WrappingStore::buildPaths(
-      const std::vector<DerivedPath> & paths, BuildMode buildMode) {
+      const std::vector<DerivedPath> & paths, BuildMode buildMode,
+      std::shared_ptr<Store> evalStore) {
   wrappedStore->buildPaths(paths, buildMode);
 }
 
@@ -231,7 +232,7 @@ void HerculesStore::queryMissing(const std::vector<DerivedPath> & targets,
       uint64_t & downloadSize, uint64_t & narSize) {
 };
 
-void HerculesStore::buildPaths(const std::vector<DerivedPath> & derivedPaths, BuildMode buildMode) {
+void HerculesStore::buildPaths(const std::vector<DerivedPath> & derivedPaths, BuildMode buildMode, std::shared_ptr<Store> evalStore) {
   std::exception_ptr exceptionToThrow(nullptr);
 
   // responsibility for delete is transferred to builderCallback

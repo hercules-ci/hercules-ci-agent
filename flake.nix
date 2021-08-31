@@ -24,6 +24,17 @@
       defaultTarget = allTargets."nixos-unstable";
       testSuiteTarget = defaultTarget;
 
+      debug = false;
+      ifDebug = f:
+        if debug then f else x: x;
+      addDebug = ifDebug (pkg:
+        pkg.overrideAttrs (o: {
+          dontStrip = true;
+          enableDebugging = true;
+          separateDebugInfo = false;
+        })
+      );
+
       allTargets =
         dimension "Nixpkgs version"
           {
@@ -59,7 +70,15 @@
                         overlays = [ (import ./nix/make-overlay.nix inputs) dev-and-test-overlay ]
                           ++ lib.optionals isNixUnstable [
                           (final: prev: {
-                            nix = prev.nixUnstable;
+                            nix = addDebug (prev.nixUnstable.overrideAttrs (o: {
+                              src = final.fetchFromGitHub {
+                                owner = "hercules-ci";
+                                repo = "nix";
+                                rev = "2ebd9504e393d551c84cbe08e1ee5e2126950298";
+                                sha256 = "sha256-Z8YgANHVJkkYRWtFPXMOXpQaFt6PnlGfIPxEt1XpVtY=";
+                              };
+                              version = "2.4pre20210831_2ebd950";
+                            }));
                           })
                         ];
                         config = { };

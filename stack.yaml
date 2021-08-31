@@ -1,4 +1,4 @@
-resolver: lts-17.5
+resolver: lts-18.8
 
 # paths to local packages
 packages:
@@ -19,11 +19,13 @@ extra-deps:
       # branch: fork
       9e2968c09a7c5b29d04578dc68d81ce5aec0591e
   # REMINDER: sync with scripts/generate-nix
-  - git: https://github.com/hercules-ci/cachix.git
-    commit: f24e3048fbc81a98e9ad7a7bcfe877c2bc1b4b9b
-    subdirs:
-      - cachix
-      - cachix-api
+  # - git: https://github.com/hercules-ci/cachix.git
+  #   commit: f24e3048fbc81a98e9ad7a7bcfe877c2bc1b4b9b
+  #   subdirs:
+  #     - cachix
+  #     - cachix-api
+  - cachix-0.6.1
+  - cachix-api-0.6.0
   - inline-c-0.9.1.4
   - inline-c-cpp-0.4.0.2
   - ListLike-4.7.4@sha256:613b2967df738010e8f6f6b7c47d615f6fe42081f68eba7f946d5de7552aa8a4,3778

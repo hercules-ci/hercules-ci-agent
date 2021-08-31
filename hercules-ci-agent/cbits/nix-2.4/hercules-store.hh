@@ -72,7 +72,8 @@ public:
 
   virtual void buildPaths(
       const std::vector<DerivedPath> & paths,
-      BuildMode buildMode = bmNormal) override;
+      BuildMode buildMode = bmNormal,
+      std::shared_ptr<Store> evalStore = nullptr) override;
 
   virtual BuildResult buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
       BuildMode buildMode = bmNormal) override;
@@ -134,7 +135,8 @@ public:
 
   virtual void buildPaths(
       const std::vector<DerivedPath> & paths,
-      BuildMode buildMode = bmNormal) override;
+      BuildMode buildMode = bmNormal,
+      std::shared_ptr<Store> evalStore = nullptr) override;
 
   virtual BuildResult buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
       BuildMode buildMode = bmNormal) override;

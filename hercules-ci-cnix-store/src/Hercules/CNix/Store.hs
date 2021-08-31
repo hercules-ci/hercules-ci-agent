@@ -801,7 +801,11 @@ copyClosure (Store src) (Store dest) pathList = do
       StorePathSet closurePaths;
       compatComputeFSClosure(*src, pathSet, closurePaths);
 
+#ifdef NIX_2_4
+      nix::copyPaths(*src, *dest, closurePaths);
+#else
       nix::copyPaths(src, dest, compatPathSet(*src, closurePaths));
+#endif
     }|]
   for_ pathList (\(StorePath c) -> touchForeignPtr c)
 
