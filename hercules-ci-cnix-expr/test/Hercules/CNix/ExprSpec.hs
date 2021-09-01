@@ -8,7 +8,6 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import Hercules.CNix.Expr
 import qualified Hercules.CNix.Expr.Typed as Typed
-import Hercules.CNix.Store.TestUtil (withTempStore)
 import Protolude hiding (evalState)
 import qualified SingleState
 import Test.Hspec
@@ -121,3 +120,174 @@ spec = do
         Right r -> pure (r :: A.Value)
       a <- toRawValue evalState jsonValue
       a & checkWithNix evalState ("a: a == builtins.fromJSON ''" <> jsonExample <> "''")
+  describe "functionParams" do
+    it "doesn't crash for map (primop)" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "map" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Nothing,
+            functionParamsMatches = Nothing
+          }
+    it "doesn't crash for map (x: x) (primop-app)" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "map (x: x)" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Nothing,
+            functionParamsMatches = Nothing
+          }
+    it "works for a:" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "a: null" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Just "a",
+            functionParamsMatches = Nothing
+          }
+    it "works for a@{}:" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "a@{}: null" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Just "a",
+            functionParamsMatches =
+              Just
+                FunctionMatches
+                  { functionMatches = mempty,
+                    functionMatchesEllipsis = False
+                  }
+          }
+    it "works for a@{ ... }:" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "a@{ ... }: null" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Just "a",
+            functionParamsMatches =
+              Just
+                FunctionMatches
+                  { functionMatches = mempty,
+                    functionMatchesEllipsis = True
+                  }
+          }
+    it "works for a@{b}:" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "a@{ b }: null" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Just "a",
+            functionParamsMatches =
+              Just
+                FunctionMatches
+                  { functionMatches = "b" =: False,
+                    functionMatchesEllipsis = False
+                  }
+          }
+    it "works for a@{ b, ... }:" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "a@{ b, ... }: null" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Just "a",
+            functionParamsMatches =
+              Just
+                FunctionMatches
+                  { functionMatches = "b" =: False,
+                    functionMatchesEllipsis = True
+                  }
+          }
+    it "works for a@{b ? null}:" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "a@{ b ? null }: null" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Just "a",
+            functionParamsMatches =
+              Just
+                FunctionMatches
+                  { functionMatches = "b" =: True,
+                    functionMatchesEllipsis = False
+                  }
+          }
+    it "works for a@{ b ? null, ... }:" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "a@{ b ? null, ... }: null" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Just "a",
+            functionParamsMatches =
+              Just
+                FunctionMatches
+                  { functionMatches = "b" =: True,
+                    functionMatchesEllipsis = True
+                  }
+          }
+    it "works for {b ? null}:" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "{ b ? null }: null" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Nothing,
+            functionParamsMatches =
+              Just
+                FunctionMatches
+                  { functionMatches = "b" =: True,
+                    functionMatchesEllipsis = False
+                  }
+          }
+    it "works for { b ? null, ... }:" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "{ b ? null, ... }: null" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Nothing,
+            functionParamsMatches =
+              Just
+                FunctionMatches
+                  { functionMatches = "b" =: True,
+                    functionMatchesEllipsis = True
+                  }
+          }
+    it "works for { a, b ? null, ... }:" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "{ c, b ? null, ... }: null" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Nothing,
+            functionParamsMatches =
+              Just
+                FunctionMatches
+                  { functionMatches = "c" =: False <> "b" =: True,
+                    functionMatchesEllipsis = True
+                  }
+          }
+    it "works for { ... }:" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "{ ... }: null" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Nothing,
+            functionParamsMatches =
+              Just
+                FunctionMatches
+                  { functionMatches = mempty,
+                    functionMatchesEllipsis = True
+                  }
+          }
+    it "works for {}:" $ setup \evalState -> do
+      fn <- valueFromExpressionString evalState "{}: null" "/" >>= assertType evalState
+      args <- functionParams evalState fn
+      args
+        `shouldBe` FunctionParams
+          { functionArgName = Nothing,
+            functionParamsMatches =
+              Just
+                FunctionMatches
+                  { functionMatches = mempty,
+                    functionMatchesEllipsis = False
+                  }
+          }
+
+(=:) :: a -> b -> Map a b
+(=:) = M.singleton

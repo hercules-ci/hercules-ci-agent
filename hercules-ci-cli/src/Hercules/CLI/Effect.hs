@@ -9,12 +9,15 @@ import qualified Data.Text as T
 import Hercules.API.Id (Id (Id, idUUID))
 import qualified Hercules.API.Projects as Projects
 import qualified Hercules.API.Projects.CreateUserEffectTokenResponse as CreateUserEffectTokenResponse
+import Hercules.Agent.NixFile (getOnPushOutputValueByPath)
+import qualified Hercules.Agent.NixFile.GitSource as GitSource
+import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
 import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDefaultApiBaseUrl, projectsClient, runHerculesClient)
 import Hercules.CLI.Common (runAuthenticated)
 import Hercules.CLI.Exception (exitMsg)
 import Hercules.CLI.Git (getAllBranches, getHypotheticalRefs)
-import Hercules.CLI.Nix (attrByPath, callCiNix, ciNixAttributeCompleter, withNix)
+import Hercules.CLI.Nix (ciNixAttributeCompleter, createHerculesCIArgs, withNix)
 import Hercules.CLI.Options (flatCompleter, mkCommand, subparser)
 import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption, projectPathText)
 import Hercules.CLI.Secret (getSecretsFilePath)
@@ -50,21 +53,24 @@ runParser = do
   pure $ runAuthenticated do
     withAsync (getProjectEffectData projectOptionMaybe requireToken) \projectPathAsync -> do
       withNix \store evalState -> do
-        (nixFile, rootValue) <- liftIO $ callCiNix evalState refMaybe
+        -- (nixFile, rootValue) <- liftIO $ callCiNix evalState refMaybe
+        args <- liftIO $ createHerculesCIArgs refMaybe
         let attrPath = T.split (== '.') attr
-        valMaybe <- liftIO $ attrByPath evalState rootValue (map encodeUtf8 attrPath)
+            nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
+        valMaybe <- liftIO $ getOnPushOutputValueByPath evalState (toS nixFile) args (map encodeUtf8 attrPath)
+        -- valMaybe <- liftIO $ attrByPath evalState rootValue
         attrValue <- case valMaybe of
           Nothing -> do
-            exitMsg $ "Could not find an attribute at path " <> show attrPath <> " in " <> toS nixFile
+            exitMsg $ "Could not find an attribute at path " <> show attrPath <> " in " <> nixFile
           Just v -> liftIO (match evalState v) >>= escalate
         effectAttrs <- case attrValue of
           IsAttrs attrs -> pure attrs
           _ -> do
-            exitMsg $ "Attribute is not an Effect at path " <> show attrPath <> " in " <> toS nixFile
+            exitMsg $ "Attribute is not an Effect at path " <> show attrPath <> " in " <> nixFile
 
         isEffect <- liftIO $ getAttrBool evalState effectAttrs "isEffect" >>= escalate
         when (isEffect /= Just True) do
-          exitMsg $ "Attribute is not an Effect at path " <> show attrPath <> " in " <> toS nixFile
+          exitMsg $ "Attribute is not an Effect at path " <> show attrPath <> " in " <> nixFile
         drvPath <- getDrvFile evalState (rtValue effectAttrs)
         derivation <- prepareDerivation store drvPath
         apiBaseURL <- liftIO determineDefaultApiBaseUrl

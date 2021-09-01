@@ -22,13 +22,14 @@ where
 
 import Conduit
 import qualified Data.Aeson as A
+import qualified Data.ByteString.Unsafe as BS
 import Data.Coerce (coerce)
 import qualified Data.HashMap.Lazy as H
 import qualified Data.Map as M
 import qualified Data.Scientific as Sci
 import Data.Vector (Vector)
 import qualified Data.Vector as V
-import Foreign (nullPtr)
+import Foreign (allocaArray, nullPtr, peekArray, toBool)
 import qualified Foreign.C.String
 import Hercules.CNix.Encapsulation (moveToForeignPtrWrapper)
 import Hercules.CNix.Expr.Context
@@ -668,3 +669,80 @@ instance ToRawValue a => ToRawValue [a]
 instance ToRawValue a => ToValue [a] where
   type NixTypeFor [a] = NixList
   toValue es l = toValue es (V.fromList l)
+
+data FunctionParams = FunctionParams
+  { functionArgName :: Maybe ByteString,
+    functionParamsMatches :: Maybe FunctionMatches
+  }
+  deriving (Eq, Show)
+
+data FunctionMatches = FunctionMatches
+  { functionMatches :: Map ByteString Bool,
+    functionMatchesEllipsis :: Bool
+  }
+  deriving (Eq, Show)
+
+functionParams :: Ptr EvalState -> Value NixFunction -> IO FunctionParams
+functionParams _evalState (Value (RawValue v)) = do
+  isLambda <-
+    toBool <$> [C.exp| bool { $(Value *v)->type == tLambda }|]
+  if not isLambda
+    then pure $ FunctionParams Nothing Nothing
+    else do
+      isMatchAttrs <-
+        toBool <$> [C.exp| bool { $(Value *v)->lambda.fun->matchAttrs }|]
+      argName' <-
+        traverseNonNull BS.unsafePackMallocCString
+          =<< [C.throwBlock| const char* {
+            Value &v = *$(Value *v);
+            if (!v.lambda.fun->arg.set())
+              return nullptr;
+            const std::string &s = v.lambda.fun->arg;
+            return strdup(s.c_str());
+          }|]
+      let argName = if argName' == Just "" then Nothing else argName'
+      if not isMatchAttrs
+        then do
+          pure
+            FunctionParams
+              { functionArgName = argName,
+                functionParamsMatches = Nothing
+              }
+        else do
+          size <-
+            [C.block| size_t {
+              Value &v = *$(Value *v);
+              return v.lambda.fun->formals->formals.size();
+            }|]
+          formals <-
+            if size == 0
+              then pure []
+              else allocaArray (fromIntegral size) \namesArr -> allocaArray (fromIntegral size) \defsArr -> do
+                [C.throwBlock| void {
+              Value &v = *$(Value *v);
+              char **names = $(char **namesArr);
+              bool *defs = $(bool *defsArr);
+              size_t i = 0;
+              size_t sz = $(size_t size);
+              for (auto &formal : v.lambda.fun->formals->formals) {
+                assert(i < sz);
+                assert(formal.name.set());
+                const std::string &s = formal.name;
+                names[i] = strdup(s.c_str());
+                defs[i] = formal.def != nullptr;
+                i++;
+              }
+              assert(i == sz);
+            }|]
+                cstrings <- peekArray (fromIntegral size) namesArr
+                defs <- peekArray (fromIntegral size) defsArr
+                for (zip cstrings defs) \(cstring, def) -> do
+                  (,toBool def) <$> BS.unsafePackMallocCString cstring
+          ellipsis <- toBool <$> [C.exp| bool { $(Value *v)->lambda.fun->formals->ellipsis }|]
+          pure $
+            FunctionParams argName $
+              Just
+                FunctionMatches
+                  { functionMatches = M.fromList formals,
+                    functionMatchesEllipsis = ellipsis
+                  }

@@ -135,3 +135,42 @@ getStringIgnoreContext (Value (RawValue v)) =
     [C.exp| const char *{
     strdup($(Value *v)->string.s)
   }|]
+
+class CheckType a where
+  checkType :: Ptr EvalState -> RawValue -> IO (Maybe (Value a))
+
+instance CheckType Int64 where
+  checkType es v = match' es v <&> \case IsInt x -> pure x; _ -> Nothing
+
+instance CheckType Bool where
+  checkType es v = match' es v <&> \case IsBool x -> pure x; _ -> Nothing
+
+instance CheckType NixString where
+  checkType es v = match' es v <&> \case IsString x -> pure x; _ -> Nothing
+
+instance CheckType NixPath where
+  checkType es v = match' es v <&> \case IsPath x -> pure x; _ -> Nothing
+
+instance CheckType () where
+  checkType es v = match' es v <&> \case IsNull x -> pure x; _ -> Nothing
+
+instance CheckType NixAttrs where
+  checkType es v = match' es v <&> \case IsAttrs x -> pure x; _ -> Nothing
+
+instance CheckType NixList where
+  checkType es v = match' es v <&> \case IsList x -> pure x; _ -> Nothing
+
+instance CheckType NixFunction where
+  checkType es v = match' es v <&> \case IsFunction f -> pure f; _ -> Nothing
+
+instance CheckType NixExternal where
+  checkType es v = match' es v <&> \case IsExternal x -> pure x; _ -> Nothing
+
+instance CheckType NixFloat where
+  checkType es v = match' es v <&> \case IsFloat f -> pure f; _ -> Nothing
+
+assertType :: (HasCallStack, MonadIO m, CheckType t) => Ptr EvalState -> RawValue -> m (Value t)
+assertType es v = do
+  liftIO (checkType es v) >>= \case
+    Nothing -> withFrozenCallStack (panic "Unexpected type")
+    Just x -> pure x

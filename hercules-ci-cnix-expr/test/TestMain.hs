@@ -12,7 +12,7 @@ main = do
   init
   withGlobalState $ do
     -- for_ [(1 :: Int)..1000] \_ -> do
-    hspecWith config Spec.spec
+    hspecWith config {configConcurrentJobs = Just 1} Spec.spec
     --  `catch` (\e -> putErrText $ "Caught  " <> show (e :: SomeException))
     putErrText "Performing Haskell GC..."
     performMajorGC

@@ -55,6 +55,9 @@ library
       Data.Fixed.Extras
       Data.Time.Extras
       Hercules.Agent.NixFile
+      Hercules.Agent.NixFile.GitSource
+      Hercules.Agent.NixFile.HerculesCIArgs
+      Hercules.Agent.NixFile.CiNixArgs
       Hercules.Agent.Producer
       Hercules.Agent.Sensitive
       Hercules.Agent.Socket
@@ -98,6 +101,7 @@ library
     , filepath
     , hercules-ci-api-agent
     , hercules-ci-api-core
+    , hercules-ci-cnix-expr
     , hercules-ci-cnix-store
     , katip
     , lens
@@ -115,6 +119,7 @@ library
     , temporary
     , text
     , time
+    , transformers
     , transformers-base
     , unbounded-delays
     , unix

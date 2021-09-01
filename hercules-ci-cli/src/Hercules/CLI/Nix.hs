@@ -5,7 +5,11 @@ module Hercules.CLI.Nix where
 import qualified Data.List as L
 import qualified Data.Map as M
 import qualified Data.Text as T
-import Hercules.Agent.NixFile (findNixFile)
+import Hercules.Agent.NixFile (findNixFile, getOnPushOutputValueByPath)
+import qualified Hercules.Agent.NixFile.GitSource as GitSource
+import Hercules.Agent.NixFile.HerculesCIArgs (HerculesCIArgs)
+import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
+import Hercules.CLI.Client (determineDefaultApiBaseUrl)
 import Hercules.CLI.Exception (UserException (UserException))
 import Hercules.CLI.Git (getGitRoot, getRef, getRev)
 import Hercules.CLI.Options (scanOption)
@@ -16,6 +20,16 @@ import Hercules.Error (escalateAs)
 import Options.Applicative as Optparse
 import Protolude hiding (evalState)
 import UnliftIO (MonadUnliftIO, UnliftIO (UnliftIO), askUnliftIO)
+
+createHerculesCIArgs :: Maybe Text -> IO HerculesCIArgs
+createHerculesCIArgs passedRef = do
+  gitRoot <- getGitRoot
+  gitRev <- getRev
+  gitRef <- getRef
+  let ref = fromMaybe gitRef passedRef
+      gitSource = GitSource.fromRefRevPath ref gitRev (toS gitRoot)
+  url <- determineDefaultApiBaseUrl
+  pure $ HerculesCIArgs.fromGitSource gitSource HerculesCIArgs.HerculesCIMeta {apiBaseUrl = url}
 
 callCiNix :: Ptr EvalState -> Maybe Text -> IO (FilePath, RawValue)
 callCiNix evalState passedRef = do
@@ -46,13 +60,13 @@ ciNixAttributeCompleter = mkTextCompleter \partial -> do
       ref <- scanOption "--as-ref"
       branch <- scanOption "--as-branch"
       pure $ refBranchToRef ref branch
-    (_, rootValue) <- callCiNix evalState ref
+    args <- createHerculesCIArgs ref
     let partialComponents = T.split (== '.') partial
         prefix = L.init partialComponents
         partialComponent = lastMay partialComponents & fromMaybe ""
         prefixStr = T.intercalate "." prefix
         addPrefix x = T.intercalate "." (prefix <> [x])
-    attrByPath evalState rootValue (encodeUtf8 <$> prefix) >>= \case
+    getOnPushOutputValueByPath evalState (toS $ GitSource.outPath $ HerculesCIArgs.primaryRepo args) args (encodeUtf8 <$> prefix) >>= \case
       Nothing -> pure []
       Just focusValue -> do
         match' evalState focusValue >>= \case
