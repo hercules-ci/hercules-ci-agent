@@ -60,6 +60,7 @@ library
     Hercules.API.Evaluation.AttributeError
     Hercules.API.Evaluation.Evaluation
     Hercules.API.Health
+    Hercules.API.Inputs.ImmutableGitInput
     Hercules.API.Labels
     Hercules.API.Message
     Hercules.API.Organizations
@@ -68,6 +69,7 @@ library
     Hercules.API.Organizations.Organization
     Hercules.API.Organizations.PaymentLink
     Hercules.API.Orphans
+    Hercules.API.Paging
     Hercules.API.Projects
     Hercules.API.Projects.CreateProject
     Hercules.API.Projects.CreateUserEffectTokenResponse

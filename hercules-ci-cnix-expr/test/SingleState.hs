@@ -4,7 +4,7 @@ module SingleState (withGlobalState, evalState) where
 import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Hercules.CNix.Expr
 import Hercules.CNix.Store.TestUtil (withTempStore)
-import Protolude hiding (evalState)
+import Protolude hiding (evalState, state)
 import System.IO.Unsafe (unsafePerformIO)
 
 theEvalState :: IORef (Ptr EvalState)

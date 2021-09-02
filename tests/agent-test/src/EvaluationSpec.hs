@@ -114,7 +114,7 @@ spec = describe "Evaluation" $ do
               `shouldBe` Message.Message
                 { index = 0,
                   typ = Message.Error,
-                  message = "Please provide a Nix expression to build. Could not find any of \"nix/ci.nix\", \"ci.nix\" or \"default.nix\" in your source"
+                  message = "Please provide a Nix expression to build. Could not find any of \"nix/ci.nix\", \"ci.nix\", \"flake.nix\" or \"default.nix\" in your source"
                 }
           _ -> failWith $ "Events should be a single message, not: " <> show r
   context "when a ci.nix is provided" $

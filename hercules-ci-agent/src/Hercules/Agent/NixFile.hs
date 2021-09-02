@@ -6,15 +6,21 @@
 module Hercules.Agent.NixFile
   ( findNixFile,
     loadNixFile,
-
-    -- * Facade functions
+    getExtraInputs,
     getOnPushOutputValueByPath,
+
+    -- * Utilities
+    computeArgsRequired,
+    -- TODO: move
+    InputDeclaration (..),
+    SiblingInput (..),
   )
 where
 
-import Control.Concurrent.Async (mapConcurrently)
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
+import Data.Coerce (coerce)
 import qualified Data.Map as M
+import qualified Data.Set as S
 import Hercules.Agent.NixFile.CiNixArgs (CiNixArgs (CiNixArgs))
 import qualified Hercules.Agent.NixFile.CiNixArgs
 import Hercules.Agent.NixFile.GitSource (GitSource)
@@ -32,10 +38,10 @@ import Hercules.CNix.Expr
     autoCallFunction,
     checkType,
     evalFile,
-    functionParams,
     getAttr,
     getAttrs,
     getLocalFlake,
+    getStringIgnoreContext,
     match',
     toRawValue,
     unsafeAssertType,
@@ -50,7 +56,7 @@ import System.FilePath (takeFileName, (</>))
 type Ambiguity = [FilePath]
 
 searchPath :: [Ambiguity]
-searchPath = [["flake.nix"], ["nix/ci.nix", "ci.nix"], ["default.nix"]]
+searchPath = [["nix/ci.nix", "ci.nix"], ["flake.nix"], ["default.nix"]]
 
 findNixFile :: FilePath -> IO (Either Text FilePath)
 findNixFile projectDir = do
@@ -95,7 +101,7 @@ loadNixFile evalState projectPath src = runExceptT do
   nixFile <- ExceptT $ findNixFile projectPath
   if takeFileName nixFile == "flake.nix"
     then do
-      val <- liftIO $ getLocalFlake evalState (toS projectPath)
+      val <- liftIO $ getLocalFlake evalState (toS projectPath) >>= assertType evalState
       pure (Flake val)
     else do
       rootValueOrFunction <- liftIO $ evalFile evalState nixFile
@@ -112,15 +118,17 @@ getHomeExprAttr evalState (CiNix val) name = runMaybeT do
       _ -> empty
   MaybeT $ getAttr evalState attrs name
 
-getHerculesCI :: Ptr EvalState -> HomeExpr -> HerculesCIArgs -> IO (Maybe (Value NixAttrs))
+newtype HerculesCIAttrs = HerculesCIAttrs (Value NixAttrs)
+
+getHerculesCI :: Ptr EvalState -> HomeExpr -> HerculesCIArgs -> IO (Maybe HerculesCIAttrs)
 getHerculesCI evalState homeExpr args = runMaybeT do
   val <- MaybeT $ getHomeExprAttr evalState homeExpr "herculesCI"
   liftIO (match' evalState val) >>= \case
-    IsAttrs a -> pure a
+    IsAttrs a -> pure $ HerculesCIAttrs a
     IsFunction f -> do
       herculesCIArgs <- lift $ toRawValue evalState args
-      herculesCIVal <- lift $ apply evalState (rtValue f) herculesCIArgs
-      castAttrs evalState herculesCIVal
+      herculesCIVal <- lift $ apply (rtValue f) herculesCIArgs
+      HerculesCIAttrs <$> castAttrs evalState herculesCIVal
     _ -> empty
 
 castAttrs ::
@@ -133,74 +141,76 @@ castAttrs evalState val = do
     IsAttrs a -> pure a
     _ -> empty
 
-getOnPushAttrs :: Ptr EvalState -> Value NixAttrs -> IO (Maybe (Value NixAttrs))
-getOnPushAttrs evalState herculesCI = do
+newtype JobAttrs = JobAttrs (Value NixAttrs)
+
+getOnPushAttrs :: Ptr EvalState -> HerculesCIAttrs -> IO (Maybe (Value NixAttrs))
+getOnPushAttrs evalState (HerculesCIAttrs herculesCI) = do
   runMaybeT do
     onPushVal <- MaybeT $ getAttr evalState herculesCI "onPush"
     castAttrs evalState onPushVal
 
-data InputsRequired
-  = AllInputsRequired
-  | SomeInputsRequired (Map ByteString Bool)
+data ArgsRequired
+  = AllArgsRequired
+  | SomeArgsRequired (Map ByteString Bool)
 
 -- | Compute the arguments that are required to invoke a function, such that
 -- any omissions are undetectable by the function.
-computeArgsMissing :: FunctionParams -> InputsRequired
-computeArgsMissing = \case
+computeArgsRequired :: FunctionParams -> ArgsRequired
+computeArgsRequired = \case
   -- The lack of ellipsis means that the arguments can not contain anything not in the matches,
   -- so don't need to compute everything.
   FunctionParams
     { functionArgName = Just _,
-      functionParamsMatches = Just (FunctionMatches {functionMatchesEllipsis = False, functionMatches = matches})
-    } -> SomeInputsRequired matches
+      functionParamsMatches = Just FunctionMatches {functionMatchesEllipsis = False, functionMatches = matches}
+    } -> SomeArgsRequired matches
   -- No name to access the unmatched args, so we don't have to compute everything.
   FunctionParams
     { functionArgName = Nothing,
-      functionParamsMatches = Just (FunctionMatches {functionMatches = matches})
-    } -> SomeInputsRequired matches
+      functionParamsMatches = Just FunctionMatches {functionMatches = matches}
+    } -> SomeArgsRequired matches
   -- Catch-all: name and ellipsis, just name, primops
-  _ -> AllInputsRequired
+  _ -> AllArgsRequired
 
-getInputs :: Ptr EvalState -> Value NixAttrs -> IO (Map ByteString RawValue)
-getInputs evalState onPush = do
-  rawExtraInputs <- getAttr evalState onPush "extraInputs"
-  extraInputs <- case rawExtraInputs of
+getExtraInputs :: Ptr EvalState -> JobAttrs -> IO (Map ByteString InputDeclaration)
+getExtraInputs evalState (JobAttrs jobAttrs) = do
+  rawExtraInputs <- getAttr evalState jobAttrs "extraInputs"
+  case rawExtraInputs of
     Nothing -> pure mempty
     Just x -> do
       checkType evalState x >>= \case
         Nothing -> panic "herculesCI{}.onPush.<name>.extraInputs must be an attrset"
-        Just attrs -> getAttrs attrs
-  extraInputs
-    & M.mapWithKey (,)
-    & mapConcurrently (uncurry (fetchMutableInput evalState))
+        Just inputsAttrs ->
+          getAttrs inputsAttrs >>= traverse \v -> do
+            input <- checkType evalState v >>= maybe (panic "herculesCI{}.onPush.<name>.extraInputs.<name> must be an attrset") pure
+            inputAttrs <- getAttrs input
+            let keys = M.keysSet inputAttrs
+            if keys == S.fromList ["project"]
+              || keys == S.fromList ["project", "ref"]
+              then do
+                let projectValue = fromMaybe (panic "repo attr can't disappear") $ M.lookup "project" inputAttrs
+                projectStr <- assertType evalState projectValue >>= getStringIgnoreContext
+                refStr <- for (M.lookup "ref" inputAttrs) (assertType evalState >=> getStringIgnoreContext)
+                pure $ SiblingInput $ MkSiblingInput {project = decodeUtf8With lenientDecode projectStr, ref = decodeUtf8With lenientDecode <$> refStr}
+              else panic "Did not recognize herculesCI{}.onPush.<name>.extraInputs.<name> keys."
 
--- assertType evalState =<< toRawValue evalState (inputs :: Map ByteString RawValue)
+data InputDeclaration = SiblingInput SiblingInput
 
-fetchMutableInput :: Ptr EvalState -> ByteString -> RawValue -> IO RawValue
-fetchMutableInput = panic "fetchMutableInput not implemented yet"
+data SiblingInput = MkSiblingInput
+  { project :: Text,
+    ref :: Maybe Text
+  }
 
-invokeOutputs :: Ptr EvalState -> Value NixAttrs -> IO (Maybe (Value NixAttrs))
-invokeOutputs evalState onPush = runMaybeT do
-  outputsVal <- MaybeT $ getAttr evalState onPush "outputs"
+invokeOutputs :: Ptr EvalState -> JobAttrs -> Value NixAttrs -> IO (Maybe (Value NixAttrs))
+invokeOutputs evalState (JobAttrs jobAttrs) args = runMaybeT do
+  outputsVal <- MaybeT $ getAttr evalState jobAttrs "outputs"
   lift $
     match' evalState outputsVal >>= \case
       IsAttrs attrs -> pure attrs
       IsFunction fn -> do
-        params <- functionParams evalState fn
-        inputs <- getInputs evalState onPush
-        let fixedArgs = mempty
-            (//) = flip M.union -- make it like Nix
-            argsMap = fixedArgs // inputs
-        args <- assertType evalState =<< toRawValue evalState argsMap
         rawOutputs <- autoCallFunction evalState (rtValue fn) args
         checkType evalState rawOutputs >>= \case
           Nothing -> panic "herculesCI{}.onPush.<name>.outputs{...} must return an attribute set."
           Just attrs -> pure attrs
-
-      -- case params of
-      --   SomeInputsRequired params | M.keysSet `S.isSubsetOf` xyz ->
-      --   AllInputsRequired -> panic "inputs not implemented yet"
-      --    -> panic "inputs not implemented yet"
       _ ->
         panic "herculesCI{}.onPush.<name>.outputs must be an attribute set or function returning an attribute set."
 
@@ -211,8 +221,15 @@ invokeOutputs evalState onPush = runMaybeT do
 --       or falling back to
 --       ["a" "b"]  => (import file legacyArgs).a.b
 -- @@@
-getOnPushOutputValueByPath :: Ptr EvalState -> FilePath -> HerculesCIArgs -> [ByteString] -> IO (Maybe RawValue)
-getOnPushOutputValueByPath evalState filePath args attrPath = do
+getOnPushOutputValueByPath ::
+  Ptr EvalState ->
+  FilePath ->
+  HerculesCIArgs ->
+  -- | Resolve inputs to an attrset of fetched/fetchable stuff
+  (Map ByteString InputDeclaration -> IO (Value NixAttrs)) ->
+  [ByteString] ->
+  IO (Maybe RawValue)
+getOnPushOutputValueByPath evalState filePath args resolveInputs attrPath = do
   homeExpr <- escalateAs FatalError =<< loadNixFile evalState filePath (HerculesCIArgs.primaryRepo args)
   onPush <- runMaybeT do
     herculesCI <- MaybeT $ getHerculesCI evalState homeExpr args
@@ -223,17 +240,19 @@ getOnPushOutputValueByPath evalState filePath args attrPath = do
   case onPush of
     Just jobs -> do
       case attrPath of
-        [] -> pure $ Just $ rtValue jobs -- Technically mapAttrs .outputs, meh
+        [] -> pure $ Just $ coerce jobs -- Technically mapAttrs .outputs, meh
         (jobName : attrPath') -> do
-          jobsMap <- getAttrs jobs
+          jobsMap <- getAttrs (coerce jobs)
           case M.lookup jobName jobsMap of
             Just selectedJob -> do
               -- TODO: call `outputs`
               -- attrByPath evalState selectedJob ("outputs" : attrPath')
               selectedJobAttrs <-
                 checkType evalState selectedJob
-                  >>= maybe (panic "onPush.<name> must be an attribute set, containing an outputs attribute.") pure
-              outputs <- invokeOutputs evalState selectedJobAttrs
+                  >>= maybe (panic "onPush.<name> must be an attribute set, containing an outputs attribute.") (pure . JobAttrs)
+              inputs <- getExtraInputs evalState selectedJobAttrs
+              resolved <- resolveInputs inputs
+              outputs <- invokeOutputs evalState selectedJobAttrs resolved
               case outputs of
                 Nothing -> pure Nothing
                 Just outs -> attrByPath evalState (rtValue outs) attrPath'

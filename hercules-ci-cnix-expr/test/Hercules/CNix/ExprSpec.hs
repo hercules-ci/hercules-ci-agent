@@ -20,7 +20,7 @@ setup f = f SingleState.evalState
 checkWithNix :: Ptr EvalState -> ByteString -> RawValue -> IO ()
 checkWithNix evalState s a = do
   f <- valueFromExpressionString evalState s "/home/someuser/src/dummy-project"
-  r <- apply evalState f a
+  r <- apply f a
   match evalState r >>= \case
     Right (IsBool b) -> do
       bl <- getBool b
@@ -35,7 +35,7 @@ spec = do
   describe "getLocalFlake" $
     it "gets a trivial flake" $ do
       setup \evalState -> do
-        v <- getLocalFlake evalState "test/data/simple-flake"
+        v <- getLocalFlake evalState "test/data/simple-flake" >>= assertType evalState
         lib <- getAttr evalState v "lib"
         libAttrs <-
           for lib (Typed.match evalState) >>= \case

@@ -17,7 +17,7 @@ import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDef
 import Hercules.CLI.Common (runAuthenticated)
 import Hercules.CLI.Exception (exitMsg)
 import Hercules.CLI.Git (getAllBranches, getHypotheticalRefs)
-import Hercules.CLI.Nix (ciNixAttributeCompleter, createHerculesCIArgs, withNix)
+import Hercules.CLI.Nix (ciNixAttributeCompleter, createHerculesCIArgs, resolveInputs, withNix)
 import Hercules.CLI.Options (flatCompleter, mkCommand, subparser)
 import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption, projectPathText)
 import Hercules.CLI.Secret (getSecretsFilePath)
@@ -32,7 +32,7 @@ import Katip (initLogEnv, runKatipContextT)
 import Options.Applicative (completer, help, long, metavar, strArgument, strOption)
 import qualified Options.Applicative as Optparse
 import Protolude hiding (evalState, wait, withAsync)
-import RIO (RIO)
+import RIO (RIO, askUnliftIO)
 import UnliftIO.Async (wait, withAsync)
 import UnliftIO.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
 import UnliftIO.Temporary (withTempDirectory)
@@ -53,11 +53,11 @@ runParser = do
   pure $ runAuthenticated do
     withAsync (getProjectEffectData projectOptionMaybe requireToken) \projectPathAsync -> do
       withNix \store evalState -> do
-        -- (nixFile, rootValue) <- liftIO $ callCiNix evalState refMaybe
         args <- liftIO $ createHerculesCIArgs refMaybe
         let attrPath = T.split (== '.') attr
             nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
-        valMaybe <- liftIO $ getOnPushOutputValueByPath evalState (toS nixFile) args (map encodeUtf8 attrPath)
+        uio <- askUnliftIO
+        valMaybe <- liftIO $ getOnPushOutputValueByPath evalState (toS nixFile) args (resolveInputs uio evalState projectOptionMaybe) (map encodeUtf8 attrPath)
         -- valMaybe <- liftIO $ attrByPath evalState rootValue
         attrValue <- case valMaybe of
           Nothing -> do
