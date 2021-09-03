@@ -5,11 +5,13 @@
 
 set -xe
 
+cabal2nix cabal://cachix-0.6.1 > nix/cachix.nix
 cabal2nix cabal://servant-websockets-2.0.0 > nix/servant-websockets.nix
 cabal2nix cabal://websockets-0.12.6.1 > nix/websockets.nix
 cabal2nix https://github.com/hercules-ci/optparse-applicative > nix/hercules-ci-optparse-applicative.nix
 
 pre-commit run --files \
+  nix/cachix.nix \
   nix/servant-websockets.nix \
   nix/websockets.nix \
   nix/hercules-ci-optparse-applicative.nix \
