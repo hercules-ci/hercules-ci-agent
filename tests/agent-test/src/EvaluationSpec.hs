@@ -118,7 +118,7 @@ spec = describe "Evaluation" $ do
                 }
           _ -> failWith $ "Events should be a single message, not: " <> show r
   context "when a ci.nix is provided" $
-    it "it is preferred over default.nix" $
+    it "it is preferred over default.nix and flake.nix" $
       \srv -> do
         id <- randomId
         (s, r) <-
