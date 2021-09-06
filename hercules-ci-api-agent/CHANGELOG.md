@@ -5,6 +5,12 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.4.1.0 - 2021-09-06
+
+### Added
+
+ - `EffectTask` fields to support running `hci` in effects
+
 ## 0.4.0.0 - 2021-06-22
 
 ### Changed
