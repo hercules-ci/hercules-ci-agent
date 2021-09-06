@@ -5,7 +5,7 @@ in
 pkgs.haskell.lib.buildStackProject {
   # TODO: revert this to
   # inherit ghc;
-  ghc = pkgs.haskell.compiler.ghc8104;
+  ghc = pkgs.haskell.compiler.ghc8106;
   name = "hercules-ci-stack-shell";
   buildInputs = [
     # Static linking avoids the error

@@ -51,13 +51,13 @@ let
         haskellPackages_.extend (
           self: super:
             {
-              # 2020-11-21: cachix + chachix-api needs a patch for ghc 8.10 compat
-              # https://github.com/cachix/cachix/pull/331
-              cachix = self.callPackage ./cachix.nix { };
-              cachix-api =
-                updateTo "0.6.0" super.cachix-api (self.callPackage ./cachix-api.nix { });
+              # # 2020-11-21: cachix + chachix-api needs a patch for ghc 8.10 compat
+              # # https://github.com/cachix/cachix/pull/331
+              # cachix = self.callPackage ./cachix.nix { };
+              # cachix-api =
+              #   updateTo "0.6.0" super.cachix-api (self.callPackage ./cachix-api.nix { });
 
-              nix-narinfo = self.callPackage ./nix-narinfo.nix { };
+              # nix-narinfo = self.callPackage ./nix-narinfo.nix { };
 
               hercules-ci-optparse-applicative =
                 super.callPackage ./hercules-ci-optparse-applicative.nix { };
