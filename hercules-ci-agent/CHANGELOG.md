@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.3]
+
+### Added
+
+ - `hci` can now run in the effects sandbox
+
+### Fixed
+
+ - Interrupt handling has been improved
+
 ## [0.8.2]
 
 ### Added
@@ -422,6 +432,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
+[0.8.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.2...hercules-ci-agent-0.8.3
+[0.8.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.1...hercules-ci-agent-0.8.2
 [0.8.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.0...hercules-ci-agent-0.8.1
 [0.8.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.5...hercules-ci-agent-0.8.0
 [0.7.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.4...hercules-ci-agent-0.7.5
