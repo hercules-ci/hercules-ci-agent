@@ -2,27 +2,14 @@
 
 module Hercules.API.Agent.Evaluate.EvaluateEvent where
 
-import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
-  ( AttributeErrorEvent,
-  )
-import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
-  ( AttributeEvent,
-  )
-import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest
-  ( BuildRequest,
-  )
-import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired
-  ( BuildRequired,
-  )
-import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
-  ( DerivationInfo,
-  )
-import Hercules.API.Agent.Evaluate.EvaluateEvent.Message
-  ( Message,
-  )
-import Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll
-  ( PushedAll,
-  )
+import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent (AttributeErrorEvent)
+import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent (AttributeEvent)
+import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest (BuildRequest)
+import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired (BuildRequired)
+import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo (DerivationInfo)
+import Hercules.API.Agent.Evaluate.EvaluateEvent.Message (Message)
+import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent)
+import Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll (PushedAll)
 import Hercules.API.Prelude
 
 data EvaluateEvent
@@ -33,4 +20,5 @@ data EvaluateEvent
   | PushedAll PushedAll
   | BuildRequired BuildRequired
   | BuildRequest BuildRequest
+  | OnPushHandlerEvent OnPushHandlerEvent
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

@@ -34,9 +34,13 @@ library
       Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest
       Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired
       Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
+      Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration
       Hercules.API.Agent.Evaluate.EvaluateEvent.Message
+      Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll
       Hercules.API.Agent.Evaluate.EvaluateTask
+      Hercules.API.Agent.Evaluate.ImmutableInput
+      Hercules.API.Agent.Evaluate.ImmutableGitInput
       Hercules.API.Agent.LifeCycle
       Hercules.API.Agent.LifeCycle.AgentInfo
       Hercules.API.Agent.LifeCycle.CreateAgentSession

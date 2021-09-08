@@ -1,17 +1,9 @@
 module Hercules.CLI.Exception where
 
 import qualified Control.Exception.Safe
+import Hercules.UserException (UserException (UserException))
 import Protolude hiding (handle, show)
 import System.IO (hIsTerminalDevice)
-import Text.Show
-
-data UserException = UserException Text
-
-instance Exception UserException where
-  displayException = show
-
-instance Show UserException where
-  show (UserException msg) = "error: " <> toS msg
 
 handleUserException :: IO a -> IO a
 handleUserException =

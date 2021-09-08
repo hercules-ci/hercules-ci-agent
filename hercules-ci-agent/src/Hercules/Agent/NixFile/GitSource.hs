@@ -4,7 +4,7 @@
 
 module Hercules.Agent.NixFile.GitSource where
 
-import Data.Aeson (ToJSON)
+import Data.Aeson (FromJSON, ToJSON)
 import qualified Data.Text as T
 import Hercules.CNix.Expr (ToRawValue, ViaJSON (ViaJSON))
 import Protolude
@@ -17,7 +17,7 @@ data GitSource = GitSource
     branch :: Maybe Text,
     tag :: Maybe Text
   }
-  deriving (Generic, ToJSON)
+  deriving (Generic, ToJSON, FromJSON, Show, Eq)
   deriving (ToRawValue) via (ViaJSON GitSource)
 
 fromRefRevPath :: Text -> Text -> Text -> GitSource

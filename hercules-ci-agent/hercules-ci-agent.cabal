@@ -75,6 +75,7 @@ library
       Hercules.Agent.WorkerProtocol.Orphans
       Hercules.Effect
       Hercules.Effect.Container
+      Hercules.UserException
       Data.Conduit.Extras
       Data.Conduit.Katip.Orphans
 

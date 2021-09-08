@@ -14,6 +14,7 @@ import qualified Control.Exception.Lifted as EL
 import Control.Monad.Except
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control
+import Data.Coerce (coerce)
 import qualified Data.Conduit
 import Data.Conduit.Extras (sinkChan, sinkChanTerminate, sourceChan)
 import Data.Conduit.Katip.Orphans ()
@@ -27,12 +28,21 @@ import qualified Data.Set as S
 import Data.UUID (UUID)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
+import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent (OnPushHandlerEvent))
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.ImmutableGitInput as API.ImmutableGitInput
+import qualified Hercules.API.Agent.Evaluate.ImmutableInput as API.ImmutableInput
 import qualified Hercules.API.Agent.LifeCycle.ServiceInfo
 import Hercules.API.Logs.LogEntry (LogEntry)
 import qualified Hercules.API.Logs.LogEntry as LogEntry
 import Hercules.API.Logs.LogHello (LogHello (LogHello, clientProtocolVersion, storeProtocolVersion))
 import Hercules.API.Logs.LogMessage (LogMessage)
 import qualified Hercules.API.Logs.LogMessage as LogMessage
+import Hercules.Agent.NixFile (HerculesCIAttrs, JobAttrs (JobAttrs), getExtraInputs, getHerculesCI, getOnPushAttrs, homeExprRawValue, loadNixFile)
+import qualified Hercules.Agent.NixFile as NixFile
+import Hercules.Agent.NixFile.HerculesCIArgs (HerculesCIMeta (HerculesCIMeta), fromGitSource)
+import qualified Hercules.Agent.NixFile.HerculesCIArgs
 import Hercules.Agent.Sensitive
 import qualified Hercules.Agent.Socket as Socket
 import Hercules.Agent.Worker.Build (runBuild)
@@ -53,13 +63,14 @@ import Hercules.Agent.WorkerProtocol.Command.Eval
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
 import Hercules.Agent.WorkerProtocol.Event
   ( Event (Exception),
+    ViaJSON (ViaJSON),
   )
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.CNix as CNix
-import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCallFunction, evalArgs, evalFile, getAttrBool, getAttrList, getAttrs, getDrvFile, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, withEvalStateConduit)
+import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCallFunction, checkType, evalArgs, getAttr, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, rtValue, toValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
 import qualified Hercules.CNix.Expr.Raw
 import Hercules.CNix.Expr.Typed (Value)
@@ -68,6 +79,7 @@ import qualified Hercules.CNix.Std.Vector as Std.Vector
 import Hercules.CNix.Store.Context (NixStorePathWithOutputs)
 import Hercules.CNix.Util (installDefaultSigINTHandler)
 import Hercules.Error
+import Hercules.UserException (UserException (UserException))
 import Katip
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import qualified Network.URI
@@ -407,7 +419,7 @@ maybeThrowBuildException result plainDrvText =
 
 runEval ::
   forall i m.
-  (MonadResource m, KatipContext m, MonadUnliftIO m) =>
+  (MonadResource m, KatipContext m, MonadUnliftIO m, MonadThrow m) =>
   HerculesState ->
   Eval ->
   ConduitM i Event m ()
@@ -487,10 +499,127 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
         evalArgs evalState (autoArgArgs (Eval.autoArguments eval))
     Data.Conduit.handleC (yieldAttributeError []) $
       do
-        imprt <- liftIO $ evalFile evalState (toS $ Eval.file eval)
-        applied <- liftIO (autoCallFunction evalState imprt args)
-        walk store evalState args applied
+        homeExpr <- escalateAs UserException =<< liftIO (loadNixFile evalState (toS $ Eval.cwd eval) (coerce $ Eval.gitSource eval))
+        let hargs = fromGitSource (coerce $ Eval.gitSource eval) meta
+            meta = HerculesCIMeta {apiBaseUrl = Eval.apiBaseUrl eval}
+        liftIO (getHerculesCI evalState homeExpr hargs) >>= \case
+          Nothing ->
+            -- legacy
+            walk store evalState args (homeExprRawValue homeExpr)
+          Just herculesCI ->
+            case Event.fromViaJSON (Eval.selector eval) of
+              EvaluateTask.ConfigOrLegacy -> sendConfig evalState herculesCI
+              EvaluateTask.OnPush onPush -> walkOnPush store evalState onPush herculesCI
     yield Event.EvaluationDone
+
+walkOnPush :: (MonadUnliftIO m, KatipContext m, MonadThrow m) => Store -> Ptr EvalState -> EvaluateTask.OnPush -> HerculesCIAttrs -> ConduitT i Event m ()
+walkOnPush store evalState onPushParams herculesCI = do
+  onPushes <-
+    escalate . maybeToEither (FatalError "walkOnPush: no onPush")
+      =<< liftIO (getOnPushAttrs evalState herculesCI)
+  onPush' <-
+    escalate . maybeToEither (FatalError $ "walkOnPush: no onPush." <> show (EvaluateTask.name onPushParams))
+      =<< liftIO (getAttr evalState onPushes (encodeUtf8 $ EvaluateTask.name onPushParams))
+  onPushAttrs <-
+    escalate . maybeToEither (FatalError $ "walkOnPush: not attrs onPush." <> show (EvaluateTask.name onPushParams))
+      =<< liftIO (checkType evalState onPush')
+  let onPush = JobAttrs onPushAttrs
+  inputs <- liftIO $ do
+    inputs <- for (EvaluateTask.inputs onPushParams) \input -> do
+      inputToValue evalState input
+    toValue evalState inputs
+  outputs <-
+    escalate . maybeToEither (UserException $ "onPush." <> show (EvaluateTask.name onPushParams) <> ".outputs must return an attribute set.")
+      =<< liftIO (NixFile.invokeOutputs evalState onPush inputs)
+  simpleWalk store evalState (rtValue outputs)
+
+inputToValue :: Ptr EvalState -> API.ImmutableInput.ImmutableInput -> IO RawValue
+inputToValue evalState (API.ImmutableInput.ArchiveUrl u) = getFlakeFromArchiveUrl evalState u
+inputToValue evalState (API.ImmutableInput.Git g) = mkImmutableGitInputFlakeThunk evalState g
+
+mkImmutableGitInputFlakeThunk :: Ptr EvalState -> API.ImmutableGitInput.ImmutableGitInput -> IO RawValue
+mkImmutableGitInputFlakeThunk evalState git = do
+  -- TODO: allow picking ssh/http url
+  getFlakeFromGit
+    evalState
+    (API.ImmutableGitInput.httpURL git)
+    (API.ImmutableGitInput.ref git)
+    (API.ImmutableGitInput.rev git)
+
+sendConfig :: MonadIO m => Ptr EvalState -> HerculesCIAttrs -> ConduitT i Event m ()
+sendConfig evalState herculesCI = do
+  onPushesMaybe <- liftIO $ getOnPushAttrs evalState herculesCI
+  for_ onPushesMaybe \onPushes -> do
+    attrs <- liftIO (getAttrs onPushes)
+    for_ (M.mapWithKey (,) attrs) \(name, value0) -> do
+      liftIO (checkType evalState value0) >>= \case
+        Nothing -> yield $ Event.Error $ "herculesCI.onPush." <> show name <> " must be an attribute set."
+        Just jobAttrs0 -> do
+          let jobAttrs = JobAttrs jobAttrs0
+          ei <- liftIO $ getExtraInputs evalState jobAttrs
+          yield $
+            Event.OnPushHandler $
+              ViaJSON $
+                OnPushHandlerEvent
+                  { handlerName = decodeUtf8 name,
+                    handlerExtraInputs = M.mapKeys decodeUtf8 ei
+                  }
+
+simpleWalk ::
+  (MonadUnliftIO m, KatipContext m) =>
+  Store ->
+  Ptr EvalState ->
+  RawValue ->
+  ConduitT i Event m ()
+simpleWalk store evalState = walk' [] 10
+  where
+    handleErrors path = Data.Conduit.handleC (yieldAttributeError path)
+    walk' ::
+      (MonadUnliftIO m, KatipContext m) =>
+      -- | Attribute path
+      [ByteString] ->
+      -- | Depth of tree remaining
+      Integer ->
+      -- | Current node of the walk
+      RawValue ->
+      -- | Program that performs the walk and emits 'Event's
+      ConduitT i1 Event m ()
+    walk' path depthRemaining v =
+      handleErrors path $
+        liftIO (match evalState v)
+          >>= \case
+            Left e ->
+              yieldAttributeError path e
+            Right m -> case m of
+              IsAttrs attrValue -> do
+                isDeriv <- liftIO $ isDerivation evalState v
+                if isDeriv
+                  then walkDerivation store evalState path attrValue
+                  else do
+                    attrs <- liftIO $ getAttrs attrValue
+                    void $
+                      flip M.traverseWithKey attrs $
+                        \name value ->
+                          if depthRemaining > 0
+                            then
+                              walk'
+                                (path ++ [name])
+                                (depthRemaining - 1)
+                                value
+                            else yield (Event.Error $ "Max recursion depth reached at path " <> show path)
+              _any -> do
+                vt <- liftIO $ rawValueType v
+                unless
+                  ( lastMay path == Just "recurseForDerivations"
+                      && vt == Hercules.CNix.Expr.Raw.Bool
+                  )
+                  do
+                    logLocM DebugS $
+                      logStr $
+                        "Ignoring "
+                          <> show path
+                          <> " : "
+                          <> (show vt :: Text)
 
 traverseSPWOs :: (StorePathWithOutputs -> IO ()) -> StdVector NixStorePathWithOutputs -> IO ()
 traverseSPWOs f v = do
@@ -532,48 +661,7 @@ walk store evalState = walk' True [] 10
               IsAttrs attrValue -> do
                 isDeriv <- liftIO $ isDerivation evalState v
                 if isDeriv
-                  then do
-                    drvStorePath <- getDrvFile evalState v
-                    drvPath <- liftIO $ CNix.storePathToPath store drvStorePath
-                    typE <- runExceptT do
-                      isEffect <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "isEffect")
-                      case isEffect of
-                        Just True -> throwE $ Right Attribute.Effect
-                        _ -> pass
-                      isDependenciesOnly <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "buildDependenciesOnly")
-                      case isDependenciesOnly of
-                        Just True -> throwE $ Right Attribute.DependenciesOnly
-                        _ -> pass
-                      phases <- liftEitherAs Left =<< liftIO (getAttrList evalState attrValue "phases")
-                      case phases of
-                        Just [aSingularPhase] ->
-                          liftIO (match evalState aSingularPhase) >>= liftEitherAs Left >>= \case
-                            IsString phaseNameValue -> do
-                              phaseName <- liftIO (getStringIgnoreContext phaseNameValue)
-                              when (phaseName == "nobuildPhase") do
-                                throwE $ Right Attribute.DependenciesOnly
-                            _ -> pass
-                        _ -> pass
-                      mayFail <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "ignoreFailure")
-                      case mayFail of
-                        Just True -> throwE $ Right Attribute.MayFail
-                        _ -> pass
-                      mustFail <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "requireFailure")
-                      case mustFail of
-                        Just True -> throwE $ Right Attribute.MustFail
-                        _ -> pass
-                    let yieldAttribute typ =
-                          yield $
-                            Event.Attribute
-                              Attribute.Attribute
-                                { Attribute.path = path,
-                                  Attribute.drv = drvPath,
-                                  Attribute.typ = typ
-                                }
-                    case typE of
-                      Left (Left e) -> yieldAttributeError path e
-                      Left (Right t) -> yieldAttribute t
-                      Right _ -> yieldAttribute Attribute.Regular
+                  then walkDerivation store evalState path attrValue
                   else do
                     walkAttrset <-
                       if forceWalkAttrset
@@ -615,6 +703,56 @@ walk store evalState = walk' True [] 10
                         <> " : "
                         <> (show vt :: Text)
                 pass
+
+walkDerivation ::
+  MonadIO m =>
+  Store ->
+  Ptr EvalState ->
+  [ByteString] ->
+  Value NixAttrs ->
+  ConduitT i Event m ()
+walkDerivation store evalState path attrValue = do
+  drvStorePath <- getDrvFile evalState (rtValue attrValue)
+  drvPath <- liftIO $ CNix.storePathToPath store drvStorePath
+  typE <- runExceptT do
+    isEffect <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "isEffect")
+    case isEffect of
+      Just True -> throwE $ Right Attribute.Effect
+      _ -> pass
+    isDependenciesOnly <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "buildDependenciesOnly")
+    case isDependenciesOnly of
+      Just True -> throwE $ Right Attribute.DependenciesOnly
+      _ -> pass
+    phases <- liftEitherAs Left =<< liftIO (getAttrList evalState attrValue "phases")
+    case phases of
+      Just [aSingularPhase] ->
+        liftIO (match evalState aSingularPhase) >>= liftEitherAs Left >>= \case
+          IsString phaseNameValue -> do
+            phaseName <- liftIO (getStringIgnoreContext phaseNameValue)
+            when (phaseName == "nobuildPhase") do
+              throwE $ Right Attribute.DependenciesOnly
+          _ -> pass
+      _ -> pass
+    mayFail <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "ignoreFailure")
+    case mayFail of
+      Just True -> throwE $ Right Attribute.MayFail
+      _ -> pass
+    mustFail <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "requireFailure")
+    case mustFail of
+      Just True -> throwE $ Right Attribute.MustFail
+      _ -> pass
+  let yieldAttribute typ =
+        yield $
+          Event.Attribute
+            Attribute.Attribute
+              { Attribute.path = path,
+                Attribute.drv = drvPath,
+                Attribute.typ = typ
+              }
+  case typE of
+    Left (Left e) -> yieldAttributeError path e
+    Left (Right t) -> yieldAttribute t
+    Right _ -> yieldAttribute Attribute.Regular
 
 liftEitherAs :: MonadError e m => (e0 -> e) -> Either e0 a -> m a
 liftEitherAs f = liftEither . rmap

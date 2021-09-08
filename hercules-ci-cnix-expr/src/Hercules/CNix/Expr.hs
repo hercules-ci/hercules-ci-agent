@@ -1,7 +1,9 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -522,6 +524,31 @@ getFlakeFromGit evalState url ref rev = do
   apply fn args
 #endif
 
+getFlakeFromArchiveUrl :: Ptr EvalState -> Text -> IO RawValue
+#ifdef NIX_2_4
+getFlakeFromArchiveUrl evalState url = do
+  srcArgs <-
+    toRawValue evalState $
+      ("url" :: ByteString) =: url
+  fn <- valueFromExpressionString evalState "builtins.fetchTarball" "/"
+  pValue <- apply fn srcArgs
+  p <- assertType evalState pValue
+  p' <- getStringIgnoreContext p
+  getFlakeFromFlakeRef evalState p'
+#else
+getFlakeFromArchiveUrl evalState url = do
+  srcArgs <-
+    toValue evalState $
+      ("url" :: ByteString) =: url
+  flakeCompat <- getFlakeCompat evalState
+  args <- toRawValue evalState =<< sequenceA (
+        ("srcArgs" :: ByteString) =: toRawValue evalState srcArgs
+      <> "flake-compat" =: toRawValue evalState flakeCompat
+    )
+  fn <- valueFromExpressionString evalState "{srcArgs, flake-compat}: (flake-compat { src = builtins.fetchTarball srcArgs; }).defaultNix" "/"
+  apply fn args
+#endif
+
 traverseWithKey_ :: Applicative f => (k -> a -> f ()) -> Map k a -> f ()
 traverseWithKey_ f = M.foldrWithKey (\k a more -> f k a *> more) (pure ())
 
@@ -653,6 +680,12 @@ instance ToRawValue a => ToValue (Map ByteString a) where
       }|]
     Value <$> mkRawValue v
 
+instance ToRawValue a => ToRawValue (Map Text a)
+
+instance ToRawValue a => ToValue (Map Text a) where
+  type NixTypeFor (Map Text a) = NixAttrs
+  toValue evalState attrs = toValue evalState (M.mapKeys encodeUtf8 attrs)
+
 mkNull :: IO RawValue
 mkNull =
   coerce
@@ -672,7 +705,8 @@ instance ToRawValue A.Value where
   toRawValue es (A.Array a) = toRawValue es a
 
 -- | For deriving-via of 'ToRawValue' using 'ToJSON'.
-newtype ViaJSON a = ViaJSON a
+newtype ViaJSON a = ViaJSON {fromViaJSON :: a}
+  deriving newtype (Eq, Ord, Read, Show)
 
 instance A.ToJSON a => ToRawValue (ViaJSON a) where
   toRawValue es (ViaJSON a) = toRawValue es (A.toJSON a)

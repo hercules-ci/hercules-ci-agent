@@ -8,10 +8,11 @@ import Data.Has (Has)
 import qualified Data.List as L
 import qualified Data.Map as M
 import qualified Data.Text as T
+import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration (InputDeclaration (SiblingInput))
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration as InputDeclaration
 import qualified Hercules.API.Inputs.ImmutableGitInput as API.ImmutableGitInput
 import Hercules.API.Projects (getJobSource)
-import Hercules.Agent.NixFile (InputDeclaration (SiblingInput), getOnPushOutputValueByPath)
-import qualified Hercules.Agent.NixFile as NixFile
+import Hercules.Agent.NixFile (getOnPushOutputValueByPath)
 import qualified Hercules.Agent.NixFile.GitSource as GitSource
 import Hercules.Agent.NixFile.HerculesCIArgs (HerculesCIArgs)
 import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
@@ -50,9 +51,10 @@ resolveInputs uio evalState projectMaybe inputs = do
   projectPath <- unliftIO uio $ getProjectPath projectMaybe
   let resolveInput :: ByteString -> InputDeclaration -> IO RawValue
       resolveInput _name (SiblingInput input) = unliftIO uio do
-        let resourceClient = projectResourceClientByPath (projectPath {projectPathProject = NixFile.project input})
-        immutableGitInput <- runHerculesClient (getJobSource resourceClient (NixFile.ref input))
+        let resourceClient = projectResourceClientByPath (projectPath {projectPathProject = InputDeclaration.project input})
+        immutableGitInput <- runHerculesClient (getJobSource resourceClient (InputDeclaration.ref input))
         liftIO $ mkImmutableGitInputFlakeThunk evalState immutableGitInput
+      resolveInput _name InputDeclaration.BogusInput {} = panic "resolveInput: not implemented yet"
   inputs
     & M.mapWithKey (,)
     & mapConcurrently (uncurry resolveInput)

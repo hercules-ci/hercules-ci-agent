@@ -54,6 +54,7 @@ library
     , filepath
     , hercules-ci-agent
     , hercules-ci-api
+    , hercules-ci-api-agent
     , hercules-ci-api-core
     , hercules-ci-cnix-expr
     , hercules-ci-cnix-store

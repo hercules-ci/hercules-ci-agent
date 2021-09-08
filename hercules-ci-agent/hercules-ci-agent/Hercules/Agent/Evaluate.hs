@@ -4,14 +4,15 @@
 
 module Hercules.Agent.Evaluate
   ( performEvaluation,
-    findNixFile,
   )
 where
 
 import Conduit
 import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
+import Control.Lens (at, (^?))
 import qualified Data.Aeson as A
+import Data.Aeson.Lens (_String)
 import qualified Data.ByteString.Lazy as BL
 import Data.Char (isAsciiLower, isAsciiUpper)
 import Data.Conduit.Process (sourceProcessWithStreams)
@@ -53,6 +54,7 @@ import Hercules.Agent.Nix.RetrieveDerivationInfo
   ( retrieveDerivationInfo,
   )
 import Hercules.Agent.NixFile (findNixFile)
+import Hercules.Agent.NixFile.GitSource (fromRefRevPath)
 import Hercules.Agent.NixPath
   ( renderSubPath,
   )
@@ -64,6 +66,7 @@ import qualified Hercules.Agent.WorkerProcess as WorkerProcess
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
+import Hercules.Agent.WorkerProtocol.Event (ViaJSON (ViaJSON))
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as WorkerAttribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as WorkerAttributeError
@@ -75,6 +78,7 @@ import qualified Network.HTTP.Simple as HTTP.Simple
 import qualified Network.URI
 import Protolude hiding (finally, newChan, writeChan)
 import qualified Servant.Client
+import Servant.Client.Core (showBaseUrl)
 import qualified System.Directory as Dir
 import System.FilePath
 import System.Process
@@ -125,6 +129,12 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
   projectDir <- case M.lookup "src" inputLocations of
     Nothing -> panic "No primary source provided"
     Just x -> pure x
+  (ref, rev) <- case M.lookup "src" (EvaluateTask.inputMetadata task) of
+    Nothing -> do
+      panic $ "No primary source metadata provided" <> show task
+    Just meta -> pure $ fromMaybe (panic "no ref/rev in primary source metadata") do
+      (,) <$> (meta ^? at "ref" . traverse . _String)
+        <*> (meta ^? at "rev" . traverse . _String)
   nixPath <-
     EvaluateTask.nixPath task
       & ( traverse
@@ -232,6 +242,8 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
                 uploadDrvInfos
                 sync
                 (EvaluateTask.logToken task)
+                (ref, rev)
+                (EvaluateTask.selector task)
             -- process has finished
             TraversalQueue.waitUntilDone derivationQueue
             TraversalQueue.close derivationQueue
@@ -280,11 +292,15 @@ runEvalProcess ::
   (StorePath -> App ()) ->
   App () ->
   Text ->
+  (Text, Text) ->
+  EvaluateTask.Selector ->
   App ()
-runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush logToken = do
+runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush logToken (ref, rev) selector = do
   extraOpts <- Nix.askExtraOptions
-  baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
-  let eval =
+  bulkBaseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
+  apiBaseUrl <- asks (toS . showBaseUrl . Env.herculesBaseUrl)
+  let gitSource = fromRefRevPath ref rev (toS projectDir)
+      eval =
         Eval.Eval
           { Eval.cwd = projectDir,
             Eval.file = toS file,
@@ -294,8 +310,11 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
               LogSettings.LogSettings
                 { token = Sensitive logToken,
                   path = "/api/v1/logs/build/socket",
-                  baseURL = toS $ Network.URI.uriToString identity baseURL ""
-                }
+                  baseURL = toS $ Network.URI.uriToString identity bulkBaseURL ""
+                },
+            Eval.gitSource = ViaJSON gitSource,
+            Eval.apiBaseUrl = apiBaseUrl,
+            Eval.selector = ViaJSON selector
           }
   buildRequiredIndex <- liftIO $ newIORef (0 :: Int)
   commandChan <- newChan
@@ -375,6 +394,9 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                     logLocM DebugS $ "Got derivation status " <> logStr (show status :: Text)
                     return status
                 writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drvText) status
+                continue
+              Event.OnPushHandler (ViaJSON e) -> do
+                emit $ EvaluateEvent.OnPushHandlerEvent e
                 continue
               Event.Exception e -> panic e
               -- Unused during eval

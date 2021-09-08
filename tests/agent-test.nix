@@ -5,7 +5,7 @@ let
     {
       inherit x;
     } ''
-    cd $x && tar -c . | gzip -1 >$out
+    tar -C $x --transform='flags=r;s|^|nixpkgs/|' -c . | gzip -1 >$out
   '';
 
   testdata = pkgs.runCommand "testdata" { } ''
@@ -49,6 +49,7 @@ in
         systemd.services.hercules-ci-agent.serviceConfig.StartLimitBurst = lib.mkForce (agentStartTimeoutSec * 10);
         systemd.services.hercules-ci-agent.serviceConfig.RestartSec = lib.mkForce ("100ms");
         virtualisation.diskSize = 6 * 1024;
+        virtualisation.memorySize = 1024;
       };
     };
     api = { ... }: {

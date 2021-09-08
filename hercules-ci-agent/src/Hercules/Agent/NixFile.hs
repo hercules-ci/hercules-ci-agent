@@ -6,14 +6,24 @@
 module Hercules.Agent.NixFile
   ( findNixFile,
     loadNixFile,
-    getExtraInputs,
     getOnPushOutputValueByPath,
+
+    -- * 'HomeExpr'
+    HomeExpr (..),
+    homeExprRawValue,
+    getHerculesCI,
+
+    -- * 'HerculesCIAttrs' (@.herculesCI@)
+    HerculesCIAttrs (..),
+    getOnPushAttrs,
+
+    -- * 'JobAttrs'
+    JobAttrs (..),
+    getExtraInputs,
+    invokeOutputs,
 
     -- * Utilities
     computeArgsRequired,
-    -- TODO: move
-    InputDeclaration (..),
-    SiblingInput (..),
   )
 where
 
@@ -21,6 +31,8 @@ import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
 import Data.Coerce (coerce)
 import qualified Data.Map as M
 import qualified Data.Set as S
+import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration (InputDeclaration (SiblingInput), SiblingInput (MkSiblingInput))
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration
 import Hercules.Agent.NixFile.CiNixArgs (CiNixArgs (CiNixArgs))
 import qualified Hercules.Agent.NixFile.CiNixArgs
 import Hercules.Agent.NixFile.GitSource (GitSource)
@@ -192,13 +204,6 @@ getExtraInputs evalState (JobAttrs jobAttrs) = do
                 refStr <- for (M.lookup "ref" inputAttrs) (assertType evalState >=> getStringIgnoreContext)
                 pure $ SiblingInput $ MkSiblingInput {project = decodeUtf8With lenientDecode projectStr, ref = decodeUtf8With lenientDecode <$> refStr}
               else panic "Did not recognize herculesCI{}.onPush.<name>.extraInputs.<name> keys."
-
-data InputDeclaration = SiblingInput SiblingInput
-
-data SiblingInput = MkSiblingInput
-  { project :: Text,
-    ref :: Maybe Text
-  }
 
 invokeOutputs :: Ptr EvalState -> JobAttrs -> Value NixAttrs -> IO (Maybe (Value NixAttrs))
 invokeOutputs evalState (JobAttrs jobAttrs) args = runMaybeT do
