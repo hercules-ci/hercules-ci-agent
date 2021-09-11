@@ -12,7 +12,7 @@ homepage:       https://github.com/hercules-ci/hercules-ci#readme
 bug-reports:    https://github.com/hercules-ci/hercules-ci/issues
 author:         Hercules CI contributors
 maintainer:     info@hercules-ci.com
-copyright:      2018-2020 Hercules CI
+copyright:      2018-2021 Hercules CI
 license:        Apache-2.0
 build-type:     Simple
 
