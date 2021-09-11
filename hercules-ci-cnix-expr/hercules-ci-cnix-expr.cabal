@@ -57,6 +57,7 @@ library
       Hercules.CNix.Expr.Context
       Hercules.CNix.Expr.Raw
       Hercules.CNix.Expr.Typed
+      Hercules.CNix.Expr.RootedValue
   other-modules:
       Paths_hercules_ci_cnix_expr
 
@@ -111,6 +112,7 @@ test-suite hercules-ci-cnix-expr-tests
   other-modules:
       Hercules.CNix.ExprSpec
       Hercules.CNix.Store.TestUtil
+      Hercules.CNix.Expr.RootedValueSpec
       SingleState
       Spec
   hs-source-dirs:
