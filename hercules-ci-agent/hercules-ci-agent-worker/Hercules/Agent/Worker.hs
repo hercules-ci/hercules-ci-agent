@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE OverloadedLabels #-}
 
 module Hercules.Agent.Worker
   ( main,
@@ -9,7 +10,7 @@ module Hercules.Agent.Worker
 where
 
 import Conduit
-import Control.Concurrent.STM
+import Control.Concurrent.STM hiding (check)
 import qualified Control.Exception.Lifted as EL
 import Control.Monad.Except
 import Control.Monad.IO.Unlift
@@ -39,8 +40,7 @@ import qualified Hercules.API.Logs.LogEntry as LogEntry
 import Hercules.API.Logs.LogHello (LogHello (LogHello, clientProtocolVersion, storeProtocolVersion))
 import Hercules.API.Logs.LogMessage (LogMessage)
 import qualified Hercules.API.Logs.LogMessage as LogMessage
-import Hercules.Agent.NixFile (HerculesCIAttrs, JobAttrs (JobAttrs), getExtraInputs, getHerculesCI, getOnPushAttrs, homeExprRawValue, loadNixFile)
-import qualified Hercules.Agent.NixFile as NixFile
+import Hercules.Agent.NixFile (HerculesCISchema, getHerculesCI, homeExprRawValue, loadNixFile, parseExtraInputs)
 import Hercules.Agent.NixFile.HerculesCIArgs (HerculesCIMeta (HerculesCIMeta), fromGitSource)
 import qualified Hercules.Agent.NixFile.HerculesCIArgs
 import Hercules.Agent.Sensitive
@@ -70,9 +70,11 @@ import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.CNix as CNix
-import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCallFunction, checkType, evalArgs, getAttr, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, rtValue, toValue, withEvalStateConduit)
+import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
 import qualified Hercules.CNix.Expr.Raw
+import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, requireDict, (#.), (#?), (#?!), ($?))
+import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.CNix.Expr.Typed (Value)
 import Hercules.CNix.Std.Vector (StdVector)
 import qualified Hercules.CNix.Std.Vector as Std.Vector
@@ -83,7 +85,7 @@ import Hercules.UserException (UserException (UserException))
 import Katip
 import qualified Language.C.Inline.Cpp.Exceptions as C
 import qualified Network.URI
-import Protolude hiding (bracket, catch, evalState, wait, withAsync, yield)
+import Protolude hiding (bracket, catch, check, evalState, wait, withAsync, yield)
 import qualified System.Environment as Environment
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.Posix.IO (dup, fdToHandle, stdError)
@@ -502,36 +504,29 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
         homeExpr <- escalateAs UserException =<< liftIO (loadNixFile evalState (toS $ Eval.cwd eval) (coerce $ Eval.gitSource eval))
         let hargs = fromGitSource (coerce $ Eval.gitSource eval) meta
             meta = HerculesCIMeta {apiBaseUrl = Eval.apiBaseUrl eval}
-        liftIO (getHerculesCI evalState homeExpr hargs) >>= \case
+        liftIO (flip runReaderT evalState $ getHerculesCI homeExpr hargs) >>= \case
           Nothing ->
             -- legacy
             walk store evalState args (homeExprRawValue homeExpr)
           Just herculesCI ->
             case Event.fromViaJSON (Eval.selector eval) of
-              EvaluateTask.ConfigOrLegacy -> sendConfig evalState herculesCI
-              EvaluateTask.OnPush onPush -> walkOnPush store evalState onPush herculesCI
+              EvaluateTask.ConfigOrLegacy ->
+                sendConfig evalState herculesCI
+              EvaluateTask.OnPush onPush ->
+                transPipe (`runReaderT` evalState) do
+                  walkOnPush store evalState onPush herculesCI
     yield Event.EvaluationDone
 
-walkOnPush :: (MonadUnliftIO m, KatipContext m, MonadThrow m) => Store -> Ptr EvalState -> EvaluateTask.OnPush -> HerculesCIAttrs -> ConduitT i Event m ()
+walkOnPush :: (MonadEval m, MonadUnliftIO m, KatipContext m, MonadThrow m) => Store -> Ptr EvalState -> EvaluateTask.OnPush -> PSObject HerculesCISchema -> ConduitT i Event m ()
 walkOnPush store evalState onPushParams herculesCI = do
-  onPushes <-
-    escalate . maybeToEither (FatalError "walkOnPush: no onPush")
-      =<< liftIO (getOnPushAttrs evalState herculesCI)
-  onPush' <-
-    escalate . maybeToEither (FatalError $ "walkOnPush: no onPush." <> show (EvaluateTask.name onPushParams))
-      =<< liftIO (getAttr evalState onPushes (encodeUtf8 $ EvaluateTask.name onPushParams))
-  onPushAttrs <-
-    escalate . maybeToEither (FatalError $ "walkOnPush: not attrs onPush." <> show (EvaluateTask.name onPushParams))
-      =<< liftIO (checkType evalState onPush')
-  let onPush = JobAttrs onPushAttrs
+  onPushHandler <- herculesCI #?! #onPush >>= requireDict (EvaluateTask.name onPushParams)
   inputs <- liftIO $ do
     inputs <- for (EvaluateTask.inputs onPushParams) \input -> do
       inputToValue evalState input
-    toValue evalState inputs
-  outputs <-
-    escalate . maybeToEither (UserException $ "onPush." <> show (EvaluateTask.name onPushParams) <> ".outputs must return an attribute set.")
-      =<< liftIO (NixFile.invokeOutputs evalState onPush inputs)
-  simpleWalk store evalState (rtValue outputs)
+    toRawValue evalState inputs
+  outputsFun <- onPushHandler #. #outputs
+  outputs <- outputsFun $? (Schema.PSObject {value = inputs, provenance = Schema.Data})
+  simpleWalk store evalState (Schema.value outputs)
 
 inputToValue :: Ptr EvalState -> API.ImmutableInput.ImmutableInput -> IO RawValue
 inputToValue evalState (API.ImmutableInput.ArchiveUrl u) = getFlakeFromArchiveUrl evalState u
@@ -546,24 +541,20 @@ mkImmutableGitInputFlakeThunk evalState git = do
     (API.ImmutableGitInput.ref git)
     (API.ImmutableGitInput.rev git)
 
-sendConfig :: MonadIO m => Ptr EvalState -> HerculesCIAttrs -> ConduitT i Event m ()
-sendConfig evalState herculesCI = do
-  onPushesMaybe <- liftIO $ getOnPushAttrs evalState herculesCI
-  for_ onPushesMaybe \onPushes -> do
-    attrs <- liftIO (getAttrs onPushes)
-    for_ (M.mapWithKey (,) attrs) \(name, value0) -> do
-      liftIO (checkType evalState value0) >>= \case
-        Nothing -> yield $ Event.Error $ "herculesCI.onPush." <> show name <> " must be an attribute set."
-        Just jobAttrs0 -> do
-          let jobAttrs = JobAttrs jobAttrs0
-          ei <- liftIO $ getExtraInputs evalState jobAttrs
-          yield $
-            Event.OnPushHandler $
-              ViaJSON $
-                OnPushHandlerEvent
-                  { handlerName = decodeUtf8 name,
-                    handlerExtraInputs = M.mapKeys decodeUtf8 ei
-                  }
+sendConfig :: MonadIO m => Ptr EvalState -> PSObject HerculesCISchema -> ConduitT i Event m ()
+sendConfig evalState herculesCI = flip runReaderT evalState $ do
+  herculesCI #? #onPush >>= traverse_ \onPushes -> do
+    attrs <- dictionaryToMap onPushes
+    for_ (M.mapWithKey (,) attrs) \(name, onPush) -> do
+      ei <- onPush #? #extraInputs >>= traverse parseExtraInputs
+      lift $
+        yield $
+          Event.OnPushHandler $
+            ViaJSON $
+              OnPushHandlerEvent
+                { handlerName = decodeUtf8 name,
+                  handlerExtraInputs = M.mapKeys decodeUtf8 (fromMaybe mempty ei)
+                }
 
 simpleWalk ::
   (MonadUnliftIO m, KatipContext m) =>

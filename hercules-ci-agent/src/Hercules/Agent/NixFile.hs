@@ -1,26 +1,31 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE OverloadedLabels #-}
 
 module Hercules.Agent.NixFile
-  ( findNixFile,
-    loadNixFile,
-    getOnPushOutputValueByPath,
+  ( -- * Schemas
+    HomeSchema,
+    HerculesCISchema,
+    OnPushSchema,
+    ExtraInputsSchema,
+    InputDeclSchema,
+    InputsSchema,
+    InputSchema,
+    OutputsSchema,
 
-    -- * 'HomeExpr'
+    -- * Loading
+    findNixFile,
+    loadNixFile,
     HomeExpr (..),
     homeExprRawValue,
     getHerculesCI,
 
-    -- * 'HerculesCIAttrs' (@.herculesCI@)
-    HerculesCIAttrs (..),
-    getOnPushAttrs,
-
-    -- * 'JobAttrs'
-    JobAttrs (..),
-    getExtraInputs,
-    invokeOutputs,
+    -- * @onPush@
+    getOnPushOutputValueByPath,
+    parseExtraInputs,
 
     -- * Utilities
     computeArgsRequired,
@@ -28,9 +33,6 @@ module Hercules.Agent.NixFile
 where
 
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
-import Data.Coerce (coerce)
-import qualified Data.Map as M
-import qualified Data.Set as S
 import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration (InputDeclaration (SiblingInput), SiblingInput (MkSiblingInput))
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration
 import Hercules.Agent.NixFile.CiNixArgs (CiNixArgs (CiNixArgs))
@@ -42,24 +44,23 @@ import Hercules.CNix.Expr
   ( EvalState,
     FunctionMatches (FunctionMatches),
     FunctionParams (FunctionParams),
-    Match (IsAttrs, IsFunction),
+    Match (IsAttrs),
     NixAttrs,
+    NixString,
     Value (Value, rtValue),
-    apply,
     assertType,
     autoCallFunction,
-    checkType,
     evalFile,
     getAttr,
-    getAttrs,
     getLocalFlake,
-    getStringIgnoreContext,
     match',
     toRawValue,
     unsafeAssertType,
   )
 import qualified Hercules.CNix.Expr as Expr
 import Hercules.CNix.Expr.Raw (RawValue)
+import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), dictionaryToMap, getText_, toPSObject, (#.), (#?), ($?), (>>$?), type (->?), type (::.), type (::?))
+import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.Error (escalateAs)
 import Protolude hiding (evalState)
 import qualified System.Directory as Dir
@@ -84,29 +85,21 @@ findNixFile projectDir = do
     ambiguous : _ ->
       Left $
         "Don't know what to do, expecting only one of "
-          <> englishConjunction "or" (map fst ambiguous)
+          <> Schema.englishOr (map (toS . fst) ambiguous)
     [] ->
       Left $
         "Please provide a Nix expression to build. Could not find any of "
-          <> englishConjunction "or" (concat searchPath)
+          <> Schema.englishOr (concatMap (map toS) searchPath)
           <> " in your source"
-
-englishConjunction :: Show a => Text -> [a] -> Text
-englishConjunction _ [] = "none"
-englishConjunction _ [a] = show a
-englishConjunction connective [a1, a2] =
-  show a1 <> " " <> connective <> " " <> show a2
-englishConjunction connective (a : as) =
-  show a <> ", " <> englishConjunction connective as
 
 -- | Expression containing the bulk of the project
 data HomeExpr
   = Flake (Value NixAttrs)
-  | CiNix RawValue
+  | CiNix FilePath RawValue
 
 homeExprRawValue :: HomeExpr -> RawValue
 homeExprRawValue (Flake (Value r)) = r
-homeExprRawValue (CiNix r) = r
+homeExprRawValue (CiNix _ r) = r
 
 loadNixFile :: Ptr EvalState -> FilePath -> GitSource -> IO (Either Text HomeExpr)
 loadNixFile evalState projectPath src = runExceptT do
@@ -119,47 +112,38 @@ loadNixFile evalState projectPath src = runExceptT do
       rootValueOrFunction <- liftIO $ evalFile evalState nixFile
       args <- unsafeAssertType @NixAttrs <$> liftIO (toRawValue evalState CiNixArgs {src = src})
       homeExpr <- liftIO $ autoCallFunction evalState rootValueOrFunction args
-      pure (CiNix homeExpr)
+      pure (CiNix nixFile homeExpr)
 
-getHomeExprAttr :: Ptr EvalState -> HomeExpr -> ByteString -> IO (Maybe RawValue)
-getHomeExprAttr evalState (Flake attrs) name = getAttr evalState attrs name
-getHomeExprAttr evalState (CiNix val) name = runMaybeT do
-  attrs <-
-    liftIO (match' evalState val) >>= \case
-      IsAttrs a -> pure a
-      _ -> empty
-  MaybeT $ getAttr evalState attrs name
+getHomeExprObject :: MonadEval m => HomeExpr -> m (PSObject HomeSchema)
+getHomeExprObject (Flake attrs) = pure PSObject {value = rtValue attrs, provenance = Schema.File "flake.nix"}
+getHomeExprObject (CiNix f obj) = pure PSObject {value = obj, provenance = Schema.File f}
 
-newtype HerculesCIAttrs = HerculesCIAttrs (Value NixAttrs)
+type HomeSchema = Attrs '["herculesCI" ::? Attrs '[] ->? HerculesCISchema]
 
-getHerculesCI :: Ptr EvalState -> HomeExpr -> HerculesCIArgs -> IO (Maybe HerculesCIAttrs)
-getHerculesCI evalState homeExpr args = runMaybeT do
-  val <- MaybeT $ getHomeExprAttr evalState homeExpr "herculesCI"
-  liftIO (match' evalState val) >>= \case
-    IsAttrs a -> pure $ HerculesCIAttrs a
-    IsFunction f -> do
-      herculesCIArgs <- lift $ toRawValue evalState args
-      herculesCIVal <- lift $ apply (rtValue f) herculesCIArgs
-      HerculesCIAttrs <$> castAttrs evalState herculesCIVal
-    _ -> empty
+type HerculesCISchema = Attrs '["onPush" ::? Dictionary OnPushSchema]
 
-castAttrs ::
-  (MonadIO m, Alternative m) =>
-  Ptr EvalState ->
-  RawValue ->
-  m (Value NixAttrs)
-castAttrs evalState val = do
-  liftIO (match' evalState val) >>= \case
-    IsAttrs a -> pure a
-    _ -> empty
+type OnPushSchema =
+  Attrs
+    '[ "extraInputs" ::? ExtraInputsSchema,
+       "outputs" ::. InputsSchema ->? OutputsSchema
+     ]
 
-newtype JobAttrs = JobAttrs (Value NixAttrs)
+type ExtraInputsSchema = Dictionary InputDeclSchema
 
-getOnPushAttrs :: Ptr EvalState -> HerculesCIAttrs -> IO (Maybe (Value NixAttrs))
-getOnPushAttrs evalState (HerculesCIAttrs herculesCI) = do
-  runMaybeT do
-    onPushVal <- MaybeT $ getAttr evalState herculesCI "onPush"
-    castAttrs evalState onPushVal
+type InputDeclSchema = Attrs '["project" ::. NixString, "ref" ::? NixString]
+
+type InputsSchema = Dictionary InputSchema
+
+type InputSchema = Dictionary RawValue
+
+type OutputsSchema = Dictionary RawValue
+
+getHerculesCI :: MonadEval m => HomeExpr -> HerculesCIArgs -> m (Maybe (PSObject HerculesCISchema))
+getHerculesCI homeExpr args = do
+  home <- getHomeExprObject homeExpr
+  attrVal <- home #? #herculesCI
+  attrVal & traverse \herculesCI -> do
+    pure herculesCI >>$? (Schema.uncheckedCast <$> toPSObject args)
 
 data ArgsRequired
   = AllArgsRequired
@@ -183,41 +167,14 @@ computeArgsRequired = \case
   -- Catch-all: name and ellipsis, just name, primops
   _ -> AllArgsRequired
 
-getExtraInputs :: Ptr EvalState -> JobAttrs -> IO (Map ByteString InputDeclaration)
-getExtraInputs evalState (JobAttrs jobAttrs) = do
-  rawExtraInputs <- getAttr evalState jobAttrs "extraInputs"
-  case rawExtraInputs of
-    Nothing -> pure mempty
-    Just x -> do
-      checkType evalState x >>= \case
-        Nothing -> panic "herculesCI{}.onPush.<name>.extraInputs must be an attrset"
-        Just inputsAttrs ->
-          getAttrs inputsAttrs >>= traverse \v -> do
-            input <- checkType evalState v >>= maybe (panic "herculesCI{}.onPush.<name>.extraInputs.<name> must be an attrset") pure
-            inputAttrs <- getAttrs input
-            let keys = M.keysSet inputAttrs
-            if keys == S.fromList ["project"]
-              || keys == S.fromList ["project", "ref"]
-              then do
-                let projectValue = fromMaybe (panic "repo attr can't disappear") $ M.lookup "project" inputAttrs
-                projectStr <- assertType evalState projectValue >>= getStringIgnoreContext
-                refStr <- for (M.lookup "ref" inputAttrs) (assertType evalState >=> getStringIgnoreContext)
-                pure $ SiblingInput $ MkSiblingInput {project = decodeUtf8With lenientDecode projectStr, ref = decodeUtf8With lenientDecode <$> refStr}
-              else panic "Did not recognize herculesCI{}.onPush.<name>.extraInputs.<name> keys."
+parseExtraInputs :: MonadEval m => PSObject ExtraInputsSchema -> m (Map ByteString InputDeclaration)
+parseExtraInputs eis = dictionaryToMap eis >>= traverse parseInputDecl
 
-invokeOutputs :: Ptr EvalState -> JobAttrs -> Value NixAttrs -> IO (Maybe (Value NixAttrs))
-invokeOutputs evalState (JobAttrs jobAttrs) args = runMaybeT do
-  outputsVal <- MaybeT $ getAttr evalState jobAttrs "outputs"
-  lift $
-    match' evalState outputsVal >>= \case
-      IsAttrs attrs -> pure attrs
-      IsFunction fn -> do
-        rawOutputs <- autoCallFunction evalState (rtValue fn) args
-        checkType evalState rawOutputs >>= \case
-          Nothing -> panic "herculesCI{}.onPush.<name>.outputs{...} must return an attribute set."
-          Just attrs -> pure attrs
-      _ ->
-        panic "herculesCI{}.onPush.<name>.outputs must be an attribute set or function returning an attribute set."
+parseInputDecl :: MonadEval m => PSObject InputDeclSchema -> m InputDeclaration
+parseInputDecl d = do
+  project <- d #. #project >>= getText_
+  ref <- d #? #ref >>= traverse getText_
+  pure $ SiblingInput $ MkSiblingInput {project = project, ref = ref}
 
 -- | Given a path, return the onPush output or legacy ci.nix value
 --
@@ -236,34 +193,31 @@ getOnPushOutputValueByPath ::
   IO (Maybe RawValue)
 getOnPushOutputValueByPath evalState filePath args resolveInputs attrPath = do
   homeExpr <- escalateAs FatalError =<< loadNixFile evalState filePath (HerculesCIArgs.primaryRepo args)
-  onPush <- runMaybeT do
-    herculesCI <- MaybeT $ getHerculesCI evalState homeExpr args
-    MaybeT $ getOnPushAttrs evalState herculesCI
+  onPush <- flip runReaderT evalState $ runMaybeT do
+    herculesCI <- MaybeT $ getHerculesCI homeExpr args
+    MaybeT $ herculesCI #? #onPush
 
-  -- No backtracking. It's legacy or not...
-  -- TODO: warn when using the legacy behavior. ci.nix can also use the herculesCI attr.
+  -- No backtracking. It's either legacy or not...
   case onPush of
-    Just jobs -> do
+    Just jobs -> flip runReaderT evalState $ do
       case attrPath of
-        [] -> pure $ Just $ coerce jobs -- Technically mapAttrs .outputs, meh
+        [] -> pure $ Just $ Schema.value jobs -- Technically mapAttrs .outputs, meh
         (jobName : attrPath') -> do
-          jobsMap <- getAttrs (coerce jobs)
-          case M.lookup jobName jobsMap of
+          Schema.lookupDictBS jobName jobs >>= \case
             Just selectedJob -> do
-              -- TODO: call `outputs`
-              -- attrByPath evalState selectedJob ("outputs" : attrPath')
-              selectedJobAttrs <-
-                checkType evalState selectedJob
-                  >>= maybe (panic "onPush.<name> must be an attribute set, containing an outputs attribute.") (pure . JobAttrs)
-              inputs <- getExtraInputs evalState selectedJobAttrs
-              resolved <- resolveInputs inputs
-              outputs <- invokeOutputs evalState selectedJobAttrs resolved
-              case outputs of
-                Nothing -> pure Nothing
-                Just outs -> attrByPath evalState (rtValue outs) attrPath'
+              outputs <- resolveAndInvokeOutputs selectedJob (liftIO . resolveInputs)
+              outputAttrs <- Schema.check outputs
+              liftIO $ attrByPath evalState (rtValue outputAttrs) attrPath'
             Nothing -> pure Nothing
     Nothing -> do
       attrByPath evalState (homeExprRawValue homeExpr) attrPath
+
+resolveAndInvokeOutputs :: MonadEval m => PSObject OnPushSchema -> (Map ByteString InputDeclaration -> m (Value NixAttrs)) -> m (PSObject OutputsSchema)
+resolveAndInvokeOutputs job resolveInputs = do
+  inputs <- job #? #extraInputs >>= traverse parseExtraInputs
+  resolved <- resolveInputs (fromMaybe mempty inputs)
+  f <- job #. #outputs
+  f $? (PSObject {provenance = Schema.Data, value = rtValue resolved})
 
 attrByPath :: Ptr EvalState -> RawValue -> [ByteString] -> IO (Maybe RawValue)
 attrByPath _ v [] = pure (Just v)

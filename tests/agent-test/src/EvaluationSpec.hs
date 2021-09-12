@@ -125,7 +125,7 @@ spec = describe "Evaluation" $ do
               `shouldBe` Message.Message
                 { index = 0,
                   typ = Message.Error,
-                  message = "Please provide a Nix expression to build. Could not find any of \"nix/ci.nix\", \"ci.nix\", \"flake.nix\" or \"default.nix\" in your source"
+                  message = "Please provide a Nix expression to build. Could not find any of nix/ci.nix, ci.nix, flake.nix or default.nix in your source"
                 }
           _ -> failWith $ "Events should be a single message, not: " <> show r
   context "when a ci.nix is provided" $
@@ -167,7 +167,7 @@ spec = describe "Evaluation" $ do
               `shouldBe` Message.Message
                 { index = 0,
                   typ = Message.Error,
-                  message = "Don't know what to do, expecting only one of \"nix/ci.nix\" or \"ci.nix\""
+                  message = "Don't know what to do, expecting only one of nix/ci.nix or ci.nix"
                 }
           _ -> failWith $ "Events should be a single message, not: " <> show r
   context "when a flake with onPush is provided" $
@@ -277,8 +277,9 @@ spec = describe "Evaluation" $ do
               }
         s `shouldBe` TaskStatus.Successful ()
         case r of
-          [] -> pass
-          _ -> failWith $ "Events should be empty, not: " <> show r
+          [EvaluateEvent.AttributeError AttributeErrorEvent.AttributeErrorEvent {errorMessage = msg}] -> do
+            toS msg `shouldContain` "Expecting a value of type Attrs, but got type List."
+          _ -> failWith $ "Events should be an single AttributeError, not " <> show r
   context "when the nix expression is an empty attrset" $
     it "returns no events but succeed" $
       \srv -> do

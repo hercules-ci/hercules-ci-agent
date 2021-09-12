@@ -54,6 +54,9 @@ C.using "namespace nix"
 
 -- | Runtime-Typed Value. This implies that it has been forced,
 -- because otherwise the type would not be known.
+--
+-- This is distinct from Nix, which calls its objects @Value@ regardless if
+-- they're thunks.
 newtype Value a = Value {rtValue :: RawValue}
 
 type NixInt = Int64
@@ -174,3 +177,30 @@ assertType es v = do
   liftIO (checkType es v) >>= \case
     Nothing -> withFrozenCallStack (panic "Unexpected type")
     Just x -> pure x
+
+class HasRawValueType s where
+  getRawValueType :: Proxy s -> RawValueType
+
+instance HasRawValueType NixString where
+  getRawValueType _ = String
+
+instance HasRawValueType Int64 where
+  getRawValueType _ = Int
+
+instance HasRawValueType Bool where
+  getRawValueType _ = Bool
+
+instance HasRawValueType NixFloat where
+  getRawValueType _ = Float
+
+instance HasRawValueType NixPath where
+  getRawValueType _ = Path
+
+instance HasRawValueType NixAttrs where
+  getRawValueType _ = Attrs
+
+instance HasRawValueType NixFunction where
+  getRawValueType _ = Lambda
+
+instance HasRawValueType NixList where
+  getRawValueType _ = List

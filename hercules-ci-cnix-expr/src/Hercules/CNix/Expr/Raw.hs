@@ -28,6 +28,12 @@ C.include "<gc/gc_allocator.h>"
 
 C.using "namespace nix"
 
+-- | A heap object.
+--
+-- Nix doesn't store all its objects on the heap, but we do.
+--
+-- Also, Nix calls them @Value@s but it includes thunks, which are not values
+-- and some may never produce values, such as @throw "msg"@.
 newtype RawValue = RawValue (Ptr Value')
 
 -- | Takes ownership of the value.
@@ -142,3 +148,15 @@ forceValue evalState (RawValue v) =
       if (v == NULL) throw std::invalid_argument("forceValue value must be non-null");
       $(EvalState *evalState)->forceValue(*v);
     }|]
+
+-- | Brings RawValueType closer to the 2.4 ValueType.
+--
+-- This function won't be necessary when support for 2.3 is dropped and we
+-- switch entirely to the Haskell equivalent of C++ ValueType.
+canonicalRawType :: RawValueType -> RawValueType
+canonicalRawType = \case
+  App -> Thunk
+  Blackhole -> Thunk
+  PrimOp -> Lambda
+  PrimOpApp -> Lambda
+  x -> x
