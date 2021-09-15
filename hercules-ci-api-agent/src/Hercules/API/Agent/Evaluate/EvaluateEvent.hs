@@ -20,5 +20,6 @@ data EvaluateEvent
   | PushedAll PushedAll
   | BuildRequired BuildRequired
   | BuildRequest BuildRequest
+  | IsConfig
   | OnPushHandlerEvent OnPushHandlerEvent
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

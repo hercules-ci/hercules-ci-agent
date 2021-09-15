@@ -398,6 +398,9 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
               Event.OnPushHandler (ViaJSON e) -> do
                 emit $ EvaluateEvent.OnPushHandlerEvent e
                 continue
+              Event.IsConfig -> do
+                emit EvaluateEvent.IsConfig
+                continue
               Event.Exception e -> panic e
               -- Unused during eval
               Event.BuildResult {} -> pass

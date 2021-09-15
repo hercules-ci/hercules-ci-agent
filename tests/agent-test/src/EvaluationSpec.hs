@@ -184,11 +184,11 @@ spec = describe "Evaluation" $ do
               }
         s `shouldBe` TaskStatus.Successful ()
         case r of
-          [EvaluateEvent.OnPushHandlerEvent op] -> do
+          [EvaluateEvent.IsConfig, EvaluateEvent.OnPushHandlerEvent op] -> do
             OnPushHandlerEvent.handlerName op `shouldBe` "default"
             OnPushHandlerEvent.handlerExtraInputs op `shouldBe` mempty
           _ ->
-            failWith $ "Events should be a single onPushHandlerEvent: " <> show r
+            failWith $ "Events should be a [IsConfig, OnPushHandlerEvent op], not " <> show r
   context "when the nix expression is one derivation in an attrset" $
     it "returns that attribute" $
       \srv -> do

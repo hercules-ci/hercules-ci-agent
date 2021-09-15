@@ -508,9 +508,10 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
           Nothing ->
             -- legacy
             walk store evalState args (homeExprRawValue homeExpr)
-          Just herculesCI ->
+          Just herculesCI -> do
             case Event.fromViaJSON (Eval.selector eval) of
-              EvaluateTask.ConfigOrLegacy ->
+              EvaluateTask.ConfigOrLegacy -> do
+                yield Event.IsConfig
                 sendConfig evalState herculesCI
               EvaluateTask.OnPush onPush ->
                 transPipe (`runReaderT` evalState) do

@@ -23,6 +23,7 @@ data Event
   | Build ByteString Text (Maybe UUID)
   | BuildResult BuildResult
   | EffectResult Int
+  | IsConfig
   | OnPushHandler (ViaJSON OnPushHandlerEvent)
   | Exception Text
   deriving (Generic, Binary, Show, Eq)
