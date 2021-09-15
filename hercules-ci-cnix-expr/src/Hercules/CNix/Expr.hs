@@ -3,6 +3,7 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -560,6 +561,17 @@ class ToRawValue a where
 class ToRawValue a => ToValue a where
   type NixTypeFor a :: *
   toValue :: Ptr EvalState -> a -> IO (Value (NixTypeFor a))
+
+-- | Marshall values from Nix into Haskell. Instances must satisfy the
+-- requirements that:
+--
+--  - Only a single Nix value type is acceptable for the Haskell type.
+--  - Marshalling does not fail, as the Nix runtime type has already been checked.
+class FromValue n a | a -> n where
+  fromValue :: Value n -> IO a
+
+instance FromValue Bool Bool where
+  fromValue = getBool
 
 -- | Identity
 instance ToRawValue RawValue where

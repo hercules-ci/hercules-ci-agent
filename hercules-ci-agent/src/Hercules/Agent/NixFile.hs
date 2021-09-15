@@ -46,7 +46,6 @@ import Hercules.CNix.Expr
     FunctionParams (FunctionParams),
     Match (IsAttrs),
     NixAttrs,
-    NixString,
     Value (Value, rtValue),
     assertType,
     autoCallFunction,
@@ -59,7 +58,7 @@ import Hercules.CNix.Expr
   )
 import qualified Hercules.CNix.Expr as Expr
 import Hercules.CNix.Expr.Raw (RawValue)
-import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), dictionaryToMap, getText_, toPSObject, (#.), (#?), ($?), (>>$?), type (->?), type (::.), type (::?))
+import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), StringWithoutContext, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (>>$?), type (->?), type (::.), type (::?))
 import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.Error (escalateAs)
 import Protolude hiding (evalState)
@@ -125,12 +124,17 @@ type HerculesCISchema = Attrs '["onPush" ::? Dictionary OnPushSchema]
 type OnPushSchema =
   Attrs
     '[ "extraInputs" ::? ExtraInputsSchema,
-       "outputs" ::. InputsSchema ->? OutputsSchema
+       "outputs" ::. InputsSchema ->? OutputsSchema,
+       "enable" ::? Bool
      ]
 
 type ExtraInputsSchema = Dictionary InputDeclSchema
 
-type InputDeclSchema = Attrs '["project" ::. NixString, "ref" ::? NixString]
+type InputDeclSchema =
+  Attrs
+    '[ "project" ::. StringWithoutContext,
+       "ref" ::? StringWithoutContext
+     ]
 
 type InputsSchema = Dictionary InputSchema
 
@@ -172,8 +176,8 @@ parseExtraInputs eis = dictionaryToMap eis >>= traverse parseInputDecl
 
 parseInputDecl :: MonadEval m => PSObject InputDeclSchema -> m InputDeclaration
 parseInputDecl d = do
-  project <- d #. #project >>= getText_
-  ref <- d #? #ref >>= traverse getText_
+  project <- d #. #project >>= fromPSObject
+  ref <- d #? #ref >>= traverse fromPSObject
   pure $ SiblingInput $ MkSiblingInput {project = project, ref = ref}
 
 -- | Given a path, return the onPush output or legacy ci.nix value

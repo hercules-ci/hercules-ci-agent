@@ -6,7 +6,7 @@ module Hercules.CNix.Expr.SchemaSpec where
 
 import Hercules.CNix.Expr (EvalState, NixPath, NixString)
 import qualified Hercules.CNix.Expr as Expr
-import Hercules.CNix.Expr.Raw (RawValueType (Attrs, Bool, Lambda, String))
+import Hercules.CNix.Expr.Raw (RawValueType (Attrs, Bool, Lambda, Null, String))
 import Hercules.CNix.Expr.Schema
 import Protolude hiding (TypeError, check, evalState)
 import SingleState (evalState)
@@ -169,3 +169,66 @@ spec = do
             schema
         e #? #optionalAttr >>= traverse getByteString_
       r `shouldBe` Just "nice"
+
+  describe "fromPSObject" do
+    describe "@Bool" do
+      describe "@Bool" do
+        it "can return true" do
+          r <- runES do
+            e <- exprWithBasePath "true" "/" (Proxy @Bool)
+            fromPSObject e
+          r `shouldBe` True
+        it "can return false" do
+          r <- runES do
+            e <- exprWithBasePath "false" "/" (Proxy @Bool)
+            fromPSObject e
+          r `shouldBe` False
+        it "can throw a type error" do
+          ( runES do
+              e <- exprWithBasePath "null" "/" (Proxy @Bool)
+              fromPSObject @_ @Bool e
+            )
+            `shouldThrow` (== TypeError (Other "internal expression") Null [Bool])
+        it "can throw a type error with provenance" do
+          ( runES do
+              e <- exprWithBasePath "{ a = null; }" "/" (Proxy @(Attrs '["a" ::. Bool]))
+              fromPSObject @_ @Bool =<< e #. #a
+            )
+            `shouldThrow` (== TypeError (Other "internal expression" `Attribute` "a") Null [Bool])
+
+    describe "@StringWithoutContext" do
+      describe "@ByteString" do
+        it "can return the string" do
+          r <- runES do
+            e <- exprWithBasePath "''hi''" "/" (Proxy @StringWithoutContext)
+            fromPSObject e
+          r `shouldBe` ("hi" :: ByteString)
+      describe "@ByteString" do
+        it "can fail because of context" do
+          ( runES do
+              e <- exprWithBasePath "''hi ${derivation {name = ''pkg''; builder = ''foo''; system = ''x86_64-linux'';}}''" "/" (Proxy @StringWithoutContext)
+              fromPSObject @_ @ByteString e
+            )
+            `shouldThrow` (== StringContextNotAllowed (Other "internal expression"))
+      describe "@Text" do
+        it "can return the string" do
+          r <- runES do
+            e <- exprWithBasePath "''hi''" "/" (Proxy @StringWithoutContext)
+            fromPSObject e
+          r `shouldBe` ("hi" :: Text)
+      describe "@Text" do
+        it "can fail because of context" do
+          ( runES do
+              e <- exprWithBasePath "''hi ${derivation {name = ''pkg''; builder = ''foo''; system = ''x86_64-linux'';}}''" "/" (Proxy @StringWithoutContext)
+              fromPSObject @_ @Text e
+            )
+            `shouldThrow` (== StringContextNotAllowed (Other "internal expression"))
+      describe "@Text" do
+        it "can fail because of utf8" do
+          ( runES do
+              e <- exprWithBasePathBS "''hi\xffthere''" "/" (Proxy @StringWithoutContext)
+              fromPSObject @_ @Text e
+            )
+            `shouldThrow` \case
+              InvalidText p _e -> p == Other "internal expression"
+              _ -> False

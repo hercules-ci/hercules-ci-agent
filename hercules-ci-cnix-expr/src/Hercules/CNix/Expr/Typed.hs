@@ -139,6 +139,11 @@ getStringIgnoreContext (Value (RawValue v)) =
     strdup($(Value *v)->string.s)
   }|]
 
+hasContext :: Value NixString -> IO Bool
+hasContext (Value (RawValue v)) =
+  (0 /=)
+    <$> [C.exp| int { $(Value *v)->string.context ? 1 : 0 }|]
+
 class CheckType a where
   checkType :: Ptr EvalState -> RawValue -> IO (Maybe (Value a))
 

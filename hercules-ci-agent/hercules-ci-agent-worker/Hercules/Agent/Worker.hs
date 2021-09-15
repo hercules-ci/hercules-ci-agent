@@ -73,7 +73,7 @@ import Hercules.CNix as CNix
 import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
 import qualified Hercules.CNix.Expr.Raw
-import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, requireDict, (#.), (#?), (#?!), ($?))
+import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, requireDict, (#.), (#?), (#?!), ($?))
 import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.CNix.Expr.Typed (Value)
 import Hercules.CNix.Std.Vector (StdVector)
@@ -547,14 +547,12 @@ sendConfig evalState herculesCI = flip runReaderT evalState $ do
     attrs <- dictionaryToMap onPushes
     for_ (M.mapWithKey (,) attrs) \(name, onPush) -> do
       ei <- onPush #? #extraInputs >>= traverse parseExtraInputs
-      lift $
-        yield $
-          Event.OnPushHandler $
-            ViaJSON $
-              OnPushHandlerEvent
-                { handlerName = decodeUtf8 name,
-                  handlerExtraInputs = M.mapKeys decodeUtf8 (fromMaybe mempty ei)
-                }
+      enable <- onPush #? #enable >>= traverse fromPSObject <&> fromMaybe True
+      when enable . lift . yield . Event.OnPushHandler . ViaJSON $
+        OnPushHandlerEvent
+          { handlerName = decodeUtf8 name,
+            handlerExtraInputs = M.mapKeys decodeUtf8 (fromMaybe mempty ei)
+          }
 
 simpleWalk ::
   (MonadUnliftIO m, KatipContext m) =>

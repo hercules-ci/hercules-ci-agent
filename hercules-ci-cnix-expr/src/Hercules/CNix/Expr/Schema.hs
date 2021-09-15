@@ -37,6 +37,9 @@ module Hercules.CNix.Expr.Schema
     ($?),
     (>>$?),
 
+    -- * Simple types
+    type StringWithoutContext,
+
     -- * Attribute sets
 
     --
@@ -63,6 +66,7 @@ module Hercules.CNix.Expr.Schema
 
     -- * Serialization
     toPSObject,
+    FromPSObject (..),
     check,
     getText_,
     getByteString_,
@@ -81,7 +85,7 @@ import Data.Coerce (coerce)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified GHC.TypeLits as TL
-import Hercules.CNix.Expr (CheckType, EvalState, HasRawValueType, NixAttrs, NixFunction, NixPath, NixString, RawValue, Value, apply, checkType, getAttr, getRawValueType, rawValueType, toRawValue, valueFromExpressionString)
+import Hercules.CNix.Expr (CheckType, EvalState, HasRawValueType, NixAttrs, NixFunction, NixPath, NixString, RawValue, Value, apply, checkType, getAttr, getRawValueType, getStringIgnoreContext, hasContext, rawValueType, toRawValue, valueFromExpressionString)
 import qualified Hercules.CNix.Expr as Expr
 import Hercules.CNix.Expr.Raw (RawValueType, canonicalRawType)
 import Protolude hiding (TypeError, check, evalState)
@@ -104,12 +108,14 @@ data NixException
       [RawValueType]
       -- ^ expected
   | InvalidText Provenance UnicodeException
+  | StringContextNotAllowed Provenance
   deriving (Show, Eq)
 
 instance Exception NixException where
   displayException (MissingAttribute p name) = "Missing attribute " <> show name <> appendProvenance p
   displayException (TypeError p actual expected) = "Expecting a value of type " <> toS (englishOr (map show expected)) <> ", but got type " <> show actual <> "." <> appendProvenance p
   displayException (InvalidText p ue) = displayException ue <> appendProvenance p
+  displayException (StringContextNotAllowed p) = "This string must not have a context. It must be usable without building store paths." <> appendProvenance p
 
 appendProvenance :: Provenance -> [Char]
 appendProvenance (Attribute p name) = "\n  in attribute " <> show name <> appendProvenance p
@@ -142,6 +148,8 @@ data Attr
     Symbol :. Type
   | -- | Optional attribute. Use ':?.'.
     Symbol :? Type
+
+data StringWithoutContext
 
 infix 1 :.
 
@@ -305,6 +313,7 @@ type family NixTypeForSchema s where
   NixTypeForSchema (Attrs' _ _) = NixAttrs
   NixTypeForSchema (_ ->. _) = NixFunction
   NixTypeForSchema NixString = NixString
+  NixTypeForSchema StringWithoutContext = NixString
   NixTypeForSchema NixPath = NixPath
   NixTypeForSchema Bool = Bool
   NixTypeForSchema Int64 = Int64
@@ -419,11 +428,19 @@ getText_ ::
   (MonadEval m) =>
   PSObject NixString ->
   m Text
-getText_ s = do
-  bs <- getByteString_ s
-  case decodeUtf8' bs of
-    Right t -> pure t
-    Left e -> throwIO $ InvalidText (provenance s) e
+getText_ = validateE getByteString_ decodeUtf8' InvalidText
+
+validate :: Monad m => (PSObject s -> m a) -> (Provenance -> a -> m b) -> PSObject s -> m b
+validate basicParse validator o = do
+  a <- basicParse o
+  validator (provenance o) a
+
+validateE :: MonadIO m => (PSObject s -> m a) -> (a -> Either e b) -> (Provenance -> e -> NixException) -> PSObject s -> m b
+validateE basicParse validator thrower =
+  validate basicParse \prov a ->
+    case validator a of
+      (Left e) -> throwIO (thrower prov e)
+      (Right b) -> pure b
 
 -- | Force a value and check against schema.
 check ::
@@ -443,6 +460,7 @@ check pv = do
         throwIO $ TypeError (provenance pv) t [getRawValueType (Proxy @(NixTypeForSchema schema))]
       Just x -> pure x
 
+-- TODO make this actually schema-based
 toPSObject ::
   (MonadEval m, Expr.ToRawValue a) =>
   a ->
@@ -454,3 +472,29 @@ toPSObject a = do
 
 uncheckedCast :: forall (a :: *) (b :: *). PSObject a -> PSObject b
 uncheckedCast = coerce
+
+-- | Schema-based parsing type class that constrains neither types nor schemas.
+class FromPSObject schema a where
+  -- | Parse an object assumed to be in schema @schema@ into a value of type @a@
+  -- or throw a 'NixException'.
+  fromPSObject :: MonadEval m => PSObject schema -> m a
+
+instance FromPSObject StringWithoutContext ByteString where
+  fromPSObject o = do
+    v <- check o
+    liftIO do
+      c <- hasContext v
+      when c do
+        throwIO $ StringContextNotAllowed (provenance o)
+    liftIO $ getStringIgnoreContext v
+
+instance FromPSObject StringWithoutContext Text where
+  fromPSObject = validateE fromPSObject decodeUtf8' InvalidText
+
+instance FromPSObject StringWithoutContext [Char] where
+  fromPSObject = fmap T.unpack . fromPSObject
+
+instance FromPSObject Bool Bool where
+  fromPSObject o = do
+    v <- check o
+    liftIO (Expr.getBool v)
