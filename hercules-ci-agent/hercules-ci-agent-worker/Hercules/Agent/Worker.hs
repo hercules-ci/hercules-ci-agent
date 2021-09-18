@@ -511,7 +511,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
           Just herculesCI -> do
             case Event.fromViaJSON (Eval.selector eval) of
               EvaluateTask.ConfigOrLegacy -> do
-                yield Event.IsConfig
+                yield Event.JobConfig
                 sendConfig evalState herculesCI
               EvaluateTask.OnPush onPush ->
                 transPipe (`runReaderT` evalState) do

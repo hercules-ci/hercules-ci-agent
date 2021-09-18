@@ -36,6 +36,7 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as Att
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest as BuildRequest
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as BuildRequired
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.JobConfig as JobConfig
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll as PushedAll
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
@@ -398,8 +399,8 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
               Event.OnPushHandler (ViaJSON e) -> do
                 emit $ EvaluateEvent.OnPushHandlerEvent e
                 continue
-              Event.IsConfig -> do
-                emit EvaluateEvent.IsConfig
+              Event.JobConfig -> do
+                emit $ EvaluateEvent.JobConfig JobConfig.JobConfig {sourceCaches = Nothing, binaryCaches = Nothing}
                 continue
               Event.Exception e -> panic e
               -- Unused during eval
