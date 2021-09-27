@@ -41,9 +41,11 @@ data ProjectResourceGroup auth f = ProjectResourceGroup
         :> auth
         :> Get '[JSON] PagedJobs,
     getJobSource ::
-      f :- Summary "Get source information relating to the latest successful job"
+      f :- Summary "Get source information from the latest successful job/jobs satisfying the provided requirements."
+        :> Description "The job parameter can be omitted to require all jobs for a commit to succeed. This can have the unexpected effect of reverting when a change in the extraInputs causes a regression. So it is recommended to specify one or more jobs. Common examples are \"onPush.default\" for a pinned build or \"onPush.ci\" for a build using extraInputs to integrate continuously."
         :> "source"
         :> QueryParam' '[Optional, Description "Constrain the results by git ref, such as refs/heads/my-branch. Defaults to HEAD."] "ref" Text
+        :> QueryParams "jobs" Text
         :> auth
         :> Get '[JSON] ImmutableGitInput
   }

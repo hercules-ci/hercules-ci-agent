@@ -61,6 +61,7 @@ library
     Hercules.API.Evaluation.Evaluation
     Hercules.API.Health
     Hercules.API.Inputs.ImmutableGitInput
+    Hercules.API.Inputs.ImmutableInput
     Hercules.API.Labels
     Hercules.API.Message
     Hercules.API.Organizations
@@ -77,9 +78,11 @@ library
     Hercules.API.Projects.PatchProject
     Hercules.API.Projects.Project
     Hercules.API.Projects.SimpleJob
+    Hercules.API.Projects.SimpleProject
     Hercules.API.Repos
     Hercules.API.Repos.Repo
     Hercules.API.Repos.RepoKey
+    Hercules.API.Repos.SimpleRepo
     Hercules.API.Result
     Hercules.API.Servant.Status
     Hercules.API.SourceHostingSite.SimpleSite

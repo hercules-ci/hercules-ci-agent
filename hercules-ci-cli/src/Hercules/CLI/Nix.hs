@@ -52,7 +52,8 @@ resolveInputs uio evalState projectMaybe inputs = do
   let resolveInput :: ByteString -> InputDeclaration -> IO RawValue
       resolveInput _name (SiblingInput input) = unliftIO uio do
         let resourceClient = projectResourceClientByPath (projectPath {projectPathProject = InputDeclaration.project input})
-        immutableGitInput <- runHerculesClient (getJobSource resourceClient (InputDeclaration.ref input))
+            jobNames = []
+        immutableGitInput <- runHerculesClient (getJobSource resourceClient (InputDeclaration.ref input) jobNames)
         liftIO $ mkImmutableGitInputFlakeThunk evalState immutableGitInput
       resolveInput _name InputDeclaration.BogusInput {} = panic "resolveInput: not implemented yet"
   inputs

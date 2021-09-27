@@ -8,7 +8,7 @@ import Hercules.API.SourceHostingSite.SimpleSite (SimpleSite)
 
 data SimpleAccount = SimpleAccount
   { id :: Id Account,
-    name :: Text,
+    name :: Name Account,
     displayName :: Text,
     typ :: AccountType,
     imageURL :: Text,

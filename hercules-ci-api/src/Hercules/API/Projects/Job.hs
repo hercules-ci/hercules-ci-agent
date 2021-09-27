@@ -1,13 +1,20 @@
 {-# LANGUAGE DeriveAnyClass #-}
 
-module Hercules.API.Projects.Job where
+module Hercules.API.Projects.Job
+  ( module Hercules.API.Projects.Job,
+    JobStatus (..),
+    JobPhase (..),
+  )
+where
 
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Evaluation.Evaluation
   ( Evaluation,
   )
+import Hercules.API.Inputs.ImmutableInput (ImmutableInput)
 import Hercules.API.Prelude
 import Hercules.API.Projects.Project (Project)
+import Hercules.API.Projects.SimpleJob (JobPhase (..), JobStatus (..))
 import Hercules.API.Repos.Repo (Repo)
 
 data Job = Job
@@ -25,6 +32,10 @@ data Job = Job
     effectsStatus :: JobStatus,
     evaluationId :: Id Evaluation,
     source :: GitCommitSource,
+    -- | This is only correct when querying a single Job.
+    extraInputs :: Map Text ImmutableInput,
+    jobType :: JobType,
+    jobName :: Maybe Text,
     rerunOf :: Maybe (Id Job),
     rerunOfIndex :: Maybe Int,
     startedBy :: Maybe (Id Account),
@@ -32,6 +43,12 @@ data Job = Job
     mayCancel :: Bool,
     mayRerun :: Bool
   }
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+
+data JobType
+  = Config
+  | Legacy
+  | OnPush
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
 data GitCommitSource = GitCommitSource
@@ -43,36 +60,6 @@ data GitCommitSource = GitCommitSource
     link :: Text
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
-
-data JobPhase
-  = Queued
-  | Evaluating
-  | Building
-  | Effects
-  | Done
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
-
-data JobStatus
-  = Pending
-  | Failure
-  | Success
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
-
--- | Whichever is "worse": 'Failure' wins out, otherwise 'Pending' wins out, otherwise all are 'Success'.
-instance Semigroup JobStatus where
-  Failure <> _ = Failure
-  _ <> Failure = Failure
-  Pending <> _ = Pending
-  _ <> Pending = Pending
-  Success <> Success = Success
-
--- | @mappend@: Whichever is "worse": 'Failure' wins out, otherwise 'Pending' wins out, otherwise all are 'Success'.
---
--- @mempty@: 'Success'
-instance Monoid JobStatus where
-  mappend = (<>)
-
-  mempty = Success
 
 data ProjectAndJobs = ProjectAndJobs
   { project :: Project,
