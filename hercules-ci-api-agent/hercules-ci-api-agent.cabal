@@ -8,7 +8,7 @@ homepage:       https://github.com/hercules-ci/hercules-ci-agent#readme
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
 author:         Hercules CI contributors
 maintainer:     info@hercules-ci.com
-copyright:      2018-2020 Hercules CI
+copyright:      2018-2021 Hercules CI
 license:        Apache-2.0
 build-type:     Simple
 extra-source-files:
@@ -34,9 +34,14 @@ library
       Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest
       Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired
       Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
+      Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration
+      Hercules.API.Agent.Evaluate.EvaluateEvent.JobConfig
       Hercules.API.Agent.Evaluate.EvaluateEvent.Message
+      Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll
       Hercules.API.Agent.Evaluate.EvaluateTask
+      Hercules.API.Agent.Evaluate.ImmutableInput
+      Hercules.API.Agent.Evaluate.ImmutableGitInput
       Hercules.API.Agent.LifeCycle
       Hercules.API.Agent.LifeCycle.AgentInfo
       Hercules.API.Agent.LifeCycle.CreateAgentSession

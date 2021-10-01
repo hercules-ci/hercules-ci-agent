@@ -298,6 +298,7 @@
                   internal.haskellPackages.ghc
                   internal.haskellPackages.ghcide
                   internal.haskellPackages.haskell-language-server
+                  internal.haskellPackages.hspec-discover
                 ];
               shellHook = ''
                 ${pre-commit-check.shellHook}

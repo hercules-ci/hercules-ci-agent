@@ -1,13 +1,18 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Hercules.Agent.WorkerProtocol.Event where
 
+import Control.Monad (fail)
+import qualified Data.Aeson as A
 import Data.Binary
 import Data.UUID (UUID)
+import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent)
 import Hercules.Agent.WorkerProtocol.Event.Attribute
 import Hercules.Agent.WorkerProtocol.Event.AttributeError
 import Hercules.Agent.WorkerProtocol.Event.BuildResult
-import Protolude
+import Protolude hiding (get, put)
 import Prelude ()
 
 data Event
@@ -18,5 +23,19 @@ data Event
   | Build ByteString Text (Maybe UUID)
   | BuildResult BuildResult
   | EffectResult Int
+  | JobConfig
+  | OnPushHandler (ViaJSON OnPushHandlerEvent)
   | Exception Text
   deriving (Generic, Binary, Show, Eq)
+
+newtype ViaJSON a = ViaJSON {fromViaJSON :: a}
+  deriving (Eq, Ord, Show, Read)
+
+-- | Orphan
+instance (A.ToJSON a, A.FromJSON a) => Binary (ViaJSON a) where
+  put (ViaJSON a) = put (A.encode a)
+  get = do
+    bs <- get
+    case A.eitherDecode bs of
+      Left s -> fail s
+      Right r -> pure (ViaJSON r)

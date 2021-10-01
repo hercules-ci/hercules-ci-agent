@@ -4,6 +4,7 @@
 module Hercules.API.Agent.Evaluate.EvaluateTask where
 
 import Data.Aeson (Value)
+import Hercules.API.Agent.Evaluate.ImmutableInput (ImmutableInput)
 import Hercules.API.Prelude
 import Hercules.API.Task (Task)
 
@@ -14,7 +15,19 @@ data EvaluateTask = EvaluateTask
     inputMetadata :: Map Identifier (Map Text Value),
     autoArguments :: Map Text (SubPathOf Identifier), -- argument name -> identifier
     nixPath :: [NixPathElement (SubPathOf Identifier)], -- NIX_PATH element -> identifier
-    logToken :: Text
+    logToken :: Text,
+    selector :: Selector
+  }
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
+
+data Selector
+  = ConfigOrLegacy
+  | OnPush OnPush
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
+
+data OnPush = MkOnPush
+  { name :: Text,
+    inputs :: Map Text ImmutableInput
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 

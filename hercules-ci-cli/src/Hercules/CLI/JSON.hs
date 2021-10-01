@@ -12,7 +12,7 @@ import qualified Data.ByteString.Lazy as BL
 import qualified Data.HashMap.Strict as HM
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Text as T
-import Hercules.CLI.Exception (UserException (UserException))
+import Hercules.UserException (UserException (UserException))
 import qualified Options.Applicative as Optparse
 import Protolude
 import System.AtomicWrite.Writer.ByteString (atomicWriteFile)

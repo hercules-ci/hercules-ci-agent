@@ -51,9 +51,8 @@ let
         haskellPackages_.extend (
           self: super:
             {
-              # # 2020-11-21: cachix + chachix-api needs a patch for ghc 8.10 compat
-              # # https://github.com/cachix/cachix/pull/331
-              # cachix = self.callPackage ./cachix.nix { };
+              # Upstream cachix causes a linker error in agent. This does not.
+              cachix = updateTo "0.6.1.0" super.cachix (self.callPackage ./cachix.nix { });
               # cachix-api =
               #   updateTo "0.6.0" super.cachix-api (self.callPackage ./cachix-api.nix { });
 
@@ -224,6 +223,9 @@ recurseIntoAttrs {
         nixpkgs-fmt.enable = true;
         nixpkgs-fmt.excludes = [ "tests/agent-test/testdata/" ];
       };
+      excludes = [
+        ".*/vendor/.*"
+      ];
       settings.ormolu.defaultExtensions = [ "TypeApplications" ];
     };
 

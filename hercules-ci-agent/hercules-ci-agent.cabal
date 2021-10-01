@@ -1,14 +1,14 @@
 cabal-version: 2.4
 
 name:           hercules-ci-agent
-version:        0.8.3
+version:        0.9.0
 synopsis:       Runs Continuous Integration tasks on your machines
 category:       Nix, CI, Testing, DevOps
 homepage:       https://docs.hercules-ci.com
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
 author:         Hercules CI contributors
 maintainer:     info@hercules-ci.com
-copyright:      2018-2020 Hercules CI
+copyright:      2018-2021 Hercules CI
 license:        Apache-2.0
 build-type:     Simple
 extra-source-files:
@@ -55,6 +55,9 @@ library
       Data.Fixed.Extras
       Data.Time.Extras
       Hercules.Agent.NixFile
+      Hercules.Agent.NixFile.GitSource
+      Hercules.Agent.NixFile.HerculesCIArgs
+      Hercules.Agent.NixFile.CiNixArgs
       Hercules.Agent.Producer
       Hercules.Agent.Sensitive
       Hercules.Agent.Socket
@@ -72,6 +75,7 @@ library
       Hercules.Agent.WorkerProtocol.Orphans
       Hercules.Effect
       Hercules.Effect.Container
+      Hercules.UserException
       Data.Conduit.Extras
       Data.Conduit.Katip.Orphans
 
@@ -98,6 +102,7 @@ library
     , filepath
     , hercules-ci-api-agent
     , hercules-ci-api-core
+    , hercules-ci-cnix-expr
     , hercules-ci-cnix-store
     , katip
     , lens
@@ -115,6 +120,7 @@ library
     , temporary
     , text
     , time
+    , transformers
     , transformers-base
     , unbounded-delays
     , unix

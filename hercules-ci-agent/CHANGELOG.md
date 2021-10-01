@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+ - Flakes support!
+
+   Instead of needing a `ci.nix`, the agent will pick up `flake.nix` and look
+   for the `herculesCI` attribute in the flake.
+
+   TODO: document `herculesCI.onPush` etc
+
+ - Multiple jobs per commit
+
+ - Jobs that run with the latest successful dependency build
+
+### Changed
+
+ - File lookup order has changed, to support flakes. `ci.nix` or `nix/ci.nix` still take top priority, followed by `flake.nix`, followed by `default.nix`.
+
+### Fixed
+
+ - When the root of a `ci.nix` is a list, an error message is returned.
+
 ## [0.8.3]
 
 ### Added
