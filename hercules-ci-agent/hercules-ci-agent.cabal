@@ -75,6 +75,7 @@ library
       Hercules.Agent.WorkerProtocol.Orphans
       Hercules.Effect
       Hercules.Effect.Container
+      Hercules.Secrets
       Hercules.UserException
       Data.Conduit.Extras
       Data.Conduit.Katip.Orphans
@@ -117,6 +118,7 @@ library
     , process-extras
     , safe-exceptions
     , stm
+    , tagged
     , temporary
     , text
     , time
@@ -347,6 +349,7 @@ test-suite hercules-test
       Hercules.Agent.Nix.RetrieveDerivationInfoSpec
       Hercules.Agent.WorkerProcess
       Hercules.Agent.WorkerProcessSpec
+      Hercules.SecretsSpec
       Paths_hercules_ci_agent
       Spec
   hs-source-dirs:

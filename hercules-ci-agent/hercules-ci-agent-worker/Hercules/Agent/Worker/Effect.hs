@@ -28,7 +28,9 @@ runEffect store command = do
         runEffectApiBaseURL = Command.Effect.apiBaseURL command,
         runEffectDir = dir,
         runEffectProjectId = Just $ Command.Effect.projectId command,
-        runEffectProjectPath = Just $ Command.Effect.projectPath command
+        runEffectProjectPath = Just $ Command.Effect.projectPath command,
+        runEffectSecretContext = Just $ Command.Effect.secretContext command,
+        runEffectFriendly = False
       }
 
 prepareDerivation :: MonadIO m => Store -> Command.Effect.Effect -> m Derivation

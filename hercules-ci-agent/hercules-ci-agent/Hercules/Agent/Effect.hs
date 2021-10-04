@@ -18,6 +18,7 @@ import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Command.Effect
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
+import qualified Hercules.Secrets as Secrets
 import qualified Network.URI
 import Protolude
 import System.FilePath ((</>))
@@ -66,7 +67,14 @@ performEffect effectTask = withWorkDir "effect" $ \workDir -> do
               token = Sensitive (EffectTask.token effectTask),
               apiBaseURL = Config.herculesApiBaseURL config,
               projectId = EffectTask.projectId effectTask,
-              projectPath = EffectTask.projectPath effectTask
+              projectPath = EffectTask.projectPath effectTask,
+              secretContext =
+                Secrets.SecretContext
+                  { ownerName = EffectTask.ownerName effectTask,
+                    repoName = EffectTask.repoName effectTask,
+                    ref = EffectTask.ref effectTask,
+                    isDefaultBranch = EffectTask.isDefaultBranch effectTask
+                  }
             }
   exitCode <- runWorker procSpec (stderrLineHandler "Effect worker") commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> logStr (show exitCode :: Text)

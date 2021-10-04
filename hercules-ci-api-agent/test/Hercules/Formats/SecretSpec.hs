@@ -29,12 +29,22 @@ deriving instance Show Secret
 spec :: Spec
 spec = describe "Secret" $ do
   Aeson.checkLaws genSecret
-  it "Decodes example" $
+  it "Decodes example 1" $
     eitherDecode
       "{\"kind\":\"Secret\",\"data\":{\"key\": \"s3cr3t\"}}"
       `shouldBe` Right
         ( Secret
-            { data_ = M.singleton "key" "s3cr3t"
+            { data_ = M.singleton "key" "s3cr3t",
+              condition = Nothing
+            }
+        )
+  it "Decodes example 2" $ do
+    eitherDecode
+      "{\"kind\":\"Secret\",\"data\":{\"key\": \"s3cr3t\"},\"condition\":{\"or\": [\"isDefaultBranch\", {\"isBranch\": \"master\"}, {\"isBranch\": \"production\"}]}}"
+      `shouldBe` Right
+        ( Secret
+            { data_ = M.singleton "key" "s3cr3t",
+              condition = Just $ Or [IsDefaultBranch, IsBranch "master", IsBranch "production"]
             }
         )
   it "Does not decode unknown versions" $
@@ -51,7 +61,21 @@ genSecret :: Gen Secret
 genSecret =
   resize
     6
-    (Secret <$> liftArbitraryMap text (resize 100 genValue))
+    ( Secret <$> liftArbitraryMap text (resize 100 genValue)
+        <*> frequency [(1, pure Nothing), (19, Just <$> genCondition)]
+    )
+
+genCondition :: Gen Condition
+genCondition =
+  frequency
+    [ (1, Or <$> resize 3 (listOf genCondition)),
+      (1, And <$> resize 3 (listOf genCondition)),
+      (1, pure IsDefaultBranch),
+      (1, pure IsTag),
+      (1, IsBranch <$> text),
+      (1, IsRepo <$> text),
+      (1, IsOwner <$> text)
+    ]
 
 text :: Gen Text
 text = TE.decodeUtf8 . TE.encodeUtf8 . T.pack <$> resize 4 arbitrary
@@ -66,7 +90,7 @@ genValue = sized \m -> do
   frequency
     [ (2, A.String <$> text),
       (2, A.Array . V.fromList <$> vectorOf n (resize n' genValue)),
-      (5, A.object <$> vectorOf n ((A..=) <$> text <*> (resize n' genValue))),
+      (5, A.object <$> vectorOf n ((A..=) <$> text <*> resize n' genValue)),
       (1, A.Number . fromIntegral <$> (arbitrary :: Gen Int64)), -- no fractions :( but doesn't matter here
       (1, A.Bool <$> arbitrary)
     ]
