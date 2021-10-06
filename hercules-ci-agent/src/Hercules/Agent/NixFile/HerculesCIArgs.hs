@@ -10,11 +10,13 @@ import qualified Hercules.Agent.NixFile.GitSource as GitSource
 import Hercules.CNix.Expr (ToRawValue, ViaJSON (ViaJSON))
 import Protolude
 
+-- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.
 data HerculesCIMeta = HerculesCIMeta
   { apiBaseUrl :: Text
   }
   deriving (Generic, ToJSON)
 
+-- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.
 data HerculesCIArgs = HerculesCIArgs
   { rev :: Text,
     shortRev :: Text,

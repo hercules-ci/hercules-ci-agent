@@ -1,0 +1,105 @@
+= Legacy Evaluation
+
+NOTE: This page describes the behavior of Hercules CI Agent before version 0.9. While this behavior is still available in current versions of the agent, we recommend to use the `herculesCI` attribute described in xref:evaluation.adoc[Evaluation].
+
+Evaluation is the first step when it comes to building your project. It is performed by your agent as follows:
+
+. At the top-level of your repository, the agent will search for a Nix file to
+   evaluate in the following order: `nix/ci.nix`, `ci.nix` or `default.nix`
+// TODO: link to how pinning is done
+. `NIX_PATH` will be empty. Make sure you pin nixpkgs and not rely on `<nixpkgs>`
+    search path. This is to ensure reproducability and purity also when it comes to nixpkgs
+. If any of the attributes fail to evaluate, job evaluation phase will be marked as failed
+   and error messages will be shown inline per attribute
+
+[[traversal]]
+== Traversal
+
+[[top-level]]
+=== Top level
+
+The top-level value in `nix/ci.nix`, `ci.nix` or `default.nix` may be a https://nixos.org/nix/manual/#ss-functions[function&#8288;icon:external-link[]],
+as long as all arguments have default values. Such a function will be invoked and the result must be a https://nixos.org/nix/manual/#ssec-values[value&#8288;icon:external-link[]].
+
+[[attrsets]]
+=== Attribute set traversal
+
+NOTE: This page describes the behavior of Hercules CI Agent before version 0.9. While this behavior is still available in current versions of the agent, we recommend to use the `herculesCI` attribute described in xref:evaluation.adoc[Evaluation].
+
+The value resulting from <<Top level>> is traversed according to the following rules:
+
+ * If the current value is a derivation, build it asynchronously
+
+ * If the current value is a functor, ignore the attributes, call it and traverse it
+
+ * If the current value is an attribute set and
+    ** If it is the root value, traverse *one* level of attributes.
+    ** If the attribute set contains `recurseForDerivations = true`, traverse *one* level of attributes.
+    ** Otherwise, ignore
+
+ * Otherwise, ignore
+
+Note that for an attribute set `a` it must be the root or it must have `a.recurseForDerivations == true`, which can be added with `pkgs.recurseIntoAttrs`. This must be repeated in every layer of the nested attribute sets. Additionaly, recursion into nested attribute sets is limited to a depth of 10 attributes or functor calls.
+
+[[attrsets-example]]
+=== Example of nested attribute sets
+
+This is an example `ci.nix` that builds `myDrvs.hello`.
+
+```
+let
+  pkgs = builtins.fetchTarball {
+    url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
+  };
+in
+{
+  myDrvs = pkgs.recurseIntoAttrs {
+    hello = pkgs.hello;
+  };
+}
+```
+
+[[platforms-and-build-matrix]]
+== Platforms and build matrix
+
+NOTE: This page describes the behavior of Hercules CI Agent before version 0.9. While this behavior is still available in current versions of the agent, we recommend to use the `herculesCI` attribute described in xref:evaluation.adoc[Evaluation].
+
+Evaluation is always performed on an `x86_64-linux` agent. To build for other platforms, you have to explicitly pass the `system` parameter to Nixpkgs.
+
+To build your project for multiple platforms, the recommended approach is to make the top-level value of `ci.nix` an attribute set with an attribute per platform. Make sure to wrap the values in `recurseIntoAttrs`. The minimal repo from the xref:hercules-ci:ROOT:getting-started/index.adoc#repository-setup[Getting Started guide] has an https://github.com/hercules-ci/nix-ci-minimal-repo/blob/master/ci.nix[example].
+
+This technique can be nested to achieve a build matrix where multiple independent variables are varied.
+
+If some derivations can not be built on a certain platform or configuration, you can use `lib.optionalAttrs`, `lib.filterAttrs` or other functions to remove those.
+
+See also the guide xref:hercules-ci:ROOT:guides/multi-platform.adoc[].
+
+[[differences-with-nix-build]]
+== Differences with `nix-build`
+
+NOTE: This page describes the behavior of Hercules CI Agent before version 0.9. While this behavior is still available in current versions of the agent, we recommend to use the `herculesCI` attribute described in xref:evaluation.adoc[Evaluation].
+
+The agent expects the root of the file to be an attribute set and traverses it similarly to how `nix build` does it.
+A few differences exists:
+
+* Hercules CI allows all attribute names, including ones with characters like `.` that are ignored by `nix build`
+* The root must not be a list
+
+[[differences-with-hydra]]
+== Differences with Hydra
+
+NOTE: This page describes the behavior of Hercules CI Agent before version 0.9. While this behavior is still available in current versions of the agent, we recommend to use the `herculesCI` attribute described in xref:evaluation.adoc[Evaluation].
+
+Hydra is not compatible with `nix-build`. It rejects the `recurseForDerivations` attribute.
+
+The `ci.nix` format can be built by Hydra using a conversion function, but Hydra will not understand Hercules CI-specific attributes when introduced.
+
+[source,nix]
+----
+stripRecurseForDerivations =
+  lib.filterAttrsRecursive (n: _: n != "recurseForDerivations");
+----
+
+Hydra reads `meta.hydraPlatforms` to determine whether to build for a platform.
+This logic is not present in the agent, but can be implemented in Nix with a
+filtering function if necessary.

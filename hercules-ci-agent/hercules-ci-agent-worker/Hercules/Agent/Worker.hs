@@ -555,6 +555,7 @@ sendConfig evalState herculesCI = flip runReaderT evalState $ do
             handlerExtraInputs = M.mapKeys decodeUtf8 (fromMaybe mempty ei)
           }
 
+-- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.
 simpleWalk ::
   (MonadUnliftIO m, KatipContext m) =>
   Store ->
@@ -616,6 +617,7 @@ traverseSPWOs f v = do
   v' <- Std.Vector.toListFP v
   traverse_ f v'
 
+-- | Documented in @docs/modules/ROOT/pages/legacy-evaluation.adoc@.
 walk ::
   (MonadUnliftIO m, KatipContext m) =>
   Store ->
@@ -694,6 +696,7 @@ walk store evalState = walk' True [] 10
                         <> (show vt :: Text)
                 pass
 
+-- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.
 walkDerivation ::
   MonadIO m =>
   Store ->
