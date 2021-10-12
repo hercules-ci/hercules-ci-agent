@@ -13,6 +13,11 @@ data EffectTask = EffectTask
     inputDerivationOutputPaths :: [Text],
     token :: Text,
     projectId :: Id "project",
-    projectPath :: Text
+    projectPath :: Text,
+    siteName :: Text,
+    ownerName :: Text,
+    repoName :: Text,
+    ref :: Text,
+    isDefaultBranch :: Bool
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

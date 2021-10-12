@@ -34,11 +34,14 @@ createHerculesCIArgs :: Maybe Text -> IO HerculesCIArgs
 createHerculesCIArgs passedRef = do
   gitRoot <- getGitRoot
   gitRev <- getRev
-  gitRef <- getRef
-  let ref = fromMaybe gitRef passedRef
-      gitSource = GitSource.fromRefRevPath ref gitRev (toS gitRoot)
+  ref <- computeRef passedRef
+  let gitSource = GitSource.fromRefRevPath ref gitRev (toS gitRoot)
   url <- determineDefaultApiBaseUrl
   pure $ HerculesCIArgs.fromGitSource gitSource HerculesCIArgs.HerculesCIMeta {apiBaseUrl = url}
+
+computeRef :: Maybe Text -> IO Text
+computeRef Nothing = getRef
+computeRef (Just passedRef) = pure passedRef
 
 resolveInputs ::
   (Has HerculesClientToken r, Has HerculesClientEnv r) =>

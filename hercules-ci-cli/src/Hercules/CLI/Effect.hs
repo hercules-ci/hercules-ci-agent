@@ -17,9 +17,10 @@ import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDef
 import Hercules.CLI.Common (runAuthenticated)
 import Hercules.CLI.Exception (exitMsg)
 import Hercules.CLI.Git (getAllBranches, getHypotheticalRefs)
-import Hercules.CLI.Nix (ciNixAttributeCompleter, createHerculesCIArgs, resolveInputs, withNix)
+import qualified Hercules.CLI.Git as Git
+import Hercules.CLI.Nix (ciNixAttributeCompleter, computeRef, createHerculesCIArgs, resolveInputs, withNix)
 import Hercules.CLI.Options (flatCompleter, mkCommand, subparser)
-import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption, projectPathText)
+import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption, projectPathOwner, projectPathProject, projectPathText)
 import Hercules.CLI.Secret (getSecretsFilePath)
 import Hercules.CNix (Store)
 import Hercules.CNix.Expr (Match (IsAttrs), Value (rtValue), getAttrBool, getDrvFile, match)
@@ -28,6 +29,7 @@ import Hercules.CNix.Store (Derivation, StorePath, buildPaths, getDerivationInpu
 import qualified Hercules.CNix.Store as CNix
 import Hercules.Effect (RunEffectParams (..), runEffect)
 import Hercules.Error (escalate)
+import qualified Hercules.Secrets as Secret
 import Katip (initLogEnv, runKatipContextT)
 import Options.Applicative (completer, help, long, metavar, strArgument, strOption)
 import qualified Options.Applicative as Optparse
@@ -53,7 +55,9 @@ runParser = do
   pure $ runAuthenticated do
     withAsync (getProjectEffectData projectOptionMaybe requireToken) \projectPathAsync -> do
       withNix \store evalState -> do
-        args <- liftIO $ createHerculesCIArgs refMaybe
+        ref <- liftIO $ computeRef refMaybe
+        isDefaultBranch <- liftIO Git.getIsDefault
+        args <- liftIO $ createHerculesCIArgs (Just ref)
         let attrPath = T.split (== '.') attr
             nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
         uio <- askUnliftIO
@@ -81,6 +85,14 @@ runParser = do
         --     ERRO[0000] container_linux.go:370: starting container process caused: process_linux.go:459: container init caused: rootfs_linux.go:59: mounting "/run/user/1000/hci6017/secrets" to rootfs at "/run/user/1000/hci6017/runc-state/rootfs/secrets" caused: operation not permitted
         dataDir <- liftIO $ getAppUserDataDirectory "hercules-ci"
         createDirectoryIfMissing True dataDir
+        let secretContextMaybe =
+              projectPath <&> \p ->
+                Secret.SecretContext
+                  { ownerName = projectPathOwner p,
+                    repoName = projectPathProject p,
+                    isDefaultBranch = isDefaultBranch,
+                    ref = ref
+                  }
         exitCode <- withTempDirectory dataDir "tmp-effect-" \workDir -> do
           runKatipContextT logEnv () mempty $
             runEffect
@@ -91,7 +103,9 @@ runParser = do
                   runEffectApiBaseURL = apiBaseURL,
                   runEffectDir = workDir,
                   runEffectProjectId = projectId,
-                  runEffectProjectPath = projectPathText <$> projectPath
+                  runEffectProjectPath = projectPathText <$> projectPath,
+                  runEffectSecretContext = secretContextMaybe,
+                  runEffectFriendly = True
                 }
         throwIO exitCode
 

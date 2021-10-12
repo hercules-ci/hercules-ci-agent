@@ -17,6 +17,7 @@ import Hercules.Effect.Container (BindMount (BindMount))
 import qualified Hercules.Effect.Container as Container
 import Hercules.Error (escalateAs)
 import qualified Hercules.Formats.Secret as Formats.Secret
+import Hercules.Secrets (SecretContext, evalCondition, evalConditionTrace)
 import Katip (KatipContext, Severity (..), logLocM, logStr)
 import Protolude
 import System.FilePath
@@ -31,8 +32,8 @@ parseDrvSecretsMap drvEnv =
       Right r -> Right r
 
 -- | Write secrets to file based on secretsMap value
-writeSecrets :: (MonadIO m, KatipContext m) => Maybe FilePath -> Map Text Text -> Map Text (Sensitive Formats.Secret.Secret) -> FilePath -> m ()
-writeSecrets sourceFileMaybe secretsMap extraSecrets destinationDirectory = write . fmap reveal . addExtra =<< gather
+writeSecrets :: (MonadIO m, KatipContext m) => Bool -> Maybe SecretContext -> Maybe FilePath -> Map Text Text -> Map Text (Sensitive Formats.Secret.Secret) -> FilePath -> m ()
+writeSecrets friendly ctxMaybe sourceFileMaybe secretsMap extraSecrets destinationDirectory = write . fmap reveal . addExtra =<< gather
   where
     addExtra = flip M.union extraSecrets
     write = liftIO . BS.writeFile (destinationDirectory </> "secrets.json") . BL.toStrict . A.encode
@@ -51,30 +52,51 @@ writeSecrets sourceFileMaybe secretsMap extraSecrets destinationDirectory = writ
 
           createDirectoryIfMissing True destinationDirectory
           secretsMap & M.traverseWithKey \destinationName (secretName :: Text) -> do
+            let gotoFail =
+                  liftIO . throwIO . FatalError $
+                    "Secret " <> secretName <> " does not exist or access was denied, so we can't get a secret for " <> destinationName <> ". Please make sure that the secret name matches a secret on your agents and make sure that its condition applies."
             case revealContainer (allSecrets <&> M.lookup secretName) of
-              Nothing ->
-                liftIO $
-                  throwIO $
-                    FatalError $
-                      "Secret " <> secretName <> " does not exist, so we can't find a secret for " <> destinationName <> ". Please make sure that the secret name matches a secret on your agents."
-              Just ssecret ->
-                pure do
-                  secret <- ssecret
-                  -- Currently this is `id` but we might want to fork the
-                  -- format here or omit some fields.
-                  pure $
-                    Formats.Secret.Secret
-                      { data_ = Formats.Secret.data_ secret
-                      }
+              Nothing -> gotoFail
+              Just ssecret -> do
+                let condMaybe = reveal (Formats.Secret.condition <$> ssecret)
+                    r = do
+                      secret <- ssecret
+                      pure $
+                        Formats.Secret.Secret
+                          { data_ = Formats.Secret.data_ secret,
+                            -- Hide the condition
+                            condition = Nothing
+                          }
+                case (friendly, condMaybe) of
+                  (True, Nothing) -> do
+                    putErrText $ "The secret " <> show secretName <> " does not contain the `condition` field, which is required on hercules-ci-agent >= 0.9."
+                    pure r
+                  (True, Just cond) | Just ctx <- ctxMaybe ->
+                    case evalConditionTrace ctx cond of
+                      (_, True) -> pure r
+                      (trace_, _) -> do
+                        putErrText $ "Could not grant access to secret " <> show secretName <> "."
+                        for_ trace_ \ln -> putErrText $ "  " <> ln
+                        liftIO . throwIO . FatalError $ "Could not grant access to secret " <> show secretName <> ". See trace in preceding log."
+                  (True, Just _) | otherwise -> do
+                    -- This is only ok in friendly mode (hci)
+                    putErrText "WARNING: not performing secrets access control. The secret.condition field won't be checked."
+                    pure r
+                  (False, Nothing) -> gotoFail
+                  (False, Just cond) ->
+                    if evalCondition (fromMaybe (panic "SecretContext is required") ctxMaybe) cond then pure r else gotoFail
 
 data RunEffectParams = RunEffectParams
   { runEffectDerivation :: Derivation,
     runEffectToken :: Maybe (Sensitive Text),
     runEffectSecretsConfigPath :: Maybe FilePath,
+    runEffectSecretContext :: Maybe SecretContext,
     runEffectApiBaseURL :: Text,
     runEffectDir :: FilePath,
     runEffectProjectId :: Maybe (Id "project"),
-    runEffectProjectPath :: Maybe Text
+    runEffectProjectPath :: Maybe Text,
+    -- | Whether we can relax security in favor of usability; 'True' in @hci effect run@. 'False' in agent.
+    runEffectFriendly :: Bool
   }
 
 (=:) :: k -> a -> Map k a
@@ -100,10 +122,11 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
                   tok <- token
                   pure $
                     Formats.Secret.Secret
-                      { data_ = M.singleton "token" $ A.String tok
+                      { data_ = M.singleton "token" $ A.String tok,
+                        condition = Nothing
                       }
             )
-  writeSecrets secretsPath drvSecretsMap extraSecrets (toS secretsDir)
+  writeSecrets (runEffectFriendly p) (runEffectSecretContext p) secretsPath drvSecretsMap extraSecrets (toS secretsDir)
   liftIO $ do
     -- Nix sandbox sets tmp to buildTopDir
     -- Nix sandbox reference: https://github.com/NixOS/nix/blob/24e07c428f21f28df2a41a7a9851d5867f34753a/src/libstore/build.cc#L2545

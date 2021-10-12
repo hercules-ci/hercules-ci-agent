@@ -4,12 +4,16 @@
 module Hercules.CLI.Secret where
 
 import qualified Data.Aeson as A
+import qualified Data.Aeson.Types as A
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Hercules.CLI.Common (exitMsg, runAuthenticated)
 import Hercules.CLI.JSON as JSON
 import Hercules.CLI.Options (mkCommand, subparser)
-import Hercules.CLI.Project (ProjectPath (projectPathOwner, projectPathSite), getProjectPath, projectOption)
+import Hercules.CLI.Project (ProjectPath (projectPathOwner, projectPathSite), getProjectPath, projectOption, projectPathProject)
+import Hercules.Formats.Secret (Secret (Secret))
+import qualified Hercules.Formats.Secret as Secret
+import Hercules.UserException (UserException (UserException))
 import qualified Options.Applicative as Optparse
 import Protolude
 import System.FilePath (takeDirectory, (</>))
@@ -44,7 +48,10 @@ add = do
   mkJson <- JSON.options
   projectOptionMaybe <- optional projectOption
   pure $ runAuthenticated do
-    secretData <- liftIO mkJson
+    secretDataValue <- liftIO mkJson
+    secretData <- case A.parse A.parseJSON secretDataValue of
+      A.Error e -> throwIO $ UserException $ "The secret data must be an object. " <> toS e
+      A.Success a -> pure a
     projectPath <- getProjectPath projectOptionMaybe
     secretsFilePath <- liftIO $ getSecretsFilePath projectPath
     liftIO $
@@ -56,10 +63,24 @@ add = do
       Just _ -> do
         exitMsg $ "Secret " <> secretName <> " already exists in " <> toS secretsFilePath <> "."
       Nothing -> pass
-    let secrets' = secrets & M.insert secretName (A.object ["kind" A..= A.String "Secret", "data" A..= secretData])
+    let secret =
+          Secret
+            { data_ = secretData,
+              condition =
+                Just $
+                  Secret.And
+                    [ Secret.IsOwner (projectPathOwner projectPath),
+                      Secret.IsRepo (projectPathProject projectPath),
+                      Secret.IsDefaultBranch
+                    ]
+            }
+
+        secrets' = secrets & M.insert secretName (A.toJSON secret)
     liftIO $ writeJsonFile secretsFilePath secrets'
-    putErrText $ "hci: successfully wrote " <> secretName <> " to " <> toS secretsFilePath
-    putErrText "NOTE: Remember to synchronize this file with your agents!"
+    putErrText $ "hci: Successfully wrote " <> secretName <> " to " <> toS secretsFilePath
+    putErrText "     It is only available for the detected or passed project's default branch."
+    putErrText "     You can edit the condition to suit your needs."
+    putErrText "     NOTE: Remember to synchronize this file with your agents!"
 
 getSecretsFilePath :: ProjectPath -> IO FilePath
 getSecretsFilePath projectPath = do

@@ -1,6 +1,7 @@
 * Configuration Reference
 ** xref:agent-config.adoc[Configuration File]
 ** xref:binary-caches-json.adoc[`binary-caches.json`]
+** xref:secrets-json.adoc[`secrets.json`]
 * xref:deployment-requirements.adoc[Deployment Requirements]
 * Nix integration
 ** xref:evaluation.adoc[Evaluation]

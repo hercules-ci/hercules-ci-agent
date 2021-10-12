@@ -8,6 +8,7 @@ import Hercules.API.Id (Id)
 import Hercules.Agent.Sensitive
 import Hercules.Agent.WorkerProtocol.LogSettings
 import Hercules.Agent.WorkerProtocol.Orphans ()
+import Hercules.Secrets (SecretContext)
 import Protolude
 
 data Effect = Effect
@@ -19,6 +20,7 @@ data Effect = Effect
     secretsPath :: FilePath,
     token :: Sensitive Text,
     projectId :: Id "project",
-    projectPath :: Text
+    projectPath :: Text,
+    secretContext :: SecretContext
   }
   deriving (Generic, Binary, Show, Eq)
