@@ -619,3 +619,33 @@ spec = describe "Evaluation" $ do
             toS (AttributeEvent.derivationPath ae2) `shouldContain` "/nix/store"
             toS (AttributeEvent.derivationPath ae2) `shouldContain` "-hello"
         bad -> failWith $ "Events should be a two attributes, not: " <> show bad
+  describe "when using the herculesCI attribute based format" do
+    it "rejects effects outside outputs.effects" $ \srv -> do
+      id <- randomId
+      (s, r) <-
+        runEval
+          srv
+          defaultTask
+            { EvaluateTask.id = id,
+              EvaluateTask.otherInputs = "src" =: "/tarball/effect-attack",
+              EvaluateTask.selector =
+                EvaluateTask.OnPush $
+                  EvaluateTask.MkOnPush
+                    { name = "default",
+                      inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl "http://api/tarball/nixpkgs"
+                    },
+              EvaluateTask.inputMetadata = "src" =: defaultMeta
+            }
+      s `shouldBe` TaskStatus.Successful ()
+      case attrLike r of
+        [ EvaluateEvent.Attribute a1,
+          EvaluateEvent.AttributeError ae1
+          ] -> do
+            AttributeEvent.expressionPath a1 `shouldBe` ["effects", "ok"]
+            toS (AttributeEvent.derivationPath a1) `shouldContain` "/nix/store"
+            toS (AttributeEvent.derivationPath a1) `shouldContain` "-effect-2"
+
+            AttributeErrorEvent.expressionPath ae1 `shouldBe` ["illegal"]
+            toS (AttributeErrorEvent.errorMessage ae1)
+              `shouldContain` "only allowed below the effects attribute"
+        bad -> failWith $ "Events should be a two attributes, not: " <> show bad

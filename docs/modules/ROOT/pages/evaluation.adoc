@@ -120,7 +120,7 @@ During the execution of the job, first, all derivations will be built. If the bu
 
 All three are defined through derivations.
 
- * A derivation marked by the attribute `isEffect = true` is categorized as an Effect and will be run in the Effects sandbox.
+ * A derivation marked by the attribute `isEffect = true` is categorized as an Effect and will be run in the Effects sandbox. Effects must be defined below the `outputs.effects` attribute.
 
  * A derivation marked by the `buildDependenciesOnly = true` attribute will not be built, but its dependencies will.
 
