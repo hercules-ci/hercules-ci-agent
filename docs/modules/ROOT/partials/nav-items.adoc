@@ -3,8 +3,10 @@
 ** xref:binary-caches-json.adoc[`binary-caches.json`]
 ** xref:secrets-json.adoc[`secrets.json`]
 * xref:deployment-requirements.adoc[Deployment Requirements]
-* Nix integration
+* xref:job-definition.adoc[Job Definition]
 ** xref:evaluation.adoc[Evaluation]
+** xref:effects.adoc[Effects]
 ** xref:legacy-evaluation.adoc[Legacy Evaluation]
 * Security Reference
 ** xref:data-sharing.adoc[Data sharing overview]
+** xref:effects-security.adoc[Effects Security]

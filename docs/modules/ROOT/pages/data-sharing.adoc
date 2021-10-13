@@ -1,6 +1,8 @@
 
 # Data sharing overview
 
+NOTE: This does not apply to Hercules CI Enterprise, because it does not use `hercules-ci.com`. You have a private equivalent of it, which does not share any data with any remote service.
+
 The agent shares metadata and logs with `hercules-ci.com` to populate the dashboard and distribute work to other agents. It does not upload sources, whole derivations, or build outputs. This way it's easy to keep your software confidential.
 
 `hercules-ci.com` will receive the following information.
@@ -33,3 +35,7 @@ Per build (realisation):
  * output hashes as in `nix-store -q --hash`
  * output sizes as in `nix-store -q --size`
  * timestamps
+
+In effects:
+
+ * state file contents, if you choose to use this feature
