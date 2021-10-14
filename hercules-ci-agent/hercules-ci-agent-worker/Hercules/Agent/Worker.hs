@@ -585,7 +585,7 @@ simpleWalk store evalState = walk' [] 10
               IsAttrs attrValue -> do
                 isDeriv <- liftIO $ isDerivation evalState v
                 if isDeriv
-                  then walkDerivation store evalState path attrValue
+                  then walkDerivation store evalState False path attrValue
                   else do
                     attrs <- liftIO $ getAttrs attrValue
                     void $
@@ -653,7 +653,7 @@ walk store evalState = walk' True [] 10
               IsAttrs attrValue -> do
                 isDeriv <- liftIO $ isDerivation evalState v
                 if isDeriv
-                  then walkDerivation store evalState path attrValue
+                  then walkDerivation store evalState True path attrValue
                   else do
                     walkAttrset <-
                       if forceWalkAttrset
@@ -701,16 +701,21 @@ walkDerivation ::
   MonadIO m =>
   Store ->
   Ptr EvalState ->
+  Bool ->
   [ByteString] ->
   Value NixAttrs ->
   ConduitT i Event m ()
-walkDerivation store evalState path attrValue = do
+walkDerivation store evalState effectsAnywhere path attrValue = do
   drvStorePath <- getDrvFile evalState (rtValue attrValue)
   drvPath <- liftIO $ CNix.storePathToPath store drvStorePath
   typE <- runExceptT do
     isEffect <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "isEffect")
     case isEffect of
-      Just True -> throwE $ Right Attribute.Effect
+      Just True
+        | effectsAnywhere
+            || inEffects path ->
+          throwE $ Right Attribute.Effect
+      Just True | otherwise -> throwE $ Left $ toException $ UserException "This derivation is marked as an effect, but effects are only allowed below the effects attribute."
       _ -> pass
     isDependenciesOnly <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "buildDependenciesOnly")
     case isDependenciesOnly of
@@ -746,6 +751,10 @@ walkDerivation store evalState path attrValue = do
     Left (Left e) -> yieldAttributeError path e
     Left (Right t) -> yieldAttribute t
     Right _ -> yieldAttribute Attribute.Regular
+  where
+    inEffects :: [ByteString] -> Bool
+    inEffects ("effects" : _) = True
+    inEffects _ = False
 
 liftEitherAs :: MonadError e m => (e0 -> e) -> Either e0 a -> m a
 liftEitherAs f = liftEither . rmap

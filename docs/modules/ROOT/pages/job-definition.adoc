@@ -1,0 +1,19 @@
+# Job Definition
+
+A job is the largest coherent collection of work in Hercules CI. It can be described using the combination of
+
+* a single repository,
+* commit,
+* job type,
+* job name,
+* resolved `extraInputs`
+
+It can be thought of as an evaluation context for the evaluations that are performed directly by the agent.
+
+Jobs are also identified by urls such as `https://hercules-ci.com/github/hercules-ci/hercules-ci-agent/jobs/1112`.
+
+Jobs are first created in the backend, then evaluated on an `x86_64-linux` agent, built on one or more agents, and finally its effects are run. Builds and evaluations run concurrently. Effects also run concurrently, but only after all of a job's builds are successful and after previous jobs have completed. This means that a job's effects are not run concurrently with those from other jobs of the same repository.
+
+Each job produces one commit status representing the successful (or not) completion of all tasks, including evaluation, builds and effects.
+
+Jobs are defined through Nix files in your repository. See xref:evaluation.adoc[Evaluation].
