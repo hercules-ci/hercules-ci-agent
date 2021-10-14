@@ -16,9 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
    TODO: document `herculesCI.onPush` etc
 
+   Only the `outputs.effects` sub-attributes may define effects, making attacks on secrets harder to conceal.
+
  - Multiple jobs per commit
 
  - Jobs that run with the latest successful dependency build
+
+ - Conditions on secrets, disallowing access to secrets except when the conditions are met. This enforces the four eyes principle when branch protection is set up to match the secrets' conditions.
+
+ - Hardening against rogue contributors. Trivial attacks trying to read system paths or secrets are no longer possible. Similar to typical CIs, secrets can still be stolen, but only through effects. Prevent secrets theft through reviews and branch protection.
 
 ### Changed
 

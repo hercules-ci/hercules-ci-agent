@@ -16,6 +16,13 @@ include::ROOT:partial$agent-small-example.toml[]
 
 NOTE: If you are deploying an agent, the xref:hercules-ci:ROOT:getting-started/index.adoc[guide] is a better starting point.
 
+[[allowInsecureBuiltinFetchers]]
+== allowInsecureBuiltinFetchers
+
+Optional. Defaults safely to False.
+
+Whether to allow the built-in fetchers to access `http://` and other unencrypted URL schemes.
+
 [[apiBaseUrl]]
 == apiBaseUrl
 

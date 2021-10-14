@@ -70,7 +70,7 @@ import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.CNix as CNix
-import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, withEvalStateConduit)
+import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
 import qualified Hercules.CNix.Expr.Raw
 import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, requireDict, (#.), (#?), (#?!), ($?))
@@ -225,6 +225,7 @@ runCommand herculesState ch command = do
     Command.Eval eval -> Logger.withLoggerConduit (logger (Eval.logSettings eval) protocolVersion) $
       Logger.withTappedStderr Logger.tapper $
         connectCommand ch $ do
+          liftIO $ restrictEval eval
           void $
             liftIO $
               flip
@@ -267,6 +268,17 @@ runCommand herculesState ch command = do
                 ExitFailure n -> yield $ Event.EffectResult n
     _ ->
       panic "Not a valid starting command"
+
+restrictEval :: Eval -> IO ()
+restrictEval eval = do
+  setGlobalOption "restrict-eval" "true"
+  setGlobalOption "allowed-uris" $
+    if Eval.allowInsecureBuiltinFetchers eval
+      then allSchemes
+      else safeSchemes
+  where
+    safeSchemes = "ssh:// https://"
+    allSchemes = safeSchemes <> " http:// git://"
 
 logger :: (MonadIO m, MonadUnliftIO m, KatipContext m) => LogSettings.LogSettings -> Int -> ConduitM () (Vector LogEntry) m () -> m ()
 logger logSettings_ storeProtocolVersionValue entriesSource = do
@@ -494,6 +506,9 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                           )
             logLocM DebugS "Built"
   withEvalStateConduit store $ \evalState -> do
+    liftIO do
+      addAllowedPath evalState (encodeUtf8 $ toS $ Eval.cwd eval)
+      addInternalAllowedPaths evalState
     katipAddContext (sl "storeURI" (decode s)) $
       logLocM DebugS "EvalState loaded."
     args <-
