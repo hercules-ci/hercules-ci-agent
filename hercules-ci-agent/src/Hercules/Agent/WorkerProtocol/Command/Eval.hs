@@ -21,7 +21,8 @@ data Eval = Eval
     gitSource :: ViaJSON GitSource,
     apiBaseUrl :: Text,
     logSettings :: LogSettings,
-    selector :: ViaJSON EvaluateTask.Selector
+    selector :: ViaJSON EvaluateTask.Selector,
+    allowInsecureBuiltinFetchers :: Bool
   }
   deriving (Generic, Binary, Show, Eq)
 

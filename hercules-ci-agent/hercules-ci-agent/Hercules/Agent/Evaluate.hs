@@ -44,6 +44,7 @@ import Hercules.API.Servant (noContent)
 import qualified Hercules.Agent.Cache as Agent.Cache
 import qualified Hercules.Agent.Cachix.Env as Cachix.Env
 import qualified Hercules.Agent.Client
+import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
 import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Evaluate.TraversalQueue (Queue)
@@ -300,6 +301,7 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
   extraOpts <- Nix.askExtraOptions
   bulkBaseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   apiBaseUrl <- asks (toS . showBaseUrl . Env.herculesBaseUrl)
+  cfg <- asks Env.config
   let gitSource = fromRefRevPath ref rev (toS projectDir)
       eval =
         Eval.Eval
@@ -315,7 +317,8 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                 },
             Eval.gitSource = ViaJSON gitSource,
             Eval.apiBaseUrl = apiBaseUrl,
-            Eval.selector = ViaJSON selector
+            Eval.selector = ViaJSON selector,
+            Eval.allowInsecureBuiltinFetchers = Config.allowInsecureBuiltinFetchers cfg
           }
   buildRequiredIndex <- liftIO $ newIORef (0 :: Int)
   commandChan <- newChan

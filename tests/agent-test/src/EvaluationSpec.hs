@@ -649,3 +649,40 @@ spec = describe "Evaluation" $ do
             toS (AttributeErrorEvent.errorMessage ae1)
               `shouldContain` "only allowed below the effects attribute"
         bad -> failWith $ "Events should be a two attributes, not: " <> show bad
+  describe "when the nix expression references a system path" $ do
+    it "throws an error (1)" \srv -> do
+      id <- randomId
+      (s, r) <-
+        runEval
+          srv
+          defaultTask
+            { EvaluateTask.id = id,
+              EvaluateTask.otherInputs = "src" =: "/tarball/path-attack",
+              EvaluateTask.inputMetadata = "src" =: defaultMeta
+            }
+      s `shouldBe` TaskStatus.Successful ()
+      case attrLike r of
+        [EvaluateEvent.AttributeError ae] -> do
+          AttributeErrorEvent.expressionPath ae `shouldBe` ["hello"]
+          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "access to path"
+          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "/etc/hostname"
+          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "is forbidden in restricted mode"
+        _ -> failWith $ "Events should be a single attribute, not: " <> show r
+    it "throws an error (2)" \srv -> do
+      id <- randomId
+      (s, r) <-
+        runEval
+          srv
+          defaultTask
+            { EvaluateTask.id = id,
+              EvaluateTask.otherInputs = "src" =: "/tarball/path-attack-2",
+              EvaluateTask.inputMetadata = "src" =: defaultMeta
+            }
+      s `shouldBe` TaskStatus.Successful ()
+      case attrLike r of
+        [EvaluateEvent.AttributeError ae] -> do
+          AttributeErrorEvent.expressionPath ae `shouldBe` ["hello"]
+          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "access to path"
+          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "/var/lib/hercules-ci-agent/secrets/secrets.json"
+          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "is forbidden in restricted mode"
+        _ -> failWith $ "Events should be a single attribute, not: " <> show r

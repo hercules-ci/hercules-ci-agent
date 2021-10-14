@@ -54,7 +54,8 @@ data Config purpose = Config
     clusterJoinTokenPath :: Item purpose 'Required FilePath,
     binaryCachesPath :: Item purpose 'Required FilePath,
     logLevel :: Item purpose 'Required Severity,
-    labels :: Item purpose 'Required (Map Text A.Value)
+    labels :: Item purpose 'Required (Map Text A.Value),
+    allowInsecureBuiltinFetchers :: Item purpose 'Required Bool
   }
   deriving (Generic)
 
@@ -86,6 +87,8 @@ tomlCodec =
     .= logLevel
     <*> dioptional (Toml.tableMap _KeyText embedJson "labels")
     .= labels
+    <*> dioptional (Toml.bool "allowInsecureBuiltinFetchers")
+    .= allowInsecureBuiltinFetchers
 
 embedJson :: Key -> TomlCodec A.Value
 embedJson key =
@@ -202,5 +205,6 @@ finalizeConfig loc input = do
         staticSecretsDirectory = staticSecretsDir,
         workDirectory = workDir,
         logLevel = logLevel input & fromMaybe InfoS,
-        labels = fromMaybe mempty $ labels input
+        labels = fromMaybe mempty $ labels input,
+        allowInsecureBuiltinFetchers = fromMaybe False $ allowInsecureBuiltinFetchers input
       }

@@ -42,12 +42,9 @@ import Hercules.CNix.Store
 import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exceptions as C
+import Paths_hercules_ci_cnix_expr (getDataFileName)
 import Protolude hiding (evalState)
 import System.Directory (makeAbsolute)
-
-#ifndef NIX_2_4
-import Paths_hercules_ci_cnix_expr ( getDataFileName )
-#endif
 
 C.context (Hercules.CNix.Store.Context.context <> Hercules.CNix.Expr.Context.evalContext)
 
@@ -175,6 +172,21 @@ withEvalStateConduit (Store store) =
         } |]
     )
     (\x -> liftIO [C.throwBlock| void { delete $(EvalState* x); } |])
+
+-- | Insert an allowed path. Only has an effect when in restricted or pure mode.
+addAllowedPath :: Ptr EvalState -> ByteString -> IO ()
+addAllowedPath evalState path =
+  [C.throwBlock| void {
+    std::string path = std::string($bs-ptr:path, $bs-len:path);
+    EvalState &evalState = *$(EvalState *evalState);
+    if (evalState.allowedPaths) {
+      evalState.allowedPaths->insert(path);
+    }
+  }|]
+
+addInternalAllowedPaths :: Ptr EvalState -> IO ()
+addInternalAllowedPaths evalState = do
+  addAllowedPath evalState . encodeUtf8 . toS =<< getDataFileName "vendor/flake-compat"
 
 evalFile :: Ptr EvalState -> FilePath -> IO RawValue
 evalFile evalState filename = do

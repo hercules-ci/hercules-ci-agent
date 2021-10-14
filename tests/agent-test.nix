@@ -40,6 +40,10 @@ in
         services.hercules-ci-agent.enable = true;
         # Instead of the default, we want the nix library version from the build matrix (which should include at least the default)
         services.hercules-ci-agent.package = lib.mkForce pkgs.hercules-ci-agent;
+
+        # test suite fetches tarballs over http:// on the test network.
+        services.hercules-ci-agent.settings.allowInsecureBuiltinFetchers = true;
+
         services.hercules-ci-agent.settings.apiBaseUrl = "http://api";
         services.hercules-ci-agent.settings.nixUserIsTrusted = lib.mkForce false;
         services.hercules-ci-agent.settings.binaryCachesPath = (pkgs.writeText "binary-caches.json" (builtins.toJSON { })).outPath;
@@ -61,6 +65,13 @@ in
   testScript =
     ''
       start_all()
+
+      agent.succeed("""
+          mkdir -p /var/lib/hercules-ci-agent/secrets
+          echo '{}' > /var/lib/hercules-ci-agent/secrets/secrets.json
+          chown -R hercules-ci-agent /var/lib/hercules-ci-agent
+          chmod 0700 /var/lib/hercules-ci-agent/secrets
+      """)
 
       # Run the test code + api
       api.succeed(

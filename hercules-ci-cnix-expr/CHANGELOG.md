@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
  - `Hercules.CNix.Expr.Schema` module for a typed interface between code in the Nix language and Haskell. This also includes provenance tracking, improving error messages while reducing error handling noise in the Haskell code.
 
+ - `addAllowedPath`, `addInternalAllowedPaths` for use with restricted mode.
+
 ## 0.2.0.0 - 2021-06-22
 
 ### Added
