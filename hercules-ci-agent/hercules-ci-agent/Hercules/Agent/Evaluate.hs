@@ -210,6 +210,7 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
             emitSingle truncMsg
             panic "Evaluation limit reached."
           else emitSingle =<< fixIndex update
+  let allowedPaths = toList inputLocations <&> toS <&> encodeUtf8
   adHocSystem <-
     readFileMaybe (projectDir </> "ci-default-system.txt")
   liftIO (findNixFile projectDir) >>= \case
@@ -246,6 +247,7 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
                 (EvaluateTask.logToken task)
                 (ref, rev)
                 (EvaluateTask.selector task)
+                allowedPaths
             -- process has finished
             TraversalQueue.waitUntilDone derivationQueue
             TraversalQueue.close derivationQueue
@@ -296,8 +298,9 @@ runEvalProcess ::
   Text ->
   (Text, Text) ->
   EvaluateTask.Selector ->
+  [ByteString] ->
   App ()
-runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush logToken (ref, rev) selector = do
+runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush logToken (ref, rev) selector allowedPaths = do
   extraOpts <- Nix.askExtraOptions
   bulkBaseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   apiBaseUrl <- asks (toS . showBaseUrl . Env.herculesBaseUrl)
@@ -318,7 +321,8 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
             Eval.gitSource = ViaJSON gitSource,
             Eval.apiBaseUrl = apiBaseUrl,
             Eval.selector = ViaJSON selector,
-            Eval.allowInsecureBuiltinFetchers = Config.allowInsecureBuiltinFetchers cfg
+            Eval.allowInsecureBuiltinFetchers = Config.allowInsecureBuiltinFetchers cfg,
+            Eval.allowedPaths = allowedPaths
           }
   buildRequiredIndex <- liftIO $ newIORef (0 :: Int)
   commandChan <- newChan
