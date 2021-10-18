@@ -10,13 +10,14 @@
 let
   inherit (lib)
     filterAttrs
-    literalExample
     mkIf
     mkOption
     mkRemovedOptionModule
     mkRenamedOptionModule
     types
     ;
+  literalDocBook = lib.literalDocBook or lib.literalExample;
+  literalExpression = lib.literalExpression or lib.literalExample;
 
   cfg =
     config.services.hercules-ci-agent;
@@ -60,7 +61,7 @@ let
         '';
         type = types.path;
         default = config.baseDirectory + "/work";
-        defaultText = literalExample ''baseDirectory + "/work"'';
+        defaultText = literalExpression ''baseDirectory + "/work"'';
       };
       staticSecretsDirectory = mkOption {
         description = ''
@@ -68,7 +69,7 @@ let
         '';
         type = types.path;
         default = config.baseDirectory + "/secrets";
-        defaultText = literalExample ''baseDirectory + "/secrets"'';
+        defaultText = literalExpression ''baseDirectory + "/secrets"'';
       };
       clusterJoinTokenPath = mkOption {
         description = ''
@@ -76,7 +77,7 @@ let
         '';
         type = types.path;
         default = config.staticSecretsDirectory + "/cluster-join-token.key";
-        defaultText = literalExample ''staticSecretsDirectory + "/cluster-join-token.key"'';
+        defaultText = literalExpression ''staticSecretsDirectory + "/cluster-join-token.key"'';
         # internal: It's a bit too detailed to show by default in the docs,
         # but useful to define explicitly to allow reuse by other modules.
         internal = true;
@@ -87,7 +88,7 @@ let
         '';
         type = types.path;
         default = config.staticSecretsDirectory + "/binary-caches.json";
-        defaultText = literalExample ''staticSecretsDirectory + "/binary-caches.json"'';
+        defaultText = literalExpression ''staticSecretsDirectory + "/binary-caches.json"'';
         # internal: It's a bit too detailed to show by default in the docs,
         # but useful to define explicitly to allow reuse by other modules.
         internal = true;
@@ -105,7 +106,7 @@ let
       pkgs.stdenv.mkDerivation {
         name = "hercules-ci-check-system-nix-src";
         inherit (config.nix.package) src patches;
-        configurePhase = ":";
+        dontConfigure = true;
         buildPhase = ''
           echo "Checking in-memory pathInfoCache expiry"
           if ! grep 'PathInfoCacheValue' src/libstore/store-api.hh >/dev/null; then
@@ -158,7 +159,7 @@ in
       '';
       type = types.package;
       default = pkgs.hercules-ci-agent;
-      defaultText = literalExample "pkgs.hercules-ci-agent";
+      defaultText = literalExpression "pkgs.hercules-ci-agent";
     };
     settings = mkOption {
       description = ''
@@ -180,7 +181,7 @@ in
     tomlFile = mkOption {
       type = types.path;
       internal = true;
-      defaultText = "generated hercules-ci-agent.toml";
+      defaultText = literalDocBook "generated <literal>hercules-ci-agent.toml</literal>";
       description = ''
         The fully assembled config file.
       '';
