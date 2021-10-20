@@ -45,7 +45,14 @@ performBuild buildTask = do
   commandChan <- liftIO newChan
   statusRef <- newIORef Nothing
   extraNixOptions <- Nix.askExtraOptions
-  workerEnv <- liftIO $ WorkerProcess.prepareEnv (WorkerProcess.WorkerEnvSettings {nixPath = mempty})
+  workerEnv <-
+    liftIO $
+      WorkerProcess.prepareEnv
+        ( WorkerProcess.WorkerEnvSettings
+            { nixPath = mempty,
+              extraEnv = mempty
+            }
+        )
   let opts = [show extraNixOptions]
       procSpec =
         (System.Process.proc workerExe opts)

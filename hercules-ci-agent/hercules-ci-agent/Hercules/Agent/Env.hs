@@ -16,6 +16,7 @@ import qualified Hercules.Agent.Cachix.Env as Cachix
   )
 import Hercules.Agent.Config (FinalConfig)
 import qualified Hercules.Agent.Config.BinaryCaches as Config.BinaryCaches
+import qualified Hercules.Agent.Netrc.Env as Netrc
 import qualified Hercules.Agent.Nix.Env as Nix
   ( Env,
   )
@@ -42,6 +43,7 @@ data Env = Env
     binaryCaches :: Config.BinaryCaches.BinaryCaches,
     cachixEnv :: Cachix.Env,
     nixEnv :: Nix.Env,
+    netrcEnv :: Netrc.Env,
     socket :: AgentSocket,
     -- katip
     kNamespace :: K.Namespace,

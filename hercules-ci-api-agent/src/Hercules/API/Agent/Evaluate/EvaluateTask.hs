@@ -16,7 +16,15 @@ data EvaluateTask = EvaluateTask
     autoArguments :: Map Text (SubPathOf Identifier), -- argument name -> identifier
     nixPath :: [NixPathElement (SubPathOf Identifier)], -- NIX_PATH element -> identifier
     logToken :: Text,
-    selector :: Selector
+    selector :: Selector,
+    extraGitCredentials :: Maybe [Credential]
+  }
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
+
+data Credential = Credential
+  { url :: Text,
+    username :: Text,
+    password :: Text
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 

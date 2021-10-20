@@ -160,6 +160,8 @@ executable hercules-ci-agent
       Hercules.Agent.Files
       Hercules.Agent.Init
       Hercules.Agent.Log
+      Hercules.Agent.Netrc
+      Hercules.Agent.Netrc.Env
       Hercules.Agent.Nix
       Hercules.Agent.Nix.Env
       Hercules.Agent.Nix.Init

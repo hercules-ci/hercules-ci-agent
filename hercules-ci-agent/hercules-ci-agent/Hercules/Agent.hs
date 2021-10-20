@@ -53,6 +53,7 @@ import Hercules.Agent.EnvironmentInfo (extractAgentInfo)
 import qualified Hercules.Agent.Evaluate as Evaluate
 import qualified Hercules.Agent.Init as Init
 import Hercules.Agent.Log
+import qualified Hercules.Agent.Netrc as Netrc
 import qualified Hercules.Agent.Options as Options
 import Hercules.Agent.STM
 import Hercules.Agent.Socket as Socket
@@ -117,18 +118,18 @@ run env _cfg = do
                       ServicePayload.ServiceInfo _ -> pass
                       ServicePayload.StartEvaluation evalTask ->
                         launchTask tasks socket (Task.upcastId $ EvaluateTask.id evalTask) do
-                          Cache.withCaches do
+                          Netrc.withNixNetrc $ Cache.withCaches do
                             -- TODO move the store directly under env
                             store <- asks (Cachix.Env.nixStore . Env.cachixEnv)
                             Evaluate.performEvaluation store evalTask
                             pure $ TaskStatus.Successful ()
                       ServicePayload.StartBuild buildTask ->
                         launchTask tasks socket (Task.upcastId $ BuildTask.id buildTask) do
-                          Cache.withCaches $
+                          Netrc.withNixNetrc $ Cache.withCaches do
                             Build.performBuild buildTask
                       ServicePayload.StartEffect effectTask ->
                         launchTask tasks socket (Task.upcastId $ EffectTask.id effectTask) do
-                          Cache.withCaches $
+                          Netrc.withNixNetrc $ Cache.withCaches do
                             Effect.performEffect effectTask
                       ServicePayload.Cancel cancellation -> cancelTask tasks socket cancellation
 
