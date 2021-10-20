@@ -10,5 +10,5 @@
 ** xref:legacy-evaluation.adoc[Legacy Evaluation]
 * Security Reference
 ** xref:data-sharing.adoc[Data sharing overview]
-** xref:netrc.adoc#security[Netrc security]
+** xref:netrc.adoc#security[Repo and netrc security]
 ** xref:effects-security.adoc[Effects Security]
