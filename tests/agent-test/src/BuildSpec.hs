@@ -45,7 +45,8 @@ defaultEvalTask =
       inputMetadata = mempty,
       nixPath = mempty,
       logToken = "mock-eval-log-token",
-      selector = EvaluateTask.ConfigOrLegacy
+      selector = EvaluateTask.ConfigOrLegacy,
+      extraGitCredentials = mempty
     }
 
 defaultMeta :: Map Text A.Value

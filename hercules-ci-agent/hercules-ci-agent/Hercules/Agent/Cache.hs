@@ -4,14 +4,13 @@ module Hercules.Agent.Cache where
 
 import qualified Data.Map as M
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
 import qualified Hercules.Agent.Cachix as Cachix
 import qualified Hercules.Agent.Config.BinaryCaches as Config
 import Hercules.Agent.Env (App)
 import qualified Hercules.Agent.Env as Env
+import qualified Hercules.Agent.Netrc as Netrc
 import qualified Hercules.Agent.Nix as Nix
-import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 import qualified Hercules.CNix as CNix
 import Hercules.CNix.Std.Set (StdSet, toListFP)
 import qualified Hercules.CNix.Std.Set as Std.Set
@@ -20,26 +19,23 @@ import qualified Hercules.CNix.Store as Store
 import qualified Hercules.Formats.NixCache as NixCache
 import Katip
 import Protolude
-import System.IO (hClose)
 
 withCaches :: App a -> App a
 withCaches m = do
-  netrcLns <- (<>) <$> Cachix.getNetrcLines <*> Nix.getNetrcLines
+  netrcLns <- Cachix.getNetrcLines
   csubsts <- Cachix.getSubstituters
   cpubkeys <- Cachix.getTrustedPublicKeys
   nixCaches <- asks (Config.nixCaches . Env.binaryCaches)
   let substs = nixCaches & toList <&> NixCache.storeURI
       pubkeys = nixCaches & toList <&> NixCache.publicKeys & join
-  SecureDirectory.withSecureTempFile "tmp-netrc.key" $ \netrcPath netrcHandle -> do
-    liftIO $ do
-      T.hPutStrLn netrcHandle (T.unlines netrcLns)
-      hClose netrcHandle
-    Nix.withExtraOptions
-      [ ("netrc-file", toS netrcPath),
-        ("substituters", T.intercalate " " (substs <> csubsts)),
-        ("trusted-public-keys", T.intercalate " " (pubkeys <> cpubkeys))
-      ]
-      m
+  netrcFile <- Netrc.getNetrcFile
+  Netrc.appendLines netrcLns
+  Nix.withExtraOptions
+    [ ("netrc-file", toS netrcFile),
+      ("substituters", T.intercalate " " (substs <> csubsts)),
+      ("trusted-public-keys", T.intercalate " " (pubkeys <> cpubkeys))
+    ]
+    m
 
 push ::
   -- | Cache name

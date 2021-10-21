@@ -58,7 +58,8 @@ defaultTask =
       autoArguments = mempty,
       nixPath = mempty,
       logToken = "mock-eval-log-token",
-      selector = ConfigOrLegacy
+      selector = ConfigOrLegacy,
+      extraGitCredentials = Nothing
     }
 
 defaultMeta :: Map Text A.Value

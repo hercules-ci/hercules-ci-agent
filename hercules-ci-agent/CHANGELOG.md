@@ -26,9 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Hardening against rogue contributors. Trivial attacks trying to read system paths or secrets are no longer possible. Similar to typical CIs, secrets can still be stolen, but only through effects. Prevent secrets theft through reviews and branch protection.
 
+ - Built-in support for fetching private repositories and tarballs.
+
 ### Changed
 
  - File lookup order has changed, to support flakes. `ci.nix` or `nix/ci.nix` still take top priority, followed by `flake.nix`, followed by `default.nix`.
+
+ - Installed private repositories can now be read by a collaborator. If you need to enforce confidentiality across repositories, contact us and use a personal access token with appropriate permissions in the meanwhile.
 
 ### Fixed
 

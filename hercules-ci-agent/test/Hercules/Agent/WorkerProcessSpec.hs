@@ -9,10 +9,10 @@ import Test.Hspec
 spec :: Spec
 spec = do
   describe "modifyEnv" $ do
-    let baseEnvSettings = WorkerEnvSettings []
+    let baseEnvSettings = WorkerEnvSettings [] mempty
         baseEnv = M.fromList [("NIX_PATH", "")]
     it "sets NIX_PATH" $ \() -> do
-      modifyEnv (WorkerEnvSettings [NixPathElement (Just "a") $ SubPathOf "/b" Nothing]) mempty
+      modifyEnv (WorkerEnvSettings [NixPathElement (Just "a") $ SubPathOf "/b" Nothing] mempty) mempty
         `shouldBe` M.fromList [("NIX_PATH", "a=/b")]
     it "filters out NIXPKGS_CONFIG" $ do
       modifyEnv baseEnvSettings ("NIXPKGS_CONFIG" =: "abpuhasur")

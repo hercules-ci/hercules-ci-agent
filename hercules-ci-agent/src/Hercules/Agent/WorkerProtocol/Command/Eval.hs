@@ -22,7 +22,8 @@ data Eval = Eval
     apiBaseUrl :: Text,
     logSettings :: LogSettings,
     selector :: ViaJSON EvaluateTask.Selector,
-    allowInsecureBuiltinFetchers :: Bool
+    allowInsecureBuiltinFetchers :: Bool,
+    allowedPaths :: [ByteString]
   }
   deriving (Generic, Binary, Show, Eq)
 

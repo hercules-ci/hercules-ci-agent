@@ -44,13 +44,15 @@ instance Exception WorkerException where
         Just s -> " (worker: " <> show s <> ")"
 
 data WorkerEnvSettings = WorkerEnvSettings
-  { nixPath :: [EvaluateTask.NixPathElement (EvaluateTask.SubPathOf FilePath)]
+  { nixPath :: [EvaluateTask.NixPathElement (EvaluateTask.SubPathOf FilePath)],
+    extraEnv :: Map [Char] [Char]
   }
 
 -- | Filter out impure env vars by wildcard, set NIX_PATH
 modifyEnv :: WorkerEnvSettings -> Map [Char] [Char] -> Map [Char] [Char]
 modifyEnv workerEnvSettings =
-  M.insert "NIX_PATH" (toS $ renderNixPath $ nixPath workerEnvSettings)
+  M.union (extraEnv workerEnvSettings)
+    . M.insert "NIX_PATH" (toS $ renderNixPath $ nixPath workerEnvSettings)
     . M.filterWithKey (\k _v -> not ("NIXPKGS_" `isPrefixOf` k))
     . M.filterWithKey (\k _v -> not ("NIXOS_" `isPrefixOf` k))
     . M.delete "IN_NIX_SHELL"

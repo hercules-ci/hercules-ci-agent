@@ -507,8 +507,8 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
             logLocM DebugS "Built"
   withEvalStateConduit store $ \evalState -> do
     liftIO do
-      addAllowedPath evalState (encodeUtf8 $ toS $ Eval.cwd eval)
       addInternalAllowedPaths evalState
+      for_ (Eval.allowedPaths eval) (addAllowedPath evalState)
     katipAddContext (sl "storeURI" (decode s)) $
       logLocM DebugS "EvalState loaded."
     args <-

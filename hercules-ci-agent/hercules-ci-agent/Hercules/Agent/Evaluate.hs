@@ -51,6 +51,7 @@ import Hercules.Agent.Evaluate.TraversalQueue (Queue)
 import qualified Hercules.Agent.Evaluate.TraversalQueue as TraversalQueue
 import Hercules.Agent.Files
 import Hercules.Agent.Log
+import qualified Hercules.Agent.Netrc as Netrc
 import qualified Hercules.Agent.Nix as Nix
 import Hercules.Agent.Nix.RetrieveDerivationInfo
   ( retrieveDerivationInfo,
@@ -210,6 +211,7 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
             emitSingle truncMsg
             panic "Evaluation limit reached."
           else emitSingle =<< fixIndex update
+  let allowedPaths = toList inputLocations <&> toS <&> encodeUtf8
   adHocSystem <-
     readFileMaybe (projectDir </> "ci-default-system.txt")
   liftIO (findNixFile projectDir) >>= \case
@@ -243,9 +245,9 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
                 captureAttrDrvAndEmit
                 uploadDrvInfos
                 sync
-                (EvaluateTask.logToken task)
+                task
                 (ref, rev)
-                (EvaluateTask.selector task)
+                allowedPaths
             -- process has finished
             TraversalQueue.waitUntilDone derivationQueue
             TraversalQueue.close derivationQueue
@@ -293,11 +295,11 @@ runEvalProcess ::
   -- | Upload a derivation, return when done
   (StorePath -> App ()) ->
   App () ->
-  Text ->
+  EvaluateTask.EvaluateTask ->
   (Text, Text) ->
-  EvaluateTask.Selector ->
+  [ByteString] ->
   App ()
-runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush logToken (ref, rev) selector = do
+runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush task (ref, rev) allowedPaths = do
   extraOpts <- Nix.askExtraOptions
   bulkBaseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   apiBaseUrl <- asks (toS . showBaseUrl . Env.herculesBaseUrl)
@@ -311,20 +313,53 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
             Eval.extraNixOptions = extraOpts,
             Eval.logSettings =
               LogSettings.LogSettings
-                { token = Sensitive logToken,
+                { token = Sensitive $ EvaluateTask.logToken task,
                   path = "/api/v1/logs/build/socket",
                   baseURL = toS $ Network.URI.uriToString identity bulkBaseURL ""
                 },
             Eval.gitSource = ViaJSON gitSource,
             Eval.apiBaseUrl = apiBaseUrl,
-            Eval.selector = ViaJSON selector,
-            Eval.allowInsecureBuiltinFetchers = Config.allowInsecureBuiltinFetchers cfg
+            Eval.selector = ViaJSON $ EvaluateTask.selector task,
+            Eval.allowInsecureBuiltinFetchers = Config.allowInsecureBuiltinFetchers cfg,
+            Eval.allowedPaths = allowedPaths
           }
   buildRequiredIndex <- liftIO $ newIORef (0 :: Int)
   commandChan <- newChan
   writeChan commandChan $ Just $ Command.Eval eval
+  for_ (EvaluateTask.extraGitCredentials task) \creds ->
+    Netrc.appendLines (credentialToLines =<< creds)
+  netrcFile <- Netrc.getNetrcFile
   let decode = decodeUtf8With lenientDecode
-  withProducer (produceWorkerEvents eval nixPath commandChan) $
+      toGitConfigEnv items =
+        M.fromList $
+          ("GIT_CONFIG_COUNT", show (length items)) :
+          concatMap
+            ( \(i, (k, v)) ->
+                [ ("GIT_CONFIG_KEY_" <> show i, k),
+                  ("GIT_CONFIG_VALUE_" <> show i, v)
+                ]
+            )
+            (zip [0 :: Int ..] items)
+      envSettings =
+        WorkerProcess.WorkerEnvSettings
+          { nixPath = nixPath,
+            extraEnv =
+              toGitConfigEnv
+                [ ("credential.helper", "netrc --file " <> netrcFile),
+                  -- Deny by default.
+                  ("protocol.allow", "never"),
+                  -- Safe protocols.
+                  -- More protocols can be added as long as they can be shown
+                  -- not to leak credentials from netrc or .git-credentials.
+                  -- If a protocol is lacking in confidentiality, authenticity,
+                  -- etc, it must be off by default with a Config item to
+                  -- enable it.
+                  ("protocol.https.allow", "always"),
+                  ("protocol.ssh.allow", "always"),
+                  ("protocol.file.allow", "always")
+                ]
+          }
+  withProducer (produceWorkerEvents eval envSettings commandChan) $
     \workerEventsP -> fix $ \continue ->
       joinSTM $
         listen
@@ -417,18 +452,34 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                 panic $ "Worker failed with exit status: " <> show e
           )
 
+credentialToLines :: EvaluateTask.Credential -> [Text]
+credentialToLines c =
+  fromMaybe [] do
+    host <- hostFromUrl (EvaluateTask.url c)
+    pure
+      [ "machine " <> host,
+        "login " <> EvaluateTask.username c,
+        "password " <> EvaluateTask.password c
+      ]
+
+hostFromUrl :: Text -> Maybe Text
+hostFromUrl t = do
+  uri <- Network.URI.parseURI (toS t)
+  a <- Network.URI.uriAuthority uri
+  pure $ toS $ Network.URI.uriRegName a
+
 produceWorkerEvents ::
   Eval.Eval ->
-  [EvaluateTask.NixPathElement (EvaluateTask.SubPathOf FilePath)] ->
+  WorkerProcess.WorkerEnvSettings ->
   Chan (Maybe Command.Command) ->
   (Event.Event -> App ()) ->
   App ExitCode
-produceWorkerEvents eval nixPath commandChan writeEvent = do
+produceWorkerEvents eval envSettings commandChan writeEvent = do
   workerExe <- WorkerProcess.getWorkerExe
   let opts = [show $ Eval.extraNixOptions eval]
   -- NiceToHave: replace renderNixPath by something structured like -I
   -- to support = and : in paths
-  workerEnv <- liftIO $ WorkerProcess.prepareEnv (WorkerProcess.WorkerEnvSettings {nixPath = nixPath})
+  workerEnv <- liftIO $ WorkerProcess.prepareEnv envSettings
   let wps =
         (System.Process.proc workerExe opts)
           { env = Just workerEnv,
