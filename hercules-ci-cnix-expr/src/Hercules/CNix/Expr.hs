@@ -25,14 +25,13 @@ where
 
 import Conduit
 import qualified Data.Aeson as A
-import qualified Data.ByteString.Unsafe as BS
 import Data.Coerce (coerce)
 import qualified Data.HashMap.Lazy as H
 import qualified Data.Map as M
 import qualified Data.Scientific as Sci
 import Data.Vector (Vector)
 import qualified Data.Vector as V
-import Foreign (allocaArray, nullPtr, peekArray, toBool)
+import Foreign (nullPtr)
 import qualified Foreign.C.String
 import Hercules.CNix.Encapsulation (moveToForeignPtrWrapper)
 import Hercules.CNix.Expr.Context

@@ -51,7 +51,6 @@ import Hercules.CNix.Expr
     toRawValue,
     unsafeAssertType,
   )
-import qualified Hercules.CNix.Expr as Expr
 import Hercules.CNix.Expr.Raw (RawValue)
 import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), StringWithoutContext, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (>>$?), type (->?), type (::.), type (::?))
 import qualified Hercules.CNix.Expr.Schema as Schema
