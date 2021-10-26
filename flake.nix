@@ -46,14 +46,23 @@
               nixpkgsSource = nixos-unstable;
               isDevVersion = true;
             };
+            "nixos-unstable-nix_2_4" = {
+              nixpkgsSource = nixos-unstable;
+              isDevVersion = true;
+              overlay = final: prev: {
+                nix = addDebug prev.nix_2_4;
+              };
+            };
             "nixos-unstable-nixUnstable" = {
               nixpkgsSource = nixos-unstable;
               isDevVersion = true;
-              isNixUnstable = true;
+              overlay = final: prev: {
+                nix = addDebug prev.nixUnstable;
+              };
             };
           }
           (
-            _name: { nixpkgsSource, isDevVersion ? false, isNixUnstable ? false }:
+            _name: { nixpkgsSource, isDevVersion ? false, overlay ? (_: _: { }) }:
               dimension "System"
                 {
                   "aarch64-linux" = {
@@ -68,18 +77,8 @@
                     pkgs =
                       import nixpkgsSource {
                         overlays = [ (import ./nix/make-overlay.nix inputs) dev-and-test-overlay ]
-                          ++ lib.optionals isNixUnstable [
-                          (final: prev: {
-                            nix = addDebug (prev.nixUnstable.overrideAttrs (o: {
-                              src = final.fetchFromGitHub {
-                                owner = "hercules-ci";
-                                repo = "nix";
-                                rev = "2ebd9504e393d551c84cbe08e1ee5e2126950298";
-                                sha256 = "sha256-Z8YgANHVJkkYRWtFPXMOXpQaFt6PnlGfIPxEt1XpVtY=";
-                              };
-                              version = "2.4pre20210831_2ebd950";
-                            }));
-                          })
+                          ++ [
+                          overlay
                         ];
                         config = { };
                         inherit system;
@@ -170,6 +169,11 @@
                   allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-agent;
                 hercules-ci-cli-nixUnstable =
                   allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-cli;
+
+                hercules-ci-agent-nix_2_4 =
+                  allTargets."nixos-unstable-nix_2_4".${system}.hercules-ci-agent;
+                hercules-ci-cli-nix_2_4 =
+                  allTargets."nixos-unstable-nix_2_4".${system}.hercules-ci-cli;
               }
           )
           defaultTarget;

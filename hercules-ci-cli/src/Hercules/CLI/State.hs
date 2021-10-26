@@ -11,7 +11,7 @@ import Hercules.API.State
 import Hercules.CLI.Client
 import Hercules.CLI.Common (runAuthenticated)
 import Hercules.CLI.Options (mkCommand, subparser)
-import Hercules.CLI.Project (ProjectPath (projectPathOwner, projectPathProject, projectPathSite), getProjectIdAndPath, projectOption)
+import Hercules.CLI.Project (ProjectPath (projectPathOwner, projectPathProject, projectPathSite), findProjectContextually, projectOption)
 import Options.Applicative (bashCompleter, completer, help, long, metavar, strOption)
 import qualified Options.Applicative as Optparse
 import Protolude hiding (option)
@@ -74,10 +74,14 @@ fileOption :: Optparse.Parser FilePath
 fileOption = strOption $ long "file" <> metavar "FILE" <> help "Local path of the state file or - for stdio" <> completer (bashCompleter "file")
 
 getProjectAndClient :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Maybe ProjectPath -> RIO r (ProjectStateResourceGroup ClientAuth (AsClientT ClientM))
-getProjectAndClient projectMaybe = do
-  (projectIdMaybe, projectPath) <- getProjectIdAndPath projectMaybe
-  case projectIdMaybe of
-    Just projectId ->
-      pure (stateClient `enterApiE` \api -> byProjectId api projectId)
-    Nothing ->
+getProjectAndClient projectMaybe =
+  case projectMaybe of
+    Just projectPath ->
       pure (stateClient `enterApiE` \api -> byProjectName api (Name $ projectPathSite projectPath) (Name $ projectPathOwner projectPath) (Name $ projectPathProject projectPath))
+    Nothing -> do
+      (projectIdMaybe, projectPath) <- findProjectContextually
+      case projectIdMaybe of
+        Just projectId ->
+          pure (stateClient `enterApiE` \api -> byProjectId api projectId)
+        Nothing ->
+          pure (stateClient `enterApiE` \api -> byProjectName api (Name $ projectPathSite projectPath) (Name $ projectPathOwner projectPath) (Name $ projectPathProject projectPath))
