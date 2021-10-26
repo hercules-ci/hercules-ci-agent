@@ -26,9 +26,6 @@ module Hercules.Agent.NixFile
     -- * @onPush@
     getOnPushOutputValueByPath,
     parseExtraInputs,
-
-    -- * Utilities
-    computeArgsRequired,
   )
 where
 
@@ -42,8 +39,6 @@ import Hercules.Agent.NixFile.HerculesCIArgs (HerculesCIArgs)
 import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
 import Hercules.CNix.Expr
   ( EvalState,
-    FunctionMatches (FunctionMatches),
-    FunctionParams (FunctionParams),
     Match (IsAttrs),
     NixAttrs,
     Value (Value, rtValue),
@@ -148,28 +143,6 @@ getHerculesCI homeExpr args = do
   attrVal <- home #? #herculesCI
   attrVal & traverse \herculesCI -> do
     pure herculesCI >>$? (Schema.uncheckedCast <$> toPSObject args)
-
-data ArgsRequired
-  = AllArgsRequired
-  | SomeArgsRequired (Map ByteString Bool)
-
--- | Compute the arguments that are required to invoke a function, such that
--- any omissions are undetectable by the function.
-computeArgsRequired :: FunctionParams -> ArgsRequired
-computeArgsRequired = \case
-  -- The lack of ellipsis means that the arguments can not contain anything not in the matches,
-  -- so don't need to compute everything.
-  FunctionParams
-    { functionArgName = Just _,
-      functionParamsMatches = Just FunctionMatches {functionMatchesEllipsis = False, functionMatches = matches}
-    } -> SomeArgsRequired matches
-  -- No name to access the unmatched args, so we don't have to compute everything.
-  FunctionParams
-    { functionArgName = Nothing,
-      functionParamsMatches = Just FunctionMatches {functionMatches = matches}
-    } -> SomeArgsRequired matches
-  -- Catch-all: name and ellipsis, just name, primops
-  _ -> AllArgsRequired
 
 parseExtraInputs :: MonadEval m => PSObject ExtraInputsSchema -> m (Map ByteString InputDeclaration)
 parseExtraInputs eis = dictionaryToMap eis >>= traverse parseInputDecl
