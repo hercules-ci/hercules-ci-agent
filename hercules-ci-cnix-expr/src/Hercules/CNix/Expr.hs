@@ -482,7 +482,7 @@ getLocalFlake evalState path = do
     EvalState &evalState = *$(EvalState *evalState);
     Value *r = new (NoGC) Value();
     std::string path($bs-ptr:absPath, $bs-len:absPath);
-    auto flakeRef = nix::parseFlakeRef(path, {}, true);
+    auto flakeRef = nix::parseFlakeRef(path, nix::absPath(path), true);
     nix::flake::callFlake(evalState,
       nix::flake::lockFlake(evalState, flakeRef,
         nix::flake::LockFlags {
