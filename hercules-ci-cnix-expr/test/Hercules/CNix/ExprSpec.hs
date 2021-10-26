@@ -120,6 +120,3 @@ spec = do
         Right r -> pure (r :: A.Value)
       a <- toRawValue evalState jsonValue
       a & checkWithNix evalState ("a: a == builtins.fromJSON ''" <> jsonExample <> "''")
-
-(=:) :: a -> b -> Map a b
-(=:) = M.singleton
