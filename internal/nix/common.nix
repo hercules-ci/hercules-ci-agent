@@ -139,6 +139,24 @@ let
         # but useful to define explicitly to allow reuse by other modules.
         internal = true;
       };
+      secretsJsonPath = mkOption {
+        description = ''
+          Path to a JSON file containing secrets for effects.
+
+          As these values are confidential, they should not be in the store, but
+          copied over using other means, such as agenix, NixOps
+          <literal>deployment.keys</literal>, or manual installation.
+
+          The format is described on <link xlink:href="https://docs.hercules-ci.com/hercules-ci-agent/secrets-json/">https://docs.hercules-ci.com/hercules-ci-agent/secrets-json/</link>.
+
+        '';
+        type = types.path;
+        default = config.staticSecretsDirectory + "/secrets.json";
+        defaultText = literalExpression ''staticSecretsDirectory + "/secrets.json"'';
+        # internal: It's a bit too detailed to show by default in the docs,
+        # but useful to define explicitly to allow reuse by other modules.
+        internal = true;
+      };
     };
   };
 

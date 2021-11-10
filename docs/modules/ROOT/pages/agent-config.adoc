@@ -89,13 +89,18 @@ involving arrays of non-primitive types may not be representable currently.
 
 Optional. Defaults to `InfoS`. More verbose: `DebugS`, less verbose: `WarningS`, `ErrorS`.
 
+[[secretsJsonPath]]
+== secretsJsonPath
+
+Optional. Defaults to `<<staticSecretsDirectory,_staticSecretsDirectory_>>/secrets.json`.
+
 [[staticSecretsDirectory]]
 == staticSecretsDirectory
 
 Optional. Defaults to `<<baseDirectory,_baseDirectory_>>/secrets`.
 
 This is the default directory to look for statically configured secrets like
-<<clusterJoinTokenPath>>, <<binaryCachesPath>>.
+<<clusterJoinTokenPath>>, <<binaryCachesPath>>, <<secretsJsonPath>>.
 
 [[workDirectory]]
 == workDirectory
