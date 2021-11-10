@@ -118,9 +118,6 @@ let
         type = types.path;
         default = config.staticSecretsDirectory + "/cluster-join-token.key";
         defaultText = literalExpression ''staticSecretsDirectory + "/cluster-join-token.key"'';
-        # internal: It's a bit too detailed to show by default in the docs,
-        # but useful to define explicitly to allow reuse by other modules.
-        internal = true;
       };
       binaryCachesPath = mkOption {
         description = ''
@@ -135,9 +132,6 @@ let
         type = types.path;
         default = config.staticSecretsDirectory + "/binary-caches.json";
         defaultText = literalExpression ''staticSecretsDirectory + "/binary-caches.json"'';
-        # internal: It's a bit too detailed to show by default in the docs,
-        # but useful to define explicitly to allow reuse by other modules.
-        internal = true;
       };
       secretsJsonPath = mkOption {
         description = ''
@@ -153,9 +147,6 @@ let
         type = types.path;
         default = config.staticSecretsDirectory + "/secrets.json";
         defaultText = literalExpression ''staticSecretsDirectory + "/secrets.json"'';
-        # internal: It's a bit too detailed to show by default in the docs,
-        # but useful to define explicitly to allow reuse by other modules.
-        internal = true;
       };
     };
   };
