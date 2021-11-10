@@ -53,6 +53,7 @@ data Config purpose = Config
     workDirectory :: Item purpose 'Required FilePath,
     clusterJoinTokenPath :: Item purpose 'Required FilePath,
     binaryCachesPath :: Item purpose 'Required FilePath,
+    secretsJsonPath :: Item purpose 'Required FilePath,
     logLevel :: Item purpose 'Required Severity,
     labels :: Item purpose 'Required (Map Text A.Value)
   }
@@ -82,6 +83,8 @@ tomlCodec =
     .= clusterJoinTokenPath
     <*> dioptional (Toml.string "binaryCachesPath")
     .= binaryCachesPath
+    <*> dioptional (Toml.string "secretsJsonPath")
+    .= secretsJsonPath
     <*> dioptional (Toml.enumBounded "logLevel")
     .= logLevel
     <*> dioptional (Toml.tableMap _KeyText embedJson "labels")
@@ -177,6 +180,10 @@ finalizeConfig loc input = do
         fromMaybe
           (staticSecretsDir </> "binary-caches.json")
           (binaryCachesPath input)
+      secretsJsonP =
+        fromMaybe
+          (staticSecretsDir </> "secrets.json")
+          (secretsJsonPath input)
       workDir = fromMaybe (baseDir </> "work") (workDirectory input)
   dabu <- determineDefaultApiBaseUrl
   numProc <- getNumProcessors
@@ -200,6 +207,7 @@ finalizeConfig loc input = do
         concurrentTasks = validConcurrentTasks,
         baseDirectory = baseDir,
         staticSecretsDirectory = staticSecretsDir,
+        secretsJsonPath = secretsJsonP,
         workDirectory = workDir,
         logLevel = logLevel input & fromMaybe InfoS,
         labels = fromMaybe mempty $ labels input
