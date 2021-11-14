@@ -31,7 +31,7 @@ let
   addNixVersionFlag = pkg:
     overrideCabal pkg (o: {
       preConfigure = (o.preConfigure or "") + ''
-        if pkg-config --atleast-version 2.4pre nix-store; then
+        if pkg-config --atleast-version 2.4pre nix-store || pkg-config --atleast-version 2.4 nix-store; then
           configureFlags="$configureFlags --flag nix-2_4"
         fi
       '';
@@ -58,6 +58,10 @@ let
               #   updateTo "0.6.0" super.cachix-api (self.callPackage ./cachix-api.nix { });
 
               # nix-narinfo = self.callPackage ./nix-narinfo.nix { };
+
+              # Must match hercules-ci-cnix-store, which uses `pkgs.nix`.
+              # Nixpkgs may override to a specific series.
+              cachix = super.cachix.override (o: { nix = pkgs.nix; });
 
               hercules-ci-optparse-applicative =
                 super.callPackage ./hercules-ci-optparse-applicative.nix { };
