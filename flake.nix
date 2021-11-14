@@ -65,6 +65,10 @@
             _name: { nixpkgsSource, isDevVersion ? false, overlay ? (_: _: { }) }:
               dimension "System"
                 {
+                  "aarch64-darwin" = {
+                    # eval error (FIXME)
+                    isDevSystem = false;
+                  };
                   "aarch64-linux" = {
                     # shellcheck was broken https://hercules-ci.com/github/hercules-ci/hercules-ci-agent/jobs/826
                     isDevSystem = false;

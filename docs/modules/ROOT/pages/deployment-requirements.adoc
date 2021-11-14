@@ -23,7 +23,8 @@ Officially supported platforms:
  * `x86_64-linux`
  * `i686-linux` on `x86_64-linux` hosts
  * `aarch64-linux`
- * `x86_64-darwin` also known as macOS
+ * `x86_64-darwin` (macOS on Intel)
+ * `aarch64-darwin` (macOS on Apple Silicon)
 
 The agent may run on any platform that is supported by Nix and GHC Haskell, but we can't provide guarantees beyond the officially supported platforms.
 
