@@ -209,7 +209,7 @@ runCommand herculesState ch command = do
     getStoreProtocolVersion (wrappedStore herculesState)
   case command of
     Command.Eval eval -> Logger.withLoggerConduit (logger (Eval.logSettings eval) protocolVersion) $
-      Logger.withTappedStderr Logger.tapper $
+      identity $ -- Logger.withTappedStderr Logger.tapper $
         connectCommand ch $ do
           void $
             liftIO $
@@ -241,12 +241,12 @@ runCommand herculesState ch command = do
     Command.Build build ->
       katipAddNamespace "Build" $
         Logger.withLoggerConduit (logger (Build.logSettings build) protocolVersion) $
-          Logger.withTappedStderr Logger.tapper $
+          identity $ -- Logger.withTappedStderr Logger.tapper $
             connectCommand ch $ runBuild (wrappedStore herculesState) build
     Command.Effect effect ->
       katipAddNamespace "Effect" $
         Logger.withLoggerConduit (logger (Effect.logSettings effect) protocolVersion) $
-          Logger.withTappedStderr Logger.tapper $
+          identity $ -- Logger.withTappedStderr Logger.tapper $
             connectCommand ch $ do
               runEffect (wrappedStore herculesState) effect >>= \case
                 ExitSuccess -> yield $ Event.EffectResult 0
