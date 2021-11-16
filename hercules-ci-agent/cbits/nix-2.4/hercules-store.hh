@@ -118,7 +118,7 @@ public:
 
 };
 
-class HerculesStore : public WrappingStore {
+class HerculesStore final : public WrappingStore {
 public:
   StorePathSet ensuredPaths;
   void (* builderCallback)(std::vector<nix::StorePathWithOutputs>*, std::exception_ptr *exceptionToThrow);
