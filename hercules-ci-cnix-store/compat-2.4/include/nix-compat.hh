@@ -18,9 +18,3 @@ inline nix::StorePath parseStorePath(const nix::Store &store, const nix::Path pa
 inline void compatComputeFSClosure(nix::Store &store, nix::StorePathSet &pathSet, nix::StorePathSet &closurePaths, bool flipDirection = false, bool includeOutputs = false, bool includeDerivers = false) {
   store.computeFSClosure(pathSet, closurePaths, flipDirection, includeOutputs, includeDerivers);
 }
-
-namespace nix {
-  inline StorePathWithOutputs parsePathWithOutputs(Store &store, const std::string & s) {
-    return parsePathWithOutputs(store, s);
-  }
-}
