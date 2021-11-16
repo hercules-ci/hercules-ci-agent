@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - The flake packages and modules now link with Nix 2.4.
    Nix 2.3 support is still available via `packages.${system}.hercules-ci-agent-nix_2_3`, but will be removed in agent 0.9.x.
 
+ - No longer patch Boehm GC, staying closer to regular Nix and the Nixpkgs build of the `hercules-ci-agent`.
+
+### Fixed
+
+ - Various fixes related to the upgrade to Nix 2.4.
+
 ## [0.8.3]
 
 ### Added
