@@ -86,7 +86,7 @@ let
                 let
                   basePkg =
                     callPkg super "hercules-ci-agent" ../hercules-ci-agent {
-                      bdw-gc = pkgs.boehmgc-hercules;
+                      bdw-gc = null; # propagated from Nix instead.
                     };
                   bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
 
@@ -96,7 +96,7 @@ let
                     (
                       addBuildDepends
                         (enableDWARFDebugging (addNixVersionFlag basePkg))
-                        [ pkgs.makeWrapper pkgs.boost pkgs.boehmgc ]
+                        [ pkgs.makeWrapper pkgs.boost ]
                     )
                     (
                       o:
@@ -167,7 +167,10 @@ let
                 );
               hercules-ci-cnix-expr = addNixVersionFlag
                 (addBuildDepends
-                  (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; inherit nix; })
+                  (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
+                    bdw-gc = null; # propagated from Nix instead.
+                    inherit nix;
+                  })
                   [
                     # https://github.com/NixOS/nix/pull/4904
                     nlohmann_json
