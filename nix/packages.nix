@@ -167,7 +167,10 @@ let
                 );
               hercules-ci-cnix-expr = addNixVersionFlag
                 (addBuildDepends
-                  (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { inherit nix; })
+                  (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
+                    bdw-gc = null; # propagated from Nix instead.
+                    inherit nix;
+                  })
                   [
                     # https://github.com/NixOS/nix/pull/4904
                     nlohmann_json
