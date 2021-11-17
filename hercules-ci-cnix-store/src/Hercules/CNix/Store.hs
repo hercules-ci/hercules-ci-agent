@@ -592,11 +592,13 @@ getDerivationArguments derivation =
     toByteStrings
 
 getDerivationSources :: Store -> Derivation -> IO [StorePath]
-getDerivationSources (Store store) derivation = mask_ do
+getDerivationSources _ = getDerivationSources'
+
+getDerivationSources' :: Derivation -> IO [StorePath]
+getDerivationSources' derivation = mask_ do
   vec <-
     moveToForeignPtrWrapper
       =<< [C.throwBlock| std::vector<nix::StorePath*>* {
-        Store &store = **$(refStore* store);
         auto r = new std::vector<StorePath *>();
         for (auto s : $fptr-ptr:(Derivation *derivation)->inputSrcs)
           r->push_back(new StorePath(s));
@@ -605,7 +607,10 @@ getDerivationSources (Store store) derivation = mask_ do
   traverse moveStorePath =<< Std.Vector.toList vec
 
 getDerivationInputs :: Store -> Derivation -> IO [(StorePath, [ByteString])]
-getDerivationInputs (Store store) derivation =
+getDerivationInputs _ = getDerivationInputs'
+
+getDerivationInputs' :: Derivation -> IO [(StorePath, [ByteString])]
+getDerivationInputs' derivation =
   bracket
     [C.exp| DerivationInputsIterator* {
       new DerivationInputsIterator($fptr-ptr:(Derivation *derivation)->inputDrvs.begin())
@@ -618,7 +623,6 @@ getDerivationInputs (Store store) derivation =
         else do
           name <-
             [C.throwBlock| nix::StorePath *{
-              Store &store = **$(refStore* store);
               return new StorePath((*$(DerivationInputsIterator *i))->first);
             }|]
               >>= moveStorePath
@@ -847,24 +851,26 @@ validPathInfoNarHash32 vpi =
     |]
 
 -- | Deriver field of a ValidPathInfo struct. Source: store-api.hh
---
--- Returns 'unknownDeriver' when missing.
 validPathInfoDeriver :: Store -> ForeignPtr (Ref ValidPathInfo) -> IO (Maybe StorePath)
-validPathInfoDeriver (Store store) vpi =
+validPathInfoDeriver _ = validPathInfoDeriver'
+
+validPathInfoDeriver' :: ForeignPtr (Ref ValidPathInfo) -> IO (Maybe StorePath)
+validPathInfoDeriver' vpi =
   moveStorePathMaybe
     =<< [C.throwBlock| nix::StorePath * {
-      Store &store = **$(refStore* store);
       std::optional<StorePath> deriver = (*$fptr-ptr:(refValidPathInfo* vpi))->deriver;
       return deriver ? new StorePath(*deriver) : nullptr;
     }|]
 
 -- | References field of a ValidPathInfo struct. Source: store-api.hh
 validPathInfoReferences :: Store -> ForeignPtr (Ref ValidPathInfo) -> IO [StorePath]
-validPathInfoReferences (Store store) vpi = do
+validPathInfoReferences _ = validPathInfoReferences'
+
+validPathInfoReferences' :: ForeignPtr (Ref ValidPathInfo) -> IO [StorePath]
+validPathInfoReferences' vpi = do
   sps <-
     moveToForeignPtrWrapper
       =<< [C.throwBlock| std::vector<nix::StorePath *>* {
-        Store &store = **$(refStore* store);
         auto sps = new std::vector<nix::StorePath *>();
         for (auto sp : (*$fptr-ptr:(refValidPathInfo* vpi))->references)
           sps->push_back(new StorePath(sp));
