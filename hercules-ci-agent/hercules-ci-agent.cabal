@@ -37,6 +37,8 @@ common cxx-opts
   if os(darwin)
     -- avoid https://gitlab.haskell.org/ghc/ghc/issues/11829
     ld-options:  -Wl,-keep_dwarf_unwind
+    -- llvm severe warnings
+    cxx-options: -Werror=abstract-final-class
 
   if impl(ghc >= 8.10)
     ghc-options:
@@ -48,6 +50,12 @@ common cxx-opts
       -optc-Wall
     if os(darwin)
       ghc-options: -pgmc=clang++
+
+  if flag(nix-2_4)
+    cpp-options:
+        -DNIX_2_4
+    cxx-options:
+        -DNIX_2_4
 
 
 library
@@ -261,8 +269,6 @@ executable hercules-ci-agent-worker
   cxx-sources:
       cbits/hercules-logger.cxx
   if flag(nix-2_4)
-    cpp-options:
-        -DNIX_2_4
     cxx-sources:
       cbits/nix-2.4/hercules-store.cxx
   else

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.4 - 2021-11-17
+
+### Added
+
+ - Improved error message when git upstream is not found
+
+### Changed
+
+ - The flake packages and modules now link with Nix 2.4.
+   Nix 2.3 support is still available via `packages.${system}.hercules-ci-cli-nix_2_3`, but will be removed in cli 0.3.x.
+
 ## 0.2.3 - 2021-10-12
 
 ### Fixed

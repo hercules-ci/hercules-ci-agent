@@ -31,7 +31,7 @@ let
   addNixVersionFlag = pkg:
     overrideCabal pkg (o: {
       preConfigure = (o.preConfigure or "") + ''
-        if pkg-config --atleast-version 2.4pre nix-store; then
+        if pkg-config --atleast-version 2.4pre nix-store || pkg-config --atleast-version 2.4 nix-store; then
           configureFlags="$configureFlags --flag nix-2_4"
         fi
       '';
@@ -51,12 +51,14 @@ let
         haskellPackages_.extend (
           self: super:
             {
-              # Upstream cachix causes a linker error in agent. This does not.
-              cachix = updateTo "0.6.1.0" super.cachix (self.callPackage ./cachix.nix { });
-              # cachix-api =
-              #   updateTo "0.6.0" super.cachix-api (self.callPackage ./cachix-api.nix { });
+              # cachix = updateTo "0.6.1.0" super.cachix (self.callPackage ./cachix.nix { });
+              # cachix-api = updateTo "0.6.0" super.cachix-api (self.callPackage ./cachix-api.nix { });
 
               # nix-narinfo = self.callPackage ./nix-narinfo.nix { };
+
+              # Must match hercules-ci-cnix-store, which uses `pkgs.nix`.
+              # Nixpkgs may override to a specific series.
+              cachix = super.cachix.override (o: { nix = pkgs.nix; });
 
               hercules-ci-optparse-applicative =
                 super.callPackage ./hercules-ci-optparse-applicative.nix { };
@@ -81,7 +83,7 @@ let
                 let
                   basePkg =
                     callPkg super "hercules-ci-agent" ../hercules-ci-agent {
-                      bdw-gc = pkgs.boehmgc-hercules;
+                      bdw-gc = null; # propagated from Nix instead.
                     };
                   bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
 
@@ -91,7 +93,7 @@ let
                     (
                       addBuildDepends
                         (enableDWARFDebugging (addNixVersionFlag basePkg))
-                        [ pkgs.makeWrapper pkgs.boost pkgs.boehmgc ]
+                        [ pkgs.makeWrapper pkgs.boost ]
                     )
                     (
                       o:
@@ -162,7 +164,10 @@ let
                 );
               hercules-ci-cnix-expr = addNixVersionFlag
                 (addBuildDepends
-                  (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr { bdw-gc = pkgs.boehmgc-hercules; inherit nix; })
+                  (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
+                    bdw-gc = null; # propagated from Nix instead.
+                    inherit nix;
+                  })
                   [
                     # https://github.com/NixOS/nix/pull/4904
                     nlohmann_json

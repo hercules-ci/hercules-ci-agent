@@ -13,7 +13,7 @@
 #include <string>
 #include <chrono>
 
-class HerculesLogger : public nix::Logger {
+class HerculesLogger final : public nix::Logger {
 
 public:
   struct LogEntry;

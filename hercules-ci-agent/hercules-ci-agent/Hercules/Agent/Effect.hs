@@ -21,7 +21,6 @@ import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import qualified Hercules.Secrets as Secrets
 import qualified Network.URI
 import Protolude
-import System.FilePath ((</>))
 import qualified System.Posix.Signals as PS
 import System.Process
 
@@ -70,7 +69,7 @@ performEffect effectTask = withWorkDir "effect" $ \workDir -> do
                     baseURL = toS $ Network.URI.uriToString identity baseURL ""
                   },
               materializeDerivation = materialize,
-              secretsPath = toS $ Config.staticSecretsDirectory config </> "secrets.json",
+              secretsPath = toS $ Config.secretsJsonPath config,
               token = Sensitive (EffectTask.token effectTask),
               apiBaseURL = Config.herculesApiBaseURL config,
               projectId = EffectTask.projectId effectTask,

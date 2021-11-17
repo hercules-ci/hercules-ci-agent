@@ -38,6 +38,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - When the root of a `ci.nix` is a list, an error message is returned.
 
+## [0.8.4]
+
+### Added
+
+ - The path to `secrets.json` is now configurable in the module or config file,
+   using the `secretsJsonPath` setting, analogous to `clusterJoinTokenPath`.
+
+ - `aarch64-darwin` is now officially supported.
+
+ - All module settings options will be visible in the NixOS documentation.
+   Some less-used settings were hidden, specifically the file path options
+   that default to `staticSecretsDirectory + "/cluster-join-token.key"`, etc.
+
+### Changed
+
+ - The flake packages and modules now link with Nix 2.4.
+   Nix 2.3 support is still available via `packages.${system}.hercules-ci-agent-nix_2_3`, but will be removed in agent 0.9.x.
+
+ - No longer patch Boehm GC, staying closer to regular Nix and the Nixpkgs build of the `hercules-ci-agent`.
+
+### Fixed
+
+ - Various fixes related to the upgrade to Nix 2.4.
+
 ## [0.8.3]
 
 ### Added
@@ -461,10 +485,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support ci.nix or nix/ci.nix along with default.nix
 
-## [0.1.0.0] - 2019-03-28
+## 0.1.0.0 - 2019-03-28
 
 - Initial release
 
+[0.8.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.3...hercules-ci-agent-0.8.4
 [0.8.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.2...hercules-ci-agent-0.8.3
 [0.8.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.1...hercules-ci-agent-0.8.2
 [0.8.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.0...hercules-ci-agent-0.8.1

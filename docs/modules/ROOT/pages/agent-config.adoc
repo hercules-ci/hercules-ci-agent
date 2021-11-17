@@ -28,7 +28,10 @@ Whether to allow the built-in fetchers to access `http://` and other unencrypted
 
 Optional. Defaults to `https://hercules-ci.com[https://hercules-ci.com]`.
 
-HTTP API agent will connect to.
+API base URL that the agent will connect to.
+
+When using Hercules CI Enterprise, set this to the URL where your Hercules CI
+server is reachable.
 
 [[baseDirectory]]
 == baseDirectory
@@ -44,7 +47,7 @@ Optional. Defaults to `<<staticSecretsDirectory,_staticSecretsDirectory_>>/binar
 
 Path to a JSON file containing binary cache secret keys.
 
-The contents of the file are described in xref:binary-caches-json.adoc[binary-caches.json].
+The format is described in xref:binary-caches-json.adoc[binary-caches.json].
 
 [[clusterJoinTokenPath]]
 == clusterJoinTokenPath
@@ -93,13 +96,18 @@ involving arrays of non-primitive types may not be representable currently.
 
 Optional. Defaults to `InfoS`. More verbose: `DebugS`, less verbose: `WarningS`, `ErrorS`.
 
+[[secretsJsonPath]]
+== secretsJsonPath
+
+Optional. Defaults to `<<staticSecretsDirectory,_staticSecretsDirectory_>>/secrets.json`.
+
 [[staticSecretsDirectory]]
 == staticSecretsDirectory
 
 Optional. Defaults to `<<baseDirectory,_baseDirectory_>>/secrets`.
 
 This is the default directory to look for statically configured secrets like
-clusterJoinTokenPath.
+<<clusterJoinTokenPath>>, <<binaryCachesPath>>, <<secretsJsonPath>>.
 
 [[workDirectory]]
 == workDirectory

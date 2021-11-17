@@ -5,6 +5,12 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.2.1.1 - 2021-11-17
+
+### Fixed
+
+ - Remove unnecessary/unused/wrong compat helper in internal code
+
 ## 0.2.1.0 - 2021-09-06
 
 ### Added
