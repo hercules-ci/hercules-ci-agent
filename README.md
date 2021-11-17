@@ -11,21 +11,13 @@ for your [Hercules CI](https://hercules-ci.com/) account.
 
 ## Hacking
 
-Live unit tests:
+Install into home:
 
-    $ nix-shell
-    $ stack --nix test --file-watch
-
-Ghcide: not currently included in shell. Install ghcide for GHC 8.6.5 in your profile.
-
-
-Live install into home:
-
-    stack install --work-dir .stack-work-for-install --fast --no-haddock --file-watch
+    cabal v2-install --disable-documentation --disable-optimization hercules-ci-agent hercules-ci-cli --overwrite-policy always
 
 Start installed agent
 
-    hercules_ci_agent_bindir=$HOME/.local/bin ~/.local/bin/hercules-ci-agent
+    hercules_ci_agent_bindir=$HOME/.cabal/bin ~/.cabal/bin/hercules-ci-agent
 
 Build `nixUnstable` with cabal:
 

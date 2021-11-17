@@ -89,7 +89,6 @@
                             inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
                               ghc
                               ghcid
-                              stack
                               ;
                             inherit (pkgs)
                               jq
@@ -264,46 +263,31 @@
       devShell = lib.mapAttrs
         (
           system: { internal, devTools, pre-commit-check, ... }:
-            internal.pkgs.mkShell {
+            let
+              shellWithHaskell = true;
+              baseShell =
+                if shellWithHaskell
+                then import ./nix/shellFor-cabal.nix { inherit internal; }
+                else internal.pkgs.mkShell { };
+            in
+            baseShell.overrideAttrs (o: {
               NIX_PATH = "nixpkgs=${internal.pkgs.path}";
               nativeBuildInputs =
-                [
-                  (internal.pkgs.writeScriptBin "stack" ''
-                    #!/bin/sh
-                    export PATH="${internal.haskellPackages.stack}/bin:$PATH"
-                    if test -n "''${HIE_BIOS_OUTPUT:-}"; then
-                        echo | stack --test "$@"
-
-                        # # Internal packages appear in -package flags for some
-                        # # reason, unlike normal packages. This filters them out.
-                        # sed -e 's/^-package=z-.*-z-.*$//' \
-                        #     -e 's/^-package-id=hercules-ci-agent.*$//' \
-                        #     -i $HIE_BIOS_OUTPUT
-
-                        # # To support the CPP in Hercules.Agent.StoreFFI
-                        # echo '-DGHCIDE=1' >>$HIE_BIOS_OUTPUT
-
-                        # # Hack to include the correct snapshot directory
-                        # echo "-package-db=$(dirname $(stack path --snapshot-doc-root))/pkgdb" >> $HIE_BIOS_OUTPUT
-                    else
-                        exec stack "$@"
-                    fi
-                  '')
-                  devTools.ghcid
+                o.nativeBuildInputs or [ ] ++ [
                   devTools.jq
                   devTools.cabal2nix
                   devTools.nix-prefetch-git
                   devTools.valgrind
-                  internal.haskellPackages.ghc
-                  internal.haskellPackages.ghcide
+                ] ++ lib.optionals shellWithHaskell [
                   internal.haskellPackages.haskell-language-server
-                  internal.haskellPackages.hspec-discover
+                  internal.haskellPackages.implicit-hie # gen-hie
+                  devTools.ghcid
                 ];
               shellHook = ''
+                ${o.shellHook or ""}
                 ${pre-commit-check.shellHook}
-                export STACK_ROOT=~/.stack-hercules-ci-agent
               '';
-            }
+            })
         )
         defaultTarget;
     };

@@ -1,3 +1,184 @@
 cradle:
-  stack:
-    {}
+  cabal:
+    - path: "hercules-ci-agent/src"
+      component: "lib:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Main.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Data/Functor/Partitioner.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Data/Map/Extras/Hercules.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/AgentSocket.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Bag.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Build.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/CabalInfo.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Cache.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Cachix.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Cachix/Env.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Cachix/Info.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Cachix/Init.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Client.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Config.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Config/BinaryCaches.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Compat.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Effect.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Env.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/EnvironmentInfo.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Evaluate.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Evaluate/TraversalQueue.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Files.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Init.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Log.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Netrc.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Netrc/Env.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Nix.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Nix/Env.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Nix/Init.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Nix/RetrieveDerivationInfo.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/NixPath.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Options.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/SecureDirectory.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/ServiceInfo.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Token.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/WorkerProcess.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent"
+
+    - path: "hercules-ci-agent/hercules-ci-agent-worker/Main.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent-worker"
+
+    - path: "hercules-ci-agent/hercules-ci-agent-worker/Hercules/Agent/Worker.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent-worker"
+
+    - path: "hercules-ci-agent/hercules-ci-agent-worker/Hercules/Agent/Worker/Build.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent-worker"
+
+    - path: "hercules-ci-agent/hercules-ci-agent-worker/Hercules/Agent/Worker/Build/Prefetched.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent-worker"
+
+    - path: "hercules-ci-agent/hercules-ci-agent-worker/Hercules/Agent/Worker/Build/Logger.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent-worker"
+
+    - path: "hercules-ci-agent/hercules-ci-agent-worker/Hercules/Agent/Worker/Build/Logger/Context.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent-worker"
+
+    - path: "hercules-ci-agent/hercules-ci-agent-worker/Hercules/Agent/Worker/Effect.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent-worker"
+
+    - path: "hercules-ci-agent/hercules-ci-agent-worker/Hercules/Agent/Worker/HerculesStore.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent-worker"
+
+    - path: "hercules-ci-agent/hercules-ci-agent-worker/Hercules/Agent/Worker/HerculesStore/Context.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent-worker"
+
+    - path: "hercules-ci-agent/test"
+      component: "hercules-ci-agent:test:hercules-test"
+
+    - path: "hercules-ci-agent/hercules-ci-agent"
+      component: "hercules-ci-agent:test:hercules-test"
+
+    - path: "hercules-ci-api/src"
+      component: "lib:hercules-ci-api"
+
+    - path: "hercules-ci-api/hercules-gen-swagger/Main.hs"
+      component: "hercules-ci-api:exe:hercules-gen-swagger"
+
+    - path: "hercules-ci-api-agent/src"
+      component: "lib:hercules-ci-api-agent"
+
+    - path: "hercules-ci-api-agent/test"
+      component: "hercules-ci-api-agent:test:hercules-api-agent-unit-tests"
+
+    - path: "hercules-ci-api-core/src"
+      component: "lib:hercules-ci-api-core"
+
+    - path: "hercules-ci-cli/src"
+      component: "lib:hercules-ci-cli"
+
+    - path: "hercules-ci-cli/hci/Main.hs"
+      component: "hercules-ci-cli:exe:hci"
+
+    - path: "hercules-ci-cli/test"
+      component: "hercules-ci-cli:test:hercules-ci-cli-test"
+
+    - path: "hercules-ci-cnix-expr/src"
+      component: "lib:hercules-ci-cnix-expr"
+
+    - path: "hercules-ci-cnix-expr/test"
+      component: "hercules-ci-cnix-expr:test:hercules-ci-cnix-expr-tests"
+
+    - path: "hercules-ci-cnix-store/src"
+      component: "lib:hercules-ci-cnix-store"
+
+    - path: "hercules-ci-cnix-store/test"
+      component: "hercules-ci-cnix-store:test:test"
