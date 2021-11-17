@@ -82,9 +82,7 @@ let
               hercules-ci-agent =
                 let
                   basePkg =
-                    callPkg super "hercules-ci-agent" ../hercules-ci-agent {
-                      bdw-gc = null; # propagated from Nix instead.
-                    };
+                    callPkg super "hercules-ci-agent" ../hercules-ci-agent { };
                   bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
 
                 in
@@ -165,7 +163,6 @@ let
               hercules-ci-cnix-expr = addNixVersionFlag
                 (addBuildDepends
                   (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
-                    bdw-gc = null; # propagated from Nix instead.
                     inherit nix;
                   })
                   [
