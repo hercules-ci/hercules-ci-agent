@@ -1,6 +1,6 @@
 { ci ? import ./ci.nix
 , system ? builtins.currentSystem
-, internal ? ci.nixos-unstable-nixUnstable.${system}.internal
+, internal ? ci.nixos-unstable.${system}.internal
 , pkgs ? internal.pkgs
 }:
 internal.haskellPackages.shellFor {
@@ -12,10 +12,12 @@ internal.haskellPackages.shellFor {
     p.hercules-ci-api
     p.hercules-ci-api-agent
     p.hercules-ci-agent
+    p.hercules-ci-agent_lib
     p.hercules-ci-agent-test
     p.hercules-ci-cli
     p.hercules-ci-cnix-expr
     p.hercules-ci-cnix-store
+    p.cachix
   ];
   buildInputs = [
     pkgs.boost

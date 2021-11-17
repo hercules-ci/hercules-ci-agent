@@ -86,7 +86,7 @@ let
                   bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
 
                 in
-                generateOptparseApplicativeCompletion "hercules-ci-agent" (buildFromSdist (
+                generateOptparseApplicativeCompletion "hercules-ci-agent" (
                   overrideCabal
                     (
                       addBuildDepends
@@ -131,10 +131,16 @@ let
                         # end justStaticExecutables
                       }
                     )
-                ));
+                );
 
               hercules-ci-agent-test =
                 callPkg super "hercules-ci-agent-test" ../tests/agent-test { };
+
+              hercules-ci-agent_lib = overrideCabal self.hercules-ci-agent (o: {
+                isLibrary = true;
+                isExecutable = false;
+                postFixup = "";
+              });
 
               hercules-ci-cli = overrideCabal
                 (
@@ -142,11 +148,7 @@ let
                     justStaticExecutables (
                       haskell.lib.disableLibraryProfiling (
                         callPkg super "hercules-ci-cli" ../hercules-ci-cli {
-                          hercules-ci-agent = overrideCabal self.hercules-ci-agent (o: {
-                            isLibrary = true;
-                            isExecutable = false;
-                            postFixup = "";
-                          });
+                          hercules-ci-agent = self.hercules-ci-agent_lib;
                         }
                       )
                     )

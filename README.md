@@ -27,8 +27,11 @@ Start installed agent
 
     hercules_ci_agent_bindir=$HOME/.local/bin ~/.local/bin/hercules-ci-agent
 
-`nixUnstable` with `cabal-install`:
+Build `nixUnstable` with cabal:
+
+* change `../nix/shellFor-cabal.nix` to pick the right job from the `ci` param, then
+* run:
 
     cd hercules-ci-cnix-store-expr
-    nix-shell ../nix/shellFor-nixUnstable.nix
+    nix-shell ../nix/shellFor-cabal.nix
     cabal v2-test -fnix-2_4 --enable-debug-info --disable-library-stripping --disable-executable-stripping
