@@ -15,13 +15,13 @@ extra-source-files:
     CHANGELOG.md
     cbits/hercules-aliases.h
     cbits/hercules-logger.hh
-    cbits/nix-2.3/hercules-store.hh
     cbits/nix-2.4/hercules-store.hh
     testdata/vm-test-run-agent-test.drv
 
+-- Deprecated
 flag nix-2_4
-  description: Build for Nix >=2.4pre*
-  default: False
+  description: Build for Nix >=2.4*
+  default: True
 
 source-repository head
   type: git
@@ -50,13 +50,6 @@ common cxx-opts
       -optc-Wall
     if os(darwin)
       ghc-options: -pgmc=clang++
-
-  if flag(nix-2_4)
-    cpp-options:
-        -DNIX_2_4
-    cxx-options:
-        -DNIX_2_4
-
 
 library
   exposed-modules:
@@ -268,12 +261,7 @@ executable hercules-ci-agent-worker
       hercules-ci-agent-worker
   cxx-sources:
       cbits/hercules-logger.cxx
-  if flag(nix-2_4)
-    cxx-sources:
       cbits/nix-2.4/hercules-store.cxx
-  else
-    cxx-sources:
-      cbits/nix-2.3/hercules-store.cxx
 
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
@@ -289,12 +277,7 @@ executable hercules-ci-agent-worker
     -with-rtsopts=-maxN8
   include-dirs:
       cbits
-  if flag(nix-2_4)
-    include-dirs:
       cbits/nix-2.4
-  else
-    include-dirs:
-      cbits/nix-2.3
   extra-libraries:
       boost_context
   build-depends:

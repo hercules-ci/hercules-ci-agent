@@ -9,7 +9,6 @@
 #include <nix/derivations.hh>
 #include <nix/affinity.hh>
 #include <nix/globals.hh>
-#include <nix-compat.hh>
 #include "HsFFI.h"
 
 using namespace nix;

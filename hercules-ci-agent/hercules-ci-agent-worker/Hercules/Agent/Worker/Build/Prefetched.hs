@@ -38,7 +38,7 @@ C.include "<nix/globals.hh>"
 
 C.include "<nix/fs-accessor.hh>"
 
-C.include "<nix-compat.hh>"
+C.include "<nix/path-with-outputs.hh>"
 
 C.include "<hercules-ci-cnix/store.hxx>"
 
@@ -106,7 +106,7 @@ getDerivation (Store store) derivationPath =
 
       for (nix::ref<nix::Store> & currentStore : stores) {
         try {
-          derivation = new nix::Derivation(currentStore->derivationFromPath(printPath23(*currentStore, derivationPath)));
+          derivation = new nix::Derivation(currentStore->derivationFromPath(derivationPath));
           break;
         } catch (nix::Interrupted &e) {
           throw e;
@@ -143,16 +143,12 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
       StorePath derivationPath = *$fptr-ptr:(nix::StorePath *derivationPath);
 
       if ($(bool materializeDerivation)) {
-        store.ensurePath(printPath23(store, derivationPath));
-#ifdef NIX_2_4
+        store.ensurePath(derivationPath);
         auto derivation = store.derivationFromPath(derivationPath);
         StorePathWithOutputs storePathWithOutputs { .path = derivationPath, .outputs = derivation.outputNames() };
         std::vector<nix::StorePathWithOutputs> paths{storePathWithOutputs};
-#else
-        nix::PathSet paths{printPath23(store, derivationPath)};
-#endif
         try {
-          store.buildPaths(toDerivedPaths24(paths));
+          store.buildPaths(toDerivedPaths(paths));
           status = -1;
           success = true;
           errorMessage = strdup("");
@@ -174,15 +170,11 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
         std::istringstream stream(extraInputsMerged);
 
         while (std::getline(stream, extraInput)) {
-#ifdef NIX_2_4
           auto path = store.parseStorePath(extraInput);
-#else
-          auto path = extraInput;
-#endif
           derivation->inputSrcs.insert(path);
         }
 
-        nix::BuildResult result = store.buildDerivation(printPath23(store, derivationPath), *derivation);
+        nix::BuildResult result = store.buildDerivation(derivationPath, *derivation);
 
         switch (result.status) {
           case nix::BuildResult::Built:

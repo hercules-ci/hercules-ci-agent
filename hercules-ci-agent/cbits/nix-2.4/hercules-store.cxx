@@ -11,6 +11,7 @@
 #include <nix/affinity.hh>
 #include <nix/globals.hh>
 #include <nix/callback.hh>
+#include <nix/path-with-outputs.hh>
 
 #include "hercules-store.hh"
 

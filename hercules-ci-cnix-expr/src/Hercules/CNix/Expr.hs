@@ -1,5 +1,4 @@
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -73,15 +72,9 @@ C.include "<nix/affinity.hh>"
 
 C.include "<nix/globals.hh>"
 
-C.include "<nix-compat.hh>"
-
-#ifdef NIX_2_4
-
 C.include "<nix/flake/flake.hh>"
 
 C.include "<nix/flake/flakeref.hh>"
-
-#endif
 
 C.include "hercules-ci-cnix/expr.hxx"
 
@@ -101,11 +94,9 @@ init =
     [C.throwBlock| void {
       nix::initNix();
       nix::initGC();
-#ifdef NIX_2_4
       Strings features(nix::settings.experimentalFeatures.get());
       features.push_back("flakes");
       nix::settings.experimentalFeatures.assign(features);
-#endif
     } |]
 
 setTalkative :: IO ()
@@ -224,12 +215,7 @@ evalArgs evalState args = do
         throw nix::Error("Could not evaluate automatic arguments");
       }
       Value *r = new (NoGC) Value ();
-#ifdef NIX_2_4
       r->mkAttrs(autoArgs);
-#else
-      r->type = tAttrs;
-      r->attrs = autoArgs;
-#endif
       return r;
     }|]
 
@@ -268,7 +254,6 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
     <$> [C.throwBlock| int {
           Value *v = $(Value *v);
           EvalState &evalState = *$(EvalState *evalState);
-#ifdef NIX_2_4
           Bindings::iterator iter = v->attrs->find(evalState.sRecurseForDerivations);
           if (iter == v->attrs->end()) {
             return 0;
@@ -279,22 +264,6 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
             // nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
             return evalState.forceBool(*iter->value, *iter->pos);
           }
-#else
-          Symbol rfd = evalState.symbols.create("recurseForDerivations");
-          Bindings::iterator iter = v->attrs->find(rfd);
-          if (iter == v->attrs->end()) {
-            return 0;
-          } else {
-            evalState.forceValue(*iter->value);
-            if (iter->value->type == ValueType::tBool) {
-              return iter->value->boolean ? 1 : 0;
-            } else {
-              // They can be empty attrsets???
-              // Observed in nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
-              return 1;
-            }
-          }
-#endif
         } |]
 
 getAttr :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Maybe RawValue)
@@ -341,10 +310,10 @@ getDrvFile evalState (RawValue v) = liftIO do
         throw EvalError("Not a valid derivation");
 
       std::string drvPath = drvInfo->queryDrvPath();
-      StorePath storePath = parseStorePath(*state.store, drvPath);
+      StorePath storePath = state.store->parseStorePath(drvPath);
 
       // write it (?)
-      auto drv = state.store->derivationFromPath(printPath23(*state.store, storePath));
+      auto drv = state.store->derivationFromPath(storePath);
 
       return new StorePath(storePath);
     }|]
@@ -414,22 +383,11 @@ callFunction evalState (RawValue f) (RawValue a) = do
 apply :: RawValue -> RawValue -> IO RawValue
 apply (RawValue f) (RawValue a) = do
   mkRawValue
-
-#ifdef NIX_2_4
     =<< [C.throwBlock| Value *{
       Value *r = new (NoGC) Value();
       r->mkApp($(Value *f), $(Value *a));
       return r;
     }|]
-#else
-    =<< [C.throwBlock| Value *{
-      Value *r = new (NoGC) Value();
-      r->type = tApp;
-      r->app.left = $(Value *f);
-      r->app.right = $(Value *a);
-      return r;
-    }|]
-#endif
 
 mkPath :: ByteString -> IO (Value NixPath)
 mkPath path =
@@ -442,8 +400,6 @@ mkPath path =
       return r;
   }|]
         )
-
-#ifdef NIX_2_4
 
 getFlakeFromFlakeRef :: Ptr EvalState -> ByteString -> IO RawValue
 getFlakeFromFlakeRef evalState flakeRef = do
@@ -461,24 +417,14 @@ getFlakeFromFlakeRef evalState flakeRef = do
         }),
       *r);
     return r;
-  }|] >>= mkRawValue
-
-#else
-
-getFlakeCompat :: Ptr EvalState -> IO (Value NixFunction)
-getFlakeCompat evalState = do
-  getDataFileName "vendor/flake-compat/default.nix"
-    >>= makeAbsolute
-    >>= evalFile evalState
-    >>= assertType evalState
-
-#endif
+  }|]
+    >>= mkRawValue
 
 getLocalFlake :: Ptr EvalState -> Text -> IO RawValue
-#ifdef NIX_2_4
 getLocalFlake evalState path = do
   absPath <- encodeUtf8 . toS <$> makeAbsolute (toS path)
-  mkRawValue =<< [C.throwBlock| Value *{
+  mkRawValue
+    =<< [C.throwBlock| Value *{
     EvalState &evalState = *$(EvalState *evalState);
     Value *r = new (NoGC) Value();
     std::string path($bs-ptr:absPath, $bs-len:absPath);
@@ -493,51 +439,13 @@ getLocalFlake evalState path = do
       *r);
     return r;
   }|]
-#else
-getLocalFlake evalState path = do
-  flakeCompat <- getFlakeCompat evalState
-  (Value (RawValue flakeSource)) <- mkPath . encodeUtf8 . toS =<< makeAbsolute (toS path)
-  flakeCompatArgs <- mkRawValue =<< [C.throwBlock| Value * {
-    EvalState &evalState = *$(EvalState *evalState);
-    Value *r = new (NoGC) Value();
-    evalState.mkAttrs(*r, 1);
-    Symbol sSrc = evalState.symbols.create("src");
-    *evalState.allocAttr(*r, sSrc) = *$(Value *flakeSource);
-    r->attrs->sort();
-    return r;
-  }|]
-  flakeCompatResult <- apply (rtValue flakeCompat) flakeCompatArgs
-  flakeCompatAttrs <- match evalState flakeCompatResult >>= \case
-    Right (IsAttrs a) -> pure a
-    Left e -> throwIO e
-    _ -> panic "flake-compat must return attrs"
-  getAttr evalState flakeCompatAttrs "defaultNix"
-    <&> fromMaybe (panic "flake-compat must have defaultNix attr")
-#endif
 
 getFlakeFromGit :: Ptr EvalState -> Text -> Text -> Text -> IO RawValue
-#ifdef NIX_2_4
 getFlakeFromGit evalState url ref rev = do
   -- TODO: use a URL library
   getFlakeFromFlakeRef evalState (encodeUtf8 $ url <> "?ref=" <> ref <> "&rev=" <> rev)
-#else
-getFlakeFromGit evalState url ref rev = do
-  srcArgs <-
-    toValue evalState $
-      ("url" :: ByteString) =: url
-        <> "ref" =: ref
-        <> "rev" =: rev
-  flakeCompat <- getFlakeCompat evalState
-  args <- toRawValue evalState =<< sequenceA (
-        ("srcArgs" :: ByteString) =: toRawValue evalState srcArgs
-      <> "flake-compat" =: toRawValue evalState flakeCompat
-    )
-  fn <- valueFromExpressionString evalState "{srcArgs, flake-compat}: (flake-compat { src = builtins.fetchGit srcArgs; }).defaultNix" "/"
-  apply fn args
-#endif
 
 getFlakeFromArchiveUrl :: Ptr EvalState -> Text -> IO RawValue
-#ifdef NIX_2_4
 getFlakeFromArchiveUrl evalState url = do
   srcArgs <-
     toRawValue evalState $
@@ -547,19 +455,6 @@ getFlakeFromArchiveUrl evalState url = do
   p <- assertType evalState pValue
   p' <- getStringIgnoreContext p
   getFlakeFromFlakeRef evalState p'
-#else
-getFlakeFromArchiveUrl evalState url = do
-  srcArgs <-
-    toValue evalState $
-      ("url" :: ByteString) =: url
-  flakeCompat <- getFlakeCompat evalState
-  args <- toRawValue evalState =<< sequenceA (
-        ("srcArgs" :: ByteString) =: toRawValue evalState srcArgs
-      <> "flake-compat" =: toRawValue evalState flakeCompat
-    )
-  fn <- valueFromExpressionString evalState "{srcArgs, flake-compat}: (flake-compat { src = builtins.fetchTarball srcArgs; }).defaultNix" "/"
-  apply fn args
-#endif
 
 traverseWithKey_ :: Applicative f => (k -> a -> f ()) -> Map k a -> f ()
 traverseWithKey_ f = M.foldrWithKey (\k a more -> f k a *> more) (pure ())

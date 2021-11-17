@@ -31,8 +31,8 @@ let
   addNixVersionFlag = pkg:
     overrideCabal pkg (o: {
       preConfigure = (o.preConfigure or "") + ''
-        if pkg-config --atleast-version 2.4pre nix-store || pkg-config --atleast-version 2.4 nix-store; then
-          configureFlags="$configureFlags --flag nix-2_4"
+        if pkg-config --atleast-version 2.5pre nix-store || pkg-config --atleast-version 2.5 nix-store; then
+          configureFlags="$configureFlags --flag nix-2_5"
         fi
       '';
     });

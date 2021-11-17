@@ -1,5 +1,4 @@
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -75,19 +74,11 @@ C.include "<variant>"
 
 C.include "<nix/worker-protocol.hh>"
 
-#ifdef NIX_2_4
 C.include "<nix/path-with-outputs.hh>"
-#endif
 
 C.include "hercules-ci-cnix/store.hxx"
 
-C.include "nix-compat.hh"
-
 C.using "namespace nix"
-
-#ifndef NIX_2_4
-C.using "namespace compat::nix"
-#endif
 
 forNonNull :: Applicative m => Ptr a -> (Ptr a -> m b) -> m (Maybe b)
 forNonNull = flip traverseNonNull
@@ -230,22 +221,11 @@ parseStorePathBaseName bs =
 --
 -- Throws C++ `BadStorePath` exception when invalid.
 parseStorePath :: Store -> ByteString -> IO StorePath
-#ifdef NIX_2_4
 parseStorePath (Store store) bs =
   moveStorePath
     =<< [C.throwBlock| nix::StorePath *{
       return new StorePath(std::move((*$(refStore* store))->parseStorePath(std::string($bs-ptr:bs, $bs-len:bs))));
     }|]
-#else
-parseStorePath (Store store) bs =
-  moveStorePath
-    =<< [C.throwBlock| nix::StorePath *{
-      auto p = canonPath(std::string($bs-ptr:bs, $bs-len:bs));
-      if (dirOf(p) != (*$(refStore* store))->storeDir)
-        throw Error("path '%s' is not in the Nix store", p);
-      return new StorePath(baseNameOf(p));
-    }|]
-#endif
 
 getStorePathBaseName :: StorePath -> IO ByteString
 getStorePathBaseName (StorePath sp) = do
@@ -264,7 +244,6 @@ getStorePathHash (StorePath sp) = do
     }|]
 
 storePathToPath :: Store -> StorePath -> IO ByteString
-#ifdef NIX_2_4
 storePathToPath (Store store) (StorePath sp) =
   BS.unsafePackMallocCString
     =<< [C.block| const char *{
@@ -273,16 +252,6 @@ storePathToPath (Store store) (StorePath sp) =
       std::string s(store.printStorePath(sp));
       return strdup(s.c_str());
     }|]
-#else
-storePathToPath (Store store) (StorePath sp) =
-  BS.unsafePackMallocCString
-    =<< [C.block| const char *{
-      Store & store = **$(refStore* store);
-      StorePath &sp = *$fptr-ptr:(nix::StorePath *sp);
-      std::string s(printPath23(store, sp));
-      return strdup(s.c_str());
-    }|]
-#endif
 
 ensurePath :: Store -> StorePath -> IO ()
 ensurePath (Store store) (StorePath storePath) =
@@ -290,7 +259,7 @@ ensurePath (Store store) (StorePath storePath) =
     ReceiveInterrupts _;
     Store &store = **$(refStore* store);
     StorePath &storePath = *$fptr-ptr:(nix::StorePath *storePath);
-    store.ensurePath(printPath23(store, storePath));
+    store.ensurePath(storePath);
   } |]
 
 clearPathInfoCache :: Store -> IO ()
@@ -357,7 +326,7 @@ buildPaths (Store store) (StdVector paths) = do
     ReceiveInterrupts _;
     Store &store = **$(refStore* store);
     std::vector<StorePathWithOutputs> &paths = *$fptr-ptr:(std::vector<nix::StorePathWithOutputs>* paths);
-    store.buildPaths(toDerivedPaths24(printPathSet23(store, paths)));
+    store.buildPaths(toDerivedPaths(paths));
   }|]
 
 buildPath :: Store -> StorePathWithOutputs -> IO ()
@@ -387,7 +356,7 @@ getDerivation (Store store) (StorePath spwo) = do
       ReceiveInterrupts _;
       Store &store = **$(refStore* store);
       return new Derivation(
-          store.derivationFromPath(printPath23(store, *$fptr-ptr:(nix::StorePath *spwo)))
+          store.derivationFromPath(*$fptr-ptr:(nix::StorePath *spwo))
         );
     } |]
 
@@ -399,7 +368,6 @@ getDerivationFromString ::
   -- | Contents
   ByteString ->
   IO Derivation
-#ifdef NIX_2_4
 getDerivationFromString (Store store) name contents = do
   moveToForeignPtrWrapper
     =<< [C.throwBlock| Derivation *{
@@ -407,37 +375,15 @@ getDerivationFromString (Store store) name contents = do
       std::string name($bs-ptr:name, $bs-len:name);
       return new Derivation(parseDerivation(store, std::string($bs-ptr:contents, $bs-len:contents), name));
     }|]
-#else
-getDerivationFromString _store name contents = do
-  moveToForeignPtrWrapper =<< [C.throwBlock| Derivation *{
-      std::string name($bs-ptr:name, $bs-len:name);
-      std::string contents($bs-ptr:contents, $bs-len:contents);
-      AutoDelete tmpDir(createTempDir(), true);
-      Path tmpFile = (Path) tmpDir + "/" + name;
-      writeFile(tmpFile, contents, 0600);
-      return new Derivation(readDerivation(tmpFile));
-    }|]
-#endif
 
 getDerivationNameFromPath :: StorePath -> IO ByteString
 getDerivationNameFromPath storePath =
   BS.unsafePackMallocCString
-
-#ifdef NIX_2_4
     =<< [C.throwBlock| const char *{
       StorePath &sp = *$fptr-ptr:(nix::StorePath *storePath);
       std::string s(Derivation::nameFromPath(sp));
       return strdup(s.c_str());
     }|]
-#else
-    =<< [C.throwBlock| const char *{
-      StorePath &sp = *$fptr-ptr:(nix::StorePath *storePath);
-      std::string pathName(sp.name());
-      assert(isDerivation(pathName));
-      std::string drvName = std::string(pathName, 0, pathName.size() - drvExtension.size());
-      return strdup(drvName.c_str());
-    }|]
-#endif
 
 data DerivationOutput = DerivationOutput
   { derivationOutputName :: !ByteString,
@@ -505,11 +451,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                       },
                       [&](DerivationOutputCAFixed dof) -> void {
                         typ = 1;
-#ifdef NIX_2_4
                         path = new StorePath(dof.path(store, $fptr-ptr:(Derivation *derivation)->name, nameString));
-#else
-                        path = new StorePath(dof.path(store, dof.drvName, nameString));
-#endif
                         switch (dof.hash.method) {
                           case nix::FileIngestionMethod::Flat:
                             fim = 0;
@@ -578,11 +520,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                       [&](DerivationOutputDeferred) -> void {
                         typ = 3;
                       },
-#ifdef NIX_2_4
                     }, i->second.output);
-#else
-                    }, compatDerivationOutput(store, drvName, i->second).output);
-#endif
                     i++;
                   }|]
                   name <- unsafePackMallocCString =<< peek nameP
@@ -661,7 +599,7 @@ getDerivationSources (Store store) derivation = mask_ do
         Store &store = **$(refStore* store);
         auto r = new std::vector<StorePath *>();
         for (auto s : $fptr-ptr:(Derivation *derivation)->inputSrcs)
-          r->push_back(new StorePath(parseStorePath23(store, s)));
+          r->push_back(new StorePath(s));
         return r;
       }|]
   traverse moveStorePath =<< Std.Vector.toList vec
@@ -681,7 +619,7 @@ getDerivationInputs (Store store) derivation =
           name <-
             [C.throwBlock| nix::StorePath *{
               Store &store = **$(refStore* store);
-              return new StorePath(parseStorePath23(store, (*$(DerivationInputsIterator *i))->first));
+              return new StorePath((*$(DerivationInputsIterator *i))->first);
             }|]
               >>= moveStorePath
           outs <-
@@ -799,13 +737,9 @@ copyClosure (Store src) (Store dest) pathList = do
         pathSet.insert(*spp);
 
       StorePathSet closurePaths;
-      compatComputeFSClosure(*src, pathSet, closurePaths);
+      src->computeFSClosure(pathSet, closurePaths);
 
-#ifdef NIX_2_4
       nix::copyPaths(*src, *dest, closurePaths);
-#else
-      nix::copyPaths(src, dest, compatPathSet(*src, closurePaths));
-#endif
     }|]
   for_ pathList (\(StorePath c) -> touchForeignPtr c)
 
@@ -842,22 +776,18 @@ signPath (Store store) secretKey (StorePath path) =
     nix::ref<nix::Store> store = *$(refStore *store);
     const StorePath &storePath = *$fptr-ptr:(nix::StorePath *path);
     const SecretKey &secretKey = *$(SecretKey *secretKey);
-    auto currentInfo = store->queryPathInfo(printPath23(*store, storePath));
+    auto currentInfo = store->queryPathInfo(storePath);
 
     auto info2(*currentInfo);
     info2.sigs.clear();
-#ifdef NIX_2_4
     info2.sign(*store, secretKey);
-#else
-    info2.sign(secretKey);
-#endif
     assert(!info2.sigs.empty());
     auto sig = *info2.sigs.begin();
 
     if (currentInfo->sigs.count(sig)) {
       return 0;
     } else {
-      store->addSignatures(printPath23(*store, storePath), info2.sigs);
+      store->addSignatures(storePath, info2.sigs);
       return 1;
     }
   }|]
@@ -870,7 +800,7 @@ followLinksToStorePath (Store store) bs =
       ReceiveInterrupts _;
       Store &store = **$(refStore* store);
       std::string s = std::string($bs-ptr:bs, $bs-len:bs);
-      return new StorePath(parseStorePath23(store, store.followLinksToStorePath(s)));
+      return new StorePath(store.followLinksToStorePath(s));
     }|]
 
 queryPathInfo ::
@@ -885,7 +815,7 @@ queryPathInfo (Store store) (StorePath path) = do
       ReceiveInterrupts _;
       Store &store = **$(refStore* store);
       StorePath &path = *$fptr-ptr:(nix::StorePath *path);
-      return new refValidPathInfo(store.queryPathInfo(printPath23(store, path)));
+      return new refValidPathInfo(store.queryPathInfo(path));
     }|]
   newForeignPtr finalizeRefValidPathInfo vpi
 
@@ -924,7 +854,7 @@ validPathInfoDeriver (Store store) vpi =
   moveStorePathMaybe
     =<< [C.throwBlock| nix::StorePath * {
       Store &store = **$(refStore* store);
-      std::optional<StorePath> deriver = parseOptionalStorePath23(store, (*$fptr-ptr:(refValidPathInfo* vpi))->deriver);
+      std::optional<StorePath> deriver = (*$fptr-ptr:(refValidPathInfo* vpi))->deriver;
       return deriver ? new StorePath(*deriver) : nullptr;
     }|]
 
@@ -936,7 +866,7 @@ validPathInfoReferences (Store store) vpi = do
       =<< [C.throwBlock| std::vector<nix::StorePath *>* {
         Store &store = **$(refStore* store);
         auto sps = new std::vector<nix::StorePath *>();
-        for (auto sp : parseStorePathSet23(store, (*$fptr-ptr:(refValidPathInfo* vpi))->references))
+        for (auto sp : (*$fptr-ptr:(refValidPathInfo* vpi))->references)
           sps->push_back(new StorePath(sp));
         return sps;
       }|]
@@ -971,7 +901,7 @@ computeFSClosure (Store store) params (Std.Set.StdSet startingSet) = do
     ReceiveInterrupts _;
     Store &store = **$(refStore* store);
     StorePathSet &ret = *$fptr-ptr:(std::set<nix::StorePath>* retSet);
-    compatComputeFSClosure(store, *$fptr-ptr:(std::set<nix::StorePath>* startingSet), ret,
+    store.computeFSClosure(*$fptr-ptr:(std::set<nix::StorePath>* startingSet), ret,
       $(int flipDir), $(int inclOut), $(int inclDrv));
   }|]
   pure ret
