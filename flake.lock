@@ -16,6 +16,27 @@
         "type": "github"
       }
     },
+    "flake-modules-core": {
+      "inputs": {
+        "nixpkgs": [
+          "nixos-unstable"
+        ]
+      },
+      "locked": {
+        "lastModified": 1637508297,
+        "narHash": "sha256-0ciCPSEIusP1LmyiHZ2oaTPrhv+ves45lJ0g8joHxA0=",
+        "owner": "hercules-ci",
+        "repo": "flake-modules-core",
+        "rev": "c00ae2812a7ad6f6f0d68705d7bedbd81c6cd251",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "ref": "template-and-readme",
+        "repo": "flake-modules-core",
+        "type": "github"
+      }
+    },
     "nix-darwin": {
       "inputs": {
         "nixpkgs": "nixpkgs"
@@ -99,6 +120,7 @@
     "root": {
       "inputs": {
         "flake-compat": "flake-compat",
+        "flake-modules-core": "flake-modules-core",
         "nix-darwin": "nix-darwin",
         "nixos-20_09": "nixos-20_09",
         "nixos-unstable": "nixos-unstable",
