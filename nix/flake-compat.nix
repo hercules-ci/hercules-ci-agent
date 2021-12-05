@@ -5,5 +5,14 @@ let
     url = "https://github.com/${owner}/${repo}/archive/${rev}.tar.gz";
     sha256 = narHash;
   };
+  warn = msg: builtins.trace "[1;31mwarning: ${msg}[0m";
+  probablyPure = builtins.getEnv "PATH" == "" && builtins.getEnv "NIX_PATH" == "";
+  warned =
+    if builtins?getFlake && probablyPure
+    then
+      warn
+        ''It seems that you are using Nix in pure evaluation mode and your Nix supports flakes.
+        Please use the flake and its attributes instead of importing files by path.''
+    else x: x;
 in
-import flake-compat { src = ../.; }
+warned import flake-compat { src = ../.; }

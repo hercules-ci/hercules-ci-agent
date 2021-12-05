@@ -5,6 +5,7 @@
   # TODO propagatedBuildInputs upstream
 , nlohmann_json
 , pre-commit-hooks-nix
+, flake
 , ...
 }:
 let
@@ -190,48 +191,11 @@ let
 
       hercules-ci-api-swagger =
         pkgs.callPackage ../hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };
-
-      tests =
-        recurseIntoAttrs
-          { } //
-        # isx86_64: Don't run the VM tests on aarch64 to save time
-        optionalAttrs (pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64) {
-          agent-functional-test = pkgs.nixosTest (import ../tests/agent-test.nix { daemonIsNixUnstable = false; });
-          agent-functional-test-daemon-nixUnstable = pkgs.nixosTest (import ../tests/agent-test.nix { daemonIsNixUnstable = true; });
-        } // optionalAttrs pkgs.stdenv.isDarwin {
-          nix-darwin-example = pkgs.callPackage ../tests/nix-darwin-example.nix { };
-        };
-
-      projectRootSource = ../.;
     };
 in
 recurseIntoAttrs {
   inherit (internal.haskellPackages) hercules-ci-agent hercules-ci-cli;
   inherit (internal) hercules-ci-api-swagger tests;
-
-  pre-commit-check =
-    (import (pre-commit-hooks-nix + "/nix") { inherit (pkgs) system; }).run {
-      src = ../.;
-      tools = {
-        inherit (pkgs) ormolu;
-      };
-      hooks = {
-        # TODO: hlint.enable = true;
-        ormolu.enable = true;
-        ormolu.excludes = [
-          # CPP
-          "Hercules/Agent/Compat.hs"
-          "Hercules/Agent/StoreFFI.hs"
-        ];
-        shellcheck.enable = true;
-        nixpkgs-fmt.enable = true;
-        nixpkgs-fmt.excludes = [ "tests/agent-test/testdata/" ];
-      };
-      excludes = [
-        ".*/vendor/.*"
-      ];
-      settings.ormolu.defaultExtensions = [ "TypeApplications" ];
-    };
 
   # Not traversed for derivations:
   inherit internal;
