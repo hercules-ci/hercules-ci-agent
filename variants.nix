@@ -1,4 +1,4 @@
-{ config, lib, extendModules, type, ... }:
+{ config, lib, extendModules, moduleType, ... }:
 let
   inherit (lib)
     mkOption
@@ -9,7 +9,7 @@ in
 {
   options = {
     variants = mkOption {
-      type = types.lazyAttrsOf type;
+      type = types.lazyAttrsOf moduleType;
       default = { };
       description = ''
         Configurations that extend the regular flake configuration.
@@ -23,9 +23,8 @@ in
   config = {
     perSystem = system: { ... }: {
       options = {
-        # FIXME: memoize
         variants = mkOption {
-          default = lib.mapAttrs (_: variant: variant.perSystem system) flakeVariants;
+          default = lib.mapAttrs (_: variant: variant.allSystems.${system} or (variant.perSystem system)) flakeVariants;
           readOnly = true;
           description = ''
             A read-only option that reads system-specific attributes from the

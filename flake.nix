@@ -51,17 +51,9 @@
           };
       };
 
-      evalFlakeModule2 = args: module:
-        let
-          out =
-            flake-modules-core.lib.evalFlakeModule
-              (args // { specialArgs = args.specialArg or { } // { inherit (out) type; }; })
-              module;
-        in
-        out;
-
+      suffixAttrs = suf: inputs.nixos-unstable.lib.mapAttrs' (n: v: { name = n + suf; value = v; });
     in
-    (evalFlakeModule2
+    (flake-modules-core.lib.evalFlakeModule
       { inherit self; }
       (flakeArgs@{ config, lib, options, ... }: {
         imports = [
@@ -262,7 +254,9 @@
                   in
                   if isDevVariant then shell else pkgs.mkShell { name = "unsupported-shell"; };
 
-                checks =
+                checks = config.checkSet // suffixAttrs "-nixUnstable" config.variants.nixUnstable.checkSet;
+
+                checkSet =
                   # isx86_64: Don't run the VM tests on aarch64 to save time
                   lib.optionalAttrs (pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64)
                     {
@@ -279,7 +273,9 @@
                 nixpkgsSource = lib.mkOption {
                   default = inputs.nixos-unstable;
                 };
-                nixUnstable = lib.mkOption { };
+                checkSet = lib.mkOption {
+                  description = "All tests, excluding those from variants.";
+                };
               };
             };
           variants.nixUnstable.extraOverlay = final: prev: {
