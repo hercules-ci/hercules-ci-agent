@@ -94,8 +94,13 @@ init =
     [C.throwBlock| void {
       nix::initNix();
       nix::initGC();
+#ifdef NIX_2_5
+      std::set<nix::ExperimentalFeature> features(nix::settings.experimentalFeatures.get());
+      features.insert(nix::ExperimentalFeature::Flakes);
+#else
       Strings features(nix::settings.experimentalFeatures.get());
       features.push_back("flakes");
+#endif
       nix::settings.experimentalFeatures.assign(features);
     } |]
 

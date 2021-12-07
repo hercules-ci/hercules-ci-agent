@@ -23,17 +23,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1637617479,
-        "narHash": "sha256-3by0WbsElbhwAtrPvH+aFF2GHwfT2IG++kbKq0QnW/k=",
-        "ref": "more-attrs",
-        "rev": "77771f1d6d0f53afee937b8e017b46f0427de914",
-        "revCount": 18,
-        "type": "git",
-        "url": "file:///home/user/h/flake-modules-core"
+        "lastModified": 1637920676,
+        "narHash": "sha256-RIcrgprmcsa8sbIWISkpFqP1uThNzqc2yPoXfUloHyk=",
+        "owner": "hercules-ci",
+        "repo": "flake-modules-core",
+        "rev": "184fe3d3b1a05b18a335dac4caa9ba126c6255cb",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:///home/user/h/flake-modules-core"
+        "owner": "hercules-ci",
+        "repo": "flake-modules-core",
+        "type": "github"
       }
     },
     "flake-utils": {
@@ -87,11 +87,11 @@
     },
     "nixos-unstable": {
       "locked": {
-        "lastModified": 1636800699,
-        "narHash": "sha256-SwbyVxXffu3G2ulJIbTf0iQfqhbGbdml4Dyv5j9BiAI=",
+        "lastModified": 1638535497,
+        "narHash": "sha256-tk5LNbdkUhALp00+r5ZmQ3t7n2d5M7YUQB+MznWvVOg=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "2fa862644fc15ecb525eb8cd0a60276f1c340c7c",
+        "rev": "c71f061c68ba8ce53471b767d5049cbd0f3d8490",
         "type": "github"
       },
       "original": {
@@ -135,14 +135,18 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1637624131,
-        "narHash": "sha256-IAPuk1imKad/Fi121xipvDc3DMynGtwsjnFP9awi1Y4=",
-        "type": "git",
-        "url": "file:///home/user/h/pre-commit-hooks.nix"
+        "lastModified": 1638351750,
+        "narHash": "sha256-90OHC+11DIHD1QyMIPUuM3n6zjH5Mhc8RBZa0h8969A=",
+        "owner": "hercules-ci",
+        "repo": "pre-commit-hooks.nix",
+        "rev": "3bb289628867ac40fc9e7c514f8266b1ce8c0910",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:///home/user/h/pre-commit-hooks.nix"
+        "owner": "hercules-ci",
+        "ref": "flakeModule",
+        "repo": "pre-commit-hooks.nix",
+        "type": "github"
       }
     },
     "root": {

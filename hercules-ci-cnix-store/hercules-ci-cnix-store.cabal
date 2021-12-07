@@ -24,6 +24,10 @@ flag nix-2_4
   description: Build for Nix >=2.4pre*
   default: True
 
+flag nix-2_5
+  description: Build for Nix >=2.5pre*
+  default: True
+
 -- match the C++ language standard Nix is using
 common cxx-opts
   cxx-options:
