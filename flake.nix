@@ -156,8 +156,19 @@
               };
             };
 
-            # devShell = lib.mkForce (lib.mapAttrs (k: v: v.devShell) (lib.genAttrs config.systems config.perSystem));
-
+            herculesCI.onPush.default = {
+              outputs = { ... }: {
+                flake = {
+                  inherit (self)
+                    checks
+                    defaultApp
+                    devShell
+                    legacyPackages
+                    packages
+                    ;
+                };
+              };
+            };
           };
           perSystem = system: { config, pkgs, ... }:
             let
