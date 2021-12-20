@@ -64,6 +64,7 @@ library
     , http-client-tls
     , http-types
     , katip
+    , inline-c-cpp
     , lens
     , lens-aeson
     , lifted-base
