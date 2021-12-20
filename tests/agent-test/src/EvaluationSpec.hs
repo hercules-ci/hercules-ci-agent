@@ -665,7 +665,7 @@ spec = describe "Evaluation" $ do
       case attrLike r of
         [EvaluateEvent.AttributeError ae] -> do
           AttributeErrorEvent.expressionPath ae `shouldBe` ["hello"]
-          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "access to path"
+          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "access to" -- "access to path", "access to absolute path"
           toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "/etc/hostname"
           toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "is forbidden in restricted mode"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
@@ -683,7 +683,7 @@ spec = describe "Evaluation" $ do
       case attrLike r of
         [EvaluateEvent.AttributeError ae] -> do
           AttributeErrorEvent.expressionPath ae `shouldBe` ["hello"]
-          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "access to path"
+          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "access to" -- "access to path", "access to absolute path"
           toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "/var/lib/hercules-ci-agent/secrets/secrets.json"
           toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "is forbidden in restricted mode"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
