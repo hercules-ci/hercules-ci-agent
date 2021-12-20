@@ -665,9 +665,9 @@ spec = describe "Evaluation" $ do
       case attrLike r of
         [EvaluateEvent.AttributeError ae] -> do
           AttributeErrorEvent.expressionPath ae `shouldBe` ["hello"]
-          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "access to" -- "access to path", "access to absolute path"
-          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "/etc/hostname"
-          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "is forbidden in restricted mode"
+          fixup (AttributeErrorEvent.errorMessage ae) `shouldContain` "access to" -- "access to path", "access to absolute path"
+          fixup (AttributeErrorEvent.errorMessage ae) `shouldContain` "/etc/hostname"
+          fixup (AttributeErrorEvent.errorMessage ae) `shouldContain` "is forbidden in restricted mode"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
     it "throws an error (2)" \srv -> do
       id <- randomId
@@ -683,7 +683,16 @@ spec = describe "Evaluation" $ do
       case attrLike r of
         [EvaluateEvent.AttributeError ae] -> do
           AttributeErrorEvent.expressionPath ae `shouldBe` ["hello"]
-          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "access to" -- "access to path", "access to absolute path"
-          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "/var/lib/hercules-ci-agent/secrets/secrets.json"
-          toS (AttributeErrorEvent.errorMessage ae) `shouldContain` "is forbidden in restricted mode"
+          fixup (AttributeErrorEvent.errorMessage ae) `shouldContain` "access to" -- "access to path", "access to absolute path"
+          fixup (AttributeErrorEvent.errorMessage ae) `shouldContain` "/var/lib/hercules-ci-agent/secrets/secrets.json"
+          fixup (AttributeErrorEvent.errorMessage ae) `shouldContain` "is forbidden in restricted mode"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
+
+fixup :: Text -> [Char]
+fixup = noANSI . toS
+
+-- Probably a bad implementation, but gets the job done for now and it's test code.
+noANSI :: [Char] -> [Char]
+noANSI ('\ESC' : cs) = noANSI . drop 1 . dropWhile (/= 'm') $ cs
+noANSI (c : cs) = c : noANSI cs
+noANSI [] = []
