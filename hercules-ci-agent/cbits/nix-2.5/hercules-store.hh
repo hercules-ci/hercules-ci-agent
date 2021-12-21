@@ -58,11 +58,13 @@ public:
       RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs) override;
 
   virtual StorePath addToStore(const string & name, const Path & srcPath,
-      FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256,
-      PathFilter & filter = defaultPathFilter, RepairFlag repair = NoRepair) override;
+        FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256,
+        PathFilter & filter = defaultPathFilter, RepairFlag repair = NoRepair,
+        const StorePathSet & references = StorePathSet()) override;
 
   virtual StorePath addToStoreFromDump(Source & dump, const string & name,
-      FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256, RepairFlag repair = NoRepair) override;
+      FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256, RepairFlag repair = NoRepair,
+      const StorePathSet & references = StorePathSet()) override;
 
   virtual StorePath addTextToStore(const string & name, const string & s,
       const StorePathSet & references, RepairFlag repair = NoRepair) override;
@@ -82,8 +84,6 @@ public:
   virtual void addTempRoot(const StorePath & path) override;
 
   virtual void addIndirectRoot(const Path & path) override;
-
-  virtual void syncWithGC() override;
 
   virtual Roots findRoots(bool censor) override;
 
@@ -128,7 +128,8 @@ public:
 
   // Overrides
 
-  virtual std::optional<const Realisation> queryRealisation(const DrvOutput &) override;
+  virtual void queryRealisationUncached(const DrvOutput &,
+        Callback<std::shared_ptr<const Realisation>> callback) noexcept override;
 
   virtual void ensurePath(const StorePath & path) override;
 

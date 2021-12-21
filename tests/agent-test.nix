@@ -1,4 +1,4 @@
-{ daemonIsNixUnstable }:
+{ flake, daemonIsNixUnstable }:
 { pkgs, ... }:
 let
   tarball = x: pkgs.runCommand "${x.name or "tarball"}.tar.gz"
@@ -29,7 +29,7 @@ in
   nodes = {
     agent = { config, pkgs, lib, ... }: {
       imports = [
-        ../module.nix
+        flake.nixosModules.agent-profile
       ];
       config = {
         # Keep build dependencies around, because we'll be offline

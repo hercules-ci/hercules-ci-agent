@@ -15,12 +15,17 @@ extra-source-files:
     CHANGELOG.md
     cbits/hercules-aliases.h
     cbits/hercules-logger.hh
-    cbits/nix-2.3/hercules-store.hh
     cbits/nix-2.4/hercules-store.hh
+    cbits/nix-2.5/hercules-store.hh
     testdata/vm-test-run-agent-test.drv
 
+-- Deprecated
 flag nix-2_4
-  description: Build for Nix >=2.4pre*
+  description: Build for Nix >=2.4*
+  default: True
+
+flag nix-2_5
+  description: Build for Nix >=2.5*
   default: False
 
 source-repository head
@@ -33,6 +38,12 @@ common cxx-opts
     -std=c++17
     -Wall
   extra-libraries: stdc++
+
+  if flag(nix-2_5)
+    cxx-options:
+      -DNIX_2_5
+    cpp-options:
+      -DNIX_2_5
 
   if os(darwin)
     -- avoid https://gitlab.haskell.org/ghc/ghc/issues/11829
@@ -50,13 +61,6 @@ common cxx-opts
       -optc-Wall
     if os(darwin)
       ghc-options: -pgmc=clang++
-
-  if flag(nix-2_4)
-    cpp-options:
-        -DNIX_2_4
-    cxx-options:
-        -DNIX_2_4
-
 
 library
   exposed-modules:
@@ -266,14 +270,15 @@ executable hercules-ci-agent-worker
       Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent-worker
+
   cxx-sources:
       cbits/hercules-logger.cxx
-  if flag(nix-2_4)
+  if flag(nix-2_5)
     cxx-sources:
-      cbits/nix-2.4/hercules-store.cxx
+      cbits/nix-2.5/hercules-store.cxx
   else
     cxx-sources:
-      cbits/nix-2.3/hercules-store.cxx
+      cbits/nix-2.4/hercules-store.cxx
 
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
@@ -289,12 +294,12 @@ executable hercules-ci-agent-worker
     -with-rtsopts=-maxN8
   include-dirs:
       cbits
-  if flag(nix-2_4)
+  if flag(nix-2_5)
     include-dirs:
-      cbits/nix-2.4
+      cbits/nix-2.5
   else
     include-dirs:
-      cbits/nix-2.3
+      cbits/nix-2.4
   extra-libraries:
       boost_context
   build-depends:
@@ -343,7 +348,6 @@ executable hercules-ci-agent-worker
       nix-store >= 2.0
     , nix-expr >= 2.0
     , nix-main >= 2.0
-    , bdw-gc
   default-language: Haskell2010
 
 test-suite hercules-test

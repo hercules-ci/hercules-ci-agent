@@ -38,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - When the root of a `ci.nix` is a list, an error message is returned.
 
+### Removed
+
+ - Nix 2.3 support
+
 ## [0.8.4]
 
 ### Added

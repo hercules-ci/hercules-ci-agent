@@ -83,12 +83,13 @@ void WrappingStore::addToStore(const ValidPathInfo & info, Source & narSource,
 
 StorePath WrappingStore::addToStore(const string & name, const Path & srcPath,
       FileIngestionMethod method, HashType hashAlgo,
-      PathFilter & filter, RepairFlag repair) {
-  return wrappedStore->addToStore(name, srcPath, method, hashAlgo, filter, repair);
+      PathFilter & filter, RepairFlag repair, const StorePathSet & references) {
+  return wrappedStore->addToStore(name, srcPath, method, hashAlgo, filter, repair, references);
 }
 
 StorePath WrappingStore::addToStoreFromDump(Source & dump, const string & name,
-      FileIngestionMethod method, HashType hashAlgo, RepairFlag repair) {
+      FileIngestionMethod method, HashType hashAlgo, RepairFlag repair,
+      const StorePathSet & references) {
   return wrappedStore->addToStoreFromDump(dump, name, method, hashAlgo, repair);
 }
 
@@ -123,10 +124,6 @@ void WrappingStore::addTempRoot(const StorePath& path) {
 
 void WrappingStore::addIndirectRoot(const Path& path) {
   wrappedStore->addIndirectRoot(path);
-}
-
-void WrappingStore::syncWithGC() {
-  wrappedStore->syncWithGC();
 }
 
 void WrappingStore::collectGarbage(const GCOptions& options,
@@ -201,9 +198,9 @@ const std::string HerculesStore::name() {
   return "wrapped " + wrappedStore->name();
 }
 
-std::optional<const Realisation> HerculesStore::queryRealisation(const DrvOutput &drvOut) {
-  // TODO (ca-derivations) use?
-  return wrappedStore->queryRealisation(drvOut);
+void HerculesStore::queryRealisationUncached(const DrvOutput &drvOutput,
+      Callback<std::shared_ptr<const Realisation>> callback) noexcept {
+  wrappedStore->queryRealisation(drvOutput, std::move(callback));
 }
 
 void HerculesStore::ensurePath(const StorePath& path) {

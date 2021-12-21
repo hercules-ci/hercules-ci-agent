@@ -14,17 +14,19 @@ build-type:     Simple
 extra-source-files:
     CHANGELOG.md
     test/data/*.drv
-    compat-2.3/include/*.hh
-    compat-2.3/include/nix/*.hh
-    compat-2.4/include/*.hh
 
 source-repository head
   type: git
   location: https://github.com/hercules-ci/hercules-ci-agent
 
+-- Deprecated
 flag nix-2_4
   description: Build for Nix >=2.4pre*
-  default: False
+  default: True
+
+flag nix-2_5
+  description: Build for Nix >=2.5pre*
+  default: True
 
 -- match the C++ language standard Nix is using
 common cxx-opts
@@ -65,34 +67,12 @@ library
       Hercules.CNix.Util
   include-dirs:
       include
-  if flag(nix-2_4)
-    include-dirs:
-        compat-2.4/include
-    cpp-options:
-        -DNIX_2_4
-    pkgconfig-depends:
-        nix-store >= 2.4
-      , nix-main >= 2.4
-  else
-    include-dirs:
-        compat-2.3/include
-    pkgconfig-depends:
-        nix-store >= 2.0 && <2.4
-      , nix-main >= 2.0 && <2.4
-    cxx-sources:
-        compat-2.3/derivation-output.cxx
-        compat-2.3/path.cxx
-    install-includes:
-        nix/path-info.hh
-        nix/path.hh
-        nix/path-compat.hh
-        nix/derivation-output.hh
-        nix/content-address.hh
-
+      compat-2.4/include
+  pkgconfig-depends:
+      nix-store >= 2.4
+    , nix-main >= 2.4
   install-includes:
       hercules-ci-cnix/store.hxx
-      nix-compat.hh
-
   hs-source-dirs: src
   build-depends:
       base >= 4.7 && <5

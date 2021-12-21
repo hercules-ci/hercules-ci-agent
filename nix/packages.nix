@@ -5,6 +5,7 @@
   # TODO propagatedBuildInputs upstream
 , nlohmann_json
 , pre-commit-hooks-nix
+, flake
 , ...
 }:
 let
@@ -31,8 +32,8 @@ let
   addNixVersionFlag = pkg:
     overrideCabal pkg (o: {
       preConfigure = (o.preConfigure or "") + ''
-        if pkg-config --atleast-version 2.4pre nix-store || pkg-config --atleast-version 2.4 nix-store; then
-          configureFlags="$configureFlags --flag nix-2_4"
+        if pkg-config --atleast-version 2.5pre nix-store || pkg-config --atleast-version 2.5 nix-store; then
+          configureFlags="$configureFlags --flag nix-2_5"
         fi
       '';
     });
@@ -82,13 +83,11 @@ let
               hercules-ci-agent =
                 let
                   basePkg =
-                    callPkg super "hercules-ci-agent" ../hercules-ci-agent {
-                      bdw-gc = null; # propagated from Nix instead.
-                    };
+                    callPkg super "hercules-ci-agent" ../hercules-ci-agent { };
                   bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
 
                 in
-                generateOptparseApplicativeCompletion "hercules-ci-agent" (buildFromSdist (
+                generateOptparseApplicativeCompletion "hercules-ci-agent" (
                   overrideCabal
                     (
                       addBuildDepends
@@ -133,10 +132,16 @@ let
                         # end justStaticExecutables
                       }
                     )
-                ));
+                );
 
               hercules-ci-agent-test =
                 callPkg super "hercules-ci-agent-test" ../tests/agent-test { };
+
+              hercules-ci-agent_lib = overrideCabal self.hercules-ci-agent (o: {
+                isLibrary = true;
+                isExecutable = false;
+                postFixup = "";
+              });
 
               hercules-ci-cli = overrideCabal
                 (
@@ -144,11 +149,7 @@ let
                     justStaticExecutables (
                       haskell.lib.disableLibraryProfiling (
                         callPkg super "hercules-ci-cli" ../hercules-ci-cli {
-                          hercules-ci-agent = overrideCabal self.hercules-ci-agent (o: {
-                            isLibrary = true;
-                            isExecutable = false;
-                            postFixup = "";
-                          });
+                          hercules-ci-agent = self.hercules-ci-agent_lib;
                         }
                       )
                     )
@@ -165,7 +166,6 @@ let
               hercules-ci-cnix-expr = addNixVersionFlag
                 (addBuildDepends
                   (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
-                    bdw-gc = null; # propagated from Nix instead.
                     inherit nix;
                   })
                   [
@@ -191,48 +191,11 @@ let
 
       hercules-ci-api-swagger =
         pkgs.callPackage ../hercules-ci-api/swagger.nix { inherit (haskellPackages) hercules-ci-api; };
-
-      tests =
-        recurseIntoAttrs
-          { } //
-        # isx86_64: Don't run the VM tests on aarch64 to save time
-        optionalAttrs (pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64) {
-          agent-functional-test = pkgs.nixosTest (import ../tests/agent-test.nix { daemonIsNixUnstable = false; });
-          agent-functional-test-daemon-nixUnstable = pkgs.nixosTest (import ../tests/agent-test.nix { daemonIsNixUnstable = true; });
-        } // optionalAttrs pkgs.stdenv.isDarwin {
-          nix-darwin-example = pkgs.callPackage ../tests/nix-darwin-example.nix { };
-        };
-
-      projectRootSource = ../.;
     };
 in
 recurseIntoAttrs {
   inherit (internal.haskellPackages) hercules-ci-agent hercules-ci-cli;
   inherit (internal) hercules-ci-api-swagger tests;
-
-  pre-commit-check =
-    (import (pre-commit-hooks-nix + "/nix") { inherit (pkgs) system; }).run {
-      src = ../.;
-      tools = {
-        inherit (pkgs) ormolu;
-      };
-      hooks = {
-        # TODO: hlint.enable = true;
-        ormolu.enable = true;
-        ormolu.excludes = [
-          # CPP
-          "Hercules/Agent/Compat.hs"
-          "Hercules/Agent/StoreFFI.hs"
-        ];
-        shellcheck.enable = true;
-        nixpkgs-fmt.enable = true;
-        nixpkgs-fmt.excludes = [ "tests/agent-test/testdata/" ];
-      };
-      excludes = [
-        ".*/vendor/.*"
-      ];
-      settings.ormolu.defaultExtensions = [ "TypeApplications" ];
-    };
 
   # Not traversed for derivations:
   inherit internal;

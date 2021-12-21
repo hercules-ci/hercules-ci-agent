@@ -1,4 +1,6 @@
-packages: */*.cabal
+packages:
+  */*.cabal
+  ./tests/agent-test/hercules-ci-agent-test.cabal
 
 source-repository-package
     type: git

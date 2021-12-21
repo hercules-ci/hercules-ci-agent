@@ -1,9 +1,7 @@
-{ ci ? import ./ci.nix
-, system ? builtins.currentSystem
-, internal ? ci.nixos-unstable-nixUnstable.${system}.internal
-, pkgs ? internal.pkgs
+{ pkgs
+, haskellPackages
 }:
-internal.haskellPackages.shellFor {
+haskellPackages.shellFor {
   # Just in case
   NIX_PATH = "${pkgs.path}";
 
@@ -12,14 +10,16 @@ internal.haskellPackages.shellFor {
     p.hercules-ci-api
     p.hercules-ci-api-agent
     p.hercules-ci-agent
+    p.hercules-ci-agent_lib
     p.hercules-ci-agent-test
     p.hercules-ci-cli
     p.hercules-ci-cnix-expr
     p.hercules-ci-cnix-store
+    p.cachix
   ];
   buildInputs = [
     pkgs.boost
-    pkgs.nlohmann_json
+    pkgs.nlohmann_json # FIXME remove
 
     # cabal: The pkg-config package 'nix-store' version >=2.0 && <2.4 is required
     # but the version installed on the system is version 2.4pre20210601_5985b8b

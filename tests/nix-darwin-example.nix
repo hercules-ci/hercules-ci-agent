@@ -1,7 +1,5 @@
-{ pkgs }:
+{ flake ? (import ../nix/flake-compat.nix).defaultNix, pkgs }:
 let
-  flakeCompat = import ../nix/flake-compat.nix;
-  flake = flakeCompat.defaultNix;
   nix-darwin = flake.inputs.nix-darwin;
   inherit (pkgs) system;
   configuration = {
