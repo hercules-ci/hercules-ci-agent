@@ -96,9 +96,6 @@ cradle:
     - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Nix/RetrieveDerivationInfo.hs"
       component: "hercules-ci-agent:exe:hercules-ci-agent"
 
-    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/NixPath.hs"
-      component: "hercules-ci-agent:exe:hercules-ci-agent"
-
     - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Options.hs"
       component: "hercules-ci-agent:exe:hercules-ci-agent"
 
@@ -109,9 +106,6 @@ cradle:
       component: "hercules-ci-agent:exe:hercules-ci-agent"
 
     - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/Token.hs"
-      component: "hercules-ci-agent:exe:hercules-ci-agent"
-
-    - path: "hercules-ci-agent/hercules-ci-agent/Hercules/Agent/WorkerProcess.hs"
       component: "hercules-ci-agent:exe:hercules-ci-agent"
 
     - path: "hercules-ci-agent/hercules-ci-agent-worker/Main.hs"
@@ -140,6 +134,15 @@ cradle:
 
     - path: "hercules-ci-agent/hercules-ci-agent-worker/Hercules/Agent/Worker/HerculesStore/Context.hs"
       component: "hercules-ci-agent:exe:hercules-ci-agent-worker"
+
+    - path: "hercules-ci-agent/hercules-ci-agent-worker/Hercules/Agent/Worker/Logging.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent-worker"
+
+    - path: "hercules-ci-agent/hercules-ci-agent-worker/Hercules/Agent/Worker/NixDaemon.hs"
+      component: "hercules-ci-agent:exe:hercules-ci-agent-worker"
+
+    - path: "hercules-ci-agent/src"
+      component: "hercules-ci-agent:test:hercules-test"
 
     - path: "hercules-ci-agent/test"
       component: "hercules-ci-agent:test:hercules-test"
