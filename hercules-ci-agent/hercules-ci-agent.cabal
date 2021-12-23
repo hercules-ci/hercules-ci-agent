@@ -360,6 +360,7 @@ test-suite hercules-test
   type: exitcode-stdio-1.0
   main-is: TestMain.hs
   other-modules:
+      Data.Conduit.Extras
       Hercules.Agent.Log
       Hercules.Agent.NixPath
       Hercules.Agent.NixPathSpec
@@ -367,6 +368,7 @@ test-suite hercules-test
       Hercules.Agent.Nix.RetrieveDerivationInfoSpec
       Hercules.Agent.WorkerProcess
       Hercules.Agent.WorkerProcessSpec
+      Hercules.Secrets
       Hercules.SecretsSpec
       Paths_hercules_ci_agent
       Spec
@@ -397,9 +399,11 @@ test-suite hercules-test
     , lifted-async
     , lifted-base
     , monad-control
+    , mtl
     , process
     , protolude
     , safe-exceptions
+    , tagged
     , temporary
     , text
     , transformers-base
