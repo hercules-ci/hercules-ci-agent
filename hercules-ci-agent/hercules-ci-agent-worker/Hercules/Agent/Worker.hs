@@ -239,7 +239,8 @@ runCommand herculesState ch command = do
               liftIO $ atomically $ modifyTVar (drvsCompleted herculesState) (M.insert storePath (attempt, result))
             _ -> pass
     Command.Build build ->
-      katipAddNamespace "Build" $
+      katipAddNamespace "Build" $ do
+        liftIO CNix.setTalkative
         Logger.withLoggerConduit (logger (Build.logSettings build) protocolVersion) $
           Logger.withTappedStderr Logger.tapper $
             connectCommand ch $ runBuild (wrappedStore herculesState) build
