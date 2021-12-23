@@ -336,6 +336,10 @@ tapper s = do
 -- | Like 'withTappableStderr' but takes care of the forking and waiting of
 -- the tapper thread.
 withTappedStderr :: (KatipContext m, MonadUnliftIO m) => (TapState -> m ()) -> m a -> m a
+withTappedStderr _ m = do
+  m
+
+{- FIXME, readd
 withTappedStderr tapperFunction m = do
   (r, tapperDone) <-
     withTappableStderr
@@ -351,6 +355,7 @@ withTappedStderr tapperFunction m = do
     Just x -> pure x
     Nothing -> logLocM ErrorS "stderr thread did not finish in time"
   pure r
+-}
 
 data TapState = TapState {originalStderrCopy :: Fd, readableStderrEnd :: Handle}
 
