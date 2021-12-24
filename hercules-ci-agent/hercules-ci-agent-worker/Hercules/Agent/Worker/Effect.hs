@@ -16,8 +16,8 @@ import Katip (KatipContext)
 import Protolude
 import UnliftIO.Directory (getCurrentDirectory)
 
-runEffect :: (MonadIO m, KatipContext m, MonadThrow m) => Store -> Command.Effect.Effect -> m ExitCode
-runEffect store command = do
+runEffect :: (MonadIO m, KatipContext m, MonadThrow m) => [(Text, Text)] -> Store -> Command.Effect.Effect -> m ExitCode
+runEffect extraNixOptions store command = do
   derivation <- prepareDerivation store command
   dir <- getCurrentDirectory
   Effect.runEffect
@@ -30,6 +30,8 @@ runEffect store command = do
         runEffectProjectId = Just $ Command.Effect.projectId command,
         runEffectProjectPath = Just $ Command.Effect.projectPath command,
         runEffectSecretContext = Just $ Command.Effect.secretContext command,
+        runEffectUseNixDaemonProxy = True,
+        runEffectExtraNixOptions = extraNixOptions,
         runEffectFriendly = False
       }
 

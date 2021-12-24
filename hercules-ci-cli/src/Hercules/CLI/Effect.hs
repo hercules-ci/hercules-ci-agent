@@ -105,6 +105,8 @@ runParser = do
                   runEffectProjectId = projectId,
                   runEffectProjectPath = projectPathText <$> projectPath,
                   runEffectSecretContext = secretContextMaybe,
+                  runEffectUseNixDaemonProxy = False, -- FIXME Enable proxy for ci/dev parity. Requires access to agent binaries. Unified executable?
+                  runEffectExtraNixOptions = [],
                   runEffectFriendly = True
                 }
         throwIO exitCode

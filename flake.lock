@@ -69,22 +69,6 @@
         "type": "github"
       }
     },
-    "nixos-20_09": {
-      "locked": {
-        "lastModified": 1623585158,
-        "narHash": "sha256-AjK7M1/six8IBPOI28nm7yC2k8mZIR2F9QrOwFYHAS0=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "115dbbe82eb4ec8aabf959068286468a68e0b244",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixos-20.09",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
     "nixos-unstable": {
       "locked": {
         "lastModified": 1640023141,
@@ -154,7 +138,6 @@
         "flake-compat": "flake-compat",
         "flake-modules-core": "flake-modules-core",
         "nix-darwin": "nix-darwin",
-        "nixos-20_09": "nixos-20_09",
         "nixos-unstable": "nixos-unstable",
         "pre-commit-hooks-nix": "pre-commit-hooks-nix"
       }

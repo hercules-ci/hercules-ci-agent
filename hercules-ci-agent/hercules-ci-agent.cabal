@@ -66,23 +66,28 @@ library
   exposed-modules:
       Data.Fixed.Extras
       Data.Time.Extras
+      Hercules.Agent.Binary
       Hercules.Agent.NixFile
       Hercules.Agent.NixFile.GitSource
       Hercules.Agent.NixFile.HerculesCIArgs
       Hercules.Agent.NixFile.CiNixArgs
+      Hercules.Agent.NixPath
       Hercules.Agent.Producer
       Hercules.Agent.Sensitive
       Hercules.Agent.Socket
       Hercules.Agent.STM
+      Hercules.Agent.WorkerProcess
       Hercules.Agent.WorkerProtocol.Command
       Hercules.Agent.WorkerProtocol.Command.Build
       Hercules.Agent.WorkerProtocol.Command.BuildResult
       Hercules.Agent.WorkerProtocol.Command.Effect
       Hercules.Agent.WorkerProtocol.Command.Eval
+      Hercules.Agent.WorkerProtocol.Command.StartDaemon
       Hercules.Agent.WorkerProtocol.Event
       Hercules.Agent.WorkerProtocol.Event.Attribute
       Hercules.Agent.WorkerProtocol.Event.AttributeError
       Hercules.Agent.WorkerProtocol.Event.BuildResult
+      Hercules.Agent.WorkerProtocol.Event.DaemonStarted
       Hercules.Agent.WorkerProtocol.LogSettings
       Hercules.Agent.WorkerProtocol.Orphans
       Hercules.Effect
@@ -178,12 +183,10 @@ executable hercules-ci-agent
       Hercules.Agent.Nix.Env
       Hercules.Agent.Nix.Init
       Hercules.Agent.Nix.RetrieveDerivationInfo
-      Hercules.Agent.NixPath
       Hercules.Agent.Options
       Hercules.Agent.SecureDirectory
       Hercules.Agent.ServiceInfo
       Hercules.Agent.Token
-      Hercules.Agent.WorkerProcess
       Paths_hercules_ci_agent
   autogen-modules:
       Paths_hercules_ci_agent
@@ -266,6 +269,8 @@ executable hercules-ci-agent-worker
       Paths_hercules_ci_agent
       Hercules.Agent.Worker.HerculesStore
       Hercules.Agent.Worker.HerculesStore.Context
+      Hercules.Agent.Worker.Logging
+      Hercules.Agent.Worker.NixDaemon
   autogen-modules:
       Paths_hercules_ci_agent
   hs-source-dirs:
@@ -329,6 +334,7 @@ executable hercules-ci-agent-worker
     , lifted-base
     , monad-control
     , mtl
+    , network
     , network-uri
     , protolude
     , process
@@ -354,6 +360,7 @@ test-suite hercules-test
   type: exitcode-stdio-1.0
   main-is: TestMain.hs
   other-modules:
+      Data.Conduit.Extras
       Hercules.Agent.Log
       Hercules.Agent.NixPath
       Hercules.Agent.NixPathSpec
@@ -361,10 +368,12 @@ test-suite hercules-test
       Hercules.Agent.Nix.RetrieveDerivationInfoSpec
       Hercules.Agent.WorkerProcess
       Hercules.Agent.WorkerProcessSpec
+      Hercules.Secrets
       Hercules.SecretsSpec
       Paths_hercules_ci_agent
       Spec
   hs-source-dirs:
+      src
       test
       hercules-ci-agent
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
@@ -390,9 +399,11 @@ test-suite hercules-test
     , lifted-async
     , lifted-base
     , monad-control
+    , mtl
     , process
     , protolude
     , safe-exceptions
+    , tagged
     , temporary
     , text
     , transformers-base

@@ -7,10 +7,16 @@ module Hercules.Effect where
 import Control.Monad.Catch (MonadThrow)
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as C8
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import Hercules.API.Id (Id, idText)
 import Hercules.Agent.Sensitive (Sensitive (Sensitive, reveal), revealContainer)
+import Hercules.Agent.WorkerProcess (runWorker)
+import qualified Hercules.Agent.WorkerProcess as WorkerProcess
+import Hercules.Agent.WorkerProtocol.Command.StartDaemon (StartDaemon (StartDaemon))
+import qualified Hercules.Agent.WorkerProtocol.Command.StartDaemon as StartDaemon
+import Hercules.Agent.WorkerProtocol.Event.DaemonStarted (DaemonStarted (DaemonStarted))
 import Hercules.CNix (Derivation)
 import Hercules.CNix.Store (getDerivationArguments, getDerivationBuilder, getDerivationEnv)
 import Hercules.Effect.Container (BindMount (BindMount))
@@ -21,7 +27,10 @@ import Hercules.Secrets (SecretContext, evalCondition, evalConditionTrace)
 import Katip (KatipContext, Severity (..), logLocM, logStr)
 import Protolude
 import System.FilePath
+import UnliftIO (timeout)
+import qualified UnliftIO
 import UnliftIO.Directory (createDirectory, createDirectoryIfMissing)
+import qualified UnliftIO.Process as Process
 
 parseDrvSecretsMap :: Map ByteString ByteString -> Either Text (Map Text Text)
 parseDrvSecretsMap drvEnv =
@@ -95,6 +104,8 @@ data RunEffectParams = RunEffectParams
     runEffectDir :: FilePath,
     runEffectProjectId :: Maybe (Id "project"),
     runEffectProjectPath :: Maybe Text,
+    runEffectUseNixDaemonProxy :: Bool,
+    runEffectExtraNixOptions :: [(Text, Text)],
     -- | Whether we can relax security in favor of usability; 'True' in @hci effect run@. 'False' in agent.
     runEffectFriendly :: Bool
   }
@@ -166,20 +177,60 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
             ]
         (//) :: Ord k => Map k a -> Map k a -> Map k a
         (//) = flip M.union
-    Container.run
-      runcDir
-      Container.Config
-        { extraBindMounts =
-            [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
-              BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
-              BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
-              BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = True},
-              BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = "/nix/var/nix/daemon-socket/socket", readOnly = True}
-            ],
-          executable = decodeUtf8With lenientDecode drvBuilder,
-          arguments = map (decodeUtf8With lenientDecode) drvArgs,
-          environment = overridableEnv // drvEnv' // onlyImpureOverridableEnv // impureEnvVars // fixedEnv,
-          workingDirectory = "/build",
-          hostname = "hercules-ci",
-          rootReadOnly = False
-        }
+    let (withNixDaemonProxyPerhaps, forwardedSocketPath) =
+          if runEffectUseNixDaemonProxy p
+            then
+              let socketPath = dir </> "nix-daemon-socket"
+               in (withNixDaemonProxy (runEffectExtraNixOptions p) socketPath, socketPath)
+            else (identity, "/nix/var/nix/daemon-socket/socket")
+
+    withNixDaemonProxyPerhaps $
+      Container.run
+        runcDir
+        Container.Config
+          { extraBindMounts =
+              [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
+                BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
+                BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
+                BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = True},
+                BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = toS forwardedSocketPath, readOnly = True}
+              ],
+            executable = decodeUtf8With lenientDecode drvBuilder,
+            arguments = map (decodeUtf8With lenientDecode) drvArgs,
+            environment = overridableEnv // drvEnv' // onlyImpureOverridableEnv // impureEnvVars // fixedEnv,
+            workingDirectory = "/build",
+            hostname = "hercules-ci",
+            rootReadOnly = False
+          }
+
+withNixDaemonProxy :: [(Text, Text)] -> FilePath -> IO a -> IO a
+withNixDaemonProxy extraNixOptions socketPath wrappedAction = do
+  workerExe <- WorkerProcess.getWorkerExe
+  let opts = ["nix-daemon", show extraNixOptions]
+      procSpec =
+        (Process.proc workerExe opts)
+          { -- Process.env = Just workerEnv,
+            Process.close_fds = True
+            -- Process.cwd = Just workDir
+          }
+  daemonCmdChan <- liftIO newChan
+  daemonReadyVar <- liftIO newEmptyMVar
+  let onDaemonEvent :: MonadIO m => DaemonStarted -> m ()
+      onDaemonEvent DaemonStarted {} = liftIO (void $ tryPutMVar daemonReadyVar ())
+  liftIO $ writeChan daemonCmdChan (Just $ Just $ StartDaemon {socketPath = socketPath})
+  UnliftIO.withAsync (runWorker procSpec (\_ s -> liftIO (C8.hPutStrLn stderr ("hci proxy nix-daemon: " <> s))) daemonCmdChan onDaemonEvent) $ \daemonAsync -> do
+    race (readMVar daemonReadyVar) (wait daemonAsync) >>= \case
+      Left _ -> pass
+      Right e -> throwIO $ FatalError $ "Hercules CI proxy nix-daemon exited before being told to; status " <> show e
+
+    a <- wrappedAction
+
+    timeoutResult <- timeout (60 * 1000 * 1000) $ do
+      writeChan daemonCmdChan (Just Nothing)
+      writeChan daemonCmdChan Nothing
+      void $ wait daemonAsync
+    case timeoutResult of
+      Nothing -> putErrText "warning: Hercules CI proxy nix-daemon did not shut down in time."
+      _ -> pass
+
+    pure a

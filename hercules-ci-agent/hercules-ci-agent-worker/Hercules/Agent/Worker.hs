@@ -50,6 +50,8 @@ import qualified Hercules.Agent.Worker.Build.Logger as Logger
 import Hercules.Agent.Worker.Effect (runEffect)
 import Hercules.Agent.Worker.HerculesStore (nixStore, setBuilderCallback, withHerculesStore)
 import Hercules.Agent.Worker.HerculesStore.Context (HerculesStore)
+import Hercules.Agent.Worker.Logging (withKatip)
+import Hercules.Agent.Worker.NixDaemon (nixDaemon)
 import Hercules.Agent.WorkerProtocol.Command
   ( Command,
   )
@@ -88,7 +90,6 @@ import qualified Network.URI
 import Protolude hiding (bracket, catch, check, evalState, wait, withAsync, yield)
 import qualified System.Environment as Environment
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
-import System.Posix.IO (dup, fdToHandle, stdError)
 import System.Posix.Signals (Handler (Catch), installHandler, raiseSignal, sigINT, sigTERM)
 import System.Timeout (timeout)
 import UnliftIO.Async (wait, withAsync)
@@ -101,7 +102,8 @@ data HerculesState = HerculesState
     drvsInProgress :: IORef (Set StorePath),
     herculesStore :: Ptr (Ref HerculesStore),
     wrappedStore :: Store,
-    shortcutChannel :: Chan (Maybe Event)
+    shortcutChannel :: Chan (Maybe Event),
+    extraNixOptions :: [(Text, Text)]
   }
 
 data BuildException = BuildException
@@ -119,19 +121,35 @@ main = do
   _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
   installDefaultSigINTHandler
   Logger.initLogger
-  [options] <- Environment.getArgs
-  let allOptions =
-        Prelude.read options
-          ++ [
-               -- narinfo-cache-negative-ttl: Always try requesting narinfos because it may have been built in the meanwhile
-               ("narinfo-cache-negative-ttl", "0"),
-               -- Build concurrency is controlled by hercules-ci-agent, so set it
-               -- to 1 to avoid accidentally consuming too many resources at once.
-               ("max-jobs", "1")
-             ]
-  for_ allOptions $ \(k, v) -> do
+  args <- Environment.getArgs
+  case args of
+    ["nix-daemon", options] -> do
+      setOptions options
+      nixDaemon
+    [options] -> taskWorker options
+    _ -> throwIO $ FatalError "worker: Unrecognized command line arguments"
+
+-- TODO Make this part of the worker protocol instead
+parseOptions :: (Read a, Read b, IsString a, IsString b) => Prelude.String -> [(a, b)]
+parseOptions options =
+  Prelude.read options
+    ++ [
+         -- narinfo-cache-negative-ttl: Always try requesting narinfos because it may have been built in the meanwhile
+         ("narinfo-cache-negative-ttl", "0"),
+         -- Build concurrency is controlled by hercules-ci-agent, so set it
+         -- to 1 to avoid accidentally consuming too many resources at once.
+         ("max-jobs", "1")
+       ]
+
+setOptions :: [Char] -> IO ()
+setOptions options = do
+  for_ (parseOptions options) $ \(k, v) -> do
     setGlobalOption k v
     setOption k v
+
+taskWorker :: [Char] -> IO ()
+taskWorker options = do
+  setOptions options
   drvsCompleted_ <- newTVarIO mempty
   drvsInProgress_ <- newIORef mempty
   withStore $ \wrappedStore_ -> withHerculesStore wrappedStore_ $ \herculesStore_ -> withKatip $ do
@@ -143,7 +161,8 @@ main = do
               drvsInProgress = drvsInProgress_,
               herculesStore = herculesStore_,
               wrappedStore = wrappedStore_,
-              shortcutChannel = ch
+              shortcutChannel = ch,
+              extraNixOptions = parseOptions options
             }
     let runner :: KatipContextT IO ()
         runner =
@@ -263,7 +282,7 @@ runCommand herculesState ch command = do
         Logger.withLoggerConduit (logger (Effect.logSettings effect) protocolVersion) $
           Logger.withTappedStderr Logger.tapper $
             connectCommand ch $ do
-              runEffect (wrappedStore herculesState) effect >>= \case
+              runEffect (extraNixOptions herculesState) (wrappedStore herculesState) effect >>= \case
                 ExitSuccess -> yield $ Event.EffectResult 0
                 ExitFailure n -> yield $ Event.EffectResult n
     _ ->
@@ -336,21 +355,6 @@ foldMapTap f = go mempty
         Just a -> do
           yield a
           go (b <> f a)
-
-withKatip :: (MonadUnliftIO m) => KatipContextT m a -> m a
-withKatip m = do
-  let format :: forall a. LogItem a => ItemFormatter a
-      format = (\_ _ _ -> "@katip ") <> jsonFormat
-  -- Use a duplicate of stderr, to make sure we keep logging there, even after
-  -- we reassign stderr to catch output from git and other subprocesses of Nix.
-  dupStderr <- liftIO (fdToHandle =<< dup stdError)
-  handleScribe <- liftIO $ mkHandleScribeWithFormatter format (ColorLog False) dupStderr (permitItem DebugS) V2
-  let makeLogEnv = registerScribe "stderr" handleScribe defaultScribeSettings =<< initLogEnv "Worker" "production"
-      initialContext = ()
-      extraNs = mempty -- "Worker" is already set in initLogEnv.
-      -- closeScribes will stop accepting new logs, flush existing ones and clean up resources
-  bracket (liftIO makeLogEnv) (liftIO . closeScribes) $ \logEnv ->
-    runKatipContextT logEnv initialContext extraNs m
 
 makeSocketConfig :: MonadIO m => LogSettings.LogSettings -> Int -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
 makeSocketConfig l storeProtocolVersionValue = do
