@@ -37,6 +37,9 @@ common cxx-opts
     ghc-options:
       -optcxx-std=c++17
       -optcxx-Wall
+    if os(darwin)
+      -- https://github.com/NixOS/nixpkgs/pull/152037
+      ghc-options:  -fcompact-unwind
   else
     ghc-options:
       -optc-std=c++17

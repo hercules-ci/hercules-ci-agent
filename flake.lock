@@ -52,16 +52,16 @@
     },
     "nixos-unstable": {
       "locked": {
-        "lastModified": 1636800699,
-        "narHash": "sha256-SwbyVxXffu3G2ulJIbTf0iQfqhbGbdml4Dyv5j9BiAI=",
-        "owner": "NixOS",
+        "lastModified": 1640389649,
+        "narHash": "sha256-oNDbXpEjyRCMFkSzkIC/1qte7Cz59Iog1iOLwlrUA0Q=",
+        "owner": "hercules-ci",
         "repo": "nixpkgs",
-        "rev": "2fa862644fc15ecb525eb8cd0a60276f1c340c7c",
+        "rev": "a081f577581c1c98982b4831df33b55229bdd258",
         "type": "github"
       },
       "original": {
-        "owner": "NixOS",
-        "ref": "nixos-unstable",
+        "owner": "hercules-ci",
+        "ref": "fix-ghc-cxx-exceptions-on-2fa86264",
         "repo": "nixpkgs",
         "type": "github"
       }

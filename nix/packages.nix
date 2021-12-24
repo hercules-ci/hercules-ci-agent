@@ -168,7 +168,7 @@ let
               hercules-ci-cnix-expr = addNixVersionFlag
                 (addBuildDepends
                   (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
-                    bdw-gc = null; # propagated from Nix instead.
+                    # bdw-gc = null; # propagated from Nix instead.
                     inherit nix;
                   })
                   [

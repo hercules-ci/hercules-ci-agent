@@ -2,7 +2,7 @@
   description = "Hercules CI Agent";
 
   inputs.nixos-20_09.url = "github:NixOS/nixpkgs/nixos-20.09";
-  inputs.nixos-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nixos-unstable.url = "github:hercules-ci/nixpkgs/fix-ghc-cxx-exceptions-on-2fa86264";
   inputs.nix-darwin.url = "github:LnL7/nix-darwin"; # test only
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
