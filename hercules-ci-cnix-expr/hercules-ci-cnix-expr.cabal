@@ -93,4 +93,3 @@ library
         nix-store >= 2.0
       , nix-expr >= 2.0
       , nix-main >= 2.0
-      , bdw-gc

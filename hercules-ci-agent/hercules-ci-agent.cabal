@@ -336,7 +336,6 @@ executable hercules-ci-agent-worker
       nix-store >= 2.0
     , nix-expr >= 2.0
     , nix-main >= 2.0
-    , bdw-gc
   default-language: Haskell2010
 
 test-suite hercules-test
