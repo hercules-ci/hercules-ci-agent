@@ -28,7 +28,9 @@ let
     (nixos {
       boot.loader.grub.enable = false;
       fileSystems."/".device = "x";
-      services.hercules-ci-agents."a".settings = { concurrentTasks = 1; };
+      # Test max length (user names are limited)
+      services.hercules-ci-agents."a-bcdefghijklmnopqrstuvwxyz".settings = { concurrentTasks = 1; };
+      # Test multiple agents don't interfere statically
       services.hercules-ci-agents."b".settings = { concurrentTasks = 2; };
       services.hercules-ci-agents."c".settings = { concurrentTasks = 3; };
       imports = [ ../internal/nix/nixos/multi.nix ];

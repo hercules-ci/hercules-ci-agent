@@ -13,6 +13,7 @@ let
       command = "${config.package}/bin/hercules-ci-agent --config ${configFile}";
       testCommand = "${command} --test-configuration";
       suffix = if name == "" then "" else "-${name}";
+      user = if name == "" then "hercules-ci-agent" else "hci-${name}";
     in
     {
       options = {
@@ -69,7 +70,7 @@ let
               path = [ config.nix.package ];
               startLimitBurst = 30 * 1000000; # practically infinite
               serviceConfig = {
-                User = "hercules-ci-agent${suffix}";
+                User = user;
                 ExecStart = command;
                 ExecStartPre = testCommand;
                 Restart = "on-failure";
@@ -108,15 +109,15 @@ let
             # when operating in a cluster.
             nix.trustedUsers = [ config.systemd.services."hercules-ci-agent${suffix}".serviceConfig.User ];
 
-            users.users."hercules-ci-agent${suffix}" = {
+            users.users.${user} = {
               home = cfg.settings.baseDirectory;
               createHome = true;
-              group = "hercules-ci-agent${suffix}";
+              group = user;
               description = "Hercules CI Agent system user${lib.optionalString (name != "") " for ${name}"}";
               isSystemUser = true;
             };
 
-            users.groups."hercules-ci-agent${suffix}" = { };
+            users.groups.${user} = { };
           };
         };
     };
