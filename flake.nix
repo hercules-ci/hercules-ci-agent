@@ -226,6 +226,27 @@
           };
         };
 
+      # A module for configuring multiple agents on a single machine
+      # Ongoing support for this module is not guaranteed, as this architecture
+      # is not optimal for managing parallelism.
+      nixosModules.stop-gap-multi-agent-service =
+        { pkgs, ... }:
+        {
+          _file = "${toString ./flake.nix}#nixosModules.stop-gap-multi-agent-service";
+          imports = [
+            flakeModule
+            ./internal/nix/nixos/multi.nix
+          ];
+
+          # Existence of the original module could cause confusion, even if they
+          # can technically coexist.
+          disabledModules = [ "services/continuous-integration/hercules-ci-agent/default.nix" ];
+
+          config = {
+            services.hercules-ci-agent.settings.labels.module = "nixos-multi-service";
+          };
+        };
+
       # A nix-darwin module
       darwinModules.agent-service =
         { pkgs, ... }:
