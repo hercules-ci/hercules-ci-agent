@@ -18,7 +18,7 @@ let
       options = {
         systemConfig = lib.mkOption {
           internal = true;
-          type = types.unspecified; # A module actually
+          type = types.unspecified; # A function from module arguments to config.
         };
         package = mkOption {
           description = ''
