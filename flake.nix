@@ -257,12 +257,10 @@
         };
 
       # A module for configuring multiple agents on a single machine
-      # Ongoing support for this module is not guaranteed, as this architecture
-      # is not optimal for managing parallelism.
-      nixosModules.stop-gap-multi-agent-service =
+      nixosModules.multi-agent-service =
         { pkgs, ... }:
         {
-          _file = "${toString ./flake.nix}#nixosModules.stop-gap-multi-agent-service";
+          _file = "${toString ./flake.nix}#nixosModules.multi-agent-service";
           imports = [
             flakeModule_multi
             ./internal/nix/nixos/multi.nix

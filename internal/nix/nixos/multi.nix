@@ -1,4 +1,6 @@
-# This module is a stop gap for deploying multiple agents, until proper multi-organization support is available.
+# Module similar to (flake).agent-service or the NixOS-bundled module, but
+# supports running multiple instance of the agent, each with their own files,
+# user, etc.
 
 systemArgs@{ pkgs, config, lib, ... }:
 let
