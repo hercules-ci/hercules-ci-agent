@@ -9,23 +9,25 @@ let
 
   singleton =
     (nixos {
+      # NB: these tests use the flake and are not sensitive to nix version overrides.
+      imports = [ (import ../nix/flake-compat.nix).defaultNix.nixosModules.multi-agent-service ];
       boot.loader.grub.enable = false;
       fileSystems."/".device = "x";
       services.hercules-ci-agents."".settings = { concurrentTasks = 42; inherit labels; };
-      imports = [ ../internal/nix/nixos/multi.nix ];
     }).config.system.build.toplevel;
 
   reference =
     (nixos {
+      imports = [ (import ../nix/flake-compat.nix).defaultNix.nixosModules.agent-service ];
       boot.loader.grub.enable = false;
       fileSystems."/".device = "x";
       services.hercules-ci-agent.enable = true;
       services.hercules-ci-agent.settings = { concurrentTasks = 42; inherit labels; };
-      imports = [ (import ../nix/flake-compat.nix).defaultNix.nixosModules.agent-service ];
     }).config.system.build.toplevel;
 
   multi =
     (nixos {
+      imports = [ (import ../nix/flake-compat.nix).defaultNix.nixosModules.multi-agent-service ];
       boot.loader.grub.enable = false;
       fileSystems."/".device = "x";
       # Test max length (user names are limited)
@@ -33,7 +35,6 @@ let
       # Test multiple agents don't interfere statically
       services.hercules-ci-agents."b".settings = { concurrentTasks = 2; };
       services.hercules-ci-agents."c".settings = { concurrentTasks = 3; };
-      imports = [ ../internal/nix/nixos/multi.nix ];
     }).config.system.build.toplevel;
 
   testEqualDerivation = callPackage ./equal-derivation.nix { };
