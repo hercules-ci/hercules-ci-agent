@@ -202,6 +202,7 @@ let
         optionalAttrs (pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64) {
           agent-functional-test = pkgs.nixosTest (import ../tests/agent-test.nix { daemonIsNixUnstable = false; });
           agent-functional-test-daemon-nixUnstable = pkgs.nixosTest (import ../tests/agent-test.nix { daemonIsNixUnstable = true; });
+          multi-example = pkgs.callPackage ../tests/multi-example.nix { };
         } // optionalAttrs pkgs.stdenv.isDarwin {
           nix-darwin-example = pkgs.callPackage ../tests/nix-darwin-example.nix { };
         };
