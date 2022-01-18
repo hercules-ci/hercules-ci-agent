@@ -10,6 +10,7 @@ where
 import Conduit
 import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
+import Control.Exception.Lifted (finally)
 import Control.Lens (at, (^?))
 import qualified Data.Aeson as A
 import Data.Aeson.Lens (_String)
@@ -224,11 +225,13 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
               Message.message = e
             }
     Right file -> TraversalQueue.with $ \(derivationQueue :: Queue StorePath) ->
-      let doIt = do
-            Async.Lifted.concurrently_ evaluation emitDrvs
-            -- derivationInfo upload has finished
-            -- allAttrPaths :: IORef has been populated
-            pushDrvs
+      let doIt =
+            ( do
+                Async.Lifted.concurrently_ evaluation emitDrvs
+                -- derivationInfo upload has finished
+                -- allAttrPaths :: IORef has been populated
+            )
+              `finally` pushDrvs
           uploadDrvInfos drvPath = do
             TraversalQueue.enqueue derivationQueue drvPath
             TraversalQueue.waitUntilDone derivationQueue
@@ -236,21 +239,23 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
             TraversalQueue.enqueue derivationQueue drvPath
             liftIO $ atomicModifyIORef topDerivationPaths ((,()) . S.insert drvPath)
           evaluation = do
-            Nix.withExtraOptions [("system", T.strip s) | Just s <- [adHocSystem]] $
-              runEvalProcess
-                projectDir
-                file
-                autoArguments
-                nixPath
-                captureAttrDrvAndEmit
-                uploadDrvInfos
-                sync
-                task
-                (ref, rev)
-                allowedPaths
-            -- process has finished
-            TraversalQueue.waitUntilDone derivationQueue
-            TraversalQueue.close derivationQueue
+            Nix.withExtraOptions [("system", T.strip s) | Just s <- [adHocSystem]] do
+              let evalProc =
+                    do runEvalProcess
+                      projectDir
+                      file
+                      autoArguments
+                      nixPath
+                      captureAttrDrvAndEmit
+                      uploadDrvInfos
+                      sync
+                      task
+                      (ref, rev)
+                      allowedPaths
+              evalProc `finally` do
+                -- Always upload drv infos, even in case of a crash in the worker
+                TraversalQueue.waitUntilDone derivationQueue
+                  `finally` TraversalQueue.close derivationQueue
           pushDrvs = do
             caches <- activePushCaches
             paths <- liftIO $ readIORef topDerivationPaths

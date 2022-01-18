@@ -177,6 +177,41 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
             ]
         (//) :: Ord k => Map k a -> Map k a -> Map k a
         (//) = flip M.union
+    Container.run
+      runcDir
+      Container.Config
+        { extraBindMounts =
+            [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
+              BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
+              BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
+              BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = True},
+              BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = "/nix/var/nix/daemon-socket/socket", readOnly = True}
+            ],
+          executable = decodeUtf8With lenientDecode drvBuilder,
+          arguments = map (decodeUtf8With lenientDecode) drvArgs,
+          environment = overridableEnv // drvEnv' // onlyImpureOverridableEnv // impureEnvVars // fixedEnv,
+          workingDirectory = "/build",
+          hostname = "hercules-ci",
+          rootReadOnly = False
+        }
+    Container.run
+      runcDir
+      Container.Config
+        { extraBindMounts =
+            [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
+              BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
+              BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
+              -- we cannot bind mount this read-only because of https://github.com/opencontainers/runc/issues/1523
+              BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = False},
+              BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = "/nix/var/nix/daemon-socket/socket", readOnly = True}
+            ],
+          executable = decodeUtf8With lenientDecode drvBuilder,
+          arguments = map (decodeUtf8With lenientDecode) drvArgs,
+          environment = overridableEnv // drvEnv' // onlyImpureOverridableEnv // impureEnvVars // fixedEnv,
+          workingDirectory = "/build",
+          hostname = "hercules-ci",
+          rootReadOnly = False
+        }
     let (withNixDaemonProxyPerhaps, forwardedSocketPath) =
           if runEffectUseNixDaemonProxy p
             then
@@ -192,7 +227,8 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
               [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
                 BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
                 BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
-                BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = True},
+                -- we cannot bind mount this read-only because of https://github.com/opencontainers/runc/issues/1523
+                BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = False},
                 BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = toS forwardedSocketPath, readOnly = True}
               ],
             executable = decodeUtf8With lenientDecode drvBuilder,
