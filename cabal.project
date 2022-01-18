@@ -10,3 +10,5 @@ source-repository-package
 constraints:
   hercules-ci-cnix-store +nix-2_4,
   hercules-ci-cnix-expr +nix-2_4,
+  cachix >= 0.7,
+  cachix-api >= 0.7,

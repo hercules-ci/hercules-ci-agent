@@ -27,27 +27,58 @@
         })
       );
 
+      agentFromFlakeConfig = cfg: opts: pkgs: lib:
+        let
+          mkIfNotNull = x: lib.mkIf (x != null) x;
+        in
+        {
+          package = self.packages.${pkgs.system}.hercules-ci-agent; # defaultPriority below
+          settings.labels.agent.source = "flake";
+          settings.labels.agent.revision =
+            mkIfNotNull (
+              if (self?rev
+                && opts.package.highestPrio == lib.modules.defaultPriority
+              )
+              then self.rev
+              else if cfg.package ? rev
+              then cfg.package.rev
+              else null
+            );
+        };
+
       agentFromFlakeModule = { config, lib, options, pkgs, ... }: {
-        _file = "${toString ./flake.nix}##agentFromFlakeModule";
-        config =
+        _file = "${toString ./flake.nix}##flakeModule";
+        config.services.hercules-ci-agent =
+          agentFromFlakeConfig
+            config.services.hercules-ci-agent
+            options.services.hercules-ci-agent
+            pkgs
+            lib;
+      };
+
+      agentFromFlakeModule_multi = { config, lib, options, pkgs, ... }: {
+        _file = "${toString ./flake.nix}##flakeModule_multi";
+        options =
           let
             mkIfNotNull = x: lib.mkIf (x != null) x;
+            inherit (lib) types mkOption;
           in
           {
-            services.hercules-ci-agent.package = self.packages.${pkgs.system}.hercules-ci-agent; # defaultPriority below
-            services.hercules-ci-agent.settings.labels.agent.source = "flake";
-            services.hercules-ci-agent.settings.labels.agent.revision =
-              mkIfNotNull (
-                if (self?rev
-                  && options.services.hercules-ci-agent.package.highestPrio == lib.modules.defaultPriority
-                )
-                then self.rev
-                else if config.services.hercules-ci-agent.package ? rev
-                then config.services.hercules-ci-agent.package.rev
-                else null
-              );
+            services.hercules-ci-agents =
+              mkOption {
+                type = types.attrsOf (
+                  types.submoduleWith {
+                    modules = [
+                      ({ options, config, ... }: {
+                        config = agentFromFlakeConfig config options pkgs lib;
+                      })
+                    ];
+                  }
+                );
+              };
           };
       };
+
 
       suffixAttrs = suf: inputs.nixos-unstable.lib.mapAttrs' (n: v: { name = n + suf; value = v; });
     in
@@ -105,6 +136,33 @@
                 config = {
                   services.hercules-ci-agent.settings.labels.module = "nixos-profile";
                 };
+              };
+
+            # A module for configuring multiple agents on a single machine
+            nixosModules.multi-agent-service =
+              { pkgs, ... }:
+              {
+                _file = "${toString ./flake.nix}#nixosModules.multi-agent-service";
+                imports = [
+                  agentFromFlakeModule_multi
+                  ./internal/nix/nixos/multi.nix
+                ];
+
+                # Existence of the original module could cause confusion, even if they
+                # can technically coexist.
+                disabledModules = [ "services/continuous-integration/hercules-ci-agent/default.nix" ];
+
+                options = let inherit (lib) types mkOption; in
+                  {
+                    services.hercules-ci-agents =
+                      mkOption {
+                        type = types.attrsOf (
+                          types.submoduleWith {
+                            modules = [{ config.settings.labels.module = "nixos-multi-service"; }];
+                          }
+                        );
+                      };
+                  };
               };
 
             # A nix-darwin module
@@ -266,11 +324,16 @@
                 checks = config.checkSet // suffixAttrs "-nixUnstable" config.variants.nixUnstable.checkSet;
 
                 checkSet =
+                  let
+                    multi-example = pkgs.callPackage ./tests/multi-example.nix { };
+                  in
                   # isx86_64: Don't run the VM tests on aarch64 to save time
                   lib.optionalAttrs (pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64)
                     {
                       agent-functional-test = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = false; });
                       agent-functional-test-daemon-nixUnstable = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = true; });
+                      multi-example-eq = multi-example.eq;
+                      multi-example-multi = multi-example.multi;
                     } // lib.optionalAttrs pkgs.stdenv.isDarwin {
                     nix-darwin-example = pkgs.callPackage ./tests/nix-darwin-example.nix { flake = self; };
                   }

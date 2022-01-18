@@ -1,8 +1,13 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 
 module Hercules.Agent.Cachix.Init where
 
+#if MIN_VERSION_cachix(0,7,0)
+import Cachix.Client.Version (cachixVersion)
+#else
 import Cachix.Client.Env (cachixVersion)
+#endif
 import qualified Cachix.Client.Push as Cachix.Push
 import qualified Cachix.Client.Secrets as Cachix.Secrets
 import Cachix.Client.URI (defaultCachixBaseUrl)
