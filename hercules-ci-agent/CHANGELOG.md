@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.5]
+
+### Added
+
+ - The flake now has `.nixosModules.multi-agent-service` allowing multiple agents
+   to run on the same system.
+   An instance with default settings can be enabled with `services.hercules-ci-agents."some-name" = {}`.
+   User name and file paths are like the regular module, except replacing `hercules-ci-agent` by `hci-${name}` if the chosen `name` is not `""`.
+   `services.hercules-ci-agents."" = {}` is equivalent to `services.hercules-ci-agent.enable = true`.
+
+### Fixed
+
+ - Fix mounting `/etc/resolv.conf`, work around runc#1523. Fixed by @Mic92 in #357
+
+ - An issue where a Nix evaluator crash could lead to builds being triggered in
+   the backend for which the derivation hadn't been pushed to the cache yet,
+   causing needless build failures. #314
+
+ - A build error caused by a moved symbol in `cachix >= 0.7`. #363
+
+ - A test that relied on `aeson` field order, which isn't stable. #352
+
 ## [0.8.4]
 
 ### Added
