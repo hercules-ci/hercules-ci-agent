@@ -197,7 +197,9 @@ let
 
       tests =
         recurseIntoAttrs
-          { } //
+          {
+            cli = pkgs.callPackage ../tests/cli.nix { hci = pkgs.hercules-ci-agent-packages.hercules-ci-cli; };
+          } //
         # isx86_64: Don't run the VM tests on aarch64 to save time
         optionalAttrs (pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64) {
           agent-functional-test = pkgs.nixosTest (import ../tests/agent-test.nix { daemonIsNixUnstable = false; });

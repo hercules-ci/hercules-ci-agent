@@ -4,6 +4,7 @@
 module Hercules.CLI.Secret where
 
 import qualified Data.Aeson as A
+import qualified Data.Aeson.Types as A
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Hercules.CLI.Common (exitMsg, runAuthenticated)
@@ -15,7 +16,7 @@ import Protolude
 import System.FilePath (takeDirectory, (</>))
 import UnliftIO.Directory (XdgDirectory (XdgConfig), createDirectoryIfMissing, doesFileExist, getXdgDirectory)
 
-commandParser, initLocal, add :: Optparse.Parser (IO ())
+commandParser, initLocal, add, echo :: Optparse.Parser (IO ())
 commandParser =
   subparser
     ( mkCommand
@@ -26,6 +27,10 @@ commandParser =
           "add"
           (Optparse.progDesc "Insert a secret into the local secrets file")
           add
+        <> mkCommand
+          "echo"
+          (Optparse.progDesc "Assemble a secret for stdout")
+          echo
     )
 initLocal = do
   projectOptionMaybe <- optional projectOption
@@ -60,6 +65,16 @@ add = do
     liftIO $ writeJsonFile secretsFilePath secrets'
     putErrText $ "hci: successfully wrote " <> secretName <> " to " <> toS secretsFilePath
     putErrText "NOTE: Remember to synchronize this file with your agents!"
+echo = do
+  mkJson <- JSON.options
+  pure do
+    secretDataValue <- liftIO mkJson
+    secretData <- case A.parse A.parseJSON secretDataValue of
+      A.Error e -> exitMsg $ "The secret data must be an object. " <> toS e
+      A.Success a -> pure a
+    let secret =
+          A.object ["kind" A..= A.String "Secret", "data" A..= (secretData :: Map Text A.Value)]
+    liftIO $ JSON.printJson secret
 
 getSecretsFilePath :: ProjectPath -> IO FilePath
 getSecretsFilePath projectPath = do

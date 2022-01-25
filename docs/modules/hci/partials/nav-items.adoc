@@ -11,6 +11,10 @@ endif::[]
 ifeval::[{descriptions} == true]
 Insert a secret into the local `secrets.json`.
 endif::[]
+* xref:secret/echo.adoc[`hci secret echo`] +
+ifeval::[{descriptions} == true]
+Assemble a secret and print it to stdout.
+endif::[]
 * xref:secret/init-local.adoc[`hci secret init-local`] +
 ifeval::[{descriptions} == true]
 Create a local `secrets.json` file for the current account.
