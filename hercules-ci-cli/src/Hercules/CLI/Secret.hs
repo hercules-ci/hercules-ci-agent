@@ -19,7 +19,7 @@ import Protolude
 import System.FilePath (takeDirectory, (</>))
 import UnliftIO.Directory (XdgDirectory (XdgConfig), createDirectoryIfMissing, doesFileExist, getXdgDirectory)
 
-commandParser, initLocal, add :: Optparse.Parser (IO ())
+commandParser, initLocal, add, echo :: Optparse.Parser (IO ())
 commandParser =
   subparser
     ( mkCommand
@@ -30,6 +30,10 @@ commandParser =
           "add"
           (Optparse.progDesc "Insert a secret into the local secrets file")
           add
+        <> mkCommand
+          "echo"
+          (Optparse.progDesc "Assemble a secret for stdout")
+          echo
     )
 initLocal = do
   projectOptionMaybe <- optional projectOption
@@ -81,6 +85,26 @@ add = do
     putErrText "     It is only available for the detected or passed project's default branch."
     putErrText "     You can edit the condition to suit your needs."
     putErrText "     NOTE: Remember to synchronize this file with your agents!"
+echo = do
+  mkJson <- JSON.options
+  projectOptionMaybe <- optional projectOption
+  pure do
+    secretDataValue <- liftIO mkJson
+    secretData <- case A.parse A.parseJSON secretDataValue of
+      A.Error e -> throwIO $ UserException $ "The secret data must be an object. " <> toS e
+      A.Success a -> pure a
+    let secret =
+          Secret
+            { data_ = secretData,
+              condition =
+                projectOptionMaybe <&> \projectPath ->
+                  Secret.And
+                    [ Secret.IsOwner (projectPathOwner projectPath),
+                      Secret.IsRepo (projectPathProject projectPath),
+                      Secret.IsDefaultBranch
+                    ]
+            }
+    liftIO $ JSON.printJson secret
 
 getSecretsFilePath :: ProjectPath -> IO FilePath
 getSecretsFilePath projectPath = do

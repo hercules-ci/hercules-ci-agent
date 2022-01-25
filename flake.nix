@@ -334,6 +334,7 @@
                       agent-functional-test-daemon-nixUnstable = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = true; });
                       multi-example-eq = multi-example.eq;
                       multi-example-multi = multi-example.multi;
+                      cli = pkgs.callPackage ./tests/cli.nix { hci = pkgs.hercules-ci-agent-packages.hercules-ci-cli; };
                     } // lib.optionalAttrs pkgs.stdenv.isDarwin {
                     nix-darwin-example = pkgs.callPackage ./tests/nix-darwin-example.nix { flake = self; };
                   }

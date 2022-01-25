@@ -194,6 +194,9 @@ writeJsonFile :: ToJSON a => FilePath -> a -> IO ()
 writeJsonFile filePath v =
   atomicWriteFile filePath $ BL.toStrict $ encodePretty' prettyConf v
 
+printJson :: ToJSON a => a -> IO ()
+printJson = BS.putStr . BL.toStrict . (<> "\n") . encodePretty' prettyConf
+
 prettyConf :: Data.Aeson.Encode.Pretty.Config
 prettyConf =
   defConfig
