@@ -34,7 +34,7 @@ commandParser = pure do
           }
     putErrText "Please confirm your login at "
     putErrText $ "  " <> CLIAuthorizationRequestCreateResponse.browserURL r
-    putErrText "Waiting for confirmation..."
+    putErrText "Waiting for you to confirm using the link..."
     let tmpTok = CLIAuthorizationRequestCreateResponse.temporaryCLIToken r
         -- TODO do something pretty with 404
         pollLoop = do
