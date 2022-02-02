@@ -9,7 +9,7 @@ runCommand "test-cli"
     "kind": "Secret",
     "data": {
       "foo": "bar",
-      "bar": {}
+      --json bar {}
     }
   }
   EOF
