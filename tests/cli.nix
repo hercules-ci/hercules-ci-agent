@@ -8,7 +8,8 @@ runCommand "test-cli"
   {
     "kind": "Secret",
     "data": {
-      "foo": "bar"
+      "foo": "bar",
+      "bar": {}
     }
   }
   EOF
