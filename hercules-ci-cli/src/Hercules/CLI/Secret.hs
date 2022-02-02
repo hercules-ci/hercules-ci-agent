@@ -49,7 +49,7 @@ add = do
   mkJson <- JSON.options
   projectOptionMaybe <- optional projectOption
   pure $ runAuthenticated do
-    secretData <- liftIO mkJson
+    secretData <- liftIO (mkJson (Just secretName))
     projectPath <- getProjectPath projectOptionMaybe
     secretsFilePath <- liftIO $ getSecretsFilePath projectPath
     liftIO $
@@ -68,7 +68,7 @@ add = do
 echo = do
   mkJson <- JSON.options
   pure do
-    secretDataValue <- liftIO mkJson
+    secretDataValue <- liftIO (mkJson Nothing)
     secretData <- case A.parse A.parseJSON secretDataValue of
       A.Error e -> exitMsg $ "The secret data must be an object. " <> toS e
       A.Success a -> pure a
