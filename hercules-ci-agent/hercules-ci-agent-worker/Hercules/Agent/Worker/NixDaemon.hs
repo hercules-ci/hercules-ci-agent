@@ -65,8 +65,12 @@ nixDaemon = do
               forkFinally -- TODO forkOS?
                 (handleClient clientSocket)
                 \case
-                  Left _e -> removeMe -- >> putErrText ("Connection for pid " <> showPid pid <> " ended: " <> toS (displayException _e))
-                  Right _ -> removeMe
+                  Left e -> do
+                    removeMe
+                    putErrText ("Connection for pid " <> showPid pid <> " ended: " <> toS (displayException e))
+                  Right () -> do
+                    removeMe
+                    putErrText ("Connection for pid " <> showPid pid <> " ended normally")
             atomically do
               modifyTVar clientThreads (M.insert t pid)
   withAsync socketLoop \_socketLoopAsync ->
