@@ -17,6 +17,7 @@ import qualified Options.Applicative as Optparse
 import Protolude
 import System.AtomicWrite.Writer.ByteString (atomicWriteFile)
 import System.Environment (getEnvironment, lookupEnv)
+import System.IO (hGetEcho, hSetEcho)
 
 mergePaths :: [([Text], Value)] -> Either Text Value
 mergePaths = mergeLeafPaths [] . toLeafPaths
@@ -48,7 +49,7 @@ toLeafPaths = concatMap \(path, item) ->
         toLeafPaths [(path ++ [subpath], subitem)]
     _ -> [(path, item)]
 
-options :: Optparse.Parser (IO Value)
+options :: Optparse.Parser (Maybe Text -> IO Value)
 options = do
   strings <-
     many
@@ -59,6 +60,15 @@ options = do
               <> Optparse.help "Define a string at dot-separated PATH in the secret data"
               <> Optparse.metavar "PATH"
               <> Optparse.metavar2 "STRING"
+          )
+      )
+  stringPasswords <-
+    many
+      ( Optparse.option
+          Optparse.str
+          ( Optparse.long "password"
+              <> Optparse.help "Define a string at dot-separated PATH in the secret data using password input on stdin"
+              <> Optparse.metavar "PATH"
           )
       )
   jsons <-
@@ -120,7 +130,7 @@ options = do
               <> Optparse.completer2 envCompleter
           )
       )
-  pure do
+  pure \maybeSecretName -> do
     fileStrings <- for stringFiles readFileWithKey
     fileJsons <- for jsonFiles readJsonFileWithKey
     envStrings <- for stringEnvs readEnvWithKey
@@ -133,11 +143,13 @@ options = do
               Left e -> throwIO $ UserException $ "Value for key " <> key <> " is not valid JSON: " <> show e
               Right r -> pure (key, r :: Value)
         )
+    passwordStrings <- for stringPasswords (askPasswordWithKey maybeSecretName)
     let items =
           map (first split) $
             (fmap String <$> strings)
               <> (fmap String <$> envStrings)
               <> (fmap String <$> fileStrings)
+              <> (fmap String <$> passwordStrings)
               <> validJsons
               <> envJsons
               <> fileJsons
@@ -205,3 +217,19 @@ prettyConf =
       -- UNIX convention
       confTrailingNewline = True
     }
+
+askPasswordWithKey :: Maybe Text -> Text -> IO (Text, Text)
+askPasswordWithKey secretNameMaybe key = do
+  case secretNameMaybe of
+    Nothing -> putErrText $ "Enter value for " <> key <> ":"
+    Just secretName -> putErrText $ "Enter value for " <> key <> " in secret " <> secretName <> ":"
+  s <- T.strip <$> withEcho False getLine
+  putErrText ""
+  case s of
+    "" -> throwIO $ UserException $ "Value must not be empty for " <> show key
+    _ -> pure (key, s)
+
+withEcho :: Bool -> IO a -> IO a
+withEcho echo action = do
+  old <- hGetEcho stdin
+  bracket_ (hSetEcho stdin echo) (hSetEcho stdin old) action

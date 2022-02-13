@@ -1,6 +1,6 @@
 module Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfoSpec where
 
-import Data.Aeson (eitherDecode, encode)
+import Data.Aeson (Value, eitherDecode, encode)
 import qualified Data.ByteString.Lazy as BL
 import Data.Map (fromList)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
@@ -26,4 +26,10 @@ spec = do
         eitherDecode jsonV2 `shouldBe` Right objectV2
     describe "ToJSON" $ do
       it "encodes v2 correctly" $ do
-        encode objectV2 `shouldBe` jsonV2
+        json (encode objectV2) `shouldBe` json (jsonV2)
+
+json :: BL.ByteString -> Value
+json lbs =
+  case eitherDecode lbs of
+    Left e -> error e
+    Right r -> r
