@@ -24,6 +24,7 @@ import Hercules.CLI.Project (ProjectPath (projectPathProject), getProjectPath, p
 import Hercules.CNix (Store)
 import Hercules.CNix.Expr as Expr (EvalState, Match (IsAttrs), NixAttrs, RawValue, Value, getAttr, getAttrs, getFlakeFromGit, init, isDerivation, match', toValue, withEvalState, withStore)
 import qualified Hercules.CNix.Util as CNix.Util
+import qualified Hercules.CNix.Verbosity as CNix.Verbosity
 import Options.Applicative as Optparse
 import Options.Applicative.Types (unReadM)
 import Protolude hiding (evalState)
@@ -78,6 +79,7 @@ withNix f = do
 ciNixAttributeCompleter :: Optparse.Completer
 ciNixAttributeCompleter = mkTextCompleter \partial -> do
   withNix \_store evalState -> do
+    CNix.Verbosity.setVerbosity CNix.Verbosity.Error
     ref <- do
       ref <- scanOption "--as-ref"
       branch <- scanOption "--as-branch"
