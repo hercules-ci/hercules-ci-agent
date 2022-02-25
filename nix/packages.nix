@@ -17,7 +17,6 @@ let
     addSetupDepends
     allowInconsistentDependencies
     appendPatch
-    buildFromSdist
     disableLibraryProfiling
     enableDWARFDebugging
     doJailbreak
@@ -85,7 +84,7 @@ let
                   bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
 
                 in
-                generateOptparseApplicativeCompletion "hercules-ci-agent" (buildFromSdist (
+                generateOptparseApplicativeCompletion "hercules-ci-agent" (
                   overrideCabal
                     (
                       addBuildDepends
@@ -130,7 +129,7 @@ let
                         # end justStaticExecutables
                       }
                     )
-                ));
+                );
 
               hercules-ci-agent-test =
                 callPkg super "hercules-ci-agent-test" ../tests/agent-test { };
