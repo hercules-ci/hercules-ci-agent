@@ -79,7 +79,6 @@ import qualified Servant.Client
 import qualified System.Directory as Dir
 import System.FilePath
 import System.Process
-import System.Timeout.Lifted (timeout)
 
 eventLimit :: Int
 eventLimit = 50000
