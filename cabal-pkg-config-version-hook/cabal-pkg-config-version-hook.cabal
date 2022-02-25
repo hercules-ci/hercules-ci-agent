@@ -10,7 +10,9 @@ author:             Robert Hensing
 maintainer:         hackage@roberthensing.nl
 copyright:          cabal-pkg-config-version-hook authors
 category:           Distribution
-extra-source-files: CHANGELOG.md
+extra-source-files:
+  CHANGELOG.md
+  README.md
 
 library
     exposed-modules:
