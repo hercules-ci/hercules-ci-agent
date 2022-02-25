@@ -41,7 +41,7 @@ import Data.Function ((&))
 import qualified Data.List as L
 import Distribution.Simple
 import Distribution.Simple.Setup (configConfigurationsFlags)
-import Distribution.Types.BuildInfo.Lens (cppOptions, cxxOptions)
+import Distribution.Types.BuildInfo.Lens (ccOptions, cppOptions, cxxOptions)
 import Distribution.Types.Flag (flagName, mkFlagAssignment, mkFlagName, unFlagName)
 import Distribution.Types.GenericPackageDescription.Lens
   ( allCondTrees,
@@ -94,6 +94,7 @@ composeConfHook settings origHook = \(genericPackageDescription, hookedBuildInfo
       setDefines comp x =
         x
           & comp . cppOptions %~ (<> defines)
+          & comp . ccOptions %~ (<> defines)
           & comp . cxxOptions %~ (<> defines)
       genericPackageDescription' =
         genericPackageDescription
