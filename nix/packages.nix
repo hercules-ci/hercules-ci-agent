@@ -51,6 +51,9 @@ let
         haskellPackages_.extend (
           self: super:
             {
+              cabal-pkg-config-version-hook =
+                callPkg super "cabal-pkg-config-version-hook" ../cabal-pkg-config-version-hook { };
+
               # # 2020-11-21: cachix + chachix-api needs a patch for ghc 8.10 compat
               # # https://github.com/cachix/cachix/pull/331
               # cachix = self.callPackage ./cachix.nix { };
