@@ -28,15 +28,6 @@ let
     ;
   callPkg = super: name: srcPath: args: overrideSrc (super.callCabal2nix name srcPath args) { src = srcPath; };
 
-  addNixVersionFlag = pkg:
-    overrideCabal pkg (o: {
-      preConfigure = (o.preConfigure or "") + ''
-        if pkg-config --atleast-version 2.4pre nix-store || pkg-config --atleast-version 2.4 nix-store; then
-          configureFlags="$configureFlags --flag nix-2_4"
-        fi
-      '';
-    });
-
   updateTo = v: stdPkg: altPkg:
     if lib.versionAtLeast stdPkg.version v
     then stdPkg
@@ -98,7 +89,7 @@ let
                   overrideCabal
                     (
                       addBuildDepends
-                        (enableDWARFDebugging (addNixVersionFlag basePkg))
+                        (enableDWARFDebugging basePkg)
                         [ pkgs.makeWrapper pkgs.boost ]
                     )
                     (
@@ -168,8 +159,8 @@ let
                     '';
                 }
                 );
-              hercules-ci-cnix-expr = addNixVersionFlag
-                (addBuildDepends
+              hercules-ci-cnix-expr =
+                addBuildDepends
                   (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
                     bdw-gc = null; # propagated from Nix instead.
                     inherit nix;
@@ -177,7 +168,7 @@ let
                   [
                     # https://github.com/NixOS/nix/pull/4904
                     nlohmann_json
-                  ])
+                  ]
               ;
               hercules-ci-cnix-store =
                 addBuildDepends
