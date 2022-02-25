@@ -7,7 +7,6 @@
 #include <nix/common-eval-args.hh>
 #include <nix/get-drvs.hh>
 #include <nix/derivations.hh>
-#include <nix/affinity.hh>
 #include <nix/globals.hh>
 #include <nix-compat.hh>
 #include "HsFFI.h"
