@@ -58,15 +58,35 @@ import System.Process (readProcess)
 import qualified Text.ParserCombinators.ReadP as P
 import Prelude hiding (log)
 
+-- | Hook into Cabal to provide pkg-config metadata. Can be applied multiple
+-- times to support multiple packages.
 addHook :: Settings -> UserHooks -> UserHooks
 addHook settings hooks = hooks {confHook = composeConfHook settings (confHook hooks)}
 
+-- | How the metadata for a pkg-config package should be made available to the
+-- cabal file.
 data Settings = Settings
-  { pkgConfigName :: String,
+  { -- | Name of the package; used for querying pkg-config.
+    pkgConfigName :: String,
+    -- | Name to use in the Haskell CPP and C/C++ preprocessor macros.
+    --
+    -- For example, `pkgConfigName = "FOO"` will set the macros
+    --
+    --  * @FOO_MAJOR@
+    --
+    --  * @FOO_MINOR@
+    --
+    --  * @FOO_PATCH@
+    --
+    --  * @FOO_IS_AT_LEAST(major, minor, patch)@
     macroName :: String,
+    -- | Name to use when setting flag values in the cabal file.
+    --
+    -- Flags named with this prefix, followed by a dash, followed by a major version number, an underscore and a minor version number will be set when the detected package is at least that version.
     flagPrefixName :: String
   }
 
+-- | Derive a default 'Settings' value from just a pkg-config package name.
 mkSettings :: String -> Settings
 mkSettings name =
   Settings
@@ -75,6 +95,7 @@ mkSettings name =
       flagPrefixName = name
     }
 
+-- | Extend the value of 'confHook'. It's what powers 'addHook'.
 composeConfHook settings origHook = \(genericPackageDescription, hookedBuildInfo) confFlags -> do
   (actualMajor, actualMinor, actualPatch) <- getPkgConfigPackageVersion (pkgConfigName settings)
 
