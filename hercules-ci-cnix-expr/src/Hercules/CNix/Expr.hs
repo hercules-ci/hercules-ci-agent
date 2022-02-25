@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -399,7 +400,7 @@ mkPath path =
             =<< [C.throwBlock| Value *{
       Value *r = new (NoGC) Value();
       std::string s($bs-ptr:path, $bs-len:path);
-      mkPath(*r, s.c_str());
+      r->mkPath(s.c_str());
       return r;
   }|]
         )
@@ -502,7 +503,7 @@ instance ToValue C.CBool where
     coerce
       <$> [C.block| Value *{
       Value *r = new (NoGC) Value();
-      mkBool(*r, $(bool b));
+      r->mkBool($(bool b));
       return r;
     }|]
 
@@ -523,7 +524,7 @@ instance ToValue Int64 where
     coerce
       <$> [C.block| Value *{
     Value *r = new (NoGC) Value();
-    mkInt(*r, $(int64_t i));
+    r->mkInt($(int64_t i));
     return r;
   }|]
 
@@ -541,7 +542,7 @@ instance ToValue C.CDouble where
     coerce
       <$> [C.block| Value *{
         Value *r = new (NoGC) Value();
-        mkFloat(*r, $(double f));
+        r->mkFloat($(double f));
         return r;
       }|]
 
@@ -559,7 +560,7 @@ instance ToValue ByteString where
       <$> [C.block| Value *{
     Value *r = new (NoGC) Value();
     std::string s($bs-ptr:s, $bs-len:s);
-    mkString(*r, s, {});
+    r->mkString(s, {});
     return r;
   }|]
 
@@ -576,8 +577,45 @@ instance ToValue Text where
 
 instance ToRawValue a => ToRawValue (Map ByteString a)
 
+#if NIX_IS_AT_LEAST(2,6,0)
+withBindingsBuilder :: Integral n => Ptr EvalState -> n -> (Ptr BindingsBuilder' -> IO ()) -> IO (Value NixAttrs)
+withBindingsBuilder evalState n f = do
+  withBindingsBuilder' evalState n \bb -> do
+    f bb
+    v <- [C.block| Value* {
+      auto v = new (NoGC) Value();
+      v->mkAttrs(*$(BindingsBuilder *bb));
+      return v;
+    }|]
+    Value <$> mkRawValue v
+
+withBindingsBuilder' :: Integral n => Ptr EvalState -> n -> (Ptr BindingsBuilder' -> IO a) -> IO a
+withBindingsBuilder' evalState n =
+  let l :: C.CInt
+      l = fromIntegral n
+  in
+    bracket
+      [C.block| BindingsBuilder* {
+        auto &evalState = *$(EvalState *evalState);
+        return new BindingsBuilder(evalState, evalState.allocBindings($(int l)));
+      }|]
+      \bb -> [C.block| void { delete $(BindingsBuilder *bb); }|]
+#endif
+
 instance ToRawValue a => ToValue (Map ByteString a) where
   type NixTypeFor (Map ByteString a) = NixAttrs
+
+#if NIX_IS_AT_LEAST(2,6,0)
+  toValue evalState attrs = withBindingsBuilder evalState (length attrs) \bb -> do
+    attrs & traverseWithKey_ \k a -> do
+      RawValue aRaw <- toRawValue evalState a
+      [C.block| void {
+          EvalState &evalState = *$(EvalState *evalState);
+          std::string k($bs-ptr:k, $bs-len:k);
+          Value &a = *$(Value *aRaw);
+          $(BindingsBuilder *bb)->alloc(evalState.symbols.create(k)) = a;
+        }|]
+#else
   toValue evalState attrs = do
     let l :: C.CInt
         l = fromIntegral (length attrs)
@@ -600,6 +638,7 @@ instance ToRawValue a => ToValue (Map ByteString a) where
         $(Value *v)->attrs->sort();
       }|]
     Value <$> mkRawValue v
+#endif
 
 instance ToRawValue a => ToRawValue (Map Text a)
 
@@ -612,7 +651,7 @@ mkNull =
   coerce
     <$> [C.block| Value* {
           Value *v = new (NoGC) Value();
-          mkNull(*v);
+          v->mkNull();
           return v;
         }|]
 
@@ -639,6 +678,19 @@ instance ToRawValue a => ToRawValue (H.HashMap Text a)
 
 instance ToRawValue a => ToValue (H.HashMap Text a) where
   type NixTypeFor (H.HashMap Text a) = NixAttrs
+
+#if NIX_IS_AT_LEAST(2,6,0)
+  toValue evalState attrs = withBindingsBuilder evalState (length attrs) \bb -> do
+    attrs & hmTraverseWithKey_ \k' a -> do
+      RawValue aRaw <- toRawValue evalState a
+      let k = encodeUtf8 k'
+      [C.block| void {
+          EvalState &evalState = *$(EvalState *evalState);
+          std::string k($bs-ptr:k, $bs-len:k);
+          Value &a = *$(Value *aRaw);
+          $(BindingsBuilder *bb)->alloc(evalState.symbols.create(k)) = a;
+        }|]
+#else
   toValue evalState attrs = do
     let l :: C.CInt
         l = fromIntegral (length attrs)
@@ -662,6 +714,7 @@ instance ToRawValue a => ToValue (H.HashMap Text a) where
         $(Value *v)->attrs->sort();
       }|]
     Value <$> mkRawValue v
+#endif
 
 instance ToRawValue a => ToRawValue (Vector a)
 
