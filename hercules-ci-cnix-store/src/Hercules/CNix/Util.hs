@@ -27,8 +27,6 @@ C.context context
 
 C.include "<nix/config.h>"
 
-C.include "<nix/affinity.hh>"
-
 C.include "<nix/util.hh>"
 
 C.using "namespace nix"

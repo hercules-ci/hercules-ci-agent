@@ -18,7 +18,6 @@ let
     addSetupDepends
     allowInconsistentDependencies
     appendPatch
-    buildFromSdist
     disableLibraryProfiling
     enableDWARFDebugging
     doJailbreak
@@ -28,15 +27,6 @@ let
     overrideSrc
     ;
   callPkg = super: name: srcPath: args: overrideSrc (super.callCabal2nix name srcPath args) { src = srcPath; };
-
-  addNixVersionFlag = pkg:
-    overrideCabal pkg (o: {
-      preConfigure = (o.preConfigure or "") + ''
-        if pkg-config --atleast-version 2.5pre nix-store || pkg-config --atleast-version 2.5 nix-store; then
-          configureFlags="$configureFlags --flag nix-2_5"
-        fi
-      '';
-    });
 
   updateTo = v: stdPkg: altPkg:
     if lib.versionAtLeast stdPkg.version v
@@ -52,8 +42,12 @@ let
         haskellPackages_.extend (
           self: super:
             {
+              cabal-pkg-config-version-hook =
+                callPkg super "cabal-pkg-config-version-hook" ../cabal-pkg-config-version-hook { };
+
               # cachix = updateTo "0.6.1.0" super.cachix (self.callPackage ./cachix.nix { });
               # cachix-api = updateTo "0.6.0" super.cachix-api (self.callPackage ./cachix-api.nix { });
+
 
               # nix-narinfo = self.callPackage ./nix-narinfo.nix { };
 
@@ -91,7 +85,7 @@ let
                   overrideCabal
                     (
                       addBuildDepends
-                        (enableDWARFDebugging (addNixVersionFlag basePkg))
+                        (enableDWARFDebugging basePkg)
                         [ pkgs.makeWrapper pkgs.boost ]
                     )
                     (
@@ -163,23 +157,23 @@ let
                     '';
                 }
                 );
-              hercules-ci-cnix-expr = addNixVersionFlag
-                (addBuildDepends
+              hercules-ci-cnix-expr =
+                addBuildDepends
                   (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
                     inherit nix;
                   })
                   [
                     # https://github.com/NixOS/nix/pull/4904
                     nlohmann_json
-                  ])
+                  ]
               ;
-              hercules-ci-cnix-store = addNixVersionFlag
-                (addBuildDepends
+              hercules-ci-cnix-store =
+                addBuildDepends
                   (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { inherit nix; })
                   [
                     # https://github.com/NixOS/nix/pull/4904
                     nlohmann_json
-                  ])
+                  ]
               ;
 
               websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });
