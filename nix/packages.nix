@@ -179,13 +179,13 @@ let
                     nlohmann_json
                   ])
               ;
-              hercules-ci-cnix-store = addNixVersionFlag
-                (addBuildDepends
+              hercules-ci-cnix-store =
+                addBuildDepends
                   (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { inherit nix; })
                   [
                     # https://github.com/NixOS/nix/pull/4904
                     nlohmann_json
-                  ])
+                  ]
               ;
 
               websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });

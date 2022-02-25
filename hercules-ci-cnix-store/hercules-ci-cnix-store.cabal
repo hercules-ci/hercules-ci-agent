@@ -10,7 +10,7 @@ author:         Hercules CI contributors
 maintainer:     info@hercules-ci.com
 copyright:      2018-2020 Hercules CI
 license:        Apache-2.0
-build-type:     Simple
+build-type:     Custom
 extra-source-files:
     CHANGELOG.md
     test/data/*.drv
@@ -48,6 +48,12 @@ common cxx-opts
     if os(darwin)
       ghc-options: -pgmc=clang++
 
+custom-setup
+  setup-depends:
+    base
+    , Cabal >= 2.2.0.0
+    , cabal-pkg-config-version-hook
+
 library
   import: cxx-opts
   exposed-modules:
@@ -65,20 +71,17 @@ library
       Hercules.CNix.Util
   include-dirs:
       include
+  pkgconfig-depends:
+      nix-store >= 2.3 && < 2.6
+    , nix-main >= 2.3 && < 2.6
   if flag(nix-2_4)
     include-dirs:
         compat-2.4/include
-    cpp-options:
-        -DNIX_2_4
-    pkgconfig-depends:
-        nix-store >= 2.4
-      , nix-main >= 2.4
+    cpp-options: -DNIX_2_4
+    cxx-options: -DNIX_2_4
   else
     include-dirs:
         compat-2.3/include
-    pkgconfig-depends:
-        nix-store >= 2.0 && <2.4
-      , nix-main >= 2.0 && <2.4
     cxx-sources:
         compat-2.3/derivation-output.cxx
         compat-2.3/path.cxx
