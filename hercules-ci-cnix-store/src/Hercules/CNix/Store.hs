@@ -45,7 +45,7 @@ import Hercules.CNix.Store.Context
 import qualified Hercules.CNix.Store.Context as C hiding (context)
 import Hercules.CNix.Store.Instances ()
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude
 import System.IO.Unsafe (unsafePerformIO)
 import qualified Prelude

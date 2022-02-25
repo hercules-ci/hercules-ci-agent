@@ -3,9 +3,10 @@
 
 module Hercules.CNix.Verbosity where
 
+import Foreign (fromBool, toBool)
 import Hercules.CNix.Store.Context (context)
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude
 
 C.context context
@@ -13,6 +14,7 @@ C.context context
 C.include "<nix/config.h>"
 C.include "<nix/error.hh>"
 C.include "<nix/globals.hh>"
+C.include "<nix/logging.hh>"
 
 data Verbosity
   = Error
@@ -58,3 +60,13 @@ getVerbosity =
       7 -> pure Debug
       8 -> pure Vomit
       _ -> throwIO (FatalError "Unknown nix::verbosity value")
+
+getShowTrace :: IO Bool
+getShowTrace =
+  [C.throwBlock| bool { return nix::loggerSettings.showTrace.get(); }|]
+    <&> toBool
+
+setShowTrace :: Bool -> IO ()
+setShowTrace b =
+  let b' = fromBool b
+   in [C.throwBlock| void { nix::loggerSettings.showTrace.assign($(bool b')); }|]
