@@ -72,8 +72,8 @@ library
   include-dirs:
       include
   pkgconfig-depends:
-      nix-store >= 2.3 && < 2.6
-    , nix-main >= 2.3 && < 2.6
+      nix-store >= 2.3 && < 2.8
+    , nix-main >= 2.3 && < 2.8
   if flag(nix-2_4)
     include-dirs:
         compat-2.4/include
