@@ -16,7 +16,6 @@ extra-source-files:
     cbits/hercules-aliases.h
     cbits/hercules-logger.hh
     cbits/nix-2.4/hercules-store.hh
-    cbits/nix-2.5/hercules-store.hh
     testdata/vm-test-run-agent-test.drv
 
 -- Deprecated
@@ -285,11 +284,6 @@ executable hercules-ci-agent-worker
 
   cxx-sources:
       cbits/hercules-logger.cxx
-  if flag(nix-2_5)
-    cxx-sources:
-      cbits/nix-2.5/hercules-store.cxx
-  else
-    cxx-sources:
       cbits/nix-2.4/hercules-store.cxx
 
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
@@ -306,11 +300,6 @@ executable hercules-ci-agent-worker
     -with-rtsopts=-maxN8
   include-dirs:
       cbits
-  if flag(nix-2_5)
-    include-dirs:
-      cbits/nix-2.5
-  else
-    include-dirs:
       cbits/nix-2.4
   extra-libraries:
       boost_context

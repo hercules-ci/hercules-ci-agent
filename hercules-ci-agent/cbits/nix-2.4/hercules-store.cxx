@@ -83,13 +83,13 @@ void WrappingStore::addToStore(const ValidPathInfo & info, Source & narSource,
 StorePath WrappingStore::addToStore(const string & name, const Path & srcPath,
       FileIngestionMethod method, HashType hashAlgo,
       PathFilter & filter, RepairFlag repair
-#if NIX_IS_AT_LEAST(2,6,0)
+#if NIX_IS_AT_LEAST(2,5,0)
       , const StorePathSet & references
 #endif
       ) {
 
   return wrappedStore->addToStore(name, srcPath, method, hashAlgo, filter, repair
-#if NIX_IS_AT_LEAST(2,6,0)
+#if NIX_IS_AT_LEAST(2,5,0)
       , references
 #endif
   );
@@ -98,13 +98,13 @@ StorePath WrappingStore::addToStore(const string & name, const Path & srcPath,
 
 StorePath WrappingStore::addToStoreFromDump(Source & dump, const string & name,
       FileIngestionMethod method, HashType hashAlgo, RepairFlag repair
-#if NIX_IS_AT_LEAST(2,6,0)
+#if NIX_IS_AT_LEAST(2,5,0)
       , const StorePathSet & references
 #endif
       ) {
 
   return wrappedStore->addToStoreFromDump(dump, name, method, hashAlgo, repair
-#if NIX_IS_AT_LEAST(2,6,0)
+#if NIX_IS_AT_LEAST(2,5,0)
       , references
 #endif
   );
@@ -143,7 +143,7 @@ void WrappingStore::addIndirectRoot(const Path& path) {
   wrappedStore->addIndirectRoot(path);
 }
 
-#if !NIX_IS_AT_LEAST(2,6,0)
+#if !NIX_IS_AT_LEAST(2,5,0)
 void WrappingStore::syncWithGC() {
   wrappedStore->syncWithGC();
 }
@@ -226,7 +226,7 @@ const std::string HerculesStore::name() {
   return "wrapped " + wrappedStore->name();
 }
 
-#if NIX_IS_AT_LEAST(2,6,0)
+#if NIX_IS_AT_LEAST(2,5,0)
 void HerculesStore::queryRealisationUncached(const DrvOutput &drvOutput,
   Callback<std::shared_ptr<const Realisation>> callback) noexcept {
   wrappedStore->queryRealisation(drvOutput, std::move(callback));

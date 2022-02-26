@@ -59,14 +59,14 @@ public:
   virtual StorePath addToStore(const string & name, const Path & srcPath,
       FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256,
       PathFilter & filter = defaultPathFilter, RepairFlag repair = NoRepair
-#if NIX_IS_AT_LEAST(2,6,0)
+#if NIX_IS_AT_LEAST(2,5,0)
       , const StorePathSet & references = StorePathSet()
 #endif
       ) override;
 
   virtual StorePath addToStoreFromDump(Source & dump, const string & name,
       FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256, RepairFlag repair = NoRepair
-#if NIX_IS_AT_LEAST(2,6,0)
+#if NIX_IS_AT_LEAST(2,5,0)
       , const StorePathSet & references = StorePathSet()
 #endif
       ) override;
@@ -90,7 +90,7 @@ public:
 
   virtual void addIndirectRoot(const Path & path) override;
 
-#if !NIX_IS_AT_LEAST(2,6,0)
+#if !NIX_IS_AT_LEAST(2,5,0)
   virtual void syncWithGC() override;
 #endif
 
@@ -142,7 +142,7 @@ public:
 
   // Overrides
 
-#if NIX_IS_AT_LEAST(2,6,0)
+#if NIX_IS_AT_LEAST(2,5,0)
   virtual void queryRealisationUncached(const DrvOutput &,
         Callback<std::shared_ptr<const Realisation>> callback) noexcept override;
 #else
