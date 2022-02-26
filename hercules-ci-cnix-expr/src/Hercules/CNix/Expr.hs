@@ -556,11 +556,18 @@ instance ToValue Double where
 instance ToValue ByteString where
   type NixTypeFor ByteString = NixString
   toValue _ s =
+    -- TODO simplify when r->mkString(string_view) is safe in all supported Nix versions
     coerce
       <$> [C.block| Value *{
     Value *r = new (NoGC) Value();
-    std::string s($bs-ptr:s, $bs-len:s);
-    r->mkString(s, {});
+    std::string_view s($bs-ptr:s, $bs-len:s);
+    // If empty, the pointer may be invalid; don't use it.
+    if (s.size() == 0) {
+      r->mkString("");
+    }
+    else {
+      r->mkString(GC_STRNDUP(s.data(), s.size()));
+    }
     return r;
   }|]
 
