@@ -236,10 +236,11 @@
                       inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
                         ghc
                         ghcid
+                        # TODO Use wrapped pkgs.cabal2nix, currently broken on darwin
+                        cabal2nix
                         ;
                       inherit (pkgs)
                         jq
-                        cabal2nix
                         nix-prefetch-git
                         niv
                         # valgrind (broken on x86_64-darwin)
@@ -307,7 +308,7 @@
                       nativeBuildInputs =
                         o.nativeBuildInputs or [ ] ++ [
                           pkgs.jq
-                          pkgs.haskellPackages.cabal2nix
+                          pkgs.devTools.cabal2nix
                           pkgs.nix-prefetch-git
                           # pkgs.valgrind (broken on x86_64-darwin)
                         ] ++ lib.optionals shellWithHaskell [
