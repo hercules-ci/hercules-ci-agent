@@ -273,6 +273,8 @@
                 packages.hercules-ci-agent = pkgs.hercules-ci-agent;
                 packages.hercules-ci-agent-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-agent;
                 packages.hercules-ci-cli-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-cli;
+                packages.hercules-ci-agent-nix_2_5 = config.variants.nix_2_5.packages.hercules-ci-agent;
+                packages.hercules-ci-cli-nix_2_5 = config.variants.nix_2_5.packages.hercules-ci-cli;
                 pre-commit.pkgs = pkgs;
                 pre-commit.settings = {
                   hooks = {
@@ -355,6 +357,9 @@
             };
           variants.nixUnstable.extraOverlay = final: prev: {
             nix = addDebug prev.nixUnstable;
+          };
+          variants.nix_2_5.extraOverlay = final: prev: {
+            nix = addDebug prev.nix_2_5;
           };
         };
         options = {
