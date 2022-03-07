@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.2.5 - 2022-03-07
+
+### Added
+
+ - `hci secret echo`: write secret data on stdout. A side-effect free version of `hci secret add`.
+
+ - `hci secret echo/add --password`: another safe way of inputting a secret field
+
 ## 0.2.4 - 2021-11-17
 
 ### Added
