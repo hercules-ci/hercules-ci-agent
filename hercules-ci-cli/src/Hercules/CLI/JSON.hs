@@ -7,9 +7,10 @@ module Hercules.CLI.JSON where
 import Data.Aeson
 import Data.Aeson.Encode.Pretty (Indent (Spaces), confIndent, confTrailingNewline, defConfig, encodePretty')
 import qualified Data.Aeson.Encode.Pretty
+import qualified Data.Aeson.Key as AK
+import qualified Data.Aeson.KeyMap as AK
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.HashMap.Strict as HM
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Text as T
 import Hercules.CLI.Exception (UserException (UserException))
@@ -32,7 +33,7 @@ mergeLeafPaths context items =
         & NEL.groupAllWith (NEL.head . fst)
         & traverse
           ( \(groupItem@(child :| _, _) :| groupItems) ->
-              (child .=)
+              (AK.fromText child .=)
                 <$> mergeLeafPaths (context ++ [child]) (map (first NEL.tail) (groupItem : groupItems))
           )
         <&> object
@@ -45,7 +46,7 @@ toLeafPaths :: [([Text], Value)] -> [([Text], Value)]
 toLeafPaths = concatMap \(path, item) ->
   case item of
     Object fields ->
-      fields & HM.toList & concatMap \(subpath, subitem) ->
+      fields & AK.toAscList & fmap (first AK.toText) & concatMap \(subpath, subitem) ->
         toLeafPaths [(path ++ [subpath], subitem)]
     _ -> [(path, item)]
 

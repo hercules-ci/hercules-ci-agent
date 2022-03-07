@@ -9,6 +9,7 @@ module Hercules.Agent.Bag
 where
 
 import Data.Aeson
+import qualified Data.Aeson.KeyMap as AK
 import Data.Aeson.Types
 import Data.Functor.Compose
 import Data.Functor.Partitioner hiding
@@ -37,7 +38,7 @@ parseBag f v = do
 whenKind :: Text -> (Value -> Maybe a) -> Value -> Maybe a
 whenKind expectedKind f v@(Object o) =
   ( do
-      x <- HashMap.lookup "kind" o
+      x <- AK.lookup "kind" o
       guard (x == String expectedKind)
   )
     *> f v
