@@ -1,7 +1,7 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixos-unstable.url = "github:NixOS/nixpkgs/haskell-updates";
+  inputs.nixos-unstable.url = "github:hercules-ci/nixpkgs/haskell-updates";
   inputs.nix-darwin.url = "github:LnL7/nix-darwin"; # test only
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
