@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.6] - 2022-03-07
+
+### Fixed
+
+ - Build with newer Nix versions 2.5, 2.6
+
+### Added
+
+ - Improved conditional code support with `cabal-pkg-config-version-hook`
+
 ## [0.8.5]
 
 ### Added
@@ -478,6 +488,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
+[0.8.6]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.5...hercules-ci-agent-0.8.6
+[0.8.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.4...hercules-ci-agent-0.8.5
 [0.8.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.3...hercules-ci-agent-0.8.4
 [0.8.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.2...hercules-ci-agent-0.8.3
 [0.8.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.1...hercules-ci-agent-0.8.2
