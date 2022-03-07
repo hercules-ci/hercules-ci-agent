@@ -35,6 +35,8 @@ main = do
   hSetBuffering stderr LineBuffering
   gitAssertEmptyStaging
   -- Disabled because metadata change does not warrant a bump
+  whenConfirmed "Update cabal-pkg-config-version-hook?" $
+    releasePackage "cabal-pkg-config-version-hook" (bumpExactVersion "cabal-pkg-config-version-hook")
   whenConfirmed "Update hercules-ci-api-core?" $
     releasePackage "hercules-ci-api-core" (bumpExactVersion "hercules-ci-api-core")
   whenConfirmed "Update hercules-ci-api-agent?" $
