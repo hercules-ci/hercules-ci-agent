@@ -181,7 +181,6 @@ let
               websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });
 
               servant-websockets = self.callPackage ./servant-websockets.nix { };
-
             }
         );
 
