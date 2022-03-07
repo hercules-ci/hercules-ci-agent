@@ -1,0 +1,27 @@
+cabal-version:      2.4
+name:               cabal-pkg-config-version-hook
+version:            0.1.0.0
+synopsis:           Make Cabal aware of pkg-config package versions
+description:        A setup hook for Cabal that determines the compile-time version of a pkg-config package and adds CPP macros and enables flags.
+-- A URL where users can report bugs.
+-- bug-reports:
+homepage:           https://github.com/hercules-ci/hercules-ci-agent/tree/master/cabal-pkg-config-version-hook#readme
+license:            BSD-3-Clause
+author:             Robert Hensing
+maintainer:         info@hercules-ci.com
+copyright:          cabal-pkg-config-version-hook contributors
+category:           Distribution
+extra-source-files:
+  CHANGELOG.md
+  README.md
+
+library
+    exposed-modules:
+      Distribution.PkgConfigVersionHook
+    build-depends:
+      base ==4.*
+      , Cabal >= 2.2.0.0
+      , process
+      , lens
+    hs-source-dirs:   src
+    default-language: Haskell2010

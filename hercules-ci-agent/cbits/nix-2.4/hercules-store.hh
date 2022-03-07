@@ -7,7 +7,6 @@
 #include <nix/common-eval-args.hh>
 #include <nix/get-drvs.hh>
 #include <nix/derivations.hh>
-#include <nix/affinity.hh>
 #include <nix/globals.hh>
 #include <nix-compat.hh>
 #include "HsFFI.h"
@@ -60,10 +59,18 @@ public:
 
   virtual StorePath addToStore(const string & name, const Path & srcPath,
       FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256,
-      PathFilter & filter = defaultPathFilter, RepairFlag repair = NoRepair) override;
+      PathFilter & filter = defaultPathFilter, RepairFlag repair = NoRepair
+#if NIX_IS_AT_LEAST(2,5,0)
+      , const StorePathSet & references = StorePathSet()
+#endif
+      ) override;
 
   virtual StorePath addToStoreFromDump(Source & dump, const string & name,
-      FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256, RepairFlag repair = NoRepair) override;
+      FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256, RepairFlag repair = NoRepair
+#if NIX_IS_AT_LEAST(2,5,0)
+      , const StorePathSet & references = StorePathSet()
+#endif
+      ) override;
 
   virtual StorePath addTextToStore(const string & name, const string & s,
       const StorePathSet & references, RepairFlag repair = NoRepair) override;
@@ -84,7 +91,9 @@ public:
 
   virtual void addIndirectRoot(const Path & path) override;
 
+#if !NIX_IS_AT_LEAST(2,5,0)
   virtual void syncWithGC() override;
+#endif
 
   virtual Roots findRoots(bool censor) override;
 
@@ -106,7 +115,12 @@ public:
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) override;
 
-  virtual std::shared_ptr<std::string> getBuildLog(const StorePath & path) override;
+#if NIX_IS_AT_LEAST(2,6,0)
+  virtual std::optional<std::string>
+#else
+  virtual std::shared_ptr<std::string>
+#endif
+    getBuildLog(const StorePath & path) override;
 
   virtual unsigned int getProtocol() override;
 
@@ -129,7 +143,12 @@ public:
 
   // Overrides
 
+#if NIX_IS_AT_LEAST(2,5,0)
+  virtual void queryRealisationUncached(const DrvOutput &,
+        Callback<std::shared_ptr<const Realisation>> callback) noexcept override;
+#else
   virtual std::optional<const Realisation> queryRealisation(const DrvOutput &) override;
+#endif
 
   virtual void ensurePath(const StorePath & path) override;
 

@@ -10,7 +10,7 @@ author:         Hercules CI contributors
 maintainer:     info@hercules-ci.com
 copyright:      2018-2020 Hercules CI
 license:        Apache-2.0
-build-type:     Simple
+build-type:     Custom
 extra-source-files:
     CHANGELOG.md
     cbits/hercules-aliases.h
@@ -56,6 +56,13 @@ common cxx-opts
         -DNIX_2_4
     cxx-options:
         -DNIX_2_4
+
+
+custom-setup
+  setup-depends:
+    base
+    , Cabal >= 2.2.0.0
+    , cabal-pkg-config-version-hook
 
 
 library

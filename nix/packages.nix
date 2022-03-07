@@ -17,7 +17,6 @@ let
     addSetupDepends
     allowInconsistentDependencies
     appendPatch
-    buildFromSdist
     disableLibraryProfiling
     enableDWARFDebugging
     doJailbreak
@@ -27,15 +26,6 @@ let
     overrideSrc
     ;
   callPkg = super: name: srcPath: args: overrideSrc (super.callCabal2nix name srcPath args) { src = srcPath; };
-
-  addNixVersionFlag = pkg:
-    overrideCabal pkg (o: {
-      preConfigure = (o.preConfigure or "") + ''
-        if pkg-config --atleast-version 2.4pre nix-store || pkg-config --atleast-version 2.4 nix-store; then
-          configureFlags="$configureFlags --flag nix-2_4"
-        fi
-      '';
-    });
 
   updateTo = v: stdPkg: altPkg:
     if lib.versionAtLeast stdPkg.version v
@@ -51,6 +41,9 @@ let
         haskellPackages_.extend (
           self: super:
             {
+              cabal-pkg-config-version-hook =
+                callPkg super "cabal-pkg-config-version-hook" ../cabal-pkg-config-version-hook { };
+
               # # 2020-11-21: cachix + chachix-api needs a patch for ghc 8.10 compat
               # # https://github.com/cachix/cachix/pull/331
               # cachix = self.callPackage ./cachix.nix { };
@@ -91,11 +84,11 @@ let
                   bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
 
                 in
-                generateOptparseApplicativeCompletion "hercules-ci-agent" (buildFromSdist (
+                generateOptparseApplicativeCompletion "hercules-ci-agent" (
                   overrideCabal
                     (
                       addBuildDepends
-                        (enableDWARFDebugging (addNixVersionFlag basePkg))
+                        (enableDWARFDebugging basePkg)
                         [ pkgs.makeWrapper pkgs.boost ]
                     )
                     (
@@ -136,7 +129,7 @@ let
                         # end justStaticExecutables
                       }
                     )
-                ));
+                );
 
               hercules-ci-agent-test =
                 callPkg super "hercules-ci-agent-test" ../tests/agent-test { };
@@ -165,8 +158,8 @@ let
                     '';
                 }
                 );
-              hercules-ci-cnix-expr = addNixVersionFlag
-                (addBuildDepends
+              hercules-ci-cnix-expr =
+                addBuildDepends
                   (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
                     bdw-gc = null; # propagated from Nix instead.
                     inherit nix;
@@ -174,15 +167,15 @@ let
                   [
                     # https://github.com/NixOS/nix/pull/4904
                     nlohmann_json
-                  ])
+                  ]
               ;
-              hercules-ci-cnix-store = addNixVersionFlag
-                (addBuildDepends
+              hercules-ci-cnix-store =
+                addBuildDepends
                   (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { inherit nix; })
                   [
                     # https://github.com/NixOS/nix/pull/4904
                     nlohmann_json
-                  ])
+                  ]
               ;
 
               websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });

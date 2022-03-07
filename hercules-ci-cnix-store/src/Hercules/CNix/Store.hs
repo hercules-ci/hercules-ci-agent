@@ -65,8 +65,6 @@ C.include "<nix/get-drvs.hh>"
 
 C.include "<nix/derivations.hh>"
 
-C.include "<nix/affinity.hh>"
-
 C.include "<nix/globals.hh>"
 
 C.include "<nix/path.hh>"
