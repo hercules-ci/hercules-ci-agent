@@ -44,6 +44,7 @@ import qualified Language.C.Inline.Cpp.Exceptions as C
 import Paths_hercules_ci_cnix_expr (getDataFileName)
 import Protolude hiding (evalState)
 import System.Directory (makeAbsolute)
+import Data.Aeson.KeyMap (toMapText)
 
 C.context (Hercules.CNix.Store.Context.context <> Hercules.CNix.Expr.Context.evalContext)
 
@@ -665,7 +666,7 @@ mkNull =
 instance ToRawValue A.Value where
   toRawValue es (A.Bool b) = toRawValue es b
   toRawValue es (A.String s) = toRawValue es s
-  toRawValue es (A.Object fs) = toRawValue es fs
+  toRawValue es (A.Object fs) = toRawValue es $ toMapText fs
   toRawValue _es A.Null = mkNull
   toRawValue es (A.Number n) | Just i <- Sci.toBoundedInteger n = toRawValue es (i :: Int64)
   toRawValue es (A.Number f) = toRawValue es (Sci.toRealFloat f :: Double)

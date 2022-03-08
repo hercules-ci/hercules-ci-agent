@@ -18,6 +18,7 @@ module Hercules.API.Servant
 where
 
 import Control.Monad (void)
+import Data.Kind(Type)
 import Servant.API
 import Servant.API.Generic
 import Prelude
