@@ -39,7 +39,7 @@ library
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns
   build-depends:
-      aeson
+      aeson >= 2
     , aeson-pretty
     , async
     , atomic-write
