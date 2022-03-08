@@ -222,6 +222,8 @@ recurseIntoAttrs {
           # CPP
           "Hercules/Agent/Compat.hs"
           "Hercules/Agent/StoreFFI.hs"
+          "Hercules/CNix/Expr.hs"
+          "Hercules/CNix/Store.hs"
         ];
         shellcheck.enable = true;
         nixpkgs-fmt.enable = true;
