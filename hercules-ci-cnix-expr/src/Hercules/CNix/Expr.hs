@@ -240,7 +240,7 @@ isDerivation evalState (RawValue v) =
   (0 /=)
     <$> [C.throwBlock| int {
           if ($(Value *v) == NULL) { throw std::invalid_argument("forceValue value must be non-null"); }
-          $(EvalState *evalState)->forceValue(*$(Value *v));
+          $(EvalState *evalState)->forceValue(*$(Value *v), nix::noPos);
           return $(EvalState *evalState)->isDerivation(*$(Value *v));
         }|]
 
