@@ -470,7 +470,7 @@ class ToRawValue a where
   toRawValue evalState a = rtValue <$> toValue evalState a
 
 class ToRawValue a => ToValue a where
-  type NixTypeFor a :: *
+  type NixTypeFor a :: Type
   toValue :: Ptr EvalState -> a -> IO (Value (NixTypeFor a))
 
 -- | Marshall values from Nix into Haskell. Instances must satisfy the

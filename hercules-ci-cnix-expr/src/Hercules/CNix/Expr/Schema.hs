@@ -470,7 +470,7 @@ toPSObject a = do
   v <- liftIO (toRawValue evalState a)
   pure (PSObject {provenance = Data, value = v})
 
-uncheckedCast :: forall (a :: *) (b :: *). PSObject a -> PSObject b
+uncheckedCast :: forall (a :: Type) (b :: Type). PSObject a -> PSObject b
 uncheckedCast = coerce
 
 -- | Schema-based parsing type class that constrains neither types nor schemas.

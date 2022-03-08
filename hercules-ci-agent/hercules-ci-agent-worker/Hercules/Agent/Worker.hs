@@ -586,13 +586,13 @@ simpleWalk store evalState = walk' [] 10
     handleErrors path = Data.Conduit.handleC (yieldAttributeError path)
     walk' ::
       (MonadUnliftIO m, KatipContext m) =>
-      -- | Attribute path
+      -- Attribute path
       [ByteString] ->
-      -- | Depth of tree remaining
+      -- Depth of tree remaining
       Integer ->
-      -- | Current node of the walk
+      -- Current node of the walk
       RawValue ->
-      -- | Program that performs the walk and emits 'Event's
+      -- Program that performs the walk and emits 'Event's
       ConduitT i1 Event m ()
     walk' path depthRemaining v =
       handleErrors path $
