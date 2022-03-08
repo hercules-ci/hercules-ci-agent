@@ -242,8 +242,6 @@
                       inherit (pkgs)
                         jq
                         nix-prefetch-git
-                        niv
-                        # valgrind (broken on x86_64-darwin)
                         ;
                     };
                 };
