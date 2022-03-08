@@ -65,8 +65,16 @@ public:
 #endif
       ) override;
 
-  virtual StorePath addToStoreFromDump(Source & dump, const string & name,
-      FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256, RepairFlag repair = NoRepair
+  virtual StorePath addToStoreFromDump(
+      Source & dump, 
+#if NIX_IS_AT_LEAST(2,7,0)
+      std::string_view name,
+#else
+      const string & name,
+#endif
+      FileIngestionMethod method = FileIngestionMethod::Recursive,
+      HashType hashAlgo = htSHA256,
+      RepairFlag repair = NoRepair
 #if NIX_IS_AT_LEAST(2,5,0)
       , const StorePathSet & references = StorePathSet()
 #endif

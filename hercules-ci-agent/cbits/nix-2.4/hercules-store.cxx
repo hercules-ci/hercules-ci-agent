@@ -95,8 +95,16 @@ StorePath WrappingStore::addToStore(const string & name, const Path & srcPath,
 
 }
 
-StorePath WrappingStore::addToStoreFromDump(Source & dump, const string & name,
-      FileIngestionMethod method, HashType hashAlgo, RepairFlag repair
+StorePath WrappingStore::addToStoreFromDump(
+      Source & dump,
+#if NIX_IS_AT_LEAST(2,7,0)
+      std::string_view name,
+#else
+      const string & name,
+#endif
+      FileIngestionMethod method,
+      HashType hashAlgo,
+      RepairFlag repair
 #if NIX_IS_AT_LEAST(2,5,0)
       , const StorePathSet & references
 #endif
