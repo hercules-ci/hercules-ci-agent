@@ -337,7 +337,7 @@
                 [
                   (internal.pkgs.writeScriptBin "stack" ''
                     #!/bin/sh
-                    export PATH="${internal.haskellPackages.stack}/bin:$PATH"
+                    export PATH="${internal.pkgs.stack}/bin:$PATH"
                     if test -n "''${HIE_BIOS_OUTPUT:-}"; then
                         echo | stack --test "$@"
 
