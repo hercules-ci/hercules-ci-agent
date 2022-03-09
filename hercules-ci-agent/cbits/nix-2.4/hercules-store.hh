@@ -57,7 +57,13 @@ public:
   virtual void addToStore(const ValidPathInfo & info, Source & narSource,
       RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs) override;
 
-  virtual StorePath addToStore(const string & name, const Path & srcPath,
+  virtual StorePath addToStore(
+#if NIX_IS_AT_LEAST(2,7,0)
+      std::string_view name,
+#else
+      const std::string & name,
+#endif
+      const Path & srcPath,
       FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256,
       PathFilter & filter = defaultPathFilter, RepairFlag repair = NoRepair
 #if NIX_IS_AT_LEAST(2,5,0)
@@ -70,7 +76,7 @@ public:
 #if NIX_IS_AT_LEAST(2,7,0)
       std::string_view name,
 #else
-      const string & name,
+      const std::string & name,
 #endif
       FileIngestionMethod method = FileIngestionMethod::Recursive,
       HashType hashAlgo = htSHA256,
@@ -80,8 +86,13 @@ public:
 #endif
       ) override;
 
-  virtual StorePath addTextToStore(const string & name, const string & s,
-      const StorePathSet & references, RepairFlag repair = NoRepair) override;
+  virtual StorePath addTextToStore(
+#if NIX_IS_AT_LEAST(2,7,0)
+    std::string_view name, std::string_view s,
+#else
+    const std::string & name, const std::string & s,
+#endif
+    const StorePathSet & references, RepairFlag repair = NoRepair) override;
 
   virtual void narFromPath(const StorePath & path, Sink & sink) override;
 
@@ -97,15 +108,17 @@ public:
 
   virtual void addTempRoot(const StorePath & path) override;
 
-  virtual void addIndirectRoot(const Path & path) override;
-
 #if !NIX_IS_AT_LEAST(2,5,0)
   virtual void syncWithGC() override;
 #endif
 
+#if !NIX_IS_AT_LEAST(2,7,0)
   virtual Roots findRoots(bool censor) override;
 
   virtual void collectGarbage(const GCOptions & options, GCResults & results) override;
+
+  virtual void addIndirectRoot(const Path & path) override;
+#endif
 
   virtual void optimiseStore() override;
 
