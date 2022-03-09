@@ -206,7 +206,7 @@ isDerivation evalState (RawValue v) =
   (0 /=)
     <$> [C.throwBlock| int {
           if ($(Value *v) == NULL) { throw std::invalid_argument("forceValue value must be non-null"); }
-          $(EvalState *evalState)->forceValue(*$(Value *v));
+          $(EvalState *evalState)->forceValue(*$(Value *v), nix::noPos);
           return $(EvalState *evalState)->isDerivation(*$(Value *v));
         }|]
 
@@ -241,7 +241,7 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
           if (iter == v->attrs->end()) {
             return 0;
           } else {
-            evalState.forceValue(*iter->value);
+            evalState.forceValue(*iter->value, nix::noPos);
             if (iter->value->type == ValueType::tBool) {
               return iter->value->boolean ? 1 : 0;
             } else {
@@ -296,8 +296,12 @@ getDrvFile evalState (RawValue v) = liftIO do
       if (!drvInfo)
         throw EvalError("Not a valid derivation");
 
+#if NIX_IS_AT_LEAST(2,7,0)
+      StorePath storePath = drvInfo->requireDrvPath();
+#else
       std::string drvPath = drvInfo->queryDrvPath();
       StorePath storePath = parseStorePath(*state.store, drvPath);
+#endif
 
       // write it (?)
       auto drv = state.store->derivationFromPath(printPath23(*state.store, storePath));

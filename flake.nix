@@ -1,7 +1,7 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixos-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nixos-unstable.url = "github:NixOS/nixpkgs/haskell-updates";
   inputs.nix-darwin.url = "github:LnL7/nix-darwin"; # test only
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
@@ -51,13 +51,14 @@
                 nix = addDebug prev.nix_2_3;
               };
             };
-            "nixos-unstable-nixUnstable" = {
-              nixpkgsSource = nixos-unstable;
-              isDevVersion = true;
-              overlay = final: prev: {
-                nix = addDebug prev.nixUnstable;
-              };
-            };
+            # TODO enable when nixUnstable progresses
+            # "nixos-unstable-nixUnstable" = {
+            #   nixpkgsSource = nixos-unstable;
+            #   isDevVersion = true;
+            #   overlay = final: prev: {
+            #     nix = addDebug prev.nixUnstable;
+            #   };
+            # };
           }
           (
             _name: { nixpkgsSource, isDevVersion ? false, overlay ? (_: _: { }) }:
@@ -198,9 +199,11 @@
                   ;
 
                 hercules-ci-agent-nixUnstable =
-                  allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-agent;
+                  # allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-agent;
+                  v.hercules-ci-agent;
                 hercules-ci-cli-nixUnstable =
-                  allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-cli;
+                  # allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-cli;
+                  v.hercules-ci-cli;
 
                 hercules-ci-agent-nix_2_3 =
                   allTargets."nixos-unstable-nix_2_3".${system}.hercules-ci-agent;
@@ -335,27 +338,27 @@
               NIX_PATH = "nixpkgs=${internal.pkgs.path}";
               nativeBuildInputs =
                 [
-                  (internal.pkgs.writeScriptBin "stack" ''
-                    #!/bin/sh
-                    export PATH="${internal.haskellPackages.stack}/bin:$PATH"
-                    if test -n "''${HIE_BIOS_OUTPUT:-}"; then
-                        echo | stack --test "$@"
+                  # (internal.pkgs.writeScriptBin "stack" ''
+                  #   #!/bin/sh
+                  #   export PATH="${internal.pkgs.stack}/bin:$PATH"
+                  #   if test -n "''${HIE_BIOS_OUTPUT:-}"; then
+                  #       echo | stack --test "$@"
 
-                        # # Internal packages appear in -package flags for some
-                        # # reason, unlike normal packages. This filters them out.
-                        # sed -e 's/^-package=z-.*-z-.*$//' \
-                        #     -e 's/^-package-id=hercules-ci-agent.*$//' \
-                        #     -i $HIE_BIOS_OUTPUT
+                  #       # # Internal packages appear in -package flags for some
+                  #       # # reason, unlike normal packages. This filters them out.
+                  #       # sed -e 's/^-package=z-.*-z-.*$//' \
+                  #       #     -e 's/^-package-id=hercules-ci-agent.*$//' \
+                  #       #     -i $HIE_BIOS_OUTPUT
 
-                        # # To support the CPP in Hercules.Agent.StoreFFI
-                        # echo '-DGHCIDE=1' >>$HIE_BIOS_OUTPUT
+                  #       # # To support the CPP in Hercules.Agent.StoreFFI
+                  #       # echo '-DGHCIDE=1' >>$HIE_BIOS_OUTPUT
 
-                        # # Hack to include the correct snapshot directory
-                        # echo "-package-db=$(dirname $(stack path --snapshot-doc-root))/pkgdb" >> $HIE_BIOS_OUTPUT
-                    else
-                        exec stack "$@"
-                    fi
-                  '')
+                  #       # # Hack to include the correct snapshot directory
+                  #       # echo "-package-db=$(dirname $(stack path --snapshot-doc-root))/pkgdb" >> $HIE_BIOS_OUTPUT
+                  #   else
+                  #       exec stack "$@"
+                  #   fi
+                  # '')
                   devTools.ghcid
                   devTools.jq
                   devTools.cabal2nix

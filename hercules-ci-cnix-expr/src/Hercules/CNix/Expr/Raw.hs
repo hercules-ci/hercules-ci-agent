@@ -140,5 +140,5 @@ forceValue evalState (RawValue v) =
     [C.catchBlock|  {
       Value *v = $(Value *v);
       if (v == NULL) throw std::invalid_argument("forceValue value must be non-null");
-      $(EvalState *evalState)->forceValue(*v);
+      $(EvalState *evalState)->forceValue(*v, nix::noPos);
     }|]

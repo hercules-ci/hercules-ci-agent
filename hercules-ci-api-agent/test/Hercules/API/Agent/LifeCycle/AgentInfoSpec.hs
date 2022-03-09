@@ -1,6 +1,6 @@
 module Hercules.API.Agent.LifeCycle.AgentInfoSpec where
 
-import Data.Aeson (eitherDecode, encode, (.=))
+import Data.Aeson (eitherDecode, encode)
 import qualified Data.Aeson as A
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
@@ -81,15 +81,18 @@ objectV4 =
       concurrentTasks = 19,
       labels =
         M.fromList
-          [ "nix is cool" .= True,
-            "revision" .= ("deadbeef" :: Text),
+          [ "nix is cool" $= True,
+            "revision" $= ("deadbeef" :: Text),
             "an object"
-              .= A.object
-                [ "hi" .= (42 :: Int)
+              $= A.object
+                [ "hi" $= (42 :: Int)
                 ],
-            "drinks menu" .= ["goat milk", "mate", "matcha" :: Text]
+            "drinks menu" $= ["goat milk", "mate", "matcha" :: Text]
           ]
     }
+
+($=) :: A.ToJSON b => a -> b -> (a, A.Value)
+a $= b = (a, A.toJSON b)
 
 spec :: Spec
 spec = describe "AgentInfo" $ do

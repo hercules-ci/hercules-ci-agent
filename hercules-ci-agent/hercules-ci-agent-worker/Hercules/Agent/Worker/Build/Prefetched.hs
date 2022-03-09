@@ -1,5 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP #-}
 
 -- This implements an optimized routine to build from a remote derivation.
 -- It is not in the "CNix" tree because it seems to be too specific for general use.
@@ -35,6 +36,10 @@ C.include "<nix/derivations.hh>"
 C.include "<nix/globals.hh>"
 
 C.include "<nix/fs-accessor.hh>"
+
+#if NIX_IS_AT_LEAST(2,7,0)
+C.include "<nix/build-result.hh>"
+#endif
 
 C.include "<nix-compat.hh>"
 
