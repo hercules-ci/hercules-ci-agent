@@ -51,13 +51,14 @@
                 nix = addDebug prev.nix_2_3;
               };
             };
-            "nixos-unstable-nixUnstable" = {
-              nixpkgsSource = nixos-unstable;
-              isDevVersion = true;
-              overlay = final: prev: {
-                nix = addDebug prev.nixUnstable;
-              };
-            };
+            # TODO enable when nixUnstable progresses
+            # "nixos-unstable-nixUnstable" = {
+            #   nixpkgsSource = nixos-unstable;
+            #   isDevVersion = true;
+            #   overlay = final: prev: {
+            #     nix = addDebug prev.nixUnstable;
+            #   };
+            # };
           }
           (
             _name: { nixpkgsSource, isDevVersion ? false, overlay ? (_: _: { }) }:
@@ -198,9 +199,11 @@
                   ;
 
                 hercules-ci-agent-nixUnstable =
-                  allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-agent;
+                  # allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-agent;
+                  v.hercules-ci-agent;
                 hercules-ci-cli-nixUnstable =
-                  allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-cli;
+                  # allTargets."nixos-unstable-nixUnstable".${system}.hercules-ci-cli;
+                  v.hercules-ci-cli;
 
                 hercules-ci-agent-nix_2_3 =
                   allTargets."nixos-unstable-nix_2_3".${system}.hercules-ci-agent;
