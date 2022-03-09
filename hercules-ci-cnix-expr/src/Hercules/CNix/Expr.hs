@@ -314,8 +314,12 @@ getDrvFile evalState (RawValue v) = liftIO do
       if (!drvInfo)
         throw EvalError("Not a valid derivation");
 
+#if NIX_IS_AT_LEAST(2,7,0)
+      StorePath storePath = drvInfo->requireDrvPath();
+#else
       std::string drvPath = drvInfo->queryDrvPath();
       StorePath storePath = state.store->parseStorePath(drvPath);
+#endif
 
       // write it (?)
       auto drv = state.store->derivationFromPath(storePath);

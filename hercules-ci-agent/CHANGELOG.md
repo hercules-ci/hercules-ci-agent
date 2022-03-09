@@ -43,6 +43,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Nix 2.3 support
 
+## [0.8.7] - 2022-03-09
+
+### Added
+
+ - Nix 2.7 support
+ - Haskell `aeson` 2.0 support
+
 ## [0.8.6] - 2022-03-07
 
 ### Fixed
@@ -526,6 +533,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release
 
+[0.8.7]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.6...hercules-ci-agent-0.8.7
 [0.8.6]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.5...hercules-ci-agent-0.8.6
 [0.8.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.4...hercules-ci-agent-0.8.5
 [0.8.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.3...hercules-ci-agent-0.8.4

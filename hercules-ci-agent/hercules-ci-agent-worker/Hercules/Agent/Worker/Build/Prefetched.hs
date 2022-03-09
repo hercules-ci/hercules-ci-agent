@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -35,6 +36,10 @@ C.include "<nix/derivations.hh>"
 C.include "<nix/globals.hh>"
 
 C.include "<nix/fs-accessor.hh>"
+
+#if NIX_IS_AT_LEAST(2,7,0)
+C.include "<nix/build-result.hh>"
+#endif
 
 C.include "<nix/path-with-outputs.hh>"
 
