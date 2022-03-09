@@ -132,7 +132,7 @@ withBoundedDelayBatchProducer ::
   m a
 withBoundedDelayBatchProducer maxDelay maxItems sourceP f = do
   UnliftIO {unliftIO = unlift} <- askUnliftIO
-  flushes <- liftIO $ newTQueueIO
+  flushes <- liftIO newTQueueIO
   let producer writeBatch =
         let beginReading = readItems (max 1 maxItems) []
             doPerformBatch [] = pure ()
@@ -173,7 +173,7 @@ withBoundedDelayBatchProducer maxDelay maxItems sourceP f = do
 
 syncer :: MonadIO m => (Syncing a -> m ()) -> m ()
 syncer writer = do
-  v <- liftIO $ atomically $ newEmptyTMVar
+  v <- liftIO newEmptyTMVarIO
   writer (Syncer $ putTMVar v)
   mexc <- liftIO $ atomically $ readTMVar v
   for_ mexc (liftIO . throwIO)

@@ -84,7 +84,7 @@ evalCondition' ctx = eval
 -- This uses tagless final to derive both an efficient and a tracing function.
 
 evalCondition :: SecretContext -> Condition -> Bool
-evalCondition ctx c = unTagged @[Text] @Bool (evalCondition' ctx c)
+evalCondition ctx c = unTagged (evalCondition' ctx c :: Tagged [Text] Bool)
 
 evalConditionTrace :: SecretContext -> Condition -> ([Text], Bool)
 evalConditionTrace = evalCondition'

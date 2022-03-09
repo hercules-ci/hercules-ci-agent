@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveAnyClass #-}
-
 module Hercules.Formats.Secret where
 
 import Data.Aeson

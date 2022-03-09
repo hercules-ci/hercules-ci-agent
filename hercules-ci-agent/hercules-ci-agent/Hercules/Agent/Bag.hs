@@ -15,7 +15,6 @@ import Data.Functor.Compose
 import Data.Functor.Partitioner hiding
   ( part,
   )
-import qualified Data.HashMap.Strict as HashMap
 import Protolude
 
 -- TODO: Use a Validation instead of Either to return all errors at once

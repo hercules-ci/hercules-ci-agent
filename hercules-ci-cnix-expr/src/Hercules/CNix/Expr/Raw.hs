@@ -5,7 +5,7 @@ module Hercules.CNix.Expr.Raw where
 
 import Hercules.CNix.Expr.Context
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude hiding (evalState)
 import Prelude ()
 

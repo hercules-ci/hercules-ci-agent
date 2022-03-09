@@ -1,6 +1,5 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Hercules.API.Labels where
 
@@ -19,4 +18,4 @@ instance ToSchema Labels where
       NamedSchema (Just "Labels") $
         mempty
           & type_ ?~ SwaggerObject
-          & additionalProperties ?~ (AdditionalPropertiesAllowed True)
+          & additionalProperties ?~ AdditionalPropertiesAllowed True

@@ -18,7 +18,7 @@ import Hercules.Agent.Worker.Build.Logger.Context (Fields, HerculesLoggerEntry, 
 import Hercules.CNix.Store.Context (unsafeMallocBS)
 import Katip
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude hiding (bracket, finally, mask_, onException, tryJust, wait, withAsync, yield)
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.IO.Error (isEOFError)
