@@ -221,6 +221,7 @@ recurseIntoAttrs {
           # CPP
           "Hercules/Agent/Compat.hs"
           "Hercules/Agent/StoreFFI.hs"
+          "Hercules/Agent/Worker/Build/Prefetched.hs"
           "Hercules/CNix/Expr.hs"
           "Hercules/CNix/Store.hs"
         ];
