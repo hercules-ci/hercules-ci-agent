@@ -12,3 +12,4 @@ constraints:
   hercules-ci-cnix-expr +nix-2_4,
   cachix >= 0.7,
   cachix-api >= 0.7,
+  jose >= 0.9,
