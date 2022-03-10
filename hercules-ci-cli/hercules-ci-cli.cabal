@@ -1,7 +1,7 @@
 cabal-version: 1.12
 
 name:           hercules-ci-cli
-version:        0.2.4
+version:        0.2.6
 synopsis:       The hci command for working with Hercules CI
 homepage:       https://docs.hercules-ci.com
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
@@ -39,7 +39,7 @@ library
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns
   build-depends:
-      aeson
+      aeson >= 2
     , aeson-pretty
     , async
     , atomic-write

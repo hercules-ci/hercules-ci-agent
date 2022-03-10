@@ -8,6 +8,7 @@ import qualified AesonSupport as Aeson
 import Control.Applicative
 import Data.Aeson (eitherDecode)
 import qualified Data.Aeson as A
+import qualified Data.Aeson.Key as AK
 import Data.Char
 import Data.Either (isLeft)
 import Data.Int
@@ -90,7 +91,7 @@ genValue = sized \m -> do
   frequency
     [ (2, A.String <$> text),
       (2, A.Array . V.fromList <$> vectorOf n (resize n' genValue)),
-      (5, A.object <$> vectorOf n ((A..=) <$> text <*> resize n' genValue)),
+      (5, A.object <$> vectorOf n ((\s k -> AK.fromText s A..= k) <$> text <*> resize n' genValue)),
       (1, A.Number . fromIntegral <$> (arbitrary :: Gen Int64)), -- no fractions :( but doesn't matter here
       (1, A.Bool <$> arbitrary)
     ]

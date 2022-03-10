@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           hercules-ci-cnix-store
-version:        0.2.1.1
+version:        0.2.1.2
 synopsis:       Haskell bindings for Nix's libstore
 category:       Nix
 homepage:       https://docs.hercules-ci.com
@@ -10,7 +10,7 @@ author:         Hercules CI contributors
 maintainer:     info@hercules-ci.com
 copyright:      2018-2021 Hercules CI
 license:        Apache-2.0
-build-type:     Simple
+build-type:     Custom
 extra-source-files:
     CHANGELOG.md
     test/data/*.drv
@@ -50,6 +50,12 @@ common cxx-opts
     if os(darwin)
       ghc-options: -pgmc=clang++
 
+custom-setup
+  setup-depends:
+    base
+    , Cabal >= 2.2.0.0
+    , cabal-pkg-config-version-hook
+
 library
   import: cxx-opts
   exposed-modules:
@@ -70,8 +76,8 @@ library
       include
       compat-2.4/include
   pkgconfig-depends:
-      nix-store >= 2.4
-    , nix-main >= 2.4
+      nix-store >= 2.4 && < 2.8
+    , nix-main >= 2.4 && < 2.8
   install-includes:
       hercules-ci-cnix/store.hxx
   hs-source-dirs: src

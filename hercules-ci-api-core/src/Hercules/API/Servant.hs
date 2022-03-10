@@ -18,6 +18,7 @@ module Hercules.API.Servant
 where
 
 import Control.Monad (void)
+import Data.Kind (Type)
 import Servant.API
 import Servant.API.Generic
 import Prelude
@@ -74,7 +75,7 @@ noContent = void
 data Placeholder
 
 -- | Replaces 'Placeholder' by @subapi@ in the API @target@.
-type family Substitute (target :: k) subapi :: *
+type family Substitute (target :: k) subapi :: Type
 
 type instance Substitute Placeholder subapi = subapi
 

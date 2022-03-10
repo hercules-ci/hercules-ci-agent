@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           hercules-ci-cnix-expr
-version:        0.2.0.0
+version:        0.2.0.2
 synopsis:       Bindings for the Nix evaluator
 category:       Nix, CI, Testing, DevOps
 homepage:       https://docs.hercules-ci.com
@@ -10,7 +10,7 @@ author:         Hercules CI contributors
 maintainer:     info@hercules-ci.com
 copyright:      2018-2021 Hercules CI
 license:        Apache-2.0
-build-type:     Simple
+build-type:     Custom
 extra-source-files:
     CHANGELOG.md
 
@@ -60,6 +60,12 @@ common cxx-opts
     if os(darwin)
       ghc-options: -pgmc=clang++
 
+custom-setup
+  setup-depends:
+    base
+    , Cabal >= 2.2.0.0
+    , cabal-pkg-config-version-hook
+
 
 library
   import: cxx-opts
@@ -77,7 +83,7 @@ library
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns
   build-depends:
-      aeson
+      aeson >= 2
     , base >=4.7 && <5
     , bytestring
     , conduit

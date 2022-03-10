@@ -47,19 +47,17 @@ A field of type string with the value `CachixCache`.
 `authToken`::
 An optional field of type string.
 +
-Omit this field entirely when configuring a publicly readable Cachix cache.
+This is a secret token to authenticate the agent to `cachix.org`.
 +
-This is a secret token to authenticate the agent to `cachix.org`. A personal token can be retrieved from the https://cachix.org/[the cachix.org Getting started instructions, step 3]. If you have set up the `cachix` CLI, it is also present in `~/.config/cachix/cachix.dhall`.
+This field should be omitted when configuring a publicly readable Cachix cache with a local signing key (as configured in `signingKeys`).
 +
-Cachix.org will provide tokens with restricted authorization in the near future.
-+
-When present, its value starts with `eyJ`.
+It is required when the cache uses a Cachix managed signing key via Write token.
 
 [[CachixCache-publicKeys]]
 `publicKeys`::
 A list of strings.
 +
-These are required to verify the integrity of cached store paths and to accept them into the Nix store. They are the public counterpart to the `signingKeys`.
+These are required to verify the integrity of cached store paths and to accept them into the Nix store. They are the public counterpart to the signing keys.
 +
 You may look up the public keys by going to `https://<cache-name>.cachix.org`.
 +
@@ -69,13 +67,13 @@ A public key looks like `mycache.cachix.org-1:WsUIffActpYsfyxIZrfm6OXRHdNHkHk+X/
 `signingKeys`::
 A list of strings.
 +
-This is a cache-specific secret key to sign store paths.
+Omit when using a _Write_ token instead of a local signing key. Otherwise, this is the cache-specific secret key to sign store paths.
 +
 You can find it in `~/.config/cachix/cachix.dhall` or your key backup after following the setup instructions on cachix.org.
 +
 The keys are in Base64 format.
 +
-For Cachix, only a single signing key is currently supported.
+Only a single signing key is https://github.com/cachix/cachix/issues/146[currently] supported.
 
 == `NixCache`
 

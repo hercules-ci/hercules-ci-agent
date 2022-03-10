@@ -10,13 +10,12 @@ author:         Hercules CI contributors
 maintainer:     info@hercules-ci.com
 copyright:      2018-2021 Hercules CI
 license:        Apache-2.0
-build-type:     Simple
+build-type:     Custom
 extra-source-files:
     CHANGELOG.md
     cbits/hercules-aliases.h
     cbits/hercules-logger.hh
     cbits/nix-2.4/hercules-store.hh
-    cbits/nix-2.5/hercules-store.hh
     testdata/vm-test-run-agent-test.drv
 
 -- Deprecated
@@ -62,6 +61,13 @@ common cxx-opts
     if os(darwin)
       ghc-options: -pgmc=clang++
 
+custom-setup
+  setup-depends:
+    base
+    , Cabal >= 2.2.0.0
+    , cabal-pkg-config-version-hook
+
+
 library
   exposed-modules:
       Data.Fixed.Extras
@@ -106,7 +112,7 @@ library
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns
   build-depends:
-      aeson
+      aeson >= 2
     , async
     , base >=4.7 && <5
     , binary
@@ -215,7 +221,7 @@ executable hercules-ci-agent
     , filepath
     , hercules-ci-agent
     , hercules-ci-api-core == 0.1.3.0
-    , hercules-ci-api-agent == 0.4.1.0
+    , hercules-ci-api-agent == 0.4.1.2
     , hostname
     , http-client
     , http-client-tls
@@ -278,11 +284,6 @@ executable hercules-ci-agent-worker
 
   cxx-sources:
       cbits/hercules-logger.cxx
-  if flag(nix-2_5)
-    cxx-sources:
-      cbits/nix-2.5/hercules-store.cxx
-  else
-    cxx-sources:
       cbits/nix-2.4/hercules-store.cxx
 
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
@@ -299,11 +300,6 @@ executable hercules-ci-agent-worker
     -with-rtsopts=-maxN8
   include-dirs:
       cbits
-  if flag(nix-2_5)
-    include-dirs:
-      cbits/nix-2.5
-  else
-    include-dirs:
       cbits/nix-2.4
   extra-libraries:
       boost_context

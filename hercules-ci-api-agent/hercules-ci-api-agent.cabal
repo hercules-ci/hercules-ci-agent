@@ -1,7 +1,7 @@
 cabal-version: 1.12
 
 name:           hercules-ci-api-agent
-version:        0.4.1.0
+version:        0.4.1.2
 synopsis:       API definition for Hercules CI Agent to talk to hercules-ci.com or Hercules CI Enterprise
 category:       API, CI, Testing, DevOps, Nix
 homepage:       https://github.com/hercules-ci/hercules-ci-agent#readme
@@ -69,7 +69,7 @@ library
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns
   build-depends:
-      aeson
+      aeson >= 2
     , base >=4.7 && <5
     , bytestring
     , base64-bytestring-type

@@ -1,7 +1,7 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixos-unstable.url = "github:NixOS/nixpkgs/master";
+  inputs.nixos-unstable.url = "github:hercules-ci/nixpkgs/haskell-updates";
   inputs.nix-darwin.url = "github:LnL7/nix-darwin"; # test only
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
@@ -236,13 +236,12 @@
                       inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
                         ghc
                         ghcid
+                        # TODO Use wrapped pkgs.cabal2nix, currently broken on darwin
+                        cabal2nix
                         ;
                       inherit (pkgs)
                         jq
-                        cabal2nix
                         nix-prefetch-git
-                        niv
-                        # valgrind (broken on x86_64-darwin)
                         ;
                     };
                 };
@@ -273,6 +272,8 @@
                 packages.hercules-ci-agent = pkgs.hercules-ci-agent;
                 packages.hercules-ci-agent-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-agent;
                 packages.hercules-ci-cli-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-cli;
+                packages.hercules-ci-agent-nix_2_5 = config.variants.nix_2_5.packages.hercules-ci-agent;
+                packages.hercules-ci-cli-nix_2_5 = config.variants.nix_2_5.packages.hercules-ci-cli;
                 pre-commit.pkgs = pkgs;
                 pre-commit.settings = {
                   hooks = {
@@ -282,6 +283,7 @@
                       # CPP
                       "Hercules/Agent/Compat.hs"
                       "Hercules/Agent/StoreFFI.hs"
+                      "Hercules/CNix/Expr.hs" # parse error in quasiquotation
                     ];
                     shellcheck.enable = true;
                     nixpkgs-fmt.enable = true;
@@ -305,7 +307,7 @@
                       nativeBuildInputs =
                         o.nativeBuildInputs or [ ] ++ [
                           pkgs.jq
-                          pkgs.haskellPackages.cabal2nix
+                          pkgs.devTools.cabal2nix
                           pkgs.nix-prefetch-git
                           # pkgs.valgrind (broken on x86_64-darwin)
                         ] ++ lib.optionals shellWithHaskell [
@@ -354,7 +356,11 @@
               };
             };
           variants.nixUnstable.extraOverlay = final: prev: {
-            nix = addDebug prev.nixUnstable;
+            # nixUnstable is currently behind regular nix
+            # nix = addDebug prev.nixUnstable;
+          };
+          variants.nix_2_5.extraOverlay = final: prev: {
+            nix = addDebug prev.nix_2_5;
           };
         };
         options = {

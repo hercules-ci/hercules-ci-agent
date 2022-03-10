@@ -3,6 +3,8 @@
 module Hercules.Formats.Secret where
 
 import Data.Aeson
+import qualified Data.Aeson.Key as AK
+import qualified Data.Aeson.KeyMap as AM
 import qualified Data.Aeson.Types as A
 import Data.Foldable (toList)
 import qualified Data.HashMap.Strict as HM
@@ -36,9 +38,9 @@ instance FromJSON Condition where
   parseJSON (String "isTag") = pure IsTag
   parseJSON (String "isDefaultBranch") = pure IsDefaultBranch
   parseJSON (Object o) =
-    case HM.toList o of
+    case AM.toList o of
       [] -> fail "The empty object does not represent a Condition."
-      [(k, v)] -> case HM.lookup k taggedConditionParsers of
+      [(k, v)] -> case HM.lookup (AK.toText k) taggedConditionParsers of
         Nothing -> fail $ "The field name in a Condition object must be one of " <> show (map fst (HM.toList taggedConditionParsers))
         Just p -> p v
       _ -> fail "A Condition object must contain a single field."

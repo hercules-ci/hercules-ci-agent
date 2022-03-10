@@ -5,6 +5,18 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.4.1.2 - 2022-03-09
+
+### Added
+
+ - Haskell `aeson` 2.0 support
+
+## 0.4.1.1 - 2022-03-07
+
+### Fixed
+
+ - Flaky test
+
 ## 0.4.1.0 - 2021-09-06
 
 ### Added
