@@ -15,9 +15,20 @@ spec = do
           setVerbosity v
           v' <- getVerbosity
           v' `shouldBe` v
+  describe "setShowTrace" do
+    it "affects getShowTrace" do
+      withResettingShowTrace do
+        for_ [True, False] \v -> do
+          setShowTrace v
+          v' <- getShowTrace
+          v' `shouldBe` v
 
 -- bracket on global state is still a leaky abstraction, so we don't add this
 -- to the library.
 withResettingVerbosity :: IO a -> IO a
 withResettingVerbosity =
   bracket getVerbosity setVerbosity . const
+
+withResettingShowTrace :: IO a -> IO a
+withResettingShowTrace =
+  bracket getShowTrace setShowTrace . const

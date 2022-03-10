@@ -19,7 +19,7 @@ import Hercules.CNix.Verbosity
     setVerbosity,
   )
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude hiding (evalState, throwIO)
 import System.IO.Unsafe (unsafePerformIO)
 

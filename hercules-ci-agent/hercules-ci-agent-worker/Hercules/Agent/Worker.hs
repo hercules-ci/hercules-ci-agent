@@ -3,6 +3,8 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Hercules.Agent.Worker
   ( main,
@@ -15,6 +17,7 @@ import qualified Control.Exception.Lifted as EL
 import Control.Monad.Except
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control
+import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Data.Coerce (coerce)
 import qualified Data.Conduit
 import Data.Conduit.Extras (sinkChan, sinkChanTerminate, sourceChan)
@@ -85,7 +88,8 @@ import Hercules.CNix.Util (installDefaultSigINTHandler)
 import Hercules.Error
 import Hercules.UserException (UserException (UserException))
 import Katip
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import qualified Network.URI
 import Protolude hiding (bracket, catch, check, evalState, wait, withAsync, yield)
 import qualified System.Environment as Environment
@@ -96,6 +100,12 @@ import UnliftIO.Async (wait, withAsync)
 import UnliftIO.Exception (bracket, catch)
 import Prelude ()
 import qualified Prelude
+
+C.context (C.cppCtx <> C.fptrCtx)
+
+C.include "<nix/error.hh>"
+C.include "<iostream>"
+C.include "<sstream>"
 
 data HerculesState = HerculesState
   { drvsCompleted :: TVar (Map StorePath (UUID, BuildResult.BuildStatus)),
@@ -180,7 +190,8 @@ taskWorker options = do
                 runCommand st ch command
             )
               `safeLiftedCatch` ( \e -> liftIO $ do
-                                    writeChan ch (Just $ Exception (renderException (e :: SomeException)))
+                                    e' <- renderException e
+                                    writeChan ch (Just $ Exception e')
                                     exitFailure
                                 )
           )
@@ -210,13 +221,37 @@ printCommands =
         pure x
     )
 
-renderException :: SomeException -> Text
-renderException e | Just (C.CppStdException msg) <- fromException e = toS msg
+renderException :: SomeException -> IO Text
+renderException e | Just (C.CppStdException ex _msg _ty) <- fromException e = renderStdException ex
 renderException e
-  | Just (C.CppOtherException maybeType) <- fromException e =
-    "Unexpected C++ exception" <> foldMap (\t -> " of type " <> toS t) maybeType
-renderException e | Just (FatalError msg) <- fromException e = msg
-renderException e = toS $ displayException e
+  | Just (C.CppNonStdException _ex maybeType) <- fromException e =
+    pure $ "Unexpected C++ exception" <> foldMap (\t -> " of type " <> decodeUtf8With lenientDecode t) maybeType
+renderException e | Just (FatalError msg) <- fromException e = pure msg
+renderException e = pure $ toS $ displayException e
+
+renderStdException :: C.CppExceptionPtr -> IO Text
+renderStdException e =
+  [C.throwBlock| char * {
+    std::string r;
+    std::exception_ptr *e = $fptr-ptr:(std::exception_ptr *e);
+    try {
+      std::rethrow_exception(*e);
+    } catch (const nix::Error &e) {
+      // r = e.what();
+      std::stringstream s;
+      nix::showErrorInfo(s, e.info(), true);
+      r = s.str();
+    } catch (const std::exception &e) {
+      r = e.what();
+    } catch (...) {
+      // shouldn't happen because inline-c-cpp only put std::exception in CppStdException
+      throw std::runtime_error("renderStdException: Attempt to render unknown exception.");
+    }
+
+    return strdup(r.c_str());
+  }|]
+    >>= unsafePackMallocCString
+    <&> decodeUtf8With lenientDecode
 
 connectCommand ::
   (MonadUnliftIO m, KatipContext m, MonadThrow m) =>
@@ -254,7 +289,7 @@ runCommand herculesState ch command = do
                   runConduitRes
                     ( Data.Conduit.handleC
                         ( \e -> do
-                            yield $ Event.Error (renderException e)
+                            yield . Event.Error =<< liftIO (renderException e)
                             liftIO $ throwTo mainThread e
                         )
                         ( do
@@ -404,7 +439,7 @@ withDrvInProgress HerculesState {drvsInProgress = ref} drvPath =
 anyAlternative :: (Foldable l, Alternative f) => l a -> f a
 anyAlternative = getAlt . foldMap (Alt . pure)
 
-yieldAttributeError :: Monad m => [ByteString] -> SomeException -> ConduitT i Event m ()
+yieldAttributeError :: MonadIO m => [ByteString] -> SomeException -> ConduitT i Event m ()
 yieldAttributeError path e
   | (Just e') <- fromException e =
     yield $
@@ -418,12 +453,13 @@ yieldAttributeError path e
             AttributeError.errorDerivation = Just (buildExceptionDerivationPath e'),
             AttributeError.errorType = Just "BuildException"
           }
-yieldAttributeError path e =
+yieldAttributeError path e = do
+  e' <- liftIO $ renderException e
   yield $
     Event.AttributeError $
       AttributeError.AttributeError
         { AttributeError.path = path,
-          AttributeError.message = renderException e,
+          AttributeError.message = e',
           AttributeError.errorDerivation = Nothing,
           AttributeError.errorType = Just (show (typeOf e))
         }
