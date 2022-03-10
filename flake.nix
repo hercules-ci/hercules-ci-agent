@@ -356,7 +356,8 @@
               };
             };
           variants.nixUnstable.extraOverlay = final: prev: {
-            nix = addDebug prev.nixUnstable;
+            # nixUnstable is currently behind regular nix
+            # nix = addDebug prev.nixUnstable;
           };
           variants.nix_2_5.extraOverlay = final: prev: {
             nix = addDebug prev.nix_2_5;
