@@ -129,8 +129,12 @@ data a |. b
 -- | Function schema.
 data a ->. b
 
+infixr 1 ->.
+
 -- | Optional function. If the value is not a function, use it as the result.
 type a ->? b = (a ->. b) |. b
+
+infixr 1 ->?
 
 -- | Attribute set schema with known attributes and wildcard type for remaining attributes.
 data Attrs' (as :: [Attr]) w
@@ -150,13 +154,13 @@ data Attr
 
 data StringWithoutContext
 
-infix 1 :.
+infix 0 :.
 
-infix 1 :?
+infix 0 :?
 
-infix 1 ::.
+infix 0 ::.
 
-infix 1 ::?
+infix 0 ::?
 
 -- | Optional (@_?@) attribute name and type (@::_@)
 --
