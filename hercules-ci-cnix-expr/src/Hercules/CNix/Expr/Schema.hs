@@ -31,6 +31,7 @@ module Hercules.CNix.Expr.Schema
     -- * Functions
     type (->.),
     (.$),
+    (>>$.),
     type (->?),
     ($?),
     (>>$?),
@@ -383,6 +384,13 @@ x >>$? a =
       |! pure
   )
     =<< x
+
+-- | Application. Like '$.' but takes care of monadic binding as a convenience.
+(>>$.) :: (MonadEval m, PossibleTypesForSchema a, PossibleTypesForSchema b) => m (PSObject (a ->. b)) -> m (PSObject a) -> m (PSObject b)
+f >>$. a = do
+  f' <- f
+  a' <- a
+  f' .$ a'
 
 -- | Parses an expression from string
 exprWithBasePath ::
