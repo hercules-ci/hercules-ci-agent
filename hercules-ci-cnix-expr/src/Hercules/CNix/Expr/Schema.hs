@@ -172,7 +172,7 @@ type a ::. b = a ':. b
 -- phantom type.
 --
 -- The phantom specifies the expactation, not a checked type.
-data PSObject a = PSObject
+data PSObject (a :: Type) = PSObject
   { -- | Tracks the origin of the object, which is useful informaton for error messages.
     provenance :: Provenance,
     -- | The Nix object, which may be a thunk (producing errors, non-termination, etc) or a 'Value' of any type.
