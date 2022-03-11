@@ -30,7 +30,7 @@ module Hercules.CNix.Expr.Schema
 
     -- * Functions
     type (->.),
-    -- ($.),
+    (.$),
     type (->?),
     ($?),
     (>>$?),
