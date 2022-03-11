@@ -309,6 +309,7 @@
                           pkgs.jq
                           pkgs.devTools.cabal2nix
                           pkgs.nix-prefetch-git
+                          pkgs.nixpkgs-fmt
                           # pkgs.valgrind (broken on x86_64-darwin)
                         ] ++ lib.optionals shellWithHaskell [
                           pkgs.haskellPackages.haskell-language-server
