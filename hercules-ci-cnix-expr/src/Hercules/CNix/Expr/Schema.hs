@@ -39,7 +39,7 @@ module Hercules.CNix.Expr.Schema
     type StringWithoutContext,
 
     -- * Attribute sets
-
+    basicAttrsWithProvenance,
     --
     -- Common type that can represent both simultaneously.
     type Attrs',
@@ -83,7 +83,7 @@ import Data.Coerce (coerce)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified GHC.TypeLits as TL
-import Hercules.CNix.Expr (CheckType, EvalState, HasRawValueType, NixAttrs, NixFunction, NixPath, NixString, RawValue, Value, apply, checkType, getAttr, getRawValueType, getStringIgnoreContext, hasContext, rawValueType, toRawValue, valueFromExpressionString)
+import Hercules.CNix.Expr (CheckType, EvalState, HasRawValueType, NixAttrs, NixFunction, NixPath, NixString, RawValue, Value (rtValue), apply, checkType, getAttr, getRawValueType, getStringIgnoreContext, hasContext, rawValueType, toRawValue, valueFromExpressionString)
 import qualified Hercules.CNix.Expr as Expr
 import Hercules.CNix.Expr.Raw (RawValueType, canonicalRawType)
 import Protolude hiding (TypeError, check, evalState)
@@ -496,3 +496,6 @@ instance FromPSObject Bool Bool where
   fromPSObject o = do
     v <- check o
     liftIO (Expr.getBool v)
+
+basicAttrsWithProvenance :: Value NixAttrs -> Provenance -> PSObject (Attrs '[])
+basicAttrsWithProvenance attrs p = PSObject {value = rtValue attrs, provenance = p}
