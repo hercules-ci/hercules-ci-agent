@@ -20,6 +20,7 @@ module Hercules.Agent.NixFile
     HomeExpr (..),
     homeExprRawValue,
     getHerculesCI,
+    loadDefaultHerculesCI,
 
     -- * @onPush@
     getOnPushOutputValueByPath,
@@ -40,6 +41,7 @@ import Hercules.CNix.Expr
     Match (IsAttrs),
     NixAttrs,
     Value (Value, rtValue),
+    addAllowedPath,
     assertType,
     autoCallFunction,
     evalFile,
@@ -50,9 +52,10 @@ import Hercules.CNix.Expr
     unsafeAssertType,
   )
 import Hercules.CNix.Expr.Raw (RawValue)
-import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), StringWithoutContext, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (>>$?), type (->?), type (::.), type (::?))
+import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), Provenance (Other), StringWithoutContext, basicAttrsWithProvenance, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (.$), (>>$.), (>>$?), type (->.), type (->?), type (::.), type (::?))
 import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.Error (escalateAs)
+import Paths_hercules_ci_agent (getDataFileName)
 import Protolude hiding (evalState)
 import qualified System.Directory as Dir
 import System.FilePath (takeFileName, (</>))
@@ -134,12 +137,28 @@ type InputSchema = Dictionary RawValue
 
 type OutputsSchema = Dictionary RawValue
 
+type DefaultHerculesCIHelperSchema =
+  Attrs
+    '[ "defaultHerculesCI" ::. Attrs '[] ->. Attrs '[] ->. HerculesCISchema
+     ]
+
 getHerculesCI :: MonadEval m => HomeExpr -> HerculesCIArgs -> m (Maybe (PSObject HerculesCISchema))
 getHerculesCI homeExpr args = do
   home <- getHomeExprObject homeExpr
-  attrVal <- home #? #herculesCI
-  attrVal & traverse \herculesCI -> do
-    pure herculesCI >>$? (Schema.uncheckedCast <$> toPSObject args)
+  home #? #herculesCI >>= \case
+    Just herculesCI ->
+      Just <$> do
+        pure herculesCI >>$? args'
+    Nothing -> case homeExpr of
+      CiNix {} -> pure Nothing
+      Flake flake ->
+        Just <$> do
+          dh <- loadDefaultHerculesCI
+          fn <- dh #. #defaultHerculesCI
+          let flakeObj = basicAttrsWithProvenance flake $ Schema.Other "your flake"
+          fn .$ flakeObj >>$. args'
+  where
+    args' = Schema.uncheckedCast <$> toPSObject args
 
 parseExtraInputs :: MonadEval m => PSObject ExtraInputsSchema -> m (Map ByteString InputDeclaration)
 parseExtraInputs eis = dictionaryToMap eis >>= traverse parseInputDecl
@@ -202,3 +221,11 @@ attrByPath evalState v (a : as) = do
         >>= traverse (\attrValue -> attrByPath evalState attrValue as)
         & fmap join
     _ -> pure Nothing
+
+loadDefaultHerculesCI :: (MonadEval m) => m (PSObject DefaultHerculesCIHelperSchema)
+loadDefaultHerculesCI = do
+  fname <- liftIO $ getDataFileName "data/default-herculesCI-for-flake.nix"
+  evalState <- ask
+  liftIO $ addAllowedPath evalState . encodeUtf8 . toS $ fname
+  v <- liftIO $ evalFile evalState fname
+  pure (PSObject {value = v, provenance = Other "<default herculesCI helper shim>"})

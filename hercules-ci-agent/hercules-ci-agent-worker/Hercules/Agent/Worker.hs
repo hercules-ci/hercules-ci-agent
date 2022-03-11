@@ -43,7 +43,7 @@ import qualified Hercules.API.Logs.LogEntry as LogEntry
 import Hercules.API.Logs.LogHello (LogHello (LogHello, clientProtocolVersion, storeProtocolVersion))
 import Hercules.API.Logs.LogMessage (LogMessage)
 import qualified Hercules.API.Logs.LogMessage as LogMessage
-import Hercules.Agent.NixFile (HerculesCISchema, getHerculesCI, homeExprRawValue, loadNixFile, parseExtraInputs)
+import Hercules.Agent.NixFile (HerculesCISchema, HomeExpr (CiNix, Flake), getHerculesCI, homeExprRawValue, loadNixFile, parseExtraInputs)
 import Hercules.Agent.NixFile.HerculesCIArgs (HerculesCIMeta (HerculesCIMeta), fromGitSource)
 import qualified Hercules.Agent.NixFile.HerculesCIArgs
 import Hercules.Agent.Sensitive
@@ -78,7 +78,7 @@ import Hercules.CNix as CNix
 import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
 import qualified Hercules.CNix.Expr.Raw
-import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, requireDict, (#.), (#?), (#?!), ($?))
+import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, requireDict, (#.), (#?), (#?!), ($?), (.$))
 import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.CNix.Expr.Typed (Value)
 import Hercules.CNix.Std.Vector (StdVector)
