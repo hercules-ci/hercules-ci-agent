@@ -40,7 +40,7 @@ import Hercules.CNix.Expr.Typed
 import Hercules.CNix.Store
 import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Paths_hercules_ci_cnix_expr (getDataFileName)
 import Protolude hiding (evalState)
 import System.Directory (makeAbsolute)

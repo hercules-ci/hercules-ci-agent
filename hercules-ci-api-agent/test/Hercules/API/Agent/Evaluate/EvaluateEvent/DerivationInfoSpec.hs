@@ -26,7 +26,7 @@ spec = do
         eitherDecode jsonV2 `shouldBe` Right objectV2
     describe "ToJSON" $ do
       it "encodes v2 correctly" $ do
-        json (encode objectV2) `shouldBe` json (jsonV2)
+        json (encode objectV2) `shouldBe` json jsonV2
 
 json :: BL.ByteString -> Value
 json lbs =

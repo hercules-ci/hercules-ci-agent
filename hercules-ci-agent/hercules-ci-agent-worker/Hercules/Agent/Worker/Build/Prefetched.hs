@@ -16,7 +16,7 @@ import Foreign.C (peekCString)
 import Hercules.CNix.Encapsulation
 import Hercules.CNix.Store
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude
 
 C.context context

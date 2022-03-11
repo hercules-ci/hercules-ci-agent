@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
 module Hercules.API.Build.DerivationEvent where
@@ -32,16 +31,16 @@ instance ToJSON DerivationEvent where
   toEncoding = genericToEncoding schemaCompatibleOptions
 
 eventTime :: DerivationEvent -> UTCTime
-eventTime (Queued (DerivationEventQueued {time = t})) = t
-eventTime (DependencyFailed (DerivationEventDependencyFailed {time = t})) = t
-eventTime (Started (DerivationEventStarted {time = t})) = t
-eventTime (Reset (DerivationEventReset {time = t})) = t
-eventTime (Failed (DerivationEventFailed {time = t})) = t
-eventTime (Succeeded (DerivationEventSucceeded {time = t})) = t
-eventTime (Cancelled (DerivationEventCancelled {time = t})) = t
-eventTime (Built (DerivationEventBuilt {time = t})) = t
-eventTime (HasCancelled (DerivationEventHasCancelled {time = t})) = t
-eventTime (HasCancelledForReset (DerivationEventHasCancelledForReset {time = t})) = t
+eventTime (Queued DerivationEventQueued {time = t}) = t
+eventTime (DependencyFailed DerivationEventDependencyFailed {time = t}) = t
+eventTime (Started DerivationEventStarted {time = t}) = t
+eventTime (Reset DerivationEventReset {time = t}) = t
+eventTime (Failed DerivationEventFailed {time = t}) = t
+eventTime (Succeeded DerivationEventSucceeded {time = t}) = t
+eventTime (Cancelled DerivationEventCancelled {time = t}) = t
+eventTime (Built DerivationEventBuilt {time = t}) = t
+eventTime (HasCancelled DerivationEventHasCancelled {time = t}) = t
+eventTime (HasCancelledForReset DerivationEventHasCancelledForReset {time = t}) = t
 
 data DerivationEventQueued = DerivationEventQueued
   { time :: UTCTime,

@@ -15,7 +15,7 @@ import qualified Hercules.Agent.WorkerProtocol.Command.StartDaemon as StartDaemo
 import Hercules.Agent.WorkerProtocol.Event.DaemonStarted (DaemonStarted (DaemonStarted, _dummy))
 import qualified Hercules.CNix as CNix
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Network.Socket
 import Protolude
 import System.Posix.Internals (setNonBlockingFD)

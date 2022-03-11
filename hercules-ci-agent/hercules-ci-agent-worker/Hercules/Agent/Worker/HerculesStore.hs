@@ -25,7 +25,7 @@ import Hercules.CNix.Expr.Context (NixStorePathWithOutputs)
 import Hercules.CNix.Std.Vector (CStdVector, StdVector)
 import Hercules.CNix.Store.Context (Ref)
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude
 import Prelude ()
 
