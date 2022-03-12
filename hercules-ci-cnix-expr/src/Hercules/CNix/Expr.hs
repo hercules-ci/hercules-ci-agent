@@ -451,8 +451,8 @@ getLocalFlake evalState path = do
 
 getFlakeFromGit :: Ptr EvalState -> Text -> Text -> Text -> IO RawValue
 getFlakeFromGit evalState url ref rev = do
-  -- TODO: use a URL library
-  getFlakeFromFlakeRef evalState (encodeUtf8 $ url <> "?ref=" <> ref <> "&rev=" <> rev)
+  -- TODO: use a URL library, test
+  getFlakeFromFlakeRef evalState (encodeUtf8 $ "git+" <> url <> "?ref=" <> ref <> "&rev=" <> rev)
 
 getFlakeFromArchiveUrl :: Ptr EvalState -> Text -> IO RawValue
 getFlakeFromArchiveUrl evalState url = do
