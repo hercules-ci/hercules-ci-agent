@@ -52,7 +52,7 @@ import Hercules.CNix.Expr
     unsafeAssertType,
   )
 import Hercules.CNix.Expr.Raw (RawValue)
-import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), Provenance (Other), StringWithoutContext, basicAttrsWithProvenance, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (.$), (>>$.), (>>$?), type (->.), type (->?), type (::.), type (::?))
+import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), Provenance (Other), StringWithoutContext, basicAttrsWithProvenance, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (.$), (>>$.), type (->.), type (->?), type (::.), type (::?))
 import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.Error (escalateAs)
 import Paths_hercules_ci_agent (getDataFileName)
@@ -139,26 +139,25 @@ type OutputsSchema = Dictionary RawValue
 
 type DefaultHerculesCIHelperSchema =
   Attrs
-    '[ "defaultHerculesCI" ::. Attrs '[] ->. Attrs '[] ->. HerculesCISchema
+    '[ "addDefaults" ::. Attrs '[] ->. Attrs '[] ->. HerculesCISchema
      ]
 
 getHerculesCI :: MonadEval m => HomeExpr -> HerculesCIArgs -> m (Maybe (PSObject HerculesCISchema))
 getHerculesCI homeExpr args = do
   home <- getHomeExprObject homeExpr
-  home #? #herculesCI >>= \case
-    Just herculesCI ->
+  args' <- Schema.uncheckedCast <$> toPSObject args
+  case homeExpr of
+    CiNix {} ->
+      home #? #herculesCI
+        >>= traverse @Maybe \herculesCI ->
+          herculesCI $? args'
+    Flake flake ->
       Just <$> do
-        pure herculesCI >>$? args'
-    Nothing -> case homeExpr of
-      CiNix {} -> pure Nothing
-      Flake flake ->
-        Just <$> do
-          dh <- loadDefaultHerculesCI
-          fn <- dh #. #defaultHerculesCI
-          let flakeObj = basicAttrsWithProvenance flake $ Schema.Other "your flake"
-          fn .$ flakeObj >>$. args'
-  where
-    args' = Schema.uncheckedCast <$> toPSObject args
+        dh <- loadDefaultHerculesCI
+        fn <- dh #. #addDefaults
+        let flakeObj = basicAttrsWithProvenance flake $ Schema.Other "your flake"
+        hci <- fn .$ flakeObj >>$. pure args'
+        pure hci {Schema.provenance = Other "the herculesCI attribute of your flake (after adding defaults)"}
 
 parseExtraInputs :: MonadEval m => PSObject ExtraInputsSchema -> m (Map ByteString InputDeclaration)
 parseExtraInputs eis = dictionaryToMap eis >>= traverse parseInputDecl

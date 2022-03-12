@@ -21,11 +21,25 @@ let
         (name: let v = set.${name}; in if pred name v then [ (nameValuePair name v) ] else [ ])
         (attrNames set)
     );
+  optionalAttrs = b: if b then a: a else _: { };
   # end lib
 
-  defaultHerculesCI = flake: args: {
-    onPush.default.outputs = flakeToOutputs flake args;
-  };
+  # flake -> evalArgs -> { flake | herculesCI }
+  addDefaults = flake: evalArgs:
+    let
+      args = evalArgs // {
+        ciSystems =
+          if flake?herculesCI.ciSystems
+          then listToAttrs (map (sys: nameValuePair sys { }) flake.herculesCI.ciSystems)
+          else args.herculesCI.ciSystems;
+      };
+    in
+    flake.herculesCI or { }
+    // optionalAttrs (!flake?herculesCI.onPush) {
+      onPush.default = {
+        outputs = flakeToOutputs flake args;
+      };
+    };
 
   flakeToOutputs = flake: args: mapAttrs (translateFlakeAttr args) flake.outputs;
 
@@ -104,7 +118,7 @@ let
     let
       ignore = args: x: null;
       same = args: x: x;
-      forSystems = f: args: attrs: mapAttrs f (filterSystems args.herculesCI.ciSystems attrs);
+      forSystems = f: args: attrs: mapAttrs f (filterSystems args.ciSystems attrs);
     in
     rec {
       # TODO validate
@@ -115,8 +129,8 @@ let
       devShell = forSystems (sys: translateShell);
       devShells = forSystems (sys: mapAttrs (k: translateShell));
       apps = forSystems (sys: mapAttrs (k: checkApp));
-      nixosConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs args.herculesCI.ciSystems attrs);
-      darwinConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs args.herculesCI.ciSystems attrs);
+      nixosConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs args.ciSystems attrs);
+      darwinConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs args.ciSystems attrs);
       effects = args: effects:
         if builtins.isAttrs effects
         then effects
@@ -135,6 +149,6 @@ let
 in
 {
   inherit
-    defaultHerculesCI
+    addDefaults
     ;
 }
