@@ -116,11 +116,16 @@ Other information besides `extraInputs` can be retrieved from the xref:params-he
 These "output" attributes can be
 
  * derivations,
- * effects,
+ * effects IF added in `onPush.<name>.outputs.effects`,
  * attribute sets containing further "outputs", in a nested manner,
  * other types, which will be ignored.
 
 During the execution of the job, first, all derivations will be built. If the build went well, all effects will run, concurrently with effects in the same job, but only after preceding jobs have either completed or failed to build.
+
+[[attributes-herculesCI.onPush-outputs.effects]]
+=== `onPush.<name>.outputs.effects` Attributes
+
+This is this the only location in `outputs` where effects are allowed.
 
 ==== Derivations, shells and effects
 
