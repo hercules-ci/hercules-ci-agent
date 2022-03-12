@@ -4,7 +4,24 @@
   Schema: DefaultHerculesCIHelperSchema
 */
 let
-  inherit (builtins) mapAttrs;
+  inherit (builtins)
+    attrNames
+    concatMap
+    hasAttr
+    intersectAttrs
+    listToAttrs
+    mapAttrs
+    ;
+
+  # lib
+  nameValuePair = k: v: { name = k; value = v; };
+  filterAttrs = pred: set:
+    listToAttrs (
+      concatMap
+        (name: let v = set.${name}; in if pred name v then [ (nameValuePair name v) ] else [ ])
+        (attrNames set)
+    );
+  # end lib
 
   defaultHerculesCI = flake: args: {
     onPush.default.outputs = flakeToOutputs flake args;
@@ -12,6 +29,23 @@ let
 
   flakeToOutputs = flake: args: mapAttrs (translateFlakeAttr args) flake.outputs;
 
+  filterSystems = ciSystems:
+    if ciSystems == null
+    then attrs: attrs
+    else intersectAttrs ciSystems;
+
+  isEnabledSystemConfig = ciSystems:
+    if ciSystems == null
+    then sys: true
+    else
+      sys:
+      hasAttr sys.config.nixpkgs.localSystem.system ciSystems
+      || hasAttr sys.config.nixpkgs.system ciSystems;
+
+  filterSystemConfigs = ciSystems: filterAttrs (k: v:
+    if isEnabledSystemConfig ciSystems v
+    then true
+    else builtins.trace "Ignoring flake attribute ${k} (system not in ciSystems)" false);
 
   translateFlakeAttr = args: k: v:
     if translations?${k}
@@ -70,18 +104,19 @@ let
     let
       ignore = args: x: null;
       same = args: x: x;
+      forSystems = f: args: attrs: mapAttrs f (filterSystems args.herculesCI.ciSystems attrs);
     in
     rec {
       # TODO validate
 
       # buildable
-      packages = same;
-      checks = same;
-      devShell = args: mapAttrs (k: translateShell);
-      devShells = args: mapAttrs (k: mapAttrs (k: translateShell));
-      apps = args: mapAttrs (k: mapAttrs (k: checkApp));
-      nixosConfigurations = args: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; });
-      darwinConfigurations = args: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; });
+      packages = forSystems (sys: pkgs: pkgs);
+      checks = forSystems (sys: checks: checks);
+      devShell = forSystems (sys: translateShell);
+      devShells = forSystems (sys: mapAttrs (k: translateShell));
+      apps = forSystems (sys: mapAttrs (k: checkApp));
+      nixosConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs args.herculesCI.ciSystems attrs);
+      darwinConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs args.herculesCI.ciSystems attrs);
       effects = args: effects:
         if builtins.isAttrs effects
         then effects

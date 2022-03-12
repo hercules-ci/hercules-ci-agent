@@ -60,6 +60,7 @@ defaultTask =
       nixPath = mempty,
       logToken = "mock-eval-log-token",
       selector = ConfigOrLegacy,
+      ciSystems = Nothing,
       extraGitCredentials = Nothing
     }
 
