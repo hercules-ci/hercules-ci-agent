@@ -192,6 +192,46 @@ spec = describe "Evaluation" $ do
             OnPushHandlerEvent.handlerExtraInputs op `shouldBe` mempty
           _ ->
             failWith $ "Events should be a [JobConfig, OnPushHandlerEvent op], not " <> show r
+  context "when a flake without onPush is provided" do
+    it "reports the default onPush handler" do
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/flake",
+                EvaluateTask.inputMetadata = "src" =: defaultMeta
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case r of
+          [EvaluateEvent.JobConfig _jc, EvaluateEvent.OnPushHandlerEvent op] -> do
+            OnPushHandlerEvent.handlerName op `shouldBe` "default"
+            OnPushHandlerEvent.handlerExtraInputs op `shouldBe` mempty
+          _ ->
+            failWith $ "Events should be a [JobConfig, OnPushHandlerEvent op], not " <> show r
+    it "reports the package" do
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            defaultTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/flake",
+                EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                EvaluateTask.selector =
+                  EvaluateTask.OnPush $
+                    EvaluateTask.MkOnPush {name = "default", inputs = mempty}
+              }
+        s `shouldBe` TaskStatus.Successful ()
+        case attrLike r of
+          [EvaluateEvent.Attribute ae] -> do
+            AttributeEvent.expressionPath ae `shouldBe` ["packages", "x86_64-linux", "default"]
+            toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
+            toS (AttributeEvent.derivationPath ae) `shouldContain` "-default-package"
+          _ -> failWith $ "Events should be a single attribute, not: " <> show r
   context "when the nix expression is one derivation in an attrset" $
     it "returns that attribute" $
       \srv -> do

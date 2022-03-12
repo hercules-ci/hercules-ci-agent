@@ -68,11 +68,17 @@ The `herculesCI` value primarily defines handlers for what to build and run for 
 
 // hercules-ci-agent/src/Hercules/Agent/NixFile.hs OnPushSchema
 [[attributes-herculesCI.onPush]]
-=== `onPush.<name>`
+=== `onPush`
 
 This declares what to do when a Git `ref` is updated, such as when you push a commit or after you merge a pull request.
 
-Multiple jobs will be created when multiple attributes are declared, with different values for the  `<name>` placeholder. The name will be used as part of the commit status for each resulting job.
+If `onPush` is omitted and your `herculesCI` attribute is in a flake, Hercules CI will use the flake to generate a `default` job.
+
+If `onPush` is set to `{ }`, no jobs will be created for the push event.
+
+If `onPush` contains attributes, jobs will created for each.
+
+The name will be used as part of the commit status for each resulting job.
 
 // The ability to declare multiple jobs per event is mainly intended to support multiple choices of `extraInputs`.
 

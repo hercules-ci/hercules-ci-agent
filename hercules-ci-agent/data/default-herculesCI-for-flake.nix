@@ -22,6 +22,7 @@ let
         (attrNames set)
     );
   optionalAttrs = b: if b then a: a else _: { };
+  optionalCall = f: a: if builtins.isFunction f then f a else f;
   # end lib
 
   # flake -> evalArgs -> { flake | herculesCI }
@@ -33,9 +34,9 @@ let
           then listToAttrs (map (sys: nameValuePair sys { }) flake.herculesCI.ciSystems)
           else args.herculesCI.ciSystems;
       };
+      herculesCI = optionalCall (flake.herculesCI or { }) evalArgs;
     in
-    flake.herculesCI or { }
-    // optionalAttrs (!flake?herculesCI.onPush) {
+    herculesCI // optionalAttrs (!herculesCI?onPush) {
       onPush.default = {
         outputs = flakeToOutputs flake args;
       };
