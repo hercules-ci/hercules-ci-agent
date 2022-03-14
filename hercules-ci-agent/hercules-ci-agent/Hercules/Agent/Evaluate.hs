@@ -4,7 +4,6 @@
 
 module Hercules.Agent.Evaluate
   ( performEvaluation,
-    findNixFile,
   )
 where
 
@@ -12,7 +11,9 @@ import Conduit
 import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
 import Control.Exception.Lifted (finally)
+import Control.Lens (at, (^?))
 import qualified Data.Aeson as A
+import Data.Aeson.Lens (_String)
 import qualified Data.ByteString.Lazy as BL
 import Data.Char (isAsciiLower, isAsciiUpper)
 import Data.Conduit.Process (sourceProcessWithStreams)
@@ -36,6 +37,7 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as Att
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest as BuildRequest
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as BuildRequired
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.JobConfig as JobConfig
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll as PushedAll
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
@@ -43,17 +45,20 @@ import Hercules.API.Servant (noContent)
 import qualified Hercules.Agent.Cache as Agent.Cache
 import qualified Hercules.Agent.Cachix.Env as Cachix.Env
 import qualified Hercules.Agent.Client
+import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
 import qualified Hercules.Agent.Env as Env
 import Hercules.Agent.Evaluate.TraversalQueue (Queue)
 import qualified Hercules.Agent.Evaluate.TraversalQueue as TraversalQueue
 import Hercules.Agent.Files
 import Hercules.Agent.Log
+import qualified Hercules.Agent.Netrc as Netrc
 import qualified Hercules.Agent.Nix as Nix
 import Hercules.Agent.Nix.RetrieveDerivationInfo
   ( retrieveDerivationInfo,
   )
 import Hercules.Agent.NixFile (findNixFile)
+import Hercules.Agent.NixFile.GitSource (fromRefRevPath)
 import Hercules.Agent.NixPath
   ( renderSubPath,
   )
@@ -65,6 +70,7 @@ import qualified Hercules.Agent.WorkerProcess as WorkerProcess
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
+import Hercules.Agent.WorkerProtocol.Event (ViaJSON (ViaJSON))
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as WorkerAttribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as WorkerAttributeError
@@ -76,6 +82,7 @@ import qualified Network.HTTP.Simple as HTTP.Simple
 import qualified Network.URI
 import Protolude hiding (finally, newChan, writeChan)
 import qualified Servant.Client
+import Servant.Client.Core (showBaseUrl)
 import qualified System.Directory as Dir
 import System.FilePath
 import System.Process
@@ -126,6 +133,12 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
   projectDir <- case M.lookup "src" inputLocations of
     Nothing -> panic "No primary source provided"
     Just x -> pure x
+  (ref, rev) <- case M.lookup "src" (EvaluateTask.inputMetadata task) of
+    Nothing -> do
+      panic $ "No primary source metadata provided" <> show task
+    Just meta -> pure $ fromMaybe (panic "no ref/rev in primary source metadata") do
+      (,) <$> (meta ^? at "ref" . traverse . _String)
+        <*> (meta ^? at "rev" . traverse . _String)
   nixPath <-
     EvaluateTask.nixPath task
       & ( traverse
@@ -199,6 +212,7 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
             emitSingle truncMsg
             panic "Evaluation limit reached."
           else emitSingle =<< fixIndex update
+  let allowedPaths = toList inputLocations <&> toS <&> encodeUtf8
   adHocSystem <-
     readFileMaybe (projectDir </> "ci-default-system.txt")
   liftIO (findNixFile projectDir) >>= \case
@@ -225,9 +239,9 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
             TraversalQueue.enqueue derivationQueue drvPath
             liftIO $ atomicModifyIORef topDerivationPaths ((,()) . S.insert drvPath)
           evaluation = do
-            let evalProc = do
-                  Nix.withExtraOptions [("system", T.strip s) | Just s <- [adHocSystem]] $
-                    runEvalProcess
+            Nix.withExtraOptions [("system", T.strip s) | Just s <- [adHocSystem]] do
+              let evalProc =
+                    do runEvalProcess
                       projectDir
                       file
                       autoArguments
@@ -235,11 +249,13 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
                       captureAttrDrvAndEmit
                       uploadDrvInfos
                       sync
-                      (EvaluateTask.logToken task)
-            evalProc `finally` do
-              -- Always upload drv infos, even in case of a crash in the worker
-              TraversalQueue.waitUntilDone derivationQueue
-                `finally` TraversalQueue.close derivationQueue
+                      task
+                      (ref, rev)
+                      allowedPaths
+              evalProc `finally` do
+                -- Always upload drv infos, even in case of a crash in the worker
+                TraversalQueue.waitUntilDone derivationQueue
+                  `finally` TraversalQueue.close derivationQueue
           pushDrvs = do
             caches <- activePushCaches
             paths <- liftIO $ readIORef topDerivationPaths
@@ -284,12 +300,17 @@ runEvalProcess ::
   -- | Upload a derivation, return when done
   (StorePath -> App ()) ->
   App () ->
-  Text ->
+  EvaluateTask.EvaluateTask ->
+  (Text, Text) ->
+  [ByteString] ->
   App ()
-runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush logToken = do
+runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush task (ref, rev) allowedPaths = do
   extraOpts <- Nix.askExtraOptions
-  baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
-  let eval =
+  bulkBaseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
+  apiBaseUrl <- asks (toS . showBaseUrl . Env.herculesBaseUrl)
+  cfg <- asks Env.config
+  let gitSource = fromRefRevPath ref rev (toS projectDir)
+      eval =
         Eval.Eval
           { Eval.cwd = projectDir,
             Eval.file = toS file,
@@ -297,16 +318,54 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
             Eval.extraNixOptions = extraOpts,
             Eval.logSettings =
               LogSettings.LogSettings
-                { token = Sensitive logToken,
+                { token = Sensitive $ EvaluateTask.logToken task,
                   path = "/api/v1/logs/build/socket",
-                  baseURL = toS $ Network.URI.uriToString identity baseURL ""
-                }
+                  baseURL = toS $ Network.URI.uriToString identity bulkBaseURL ""
+                },
+            Eval.gitSource = ViaJSON gitSource,
+            Eval.apiBaseUrl = apiBaseUrl,
+            Eval.ciSystems = EvaluateTask.ciSystems task,
+            Eval.selector = ViaJSON $ EvaluateTask.selector task,
+            Eval.allowInsecureBuiltinFetchers = Config.allowInsecureBuiltinFetchers cfg,
+            Eval.allowedPaths = allowedPaths
           }
   buildRequiredIndex <- liftIO $ newIORef (0 :: Int)
   commandChan <- newChan
   writeChan commandChan $ Just $ Command.Eval eval
+  for_ (EvaluateTask.extraGitCredentials task) \creds ->
+    Netrc.appendLines (credentialToLines =<< creds)
+  netrcFile <- Netrc.getNetrcFile
   let decode = decodeUtf8With lenientDecode
-  withProducer (produceWorkerEvents eval nixPath commandChan) $
+      toGitConfigEnv items =
+        M.fromList $
+          ("GIT_CONFIG_COUNT", show (length items)) :
+          concatMap
+            ( \(i, (k, v)) ->
+                [ ("GIT_CONFIG_KEY_" <> show i, k),
+                  ("GIT_CONFIG_VALUE_" <> show i, v)
+                ]
+            )
+            (zip [0 :: Int ..] items)
+      envSettings =
+        WorkerProcess.WorkerEnvSettings
+          { nixPath = nixPath,
+            extraEnv =
+              toGitConfigEnv
+                [ ("credential.helper", "netrc --file " <> netrcFile),
+                  -- Deny by default.
+                  ("protocol.allow", "never"),
+                  -- Safe protocols.
+                  -- More protocols can be added as long as they can be shown
+                  -- not to leak credentials from netrc or .git-credentials.
+                  -- If a protocol is lacking in confidentiality, authenticity,
+                  -- etc, it must be off by default with a Config item to
+                  -- enable it.
+                  ("protocol.https.allow", "always"),
+                  ("protocol.ssh.allow", "always"),
+                  ("protocol.file.allow", "always")
+                ]
+          }
+  withProducer (produceWorkerEvents eval envSettings commandChan) $
     \workerEventsP -> fix $ \continue ->
       joinSTM $
         listen
@@ -381,6 +440,12 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                     return status
                 writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drvText) status
                 continue
+              Event.OnPushHandler (ViaJSON e) -> do
+                emit $ EvaluateEvent.OnPushHandlerEvent e
+                continue
+              Event.JobConfig -> do
+                emit $ EvaluateEvent.JobConfig JobConfig.JobConfig {sourceCaches = Nothing, binaryCaches = Nothing}
+                continue
               Event.Exception e -> panic e
               -- Unused during eval
               Event.BuildResult {} -> pass
@@ -393,18 +458,34 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                 panic $ "Worker failed with exit status: " <> show e
           )
 
+credentialToLines :: EvaluateTask.Credential -> [Text]
+credentialToLines c =
+  fromMaybe [] do
+    host <- hostFromUrl (EvaluateTask.url c)
+    pure
+      [ "machine " <> host,
+        "login " <> EvaluateTask.username c,
+        "password " <> EvaluateTask.password c
+      ]
+
+hostFromUrl :: Text -> Maybe Text
+hostFromUrl t = do
+  uri <- Network.URI.parseURI (toS t)
+  a <- Network.URI.uriAuthority uri
+  pure $ toS $ Network.URI.uriRegName a
+
 produceWorkerEvents ::
   Eval.Eval ->
-  [EvaluateTask.NixPathElement (EvaluateTask.SubPathOf FilePath)] ->
+  WorkerProcess.WorkerEnvSettings ->
   Chan (Maybe Command.Command) ->
   (Event.Event -> App ()) ->
   App ExitCode
-produceWorkerEvents eval nixPath commandChan writeEvent = do
+produceWorkerEvents eval envSettings commandChan writeEvent = do
   workerExe <- WorkerProcess.getWorkerExe
   let opts = [show $ Eval.extraNixOptions eval]
   -- NiceToHave: replace renderNixPath by something structured like -I
   -- to support = and : in paths
-  workerEnv <- liftIO $ WorkerProcess.prepareEnv (WorkerProcess.WorkerEnvSettings {nixPath = nixPath})
+  workerEnv <- liftIO $ WorkerProcess.prepareEnv envSettings
   let wps =
         (System.Process.proc workerExe opts)
           { env = Just workerEnv,

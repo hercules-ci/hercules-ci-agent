@@ -7,20 +7,30 @@ module Hercules.Effect where
 import Control.Monad.Catch (MonadThrow)
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as C8
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import Hercules.API.Id (Id, idText)
 import Hercules.Agent.Sensitive (Sensitive (Sensitive, reveal), revealContainer)
+import Hercules.Agent.WorkerProcess (runWorker)
+import qualified Hercules.Agent.WorkerProcess as WorkerProcess
+import Hercules.Agent.WorkerProtocol.Command.StartDaemon (StartDaemon (StartDaemon))
+import qualified Hercules.Agent.WorkerProtocol.Command.StartDaemon as StartDaemon
+import Hercules.Agent.WorkerProtocol.Event.DaemonStarted (DaemonStarted (DaemonStarted))
 import Hercules.CNix (Derivation)
 import Hercules.CNix.Store (getDerivationArguments, getDerivationBuilder, getDerivationEnv)
 import Hercules.Effect.Container (BindMount (BindMount))
 import qualified Hercules.Effect.Container as Container
 import Hercules.Error (escalateAs)
 import qualified Hercules.Formats.Secret as Formats.Secret
+import Hercules.Secrets (SecretContext, evalCondition, evalConditionTrace)
 import Katip (KatipContext, Severity (..), logLocM, logStr)
 import Protolude
 import System.FilePath
+import UnliftIO (timeout)
+import qualified UnliftIO
 import UnliftIO.Directory (createDirectory, createDirectoryIfMissing)
+import qualified UnliftIO.Process as Process
 
 parseDrvSecretsMap :: Map ByteString ByteString -> Either Text (Map Text Text)
 parseDrvSecretsMap drvEnv =
@@ -31,8 +41,8 @@ parseDrvSecretsMap drvEnv =
       Right r -> Right r
 
 -- | Write secrets to file based on secretsMap value
-writeSecrets :: (MonadIO m, KatipContext m) => Maybe FilePath -> Map Text Text -> Map Text (Sensitive Formats.Secret.Secret) -> FilePath -> m ()
-writeSecrets sourceFileMaybe secretsMap extraSecrets destinationDirectory = write . fmap reveal . addExtra =<< gather
+writeSecrets :: (MonadIO m, KatipContext m) => Bool -> Maybe SecretContext -> Maybe FilePath -> Map Text Text -> Map Text (Sensitive Formats.Secret.Secret) -> FilePath -> m ()
+writeSecrets friendly ctxMaybe sourceFileMaybe secretsMap extraSecrets destinationDirectory = write . fmap reveal . addExtra =<< gather
   where
     addExtra = flip M.union extraSecrets
     write = liftIO . BS.writeFile (destinationDirectory </> "secrets.json") . BL.toStrict . A.encode
@@ -51,30 +61,53 @@ writeSecrets sourceFileMaybe secretsMap extraSecrets destinationDirectory = writ
 
           createDirectoryIfMissing True destinationDirectory
           secretsMap & M.traverseWithKey \destinationName (secretName :: Text) -> do
+            let gotoFail =
+                  liftIO . throwIO . FatalError $
+                    "Secret " <> secretName <> " does not exist or access was denied, so we can't get a secret for " <> destinationName <> ". Please make sure that the secret name matches a secret on your agents and make sure that its condition applies."
             case revealContainer (allSecrets <&> M.lookup secretName) of
-              Nothing ->
-                liftIO $
-                  throwIO $
-                    FatalError $
-                      "Secret " <> secretName <> " does not exist, so we can't find a secret for " <> destinationName <> ". Please make sure that the secret name matches a secret on your agents."
-              Just ssecret ->
-                pure do
-                  secret <- ssecret
-                  -- Currently this is `id` but we might want to fork the
-                  -- format here or omit some fields.
-                  pure $
-                    Formats.Secret.Secret
-                      { data_ = Formats.Secret.data_ secret
-                      }
+              Nothing -> gotoFail
+              Just ssecret -> do
+                let condMaybe = reveal (Formats.Secret.condition <$> ssecret)
+                    r = do
+                      secret <- ssecret
+                      pure $
+                        Formats.Secret.Secret
+                          { data_ = Formats.Secret.data_ secret,
+                            -- Hide the condition
+                            condition = Nothing
+                          }
+                case (friendly, condMaybe) of
+                  (True, Nothing) -> do
+                    putErrText $ "The secret " <> show secretName <> " does not contain the `condition` field, which is required on hercules-ci-agent >= 0.9."
+                    pure r
+                  (True, Just cond) | Just ctx <- ctxMaybe ->
+                    case evalConditionTrace ctx cond of
+                      (_, True) -> pure r
+                      (trace_, _) -> do
+                        putErrText $ "Could not grant access to secret " <> show secretName <> "."
+                        for_ trace_ \ln -> putErrText $ "  " <> ln
+                        liftIO . throwIO . FatalError $ "Could not grant access to secret " <> show secretName <> ". See trace in preceding log."
+                  (True, Just _) | otherwise -> do
+                    -- This is only ok in friendly mode (hci)
+                    putErrText "WARNING: not performing secrets access control. The secret.condition field won't be checked."
+                    pure r
+                  (False, Nothing) -> gotoFail
+                  (False, Just cond) ->
+                    if evalCondition (fromMaybe (panic "SecretContext is required") ctxMaybe) cond then pure r else gotoFail
 
 data RunEffectParams = RunEffectParams
   { runEffectDerivation :: Derivation,
     runEffectToken :: Maybe (Sensitive Text),
     runEffectSecretsConfigPath :: Maybe FilePath,
+    runEffectSecretContext :: Maybe SecretContext,
     runEffectApiBaseURL :: Text,
     runEffectDir :: FilePath,
     runEffectProjectId :: Maybe (Id "project"),
-    runEffectProjectPath :: Maybe Text
+    runEffectProjectPath :: Maybe Text,
+    runEffectUseNixDaemonProxy :: Bool,
+    runEffectExtraNixOptions :: [(Text, Text)],
+    -- | Whether we can relax security in favor of usability; 'True' in @hci effect run@. 'False' in agent.
+    runEffectFriendly :: Bool
   }
 
 (=:) :: k -> a -> Map k a
@@ -100,10 +133,11 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
                   tok <- token
                   pure $
                     Formats.Secret.Secret
-                      { data_ = M.singleton "token" $ A.String tok
+                      { data_ = M.singleton "token" $ A.String tok,
+                        condition = Nothing
                       }
             )
-  writeSecrets secretsPath drvSecretsMap extraSecrets (toS secretsDir)
+  writeSecrets (runEffectFriendly p) (runEffectSecretContext p) secretsPath drvSecretsMap extraSecrets (toS secretsDir)
   liftIO $ do
     -- Nix sandbox sets tmp to buildTopDir
     -- Nix sandbox reference: https://github.com/NixOS/nix/blob/24e07c428f21f28df2a41a7a9851d5867f34753a/src/libstore/build.cc#L2545
@@ -143,21 +177,61 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
             ]
         (//) :: Ord k => Map k a -> Map k a -> Map k a
         (//) = flip M.union
-    Container.run
-      runcDir
-      Container.Config
-        { extraBindMounts =
-            [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
-              BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
-              BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
-              -- we cannot bind mount this read-only because of https://github.com/opencontainers/runc/issues/1523
-              BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = False},
-              BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = "/nix/var/nix/daemon-socket/socket", readOnly = True}
-            ],
-          executable = decodeUtf8With lenientDecode drvBuilder,
-          arguments = map (decodeUtf8With lenientDecode) drvArgs,
-          environment = overridableEnv // drvEnv' // onlyImpureOverridableEnv // impureEnvVars // fixedEnv,
-          workingDirectory = "/build",
-          hostname = "hercules-ci",
-          rootReadOnly = False
-        }
+    let (withNixDaemonProxyPerhaps, forwardedSocketPath) =
+          if runEffectUseNixDaemonProxy p
+            then
+              let socketPath = dir </> "nix-daemon-socket"
+               in (withNixDaemonProxy (runEffectExtraNixOptions p) socketPath, socketPath)
+            else (identity, "/nix/var/nix/daemon-socket/socket")
+
+    withNixDaemonProxyPerhaps $
+      Container.run
+        runcDir
+        Container.Config
+          { extraBindMounts =
+              [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
+                BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
+                BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
+                -- we cannot bind mount this read-only because of https://github.com/opencontainers/runc/issues/1523
+                BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = False},
+                BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = toS forwardedSocketPath, readOnly = True}
+              ],
+            executable = decodeUtf8With lenientDecode drvBuilder,
+            arguments = map (decodeUtf8With lenientDecode) drvArgs,
+            environment = overridableEnv // drvEnv' // onlyImpureOverridableEnv // impureEnvVars // fixedEnv,
+            workingDirectory = "/build",
+            hostname = "hercules-ci",
+            rootReadOnly = False
+          }
+
+withNixDaemonProxy :: [(Text, Text)] -> FilePath -> IO a -> IO a
+withNixDaemonProxy extraNixOptions socketPath wrappedAction = do
+  workerExe <- WorkerProcess.getWorkerExe
+  let opts = ["nix-daemon", show extraNixOptions]
+      procSpec =
+        (Process.proc workerExe opts)
+          { -- Process.env = Just workerEnv,
+            Process.close_fds = True
+            -- Process.cwd = Just workDir
+          }
+  daemonCmdChan <- liftIO newChan
+  daemonReadyVar <- liftIO newEmptyMVar
+  let onDaemonEvent :: MonadIO m => DaemonStarted -> m ()
+      onDaemonEvent DaemonStarted {} = liftIO (void $ tryPutMVar daemonReadyVar ())
+  liftIO $ writeChan daemonCmdChan (Just $ Just $ StartDaemon {socketPath = socketPath})
+  UnliftIO.withAsync (runWorker procSpec (\_ s -> liftIO (C8.hPutStrLn stderr ("hci proxy nix-daemon: " <> s))) daemonCmdChan onDaemonEvent) $ \daemonAsync -> do
+    race (readMVar daemonReadyVar) (wait daemonAsync) >>= \case
+      Left _ -> pass
+      Right e -> throwIO $ FatalError $ "Hercules CI proxy nix-daemon exited before being told to; status " <> show e
+
+    a <- wrappedAction
+
+    timeoutResult <- timeout (60 * 1000 * 1000) $ do
+      writeChan daemonCmdChan (Just Nothing)
+      writeChan daemonCmdChan Nothing
+      void $ wait daemonAsync
+    case timeoutResult of
+      Nothing -> putErrText "warning: Hercules CI proxy nix-daemon did not shut down in time."
+      _ -> pass
+
+    pure a

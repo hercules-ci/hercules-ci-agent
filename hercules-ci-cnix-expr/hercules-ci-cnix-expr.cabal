@@ -14,12 +14,22 @@ build-type:     Custom
 extra-source-files:
     CHANGELOG.md
 
+data-dir: data
+data-files:
+  vendor/flake-compat/*.nix
+  vendor/flake-compat/COPYING
+
 source-repository head
   type: git
   location: https://github.com/hercules-ci/hercules-ci-agent
 
+-- Deprecated
 flag nix-2_4
   description: Build for Nix >=2.4pre*
+  default: True
+
+flag nix-2_5
+  description: Build for Nix >=2.5pre*
   default: False
 
 -- match the C++ language standard Nix is using
@@ -28,6 +38,12 @@ common cxx-opts
     -std=c++17
     -Wall
   extra-libraries: stdc++
+
+  if flag(nix-2_5)
+    cxx-options:
+      -DNIX_2_5
+    cpp-options:
+      -DNIX_2_5
 
   if os(darwin)
     -- avoid https://gitlab.haskell.org/ghc/ghc/issues/11829
@@ -58,24 +74,32 @@ library
       Hercules.CNix.Expr.Context
       Hercules.CNix.Expr.Raw
       Hercules.CNix.Expr.Typed
+      Hercules.CNix.Expr.Schema
+  other-modules:
+      Paths_hercules_ci_cnix_expr
 
   hs-source-dirs:
       src
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns
   build-depends:
-      aeson
+      aeson >= 2
     , base >=4.7 && <5
     , bytestring
     , conduit
+    , directory
+    , filepath
     , hercules-ci-cnix-store
     , containers
     , exceptions
     , inline-c
     , inline-c-cpp
     , protolude >= 0.3
+    , scientific
     , text
     , unliftio
+    , unordered-containers
+    , vector
   default-language: Haskell2010
   include-dirs:
       include
@@ -83,17 +107,41 @@ library
       hercules-ci-cnix/expr.hxx
   extra-libraries:
       boost_context
+  pkgconfig-depends:
+      nix-store >= 2.4
+    , nix-expr >= 2.4
+    , nix-main >= 2.4
 
-  if flag(nix-2_4)
-    cpp-options:
-        -DNIX_2_4
-    pkgconfig-depends:
-        nix-store >= 2.4
-      , nix-expr >= 2.4
-      , nix-main >= 2.4
-  else
-    pkgconfig-depends:
-        nix-store >= 2.0
-      , nix-expr >= 2.0
-      , nix-main >= 2.0
-      , bdw-gc
+
+test-suite hercules-ci-cnix-expr-tests
+  type: exitcode-stdio-1.0
+  main-is: TestMain.hs
+  other-modules:
+      Hercules.CNix.ExprSpec
+      Hercules.CNix.Store.TestUtil
+      Hercules.CNix.Expr.SchemaSpec
+      SingleState
+      Spec
+  hs-source-dirs:
+      test
+  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
+  ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N
+  -- trace on exception (profiling):
+  -- -with-rtsopts=-xc
+  build-depends:
+      aeson
+    , base
+    , bytestring
+    , containers
+    , hercules-ci-cnix-expr
+    , hercules-ci-cnix-store
+    , hspec
+    , protolude
+    , QuickCheck
+    , scientific
+    , temporary
+    , unordered-containers
+    , vector
+  build-tool-depends:
+      hspec-discover:hspec-discover == 2.*
+  default-language: Haskell2010

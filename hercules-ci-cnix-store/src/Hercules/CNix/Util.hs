@@ -17,7 +17,7 @@ import Hercules.CNix.Store.Context
   ( context,
   )
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude
 import System.Mem.Weak (deRefWeak)
 import System.Posix (Handler (Catch), installHandler, sigHUP, sigINT, sigTERM, sigUSR1)

@@ -82,6 +82,13 @@ getBranchUpstream = do
     else do
       exitMsg "upstream branch is not remote"
 
+getIsDefault :: IO Bool
+getIsDefault = do
+  upstream <- getBranchUpstream
+  upstreamRef <- readProcessString "git" ["rev-parse", "--symbolic-full-name", "@{u}"] mempty
+  upstreamDefaultRef <- readProcessString "git" ["rev-parse", "--symbolic-full-name", toS upstream <> "/HEAD"] mempty
+  pure (upstreamRef == upstreamDefaultRef)
+
 getRemoteURL :: Text -> IO Text
 getRemoteURL remoteName =
   readProcessItem "git" ["remote", "get-url", toS remoteName] mempty

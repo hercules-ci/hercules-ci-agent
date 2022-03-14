@@ -1,5 +1,14 @@
+* Configuration Reference
+** xref:agent-config.adoc[Configuration File]
+** xref:binary-caches-json.adoc[`binary-caches.json`]
+** xref:secrets-json.adoc[`secrets.json`]
+** xref:netrc.adoc[Netrc]
 * xref:deployment-requirements.adoc[Deployment Requirements]
-* xref:evaluation.adoc[Evaluation]
-* xref:agent-config.adoc[Configuration File]
-* xref:binary-caches-json.adoc[`binary-caches.json`]
-* xref:data-sharing.adoc[Data sharing overview]
+* xref:job-definition.adoc[Job Definition]
+** xref:evaluation.adoc[Evaluation]
+** xref:effects.adoc[Effects]
+** xref:legacy-evaluation.adoc[Legacy Evaluation]
+* Security Reference
+** xref:data-sharing.adoc[Data sharing overview]
+** xref:netrc.adoc#security[Repo and netrc security]
+** xref:effects-security.adoc[Effects Security]

@@ -1,6 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
-{-# LANGUAGE PackageImports #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Hercules.Agent.Socket
@@ -14,7 +14,7 @@ where
 
 import Control.Concurrent.STM.TBQueue (TBQueue, flushTBQueue, newTBQueue, writeTBQueue)
 import Control.Concurrent.STM.TChan (TChan, writeTChan)
-import Control.Concurrent.STM.TVar (TVar, modifyTVar, newTVar, readTVar, writeTVar)
+import Control.Concurrent.STM.TVar (TVar, modifyTVar, readTVar, writeTVar)
 import Control.Monad.IO.Unlift
 import qualified Data.Aeson as A
 import Data.DList (DList, fromList)
@@ -34,6 +34,7 @@ import qualified Network.WebSockets as WS
 import Protolude hiding (atomically, handle, race, race_)
 import UnliftIO.Async (race, race_)
 import UnliftIO.Exception (handle)
+import UnliftIO.STM (readTVarIO)
 import UnliftIO.Timeout (timeout)
 import Wuss (runSecureClientWith)
 
@@ -44,12 +45,12 @@ data Socket r w = Socket
   }
 
 syncIO :: Socket r w -> IO ()
-syncIO = join . fmap atomically . atomically . sync
+syncIO = atomically <=< atomically . sync
 
 -- | Parameters to start 'withReliableSocket'.
 data SocketConfig ap sp m = SocketConfig
   { makeHello :: m ap,
-    checkVersion :: (sp -> m (Either Text ())),
+    checkVersion :: sp -> m (Either Text ()),
     baseURL :: URI,
     path :: Text,
     token :: ByteString
@@ -93,13 +94,13 @@ checkVersion' si =
 runReliableSocket :: forall ap sp m. (A.ToJSON ap, A.FromJSON sp, MonadUnliftIO m, KatipContext m) => SocketConfig ap sp m -> TBQueue (Frame ap ap) -> TChan sp -> TVar Integer -> forall a. m a
 runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = katipAddNamespace "Socket" do
   expectedAck <- liftIO $ newTVarIO Nothing
-  (unacked :: TVar (DList (Frame Void ap))) <- atomically $ newTVar mempty
-  (lastServiceN :: TVar Integer) <- atomically $ newTVar (-1)
+  (unacked :: TVar (DList (Frame Void ap))) <- newTVarIO mempty
+  (lastServiceN :: TVar Integer) <- newTVarIO (-1)
   let katipExceptionContext e =
         katipAddContext (sl "message" (displayException e))
           . katipAddContext (sl "exception" (show e :: [Char]))
       logWarningPause :: SomeException -> m ()
-      logWarningPause e | Just (WS.ConnectionClosed) <- fromException e = do
+      logWarningPause e | Just WS.ConnectionClosed <- fromException e = do
         katipExceptionContext e $ logLocM InfoS "Socket closed. Reconnecting."
         liftIO $ threadDelay 10_000_000
       logWarningPause e | Just (WS.ParseException "not enough bytes") <- fromException e = do
@@ -111,7 +112,7 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
       setExpectedAckForMsgs :: [Frame ap ap] -> m ()
       setExpectedAckForMsgs msgs =
         msgs
-          & foldMap (\case Frame.Msg {n = n} -> Option $ Just $ Max n; _ -> mempty)
+          & foldMap (\case Frame.Msg {n = n} -> Just $ Max n; _ -> mempty)
           & traverse_ (\(Max n) -> setExpectedAck n)
       send :: Connection -> [Frame ap ap] -> m ()
       send conn = sendSorted . sortBy (compare `on` msgN)
@@ -129,7 +130,7 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
       recv :: Connection -> m (Frame sp sp)
       recv conn = do
         withTimeout ackTimeout (FatalError "Hercules.Agent.Socket.recv timed out") $
-          (liftIO $ A.eitherDecode <$> WS.receiveData conn) >>= \case
+          liftIO (A.eitherDecode <$> WS.receiveData conn) >>= \case
             Left e -> liftIO $ throwIO (FatalError $ "Error decoding service message: " <> toS e)
             Right r -> pure r
       handshake conn = katipAddNamespace "Handshake" do
@@ -151,15 +152,15 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
         sendUnacked conn
       sendUnacked :: Connection -> m ()
       sendUnacked conn = do
-        unackedNow <- atomically $ readTVar unacked
-        send conn $ fmap (Frame.mapOob absurd) $ toList unackedNow
+        unackedNow <- readTVarIO unacked
+        send conn $ Frame.mapOob absurd <$> toList unackedNow
       cleanAcknowledged newAck = atomically do
         unacked0 <- readTVar unacked
         writeTVar unacked $
           unacked0
             & toList
             & filter
-              ( \umsg -> case umsg of
+              ( \case
                   Frame.Msg {n = n} -> n > newAck
                   Frame.Oob x -> absurd x
                   Frame.Ack {} -> False
@@ -184,7 +185,7 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
               cleanAcknowledged n
             Frame.Oob o -> atomically do
               writeTChan serviceMessageChan o
-            Frame.Exception e -> katipAddContext (sl "message" e) $ logLocM WarningS $ "Service exception"
+            Frame.Exception e -> katipAddContext (sl "message" e) $ logLocM WarningS "Service exception"
       writeThread conn = katipAddNamespace "Writer" do
         forever do
           msgs <- atomically do
@@ -198,7 +199,7 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
       setExpectedAck n = do
         now <- liftIO getCurrentTime
         atomically do
-          writeTVar expectedAck $ Just $ (n, now)
+          writeTVar expectedAck $ Just (n, now)
       noAckCleanupThread = noAckCleanupThread' (-1)
       noAckCleanupThread' confirmedLastTime = do
         (expectedN, sendTime) <- atomically do
@@ -230,7 +231,7 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
           readThread conn `race_` writeThread conn `race_` noAckCleanupThread
 
 msgN :: Frame o a -> Maybe Integer
-msgN (Frame.Msg {n = n}) = Just n
+msgN Frame.Msg {n = n} = Just n
 msgN _ = Nothing
 
 withConnection' :: (MonadUnliftIO m) => SocketConfig any0 any1 m -> (Connection -> m a) -> m a

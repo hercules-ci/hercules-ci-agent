@@ -1,7 +1,13 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Hercules.CNix.Expr
   ( module Hercules.CNix.Expr,
@@ -18,7 +24,13 @@ where
 -- TODO: Map Nix-specific C++ exceptions to a CNix exception type
 
 import Conduit
+import qualified Data.Aeson as A
+import Data.Coerce (coerce)
+import qualified Data.HashMap.Lazy as H
 import qualified Data.Map as M
+import qualified Data.Scientific as Sci
+import Data.Vector (Vector)
+import qualified Data.Vector as V
 import Foreign (nullPtr)
 import qualified Foreign.C.String
 import Hercules.CNix.Encapsulation (moveToForeignPtrWrapper)
@@ -28,8 +40,11 @@ import Hercules.CNix.Expr.Typed
 import Hercules.CNix.Store
 import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
-import Protolude hiding (evalState, throwIO)
+import qualified Language.C.Inline.Cpp.Exception as C
+import Paths_hercules_ci_cnix_expr (getDataFileName)
+import Protolude hiding (evalState)
+import System.Directory (makeAbsolute)
+import Data.Aeson.KeyMap (toMapText)
 
 C.context (Hercules.CNix.Store.Context.context <> Hercules.CNix.Expr.Context.evalContext)
 
@@ -57,7 +72,9 @@ C.include "<nix/derivations.hh>"
 
 C.include "<nix/globals.hh>"
 
-C.include "<nix-compat.hh>"
+C.include "<nix/flake/flake.hh>"
+
+C.include "<nix/flake/flakeref.hh>"
 
 C.include "hercules-ci-cnix/expr.hxx"
 
@@ -77,6 +94,14 @@ init =
     [C.throwBlock| void {
       nix::initNix();
       nix::initGC();
+#ifdef NIX_2_5
+      std::set<nix::ExperimentalFeature> features(nix::settings.experimentalFeatures.get());
+      features.insert(nix::ExperimentalFeature::Flakes);
+#else
+      Strings features(nix::settings.experimentalFeatures.get());
+      features.push_back("flakes");
+#endif
+      nix::settings.experimentalFeatures.assign(features);
     } |]
 
 setTalkative :: IO ()
@@ -143,6 +168,21 @@ withEvalStateConduit (Store store) =
     )
     (\x -> liftIO [C.throwBlock| void { delete $(EvalState* x); } |])
 
+-- | Insert an allowed path. Only has an effect when in restricted or pure mode.
+addAllowedPath :: Ptr EvalState -> ByteString -> IO ()
+addAllowedPath evalState path =
+  [C.throwBlock| void {
+    std::string path = std::string($bs-ptr:path, $bs-len:path);
+    EvalState &evalState = *$(EvalState *evalState);
+    if (evalState.allowedPaths) {
+      evalState.allowedPaths->insert(path);
+    }
+  }|]
+
+addInternalAllowedPaths :: Ptr EvalState -> IO ()
+addInternalAllowedPaths evalState = do
+  addAllowedPath evalState . encodeUtf8 . toS =<< getDataFileName "vendor/flake-compat"
+
 evalFile :: Ptr EvalState -> FilePath -> IO RawValue
 evalFile evalState filename = do
   filename' <- Foreign.C.String.newCString filename
@@ -180,12 +220,7 @@ evalArgs evalState args = do
         throw nix::Error("Could not evaluate automatic arguments");
       }
       Value *r = new (NoGC) Value ();
-#ifdef NIX_2_4
       r->mkAttrs(autoArgs);
-#else
-      r->type = tAttrs;
-      r->attrs = autoArgs;
-#endif
       return r;
     }|]
 
@@ -224,7 +259,6 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
     <$> [C.throwBlock| int {
           Value *v = $(Value *v);
           EvalState &evalState = *$(EvalState *evalState);
-#ifdef NIX_2_4
           Bindings::iterator iter = v->attrs->find(evalState.sRecurseForDerivations);
           if (iter == v->attrs->end()) {
             return 0;
@@ -235,22 +269,6 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
             // nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
             return evalState.forceBool(*iter->value, *iter->pos);
           }
-#else
-          Symbol rfd = evalState.symbols.create("recurseForDerivations");
-          Bindings::iterator iter = v->attrs->find(rfd);
-          if (iter == v->attrs->end()) {
-            return 0;
-          } else {
-            evalState.forceValue(*iter->value, nix::noPos);
-            if (iter->value->type == ValueType::tBool) {
-              return iter->value->boolean ? 1 : 0;
-            } else {
-              // They can be empty attrsets???
-              // Observed in nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
-              return 1;
-            }
-          }
-#endif
         } |]
 
 getAttr :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Maybe RawValue)
@@ -300,11 +318,11 @@ getDrvFile evalState (RawValue v) = liftIO do
       StorePath storePath = drvInfo->requireDrvPath();
 #else
       std::string drvPath = drvInfo->queryDrvPath();
-      StorePath storePath = parseStorePath(*state.store, drvPath);
+      StorePath storePath = state.store->parseStorePath(drvPath);
 #endif
 
       // write it (?)
-      auto drv = state.store->derivationFromPath(printPath23(*state.store, storePath));
+      auto drv = state.store->derivationFromPath(storePath);
 
       return new StorePath(storePath);
     }|]
@@ -341,3 +359,401 @@ getAttrList evalState attrset attrName = do
         pure $ Right (Just b)
       Right _ -> do
         pure $ Right Nothing
+
+-- | Parse a string and eval it.
+valueFromExpressionString ::
+  Ptr EvalState ->
+  -- | The string to parse
+  ByteString ->
+  -- | Base path for path exprs
+  ByteString ->
+  IO RawValue
+valueFromExpressionString evalState s basePath = do
+  mkRawValue
+    =<< [C.throwBlock| Value *{
+      EvalState &evalState = *$(EvalState *evalState);
+      Expr *expr = evalState.parseExprFromString(std::string($bs-ptr:s, $bs-len:s), std::string($bs-ptr:basePath, $bs-len:basePath));
+      Value *r = new (NoGC) Value();
+      evalState.eval(expr, *r);
+      return r;
+  }|]
+
+-- | 'apply' but strict.
+callFunction :: Ptr EvalState -> RawValue -> RawValue -> IO RawValue
+callFunction evalState (RawValue f) (RawValue a) = do
+  mkRawValue
+    =<< [C.throwBlock| Value *{
+      EvalState &evalState = *$(EvalState *evalState);
+      Value *r = new (NoGC) Value();
+      evalState.callFunction(*$(Value *f), *$(Value *a), *r, noPos);
+      return r;
+  }|]
+
+apply :: RawValue -> RawValue -> IO RawValue
+apply (RawValue f) (RawValue a) = do
+  mkRawValue
+    =<< [C.throwBlock| Value *{
+      Value *r = new (NoGC) Value();
+      r->mkApp($(Value *f), $(Value *a));
+      return r;
+    }|]
+
+mkPath :: ByteString -> IO (Value NixPath)
+mkPath path =
+  Value
+    <$> ( mkRawValue
+            =<< [C.throwBlock| Value *{
+      Value *r = new (NoGC) Value();
+      std::string s($bs-ptr:path, $bs-len:path);
+      r->mkPath(s.c_str());
+      return r;
+  }|]
+        )
+
+getFlakeFromFlakeRef :: Ptr EvalState -> ByteString -> IO RawValue
+getFlakeFromFlakeRef evalState flakeRef = do
+  [C.throwBlock| Value *{
+    EvalState &evalState = *$(EvalState *evalState);
+    Value *r = new (NoGC) Value();
+    std::string flakeRefStr($bs-ptr:flakeRef, $bs-len:flakeRef);
+    auto flakeRef = nix::parseFlakeRef(flakeRefStr, {}, true);
+    nix::flake::callFlake(evalState,
+      nix::flake::lockFlake(evalState, flakeRef,
+        nix::flake::LockFlags {
+          .updateLockFile = false,
+          .useRegistries = false,
+          .allowMutable = false,
+        }),
+      *r);
+    return r;
+  }|]
+    >>= mkRawValue
+
+getLocalFlake :: Ptr EvalState -> Text -> IO RawValue
+getLocalFlake evalState path = do
+  absPath <- encodeUtf8 . toS <$> makeAbsolute (toS path)
+  mkRawValue
+    =<< [C.throwBlock| Value *{
+    EvalState &evalState = *$(EvalState *evalState);
+    Value *r = new (NoGC) Value();
+    std::string path($bs-ptr:absPath, $bs-len:absPath);
+    auto flakeRef = nix::parseFlakeRef(path, {}, true);
+    nix::flake::callFlake(evalState,
+      nix::flake::lockFlake(evalState, flakeRef,
+        nix::flake::LockFlags {
+          .updateLockFile = false,
+          .useRegistries = false,
+          .allowMutable = false,
+        }),
+      *r);
+    return r;
+  }|]
+
+getFlakeFromGit :: Ptr EvalState -> Text -> Text -> Text -> IO RawValue
+getFlakeFromGit evalState url ref rev = do
+  -- TODO: use a URL library, test
+  getFlakeFromFlakeRef evalState (encodeUtf8 $ "git+" <> url <> "?ref=" <> ref <> "&rev=" <> rev)
+
+getFlakeFromArchiveUrl :: Ptr EvalState -> Text -> IO RawValue
+getFlakeFromArchiveUrl evalState url = do
+  srcArgs <-
+    toRawValue evalState $
+      ("url" :: ByteString) =: url
+  fn <- valueFromExpressionString evalState "builtins.fetchTarball" "/"
+  pValue <- apply fn srcArgs
+  p <- assertType evalState pValue
+  p' <- getStringIgnoreContext p
+  getFlakeFromFlakeRef evalState p'
+
+traverseWithKey_ :: Applicative f => (k -> a -> f ()) -> Map k a -> f ()
+traverseWithKey_ f = M.foldrWithKey (\k a more -> f k a *> more) (pure ())
+
+class ToRawValue a where
+  toRawValue :: Ptr EvalState -> a -> IO RawValue
+  default toRawValue :: ToValue a => Ptr EvalState -> a -> IO RawValue
+  toRawValue evalState a = rtValue <$> toValue evalState a
+
+class ToRawValue a => ToValue a where
+  type NixTypeFor a :: Type
+  toValue :: Ptr EvalState -> a -> IO (Value (NixTypeFor a))
+
+-- | Marshall values from Nix into Haskell. Instances must satisfy the
+-- requirements that:
+--
+--  - Only a single Nix value type is acceptable for the Haskell type.
+--  - Marshalling does not fail, as the Nix runtime type has already been checked.
+class FromValue n a | a -> n where
+  fromValue :: Value n -> IO a
+
+instance FromValue Bool Bool where
+  fromValue = getBool
+
+-- | Identity
+instance ToRawValue RawValue where
+  toRawValue _ = pure
+
+-- | Upcast
+instance ToRawValue (Value a)
+
+-- | Identity
+instance ToValue (Value a) where
+  type NixTypeFor (Value a) = a
+  toValue _ = pure
+
+instance ToRawValue C.CBool
+
+instance ToValue C.CBool where
+  type NixTypeFor C.CBool = Bool
+  toValue _ b =
+    coerce
+      <$> [C.block| Value *{
+      Value *r = new (NoGC) Value();
+      r->mkBool($(bool b));
+      return r;
+    }|]
+
+instance ToRawValue Bool
+
+instance ToValue Bool where
+  type NixTypeFor Bool = Bool
+  toValue es False = toValue es (0 :: C.CBool)
+  toValue es True = toValue es (1 :: C.CBool)
+
+-- | The native Nix integer type
+instance ToRawValue Int64
+
+-- | The native Nix integer type
+instance ToValue Int64 where
+  type NixTypeFor Int64 = NixInt
+  toValue _ i =
+    coerce
+      <$> [C.block| Value *{
+    Value *r = new (NoGC) Value();
+    r->mkInt($(int64_t i));
+    return r;
+  }|]
+
+instance ToRawValue Int
+
+instance ToValue Int where
+  type NixTypeFor Int = NixInt
+  toValue es i = toValue es (fromIntegral i :: Int64)
+
+instance ToRawValue C.CDouble
+
+instance ToValue C.CDouble where
+  type NixTypeFor C.CDouble = NixFloat
+  toValue _ f =
+    coerce
+      <$> [C.block| Value *{
+        Value *r = new (NoGC) Value();
+        r->mkFloat($(double f));
+        return r;
+      }|]
+
+instance ToRawValue Double
+
+instance ToValue Double where
+  type NixTypeFor Double = NixFloat
+  toValue es f = toValue es (fromRational (toRational f) :: C.CDouble)
+
+-- | Nix String
+instance ToValue ByteString where
+  type NixTypeFor ByteString = NixString
+  toValue _ s =
+    -- TODO simplify when r->mkString(string_view) is safe in all supported Nix versions
+    coerce
+      <$> [C.block| Value *{
+    Value *r = new (NoGC) Value();
+    std::string_view s($bs-ptr:s, $bs-len:s);
+    // If empty, the pointer may be invalid; don't use it.
+    if (s.size() == 0) {
+      r->mkString("");
+    }
+    else {
+      r->mkString(GC_STRNDUP(s.data(), s.size()));
+    }
+    return r;
+  }|]
+
+-- | Nix String
+instance ToRawValue ByteString
+
+-- | UTF-8
+instance ToRawValue Text
+
+-- | UTF-8
+instance ToValue Text where
+  type NixTypeFor Text = NixString
+  toValue es s = toValue es (encodeUtf8 s)
+
+instance ToRawValue a => ToRawValue (Map ByteString a)
+
+#if NIX_IS_AT_LEAST(2,6,0)
+withBindingsBuilder :: Integral n => Ptr EvalState -> n -> (Ptr BindingsBuilder' -> IO ()) -> IO (Value NixAttrs)
+withBindingsBuilder evalState n f = do
+  withBindingsBuilder' evalState n \bb -> do
+    f bb
+    v <- [C.block| Value* {
+      auto v = new (NoGC) Value();
+      v->mkAttrs(*$(BindingsBuilder *bb));
+      return v;
+    }|]
+    Value <$> mkRawValue v
+
+withBindingsBuilder' :: Integral n => Ptr EvalState -> n -> (Ptr BindingsBuilder' -> IO a) -> IO a
+withBindingsBuilder' evalState n =
+  let l :: C.CInt
+      l = fromIntegral n
+  in
+    bracket
+      [C.block| BindingsBuilder* {
+        auto &evalState = *$(EvalState *evalState);
+        return new BindingsBuilder(evalState, evalState.allocBindings($(int l)));
+      }|]
+      \bb -> [C.block| void { delete $(BindingsBuilder *bb); }|]
+#endif
+
+instance ToRawValue a => ToValue (Map ByteString a) where
+  type NixTypeFor (Map ByteString a) = NixAttrs
+
+#if NIX_IS_AT_LEAST(2,6,0)
+  toValue evalState attrs = withBindingsBuilder evalState (length attrs) \bb -> do
+    attrs & traverseWithKey_ \k a -> do
+      RawValue aRaw <- toRawValue evalState a
+      [C.block| void {
+          EvalState &evalState = *$(EvalState *evalState);
+          std::string k($bs-ptr:k, $bs-len:k);
+          Value &a = *$(Value *aRaw);
+          $(BindingsBuilder *bb)->alloc(evalState.symbols.create(k)) = a;
+        }|]
+#else
+  toValue evalState attrs = do
+    let l :: C.CInt
+        l = fromIntegral (length attrs)
+    v <-
+      [C.block| Value* {
+          EvalState &evalState = *$(EvalState *evalState);
+          Value *v = new (NoGC) Value();
+          evalState.mkAttrs(*v, $(int l));
+          return v;
+        }|]
+    attrs & traverseWithKey_ \k a -> do
+      RawValue aRaw <- toRawValue evalState a
+      [C.block| void {
+          EvalState &evalState = *$(EvalState *evalState);
+          std::string k($bs-ptr:k, $bs-len:k);
+          Value &a = *$(Value *aRaw);
+          *evalState.allocAttr(*$(Value *v), evalState.symbols.create(k)) = a;
+        }|]
+    [C.block| void {
+        $(Value *v)->attrs->sort();
+      }|]
+    Value <$> mkRawValue v
+#endif
+
+instance ToRawValue a => ToRawValue (Map Text a)
+
+instance ToRawValue a => ToValue (Map Text a) where
+  type NixTypeFor (Map Text a) = NixAttrs
+  toValue evalState attrs = toValue evalState (M.mapKeys encodeUtf8 attrs)
+
+mkNull :: IO RawValue
+mkNull =
+  coerce
+    <$> [C.block| Value* {
+          Value *v = new (NoGC) Value();
+          v->mkNull();
+          return v;
+        }|]
+
+instance ToRawValue A.Value where
+  toRawValue es (A.Bool b) = toRawValue es b
+  toRawValue es (A.String s) = toRawValue es s
+  toRawValue es (A.Object fs) = toRawValue es $ toMapText fs
+  toRawValue _es A.Null = mkNull
+  toRawValue es (A.Number n) | Just i <- Sci.toBoundedInteger n = toRawValue es (i :: Int64)
+  toRawValue es (A.Number f) = toRawValue es (Sci.toRealFloat f :: Double)
+  toRawValue es (A.Array a) = toRawValue es a
+
+-- | For deriving-via of 'ToRawValue' using 'ToJSON'.
+newtype ViaJSON a = ViaJSON {fromViaJSON :: a}
+  deriving newtype (Eq, Ord, Read, Show)
+
+instance A.ToJSON a => ToRawValue (ViaJSON a) where
+  toRawValue es (ViaJSON a) = toRawValue es (A.toJSON a)
+
+hmTraverseWithKey_ :: Applicative f => (k -> a -> f ()) -> H.HashMap k a -> f ()
+hmTraverseWithKey_ f = H.foldrWithKey (\k a more -> f k a *> more) (pure ())
+
+instance ToRawValue a => ToRawValue (H.HashMap Text a)
+
+instance ToRawValue a => ToValue (H.HashMap Text a) where
+  type NixTypeFor (H.HashMap Text a) = NixAttrs
+
+#if NIX_IS_AT_LEAST(2,6,0)
+  toValue evalState attrs = withBindingsBuilder evalState (length attrs) \bb -> do
+    attrs & hmTraverseWithKey_ \k' a -> do
+      RawValue aRaw <- toRawValue evalState a
+      let k = encodeUtf8 k'
+      [C.block| void {
+          EvalState &evalState = *$(EvalState *evalState);
+          std::string k($bs-ptr:k, $bs-len:k);
+          Value &a = *$(Value *aRaw);
+          $(BindingsBuilder *bb)->alloc(evalState.symbols.create(k)) = a;
+        }|]
+#else
+  toValue evalState attrs = do
+    let l :: C.CInt
+        l = fromIntegral (length attrs)
+    v <-
+      [C.block| Value* {
+          EvalState &evalState = *$(EvalState *evalState);
+          Value *v = new (NoGC) Value();
+          evalState.mkAttrs(*v, $(int l));
+          return v;
+        }|]
+    attrs & hmTraverseWithKey_ \k' a -> do
+      RawValue aRaw <- toRawValue evalState a
+      let k = encodeUtf8 k'
+      [C.block| void {
+          EvalState &evalState = *$(EvalState *evalState);
+          std::string k($bs-ptr:k, $bs-len:k);
+          Value &a = *$(Value *aRaw);
+          *evalState.allocAttr(*$(Value *v), evalState.symbols.create(k)) = a;
+        }|]
+    [C.block| void {
+        $(Value *v)->attrs->sort();
+      }|]
+    Value <$> mkRawValue v
+#endif
+
+instance ToRawValue a => ToRawValue (Vector a)
+
+instance ToRawValue a => ToValue (Vector a) where
+  type NixTypeFor (Vector a) = NixList
+  toValue evalState vec =
+    coerce <$> do
+      let l :: C.CInt
+          l = fromIntegral (length vec)
+      v <-
+        [C.block| Value* {
+          EvalState &evalState = *$(EvalState *evalState);
+          Value *v = new (NoGC) Value();
+          evalState.mkList(*v, $(int l));
+          return v;
+        }|]
+      vec & V.imapM_ \i a -> do
+        RawValue aRaw <- toRawValue evalState a
+        let ix = fromIntegral i
+        [C.block| void {
+          Value &v = *$(Value *v);
+          v.listElems()[$(int ix)] = $(Value *aRaw);
+        }|]
+      Value <$> mkRawValue v
+
+instance ToRawValue a => ToRawValue [a]
+
+instance ToRawValue a => ToValue [a] where
+  type NixTypeFor [a] = NixList
+  toValue es l = toValue es (V.fromList l)

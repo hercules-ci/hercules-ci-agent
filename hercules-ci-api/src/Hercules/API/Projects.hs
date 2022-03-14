@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module Hercules.API.Projects where
 
@@ -8,6 +9,8 @@ import Hercules.API.Build.EvaluationDetail
   )
 import qualified Hercules.API.Build.FailureGraph as FailureGraph
 import Hercules.API.Build.Log (Log)
+import Hercules.API.Inputs.ImmutableGitInput (ImmutableGitInput)
+import Hercules.API.Paging (PagedResponse)
 import Hercules.API.Prelude
 import Hercules.API.Projects.CreateProject
   ( CreateProject,
@@ -27,8 +30,48 @@ import Hercules.API.SourceHostingSite.SourceHostingSite
 import Servant.API
 import Servant.API.Generic
 
+data ProjectResourceGroup auth f = ProjectResourceGroup
+  { getJobs ::
+      f :- Summary "Retrieve information about jobs"
+        :> "jobs"
+        :> QueryParam' '[Optional, Description "Constrain the results by git ref, such as refs/heads/my-branch or HEAD"] "ref" Text
+        :> QueryParam' '[Optional, Description "Only return successful jobs, or only failed ones"] "success" Bool
+        :> QueryParam' '[Optional, Description "Return jobs that come \"after\" the provided id in the response order."] "offsetId" (Id Job)
+        :> auth
+        :> Get '[JSON] PagedJobs,
+    getJobSource ::
+      f :- Summary "Get source information from the latest successful job/jobs satisfying the provided requirements."
+        :> Description "The job parameter can be omitted to require all jobs for a commit to succeed. This can have the unexpected effect of reverting when a change in the extraInputs causes a regression. So it is recommended to specify one or more jobs. Common examples are \"onPush.default\" for a pinned build or \"onPush.ci\" for a build using extraInputs to integrate continuously."
+        :> "source"
+        :> QueryParam' '[Optional, Description "Constrain the results by git ref, such as refs/heads/my-branch. Defaults to HEAD."] "ref" Text
+        :> QueryParams "jobs" Text
+        :> auth
+        :> Get '[JSON] ImmutableGitInput
+  }
+  deriving (Generic)
+
 data ProjectsAPI auth f = ProjectsAPI
-  { projectsByOwner ::
+  { byProjectId ::
+      f
+        :- Substitute
+             ( "projects"
+                 :> Capture' '[Required, Strict] "projectId" (Id Project)
+                 :> Placeholder
+             )
+             (ToServantApi (ProjectResourceGroup auth)),
+    byProjectName ::
+      f
+        :- Substitute
+             ( "site"
+                 :> Capture' '[Required, Strict] "site" (Name SourceHostingSite)
+                 :> "account"
+                 :> Capture' '[Required, Strict] "account" (Name Account)
+                 :> "project"
+                 :> Capture' '[Required, Strict] "project" (Name Project)
+                 :> Placeholder
+             )
+             (ToServantApi (ProjectResourceGroup auth)),
+    projectsByOwner ::
       f :- Summary "List all projects owned by an account."
         :> "accounts"
         :> Capture' '[Required, Strict] "accountId" (Id Account)
@@ -63,14 +106,6 @@ data ProjectsAPI auth f = ProjectsAPI
         :> auth
         :> "create-user-effect-token"
         :> Post '[JSON] CreateUserEffectTokenResponse,
-    projectJobs ::
-      f :- Summary "List all jobs in a project"
-        :> Description "A list of a project's revisions and their details and status."
-        :> "projects"
-        :> Capture' '[Required, Strict] "project" (Id Project)
-        :> "jobs"
-        :> auth
-        :> Get '[JSON] [Job],
     findJobs ::
       f :- Summary "Find jobs"
         :> "jobs"
@@ -132,3 +167,6 @@ data ProjectsAPI auth f = ProjectsAPI
         :> Get '[JSON] Log
   }
   deriving (Generic)
+
+newtype PagedJobs = PagedJobs (PagedResponse Job)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

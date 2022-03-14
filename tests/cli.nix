@@ -9,12 +9,22 @@ runCommand "test-cli"
     "kind": "Secret",
     "data": {
       "foo": "bar"
+    },
+    "condition": {
+      "and": [
+        {
+          "isOwner": "hercules-ci"
+        },
+        {
+          "isRepo": "dummy"
+        },
+        "isDefaultBranch"
+      ]
     }
   }
   EOF
-  >actual hci secret echo --string foo bar
+  >actual hci secret echo --project github/hercules-ci/dummy --string foo bar
   json-diff expected actual
-  touch $out
 
   >expected cat <<EOF
   {

@@ -8,7 +8,6 @@
 #include <nix/get-drvs.hh>
 #include <nix/derivations.hh>
 #include <nix/globals.hh>
-#include <nix-compat.hh>
 #include "HsFFI.h"
 
 using namespace nix;

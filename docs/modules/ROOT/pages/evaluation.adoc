@@ -1,95 +1,186 @@
 = Evaluation
 
-Evaluation is the first step when it comes to building your project. It is performed by your agent as follows:
+Project configuration for Hercules CI is written in the Nix language. Your agent will evaluate the `herculesCI` attribute of a flake, or, if a repository does not contain `flake.nix`, the agent will look for that attribute in `nix/ci.nix`, `ci.nix` or `default.nix`.
 
-. At the top-level of your repository, the agent will search for a Nix file to
-   evaluate in the following order: `nix/ci.nix`, `ci.nix` or `default.nix`
-// TODO: link to how pinning is done
-. `NIX_PATH` will be empty. Make sure you pin nixpkgs and not rely on `<nixpkgs>`
-    search path. This is to ensure reproducability and purity also when it comes to nixpkgs
-. If any of the attributes fail to evaluate, job evaluation phase will be marked as failed
-   and error messages will be shown inline per attribute
+Inside this expression, Hercules CI looks for an optional but recommended `herculesCI` attribute. If this attribute is not present, the evaluator will either:
 
-[[traversal]]
-== Traversal
+ * if it is **a flake**, evaluate a default `onPush` job with sensible defaults, or
+ * if it is a `ci.nix` or `default.nix`, fall back to the xref:legacy-evaluation.adoc[pre-0.9 evaluation behavior].
 
-[[top-level]]
-=== Top level
-
-The top-level value in `nix/ci.nix`, `ci.nix` or `default.nix` may be a https://nixos.org/nix/manual/#ss-functions[function&#8288;icon:external-link[]],
-as long as all arguments have default values. Such a function will be invoked and the result must be a https://nixos.org/nix/manual/#ssec-values[value&#8288;icon:external-link[]].
-
-[[attrsets]]
-=== Attribute set traversal
-
-The value resulting from <<Top level>> is traversed according to the following rules:
-
- * If the current value is a derivation, build it asynchronously
-
- * If the current value is a functor, ignore the attributes, call it and traverse it
-
- * If the current value is an attribute set and
-    ** If it is the root value, traverse *one* level of attributes.
-    ** If the attribute set contains `recurseForDerivations = true`, traverse *one* level of attributes.
-    ** Otherwise, ignore
-
- * Otherwise, ignore
-
-Note that for an attribute set `a` it must be the root or it must have `a.recurseForDerivations == true`, which can be added with `pkgs.recurseIntoAttrs`. This must be repeated in every layer of the nested attribute sets. Additionaly, recursion into nested attribute sets is limited to a depth of 10 attributes or functor calls.
-
-[[attrsets-example]]
-=== Example of nested attribute sets
-
-This is an example `ci.nix` that builds `myDrvs.hello`.
-
-```
-let
-  pkgs = builtins.fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/archive/${rev}.tar.gz";
-  };
-in
-{
-  myDrvs = pkgs.recurseIntoAttrs {
-    hello = pkgs.hello;
-  };
-}
-```
-
-[[platforms-and-build-matrix]]
-== Platforms and build matrix
-
-Evaluation is always performed on an `x86_64-linux` agent. To build for other platforms, you have to explicitly pass the `system` parameter to Nixpkgs.
-
-To build your project for multiple platforms, the recommended approach is to make the top-level value of `ci.nix` an attribute set with an attribute per platform. Make sure to wrap the values in `recurseIntoAttrs`. The minimal repo from the xref:hercules-ci:ROOT:getting-started/index.adoc#repository-setup[Getting Started guide] has an https://github.com/hercules-ci/nix-ci-minimal-repo/blob/master/ci.nix[example].
-
-This technique can be nested to achieve a build matrix where multiple independent variables are varied.
-
-If some derivations can not be built on a certain platform or configuration, you can use `lib.optionalAttrs`, `lib.filterAttrs` or other functions to remove those.
-
-See also the guide xref:hercules-ci:ROOT:guides/multi-platform.adoc[].
-
-[[differences-with-nix-build]]
-== Differences with `nix-build`
-
-The agent expects the root of the file to be an attribute set and traverses it similarly to how `nix build` does it.
-A few differences exists:
-
-* Hercules CI allows all attribute names, including ones with characters like `.` that are ignored by `nix build`
-* The root must not be a list
-
-[[differences-with-hydra]]
-== Differences with Hydra
-
-Hydra is not compatible with `nix-build`. It rejects the `recurseForDerivations` attribute.
-
-The `ci.nix` format can be built by Hydra using a conversion function, but Hydra will not understand Hercules CI-specific attributes when introduced.
+A simple example of an `herculesCI` attribute looks as follows:
 
 [source,nix]
 ----
-stripRecurseForDerivations =
-  lib.filterAttrsRecursive (n: _: n != "recurseForDerivations");
+  herculesCI = { ... }: {
+    onPush.default = {
+      outputs = { ... }: {
+        # Attributes here will be built for each push.
+        hello = pkgs.hello;
+      };
+    };
+  };
 ----
 
-Hydra reads `meta.hydraPlatforms` to determine whether to build for a platform.
-This logic is not present in the agent, but can be implemented in Nix with a
-filtering function if necessary.
+== `herculesCI` Value
+
+The `herculesCI` attribute can be a function producing an attribute set. If no parameters are needed, xref:attributes-herculesCI[the attribute set] can be provided directly instead.
+
+[[params-herculesCI]]
+== `herculesCI` Parameters
+
+When you define the `herculesCI` attribute as a function, it will receive the following arguments, providing context for your CI/CD configuration <<attributes-herculesCI, attributes>>
+
+// hercules-ci-agent/src/Hercules/Agent/NixFile/HerculesCIArgs.hs
+[[params-herculesCI-commit]]
+=== `ref`, `branch`, `tag`, `rev`, `shortRev`
+
+These strings represent the version and origin of the source that led to the `herculesCI` attribute.
+
+`branch` and `tag` may be null.
+
+// hercules-ci-agent/src/Hercules/Agent/NixFile/HerculesCIArgs.hs
+[[param-herculesCI-primaryRepo]]
+=== `primaryRepo`
+
+Information about the repository and revision of the sources that led to the `herculesCI` attribute.
+
+[[param-herculesCI-primaryRepo.outPath]]
+=== `primaryRepo.outPath`
+
+A path containing the files of the checked out revision.
+
+[[param-herculesCI-primaryRepo-commit]]
+=== `primaryRepo.ref`, `primaryRepo.branch`, `primaryRepo.tag`, `primaryRepo.rev`, `primaryRepo.shortRev`
+
+Same as top-level <<params-herculesCI-commit>>.
+
+// hercules-ci-agent/src/Hercules/Agent/NixFile/HerculesCIArgs.hs
+[[param-herculesCI-herculesCI]]
+=== `herculesCI`
+
+Information about the Hercules CI instance the agent is connected to. This is mostly for Hercules CI Enterprise users; who self-manage the entire stack.
+
+// hercules-ci-agent/src/Hercules/Agent/NixFile/HerculesCIArgs.hs
+[[param-herculesCI-herculesCI.apiBaseUrl]]
+=== `herculesCI.apiBaseUrl`
+
+The base URL of the Hercules CI API. This can be used to differentiate behavior on Hercules CI Enterprise. On non-enterprise agents, the value is `https://hercules-ci.com[https://hercules-ci.com]`. This matches xref:agent-config.adoc#apiBaseUrl[the configuration file].
+
+[[attributes-herculesCI]]
+== `herculesCI` Attributes
+
+The `herculesCI` value primarily defines handlers for what to build and run for various events, such as `onPush`.
+
+// hercules-ci-agent/src/Hercules/Agent/NixFile.hs OnPushSchema
+[[attributes-herculesCI.onPush]]
+=== `onPush`
+
+This declares what to do when a Git `ref` is updated, such as when you push a commit or after you merge a pull request.
+
+If `onPush` is omitted and your `herculesCI` attribute is in a flake, Hercules CI will use the flake to generate <<default-job,a `default` job>>.
+
+If `onPush` is set to `{ }`, no jobs will be created for the push event.
+
+If `onPush` contains attributes, jobs will created for each.
+
+The name will be used as part of the commit status for each resulting job.
+
+// The ability to declare multiple jobs per event is mainly intended to support multiple choices of `extraInputs`.
+
+// hercules-ci-agent/src/Hercules/Agent/NixFile.hs InputDeclSchema
+[[attribute-herculesCI.onPush-extraInputs]]
+=== `onPush.<name>.extraInputs.<inputName>`
+
+Specifies a location to an unpinned dependency. The name chosen for the `<inputName>` placeholder will be used as an attribute argument for <<params-herculesCI.onPush-outputs>>.
+
+[[attribute-herculesCI.onPush-extraInputs-project]]
+=== `onPush.<name>.extraInputs.<inputName>.project`
+
+The name of a repository in the same organization.
+
+[[attribute-herculesCI.onPush-extraInputs-ref]]
+=== `onPush.<name>.extraInputs.<inputName>.ref`
+
+A Git ref indicating the branch or tag to check out. Example: `refs/heads/staging` for a branch called `staging`.
+
+[[attribute-herculesCI.onPush-outputs]]
+=== `onPush.<name>.outputs`
+
+[[params-herculesCI.onPush-outputs]]
+=== `onPush.<name>.outputs` Parameters
+
+The arguments to the `outputs` are sourced from <<attribute-herculesCI.onPush-extraInputs>>, by resolving the inputs to pinned revisions before creating the job.
+
+You can find the pinned revisions in the dashboard or by clicking a commit status.
+
+Other information besides `extraInputs` can be retrieved from the xref:params-herculesCI[`herculesCI` parameters].
+
+[[attributes-herculesCI.onPush-outputs]]
+=== `onPush.<name>.outputs` Attributes
+
+These "output" attributes can be
+
+ * derivations,
+ * effects IF added in `onPush.<name>.outputs.effects`,
+ * attribute sets containing further "outputs", in a nested manner,
+ * other types, which will be ignored.
+
+During the execution of the job, first, all derivations will be built. If the build went well, all effects will run, concurrently with effects in the same job, but only after preceding jobs have either completed or failed to build.
+
+[[attributes-herculesCI.onPush-outputs.effects]]
+=== `onPush.<name>.outputs.effects` Attributes
+
+This is this the only location in `outputs` where effects are allowed.
+
+==== Derivations, shells and effects
+
+All three are defined through derivations.
+
+ * A derivation marked by the attribute `isEffect = true` is categorized as an xref:effects.adoc[effect] and will be run in the xref:effects.adoc#sandbox[effects sandbox]. Effects must be defined below the `outputs.effects` attribute.
+
+ * A derivation marked by the `buildDependenciesOnly = true` attribute will not be built, but its dependencies will.
+
+ * A derivation with `phases = ["noBuildPhase"]` is treated as if it had `buildDependenciesOnly = true`. This includes Nixpkgs' `mkShell`.
+
+ * A derivation with `ignoreFailure = true` will be built, but not included in the job status and commit status. This is only useful when a build is unpredictable and irrelevant to the development process. `requireFailure` may be a better option, to avoid regressions after repairs.
+
+ * A derivation with `requireFailure = true` will be built and included in the job status and commit status, but with its build status reversed. This is useful during development to track for example which tests are known to fail. If during development a problem is solved, you are required to remove the attribute, which is necessary to avoid regressions.
+
+==== Attribute sets
+
+Unlike the legacy format and `nix-build`, nested attribute sets _are_ traversed by default.
+
+You can mark attribute sets not to be traversed by adding an attribute `recurseForDerivations = false` inside them, as is done by the function `lib.dontRecurseIntoAttrs` of type `attrs -> attrs`.
+
+== Default `onPush` job
+
+When the `herculesCI.onPush` attribute is omitted, Hercules CI will supply a default definition.
+
+This will build the flake attributes:
+
+  - `packages`
+  - `checks`
+  - `devShell`
+  - `devShells`
+  - `apps`
+  - `nixosConfigurations`
+  - `darwinConfigurations`
+  - `effects`
+
+If `effects` is a function, it will receive the <<params-herculesCI, same arguments>> as the `herculesCI` attribute.
+
+=== Ignored attributes
+
+The following attributes are silently ignored, because they do not have a well-defined or independently testable structure.
+
+  - `overlays`
+  - `submodules`
+  - `nixosModules`
+  - `darwinModules`
+  - `legacyPackages`
+
+Unknown attributes are also ignored and produce a `trace` line in the evaluation log.
+
+=== Default systems
+
+The `herculesCI` attribute, if it exists, is read for its `ciSystems` attribute; an optional list of "system" strings. If specified, it restricts the job to just the listed architecture-platform combinations.

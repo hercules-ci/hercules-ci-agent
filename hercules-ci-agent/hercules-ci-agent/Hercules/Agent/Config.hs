@@ -56,7 +56,8 @@ data Config purpose = Config
     binaryCachesPath :: Item purpose 'Required FilePath,
     secretsJsonPath :: Item purpose 'Required FilePath,
     logLevel :: Item purpose 'Required Severity,
-    labels :: Item purpose 'Required (Map Text A.Value)
+    labels :: Item purpose 'Required (Map Text A.Value),
+    allowInsecureBuiltinFetchers :: Item purpose 'Required Bool
   }
   deriving (Generic)
 
@@ -90,19 +91,21 @@ tomlCodec =
     .= logLevel
     <*> dioptional (Toml.tableMap _KeyText embedJson "labels")
     .= labels
+    <*> dioptional (Toml.bool "allowInsecureBuiltinFetchers")
+    .= allowInsecureBuiltinFetchers
 
 embedJson :: Key -> TomlCodec A.Value
 embedJson key =
   Codec
     { codecRead =
         codecRead (match (embedJsonBiMap key) key)
-          <!> codecRead (A.Object <$> AK.fromHashMapText <$> Toml.tableHashMap _KeyText embedJson key),
+          <!> codecRead (A.Object . AK.fromHashMapText <$> Toml.tableHashMap _KeyText embedJson key),
       codecWrite = panic "embedJson.write: not implemented" $ \case
         A.String s -> A.String <$> codecWrite (Toml.text key) s
         A.Number sci -> A.Number . fromRational . toRational <$> codecWrite (Toml.double key) (fromRational $ toRational sci)
         A.Bool b -> A.Bool <$> codecWrite (Toml.bool key) b
         A.Array a -> A.Array . V.fromList <$> codecWrite (Toml.arrayOf (embedJsonBiMap key) key) (Protolude.toList a)
-        A.Object o -> A.Object <$> AK.fromHashMapText <$> codecWrite (Toml.tableHashMap _KeyText embedJson key) (AK.toHashMapText o)
+        A.Object o -> A.Object . AK.fromHashMapText <$> codecWrite (Toml.tableHashMap _KeyText embedJson key) (AK.toHashMapText o)
         A.Null -> eitherToTomlState (Left ("null is not supported in TOML" :: Text))
     }
 
@@ -211,5 +214,6 @@ finalizeConfig loc input = do
         secretsJsonPath = secretsJsonP,
         workDirectory = workDir,
         logLevel = logLevel input & fromMaybe InfoS,
-        labels = fromMaybe mempty $ labels input
+        labels = fromMaybe mempty $ labels input,
+        allowInsecureBuiltinFetchers = fromMaybe False $ allowInsecureBuiltinFetchers input
       }

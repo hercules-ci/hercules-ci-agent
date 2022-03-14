@@ -52,9 +52,12 @@ C.using "namespace nix"
 
 -- | Runtime-Typed Value. This implies that it has been forced,
 -- because otherwise the type would not be known.
+--
+-- This is distinct from Nix, which calls its objects @Value@ regardless if
+-- they're thunks.
 newtype Value a = Value {rtValue :: RawValue}
 
-data NixInt
+type NixInt = Int64
 
 data NixFloat
 
@@ -133,3 +136,74 @@ getStringIgnoreContext (Value (RawValue v)) =
     [C.exp| const char *{
     strdup($(Value *v)->string.s)
   }|]
+
+hasContext :: Value NixString -> IO Bool
+hasContext (Value (RawValue v)) =
+  (0 /=)
+    <$> [C.exp| int { $(Value *v)->string.context ? 1 : 0 }|]
+
+class CheckType a where
+  checkType :: Ptr EvalState -> RawValue -> IO (Maybe (Value a))
+
+instance CheckType Int64 where
+  checkType es v = match' es v <&> \case IsInt x -> pure x; _ -> Nothing
+
+instance CheckType Bool where
+  checkType es v = match' es v <&> \case IsBool x -> pure x; _ -> Nothing
+
+instance CheckType NixString where
+  checkType es v = match' es v <&> \case IsString x -> pure x; _ -> Nothing
+
+instance CheckType NixPath where
+  checkType es v = match' es v <&> \case IsPath x -> pure x; _ -> Nothing
+
+instance CheckType () where
+  checkType es v = match' es v <&> \case IsNull x -> pure x; _ -> Nothing
+
+instance CheckType NixAttrs where
+  checkType es v = match' es v <&> \case IsAttrs x -> pure x; _ -> Nothing
+
+instance CheckType NixList where
+  checkType es v = match' es v <&> \case IsList x -> pure x; _ -> Nothing
+
+instance CheckType NixFunction where
+  checkType es v = match' es v <&> \case IsFunction f -> pure f; _ -> Nothing
+
+instance CheckType NixExternal where
+  checkType es v = match' es v <&> \case IsExternal x -> pure x; _ -> Nothing
+
+instance CheckType NixFloat where
+  checkType es v = match' es v <&> \case IsFloat f -> pure f; _ -> Nothing
+
+assertType :: (HasCallStack, MonadIO m, CheckType t) => Ptr EvalState -> RawValue -> m (Value t)
+assertType es v = do
+  liftIO (checkType es v) >>= \case
+    Nothing -> withFrozenCallStack (panic "Unexpected type")
+    Just x -> pure x
+
+class HasRawValueType s where
+  getRawValueType :: Proxy s -> RawValueType
+
+instance HasRawValueType NixString where
+  getRawValueType _ = String
+
+instance HasRawValueType Int64 where
+  getRawValueType _ = Int
+
+instance HasRawValueType Bool where
+  getRawValueType _ = Bool
+
+instance HasRawValueType NixFloat where
+  getRawValueType _ = Float
+
+instance HasRawValueType NixPath where
+  getRawValueType _ = Path
+
+instance HasRawValueType NixAttrs where
+  getRawValueType _ = Attrs
+
+instance HasRawValueType NixFunction where
+  getRawValueType _ = Lambda
+
+instance HasRawValueType NixList where
+  getRawValueType _ = List

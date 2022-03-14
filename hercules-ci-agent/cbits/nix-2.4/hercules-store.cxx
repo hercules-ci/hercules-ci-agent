@@ -14,6 +14,7 @@
 #include <nix/build-result.hh>
 #include <nix/gc-store.hh>
 #endif
+#include <nix/path-with-outputs.hh>
 
 #include "hercules-store.hh"
 

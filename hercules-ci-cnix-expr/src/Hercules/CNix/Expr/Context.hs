@@ -21,6 +21,8 @@ data Value'
 
 data Attr'
 
+data BindingsBuilder'
+
 context :: C.Context
 context =
   C.cppCtx <> C.fptrCtx
@@ -37,4 +39,5 @@ evalContext =
         C.TypeName "EvalState" =: [t|EvalState|]
           <> C.TypeName "Value" =: [t|Value'|]
           <> C.TypeName "Attr" =: [t|Attr'|]
+          <> C.TypeName "BindingsBuilder" =: [t|BindingsBuilder'|]
     }

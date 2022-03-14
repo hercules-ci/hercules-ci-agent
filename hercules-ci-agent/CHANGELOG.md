@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## Unreleased
+
+### Added
+
+ - Flakes support!
+
+   Instead of needing a `ci.nix`, the agent will pick up `flake.nix` and look
+   for the `herculesCI` attribute in the flake.
+
+   TODO: document `herculesCI.onPush` etc
+
+   Only the `outputs.effects` sub-attributes may define effects, making attacks on secrets harder to conceal.
+
+ - Multiple jobs per commit
+
+ - Jobs that run with the latest successful dependency build
+
+ - Conditions on secrets, disallowing access to secrets except when the conditions are met. This enforces the four eyes principle when branch protection is set up to match the secrets' conditions.
+
+ - Hardening against rogue contributors. Trivial attacks trying to read system paths or secrets are no longer possible. Similar to typical CIs, secrets can still be stolen, but only through effects. Prevent secrets theft through reviews and branch protection.
+
+ - Built-in support for fetching private repositories and tarballs.
+
+### Changed
+
+ - File lookup order has changed, to support flakes. `ci.nix` or `nix/ci.nix` still take top priority, followed by `flake.nix`, followed by `default.nix`.
+
+ - Installed private repositories can now be read by a collaborator. If you need to enforce confidentiality across repositories, contact us and use a personal access token with appropriate permissions in the meanwhile.
+
+### Fixed
+
+ - When the root of a `ci.nix` is a list, an error message is returned.
+
+### Removed
+
+ - Nix 2.3 support
+
 ## [0.8.7] - 2022-03-09
 
 ### Added

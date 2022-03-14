@@ -1,4 +1,4 @@
-module Hercules.Agent.CabalInfo where
+module Hercules.Agent.CabalInfo (herculesAgentVersion) where
 
 import Data.Version (showVersion)
 import Paths_hercules_ci_agent (version)

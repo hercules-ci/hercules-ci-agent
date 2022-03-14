@@ -1,1 +1,1 @@
-import ./make-overlay.nix (import ./flake-compat.nix).defaultNix.inputs
+import ./make-overlay.nix (import ./flake-compat.nix).defaultNix

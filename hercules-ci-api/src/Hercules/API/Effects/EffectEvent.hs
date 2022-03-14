@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DisambiguateRecordFields #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
 module Hercules.API.Effects.EffectEvent where
@@ -26,12 +25,12 @@ instance ToJSON EffectEvent where
   toEncoding = genericToEncoding schemaCompatibleOptions
 
 eventTime :: EffectEvent -> UTCTime
-eventTime (Queued (EffectEventQueued {time = t})) = t
-eventTime (DependencyFailed (EffectEventDependencyFailed {time = t})) = t
-eventTime (Started (EffectEventStarted {time = t})) = t
-eventTime (Failed (EffectEventFailed {time = t})) = t
-eventTime (Succeeded (EffectEventSucceeded {time = t})) = t
-eventTime (Cancelled (EffectEventCancelled {time = t})) = t
+eventTime (Queued EffectEventQueued {time = t}) = t
+eventTime (DependencyFailed EffectEventDependencyFailed {time = t}) = t
+eventTime (Started EffectEventStarted {time = t}) = t
+eventTime (Failed EffectEventFailed {time = t}) = t
+eventTime (Succeeded EffectEventSucceeded {time = t}) = t
+eventTime (Cancelled EffectEventCancelled {time = t}) = t
 
 data EffectEventQueued = EffectEventQueued
   { time :: UTCTime

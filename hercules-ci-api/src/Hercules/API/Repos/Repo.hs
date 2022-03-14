@@ -14,6 +14,9 @@ data Repo = Repo
     displayName :: Text,
     imageURL :: Maybe Text,
     isPublic :: Bool,
+    defaultBranch :: Maybe Text,
+    httpURL :: Text,
+    sshURL :: Text,
     -- | An installed repo is one that Hercules has permission to.
     --
     -- A non-installed repo is one that is only visible because of the

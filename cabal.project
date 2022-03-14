@@ -1,0 +1,15 @@
+packages:
+  */*.cabal
+  ./tests/agent-test/hercules-ci-agent-test.cabal
+
+source-repository-package
+    type: git
+    location: https://github.com/hercules-ci/optparse-applicative.git
+    tag: 9e2968c09a7c5b29d04578dc68d81ce5aec0591e
+
+constraints:
+  hercules-ci-cnix-store +nix-2_4,
+  hercules-ci-cnix-expr +nix-2_4,
+  cachix >= 0.7,
+  cachix-api >= 0.7,
+  jose >= 0.9,

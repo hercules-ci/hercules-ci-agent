@@ -1,19 +1,12 @@
-{ daemonIsNixUnstable }:
+{ flake, daemonIsNixUnstable }:
 { pkgs, ... }:
 let
-  tarball = x: pkgs.runCommand "${x.name or "tarball"}.tar.gz"
-    {
-      inherit x;
-    } ''
-    cd $x && tar -c . | gzip -1 >$out
-  '';
-
   testdata = pkgs.runCommand "testdata" { } ''
     mkdir -p $out/testdata
     for p in ${./agent-test/testdata}/*; do
       ln -s $p $out/testdata/$(basename $p);
     done
-    ln -s ${tarball pkgs.path} $out/testdata/nixpkgs
+    ln -s ${pkgs.callPackage ./nixpkgsball.nix { }} $out/testdata/nixpkgs
   '';
 
   agentStartTimeoutSec = 5 * 60;
@@ -29,7 +22,7 @@ in
   nodes = {
     agent = { config, pkgs, lib, ... }: {
       imports = [
-        ../module.nix
+        flake.nixosModules.agent-profile
       ];
       config = {
         # Keep build dependencies around, because we'll be offline
@@ -40,6 +33,10 @@ in
         services.hercules-ci-agent.enable = true;
         # Instead of the default, we want the nix library version from the build matrix (which should include at least the default)
         services.hercules-ci-agent.package = lib.mkForce pkgs.hercules-ci-agent;
+
+        # test suite fetches tarballs over http:// on the test network.
+        services.hercules-ci-agent.settings.allowInsecureBuiltinFetchers = true;
+
         services.hercules-ci-agent.settings.apiBaseUrl = "http://api";
         services.hercules-ci-agent.settings.nixUserIsTrusted = lib.mkForce false;
         services.hercules-ci-agent.settings.binaryCachesPath = (pkgs.writeText "binary-caches.json" (builtins.toJSON { })).outPath;
@@ -49,6 +46,7 @@ in
         systemd.services.hercules-ci-agent.serviceConfig.StartLimitBurst = lib.mkForce (agentStartTimeoutSec * 10);
         systemd.services.hercules-ci-agent.serviceConfig.RestartSec = lib.mkForce ("100ms");
         virtualisation.diskSize = 10 * 1024;
+        virtualisation.memorySize = 1024;
       };
     };
     api = { ... }: {
@@ -60,6 +58,13 @@ in
   testScript =
     ''
       start_all()
+
+      agent.succeed("""
+          mkdir -p /var/lib/hercules-ci-agent/secrets
+          echo '{}' > /var/lib/hercules-ci-agent/secrets/secrets.json
+          chown -R hercules-ci-agent /var/lib/hercules-ci-agent
+          chmod 0700 /var/lib/hercules-ci-agent/secrets
+      """)
 
       # Run the test code + api
       api.succeed(

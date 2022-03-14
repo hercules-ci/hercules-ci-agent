@@ -3,7 +3,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Hercules.Agent.Worker.Build.Logger where
+module Hercules.Agent.Worker.Build.Logger (initLogger, withLoggerConduit, tapper, withTappedStderr, batch, unbatch, filterProgress, nubProgress) where
 
 import Conduit (MonadUnliftIO, filterC)
 import qualified Data.ByteString.Char8 as BSC
@@ -18,7 +18,7 @@ import Hercules.Agent.Worker.Build.Logger.Context (Fields, HerculesLoggerEntry, 
 import Hercules.CNix.Store.Context (unsafeMallocBS)
 import Katip
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude hiding (bracket, finally, mask_, onException, tryJust, wait, withAsync, yield)
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.IO.Error (isEOFError)
@@ -116,9 +116,6 @@ popOne = alloca \deleterPtr ->
       convertEntry entry
   )
 -}
-
-forNonNull_ :: Ptr a -> (Ptr a -> IO ()) -> IO ()
-forNonNull_ p f = if p == nullPtr then pass else f p
 
 forNonNull :: Ptr a -> (Ptr a -> IO b) -> IO (Maybe b)
 forNonNull p f = if p == nullPtr then pure Nothing else Just <$> f p
@@ -262,7 +259,9 @@ withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
           yield lns
           popper
 
--- | Remove spammy progress results. Use 'nubProgress' instead?
+-- TODO: Use 'nubProgress' instead?
+
+-- | Remove spammy progress results.
 filterProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 filterProgress = filterC \case
   Chunk LogEntry.Result {rtype = LogEntry.ResultTypeProgress} -> False

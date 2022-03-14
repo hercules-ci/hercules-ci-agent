@@ -1,0 +1,25 @@
+# Effects Security
+
+Effects provide the opportunity to interact with the real world. While continuous delivery provides great opportunity to improve productivity, it comes with risks. This page provides guidelines to help you manage that risk.
+
+We recommend to audit the use of secrets in effects on a regular basis:
+
+ * Keep the `secretsMap` attribute minimal. Unnecessary secrets present in the sandbox increases the risk of exposing them unnecessarily.
+
+ * Make sure the `condition` fields in your agents' xref:secrets-json.adoc[`secrets.json`] files are set to allow only the minimum amount of access required. Try to avoid the "not" operator (currently not implemented); add more clauses to "and" operators and remove clauses from "or" operators where possible.
+
+ * Set up GitHub branch protection. By limiting access to secrets from the protected branches, you can apply the four eyes principle to the use of secrets. The "isDefaultBranch" or "isBranch" conditions when used appropriately can enforce that only the branches for which you have configured protection can use a secret.
+
+ * Limit the number of GitHub admins. Admins can override branch protection.
+
+ * Remove secrets from systems where effects were tested with xref:hercules-ci-agent:hci:effect/run.adoc[`hci effect run`]. Secrets for local use with `hci` are written to `~/.config/hercules-ci/secrets`.
+
+ * Similarly, remove secrets after using xref:hercules-ci-agent:hci:secret/add.adoc[`hci secret add`] which can be a helpful tool for getting the syntax right, before adding a secret to an agent xref:secrets-json.adoc[`secrets.json`]. Secrets for local use with `hci` are written to `~/.config/hercules-ci/secrets`.
+
+ * Don't use effect definitions from untrusted sources.
+
+ * Don't use packages or expressions from untrusted sources.
+
+ * Use the xref:evaluation.adoc[new format], because it does not allow supposed derivations to pose as effects unless explicitly added to `outputs.effects`. Only add effects to `outputs.effects`.
+
+ * Replace secrets periodically. This limits the time during which a leaked secret can be abused. You can use a tool like HashiCorp Vault to automate this process for some services. In this case, replace the approle token regularly.

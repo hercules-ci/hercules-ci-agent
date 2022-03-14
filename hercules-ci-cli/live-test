@@ -1,8 +1,0 @@
-#!/usr/bin/env nix-shell
-#!nix-shell -i bash
-set -eu -o pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")"
-ghcid --command "stack --no-install-ghc --system-ghc --nix repl --load --ghci-options=-fbyte-code --no-nix-pure hercules-ci-api:lib hercules-ci-cli:lib hercules-ci-cli:test:hercules-ci-cli-test" \
-          --restart hercules-ci-cli.cabal \
-          --test Main.main \
-          ;

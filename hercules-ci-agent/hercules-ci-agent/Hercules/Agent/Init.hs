@@ -6,6 +6,7 @@ import qualified Hercules.Agent.Config as Config
 import qualified Hercules.Agent.Config.BinaryCaches as BC
 import Hercules.Agent.Env (Env (Env))
 import qualified Hercules.Agent.Env as Env
+import qualified Hercules.Agent.Netrc.Env as Netrc
 import qualified Hercules.Agent.Nix.Init
 import qualified Hercules.Agent.SecureDirectory as SecureDirectory
 import qualified Hercules.Agent.ServiceInfo as ServiceInfo
@@ -49,7 +50,8 @@ newEnv config logEnv = do
         kNamespace = emptyNamespace,
         kContext = mempty,
         kLogEnv = logEnv,
-        nixEnv = nix
+        nixEnv = nix,
+        netrcEnv = Netrc.Env Nothing
       }
 
 setupLogging :: Config.FinalConfig -> (K.LogEnv -> IO ()) -> IO ()

@@ -1,12 +1,14 @@
+{-# LANGUAGE TypeFamilies #-}
+
 module Hercules.CLI.Project where
 
 import qualified Data.Attoparsec.Text as A
 import Data.Has (Has)
 import qualified Data.UUID
-import Hercules.API (Id)
+import Hercules.API (ClientAuth, Id, enterApiE)
 import Hercules.API.Id (Id (Id))
 import Hercules.API.Name (Name (Name))
-import Hercules.API.Projects (findProjects)
+import Hercules.API.Projects (ProjectResourceGroup, ProjectsAPI (byProjectName), findProjects)
 import qualified Hercules.API.Projects as Projects
 import Hercules.API.Projects.Project (Project)
 import qualified Hercules.API.Projects.Project as Project
@@ -24,6 +26,8 @@ import Protolude hiding (option)
 import RIO (RIO)
 import Servant.Client.Core (ClientError (FailureResponse), ResponseF (responseStatusCode))
 import Servant.Client.Core.Response (ResponseF (Response))
+import Servant.Client.Generic (AsClientT)
+import Servant.Client.Streaming (ClientM)
 import UnliftIO.Environment (lookupEnv)
 import qualified Prelude
 
@@ -135,3 +139,12 @@ findProject project = do
     [p] -> pure p
     _ -> do
       exitMsg $ "Project ambiguous: " <> show project
+
+projectResourceClientByPath :: ProjectPath -> ProjectResourceGroup ClientAuth (AsClientT ClientM)
+projectResourceClientByPath projectPath =
+  projectsClient `enterApiE` \api ->
+    byProjectName
+      api
+      (Name $ projectPathSite projectPath)
+      (Name $ projectPathOwner projectPath)
+      (Name $ projectPathProject projectPath)

@@ -4,6 +4,7 @@
 module BuildSpec where
 
 import Control.Concurrent.STM.TVar (readTVar)
+import qualified Data.Aeson as A
 import qualified Data.Map as M
 import qualified Data.UUID.V4 as UUID
 import qualified Hercules.API.Agent.Build.BuildEvent as BuildEvent
@@ -15,6 +16,7 @@ import Hercules.API.Agent.Evaluate.EvaluateEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.ImmutableInput as ImmutableInput
 import Hercules.API.Id (Id (Id))
 import qualified Hercules.API.Logs.LogEntry as LogEntry
 import qualified Hercules.API.TaskStatus as TaskStatus
@@ -22,6 +24,7 @@ import MockTasksApi
 import Protolude
 import System.Timeout (timeout)
 import Test.Hspec
+import TestSupport (apiBaseUrl)
 import Prelude
   ( error,
     userError,
@@ -42,8 +45,16 @@ defaultEvalTask =
       autoArguments = mempty,
       inputMetadata = mempty,
       nixPath = mempty,
-      logToken = "mock-eval-log-token"
+      logToken = "mock-eval-log-token",
+      selector = EvaluateTask.ConfigOrLegacy,
+      ciSystems = Nothing,
+      extraGitCredentials = mempty
     }
+
+defaultMeta :: Map Text A.Value
+defaultMeta =
+  "rev" =: A.String "eefe2e4df3a0f147cf0f59438010b63fd857291b"
+    <> "ref" =: "refs/heads/main"
 
 attrLike :: [EvaluateEvent] -> [EvaluateEvent]
 attrLike = filter isAttrLike
@@ -71,7 +82,9 @@ spec = describe "Build" $
             EvaluateTask.autoArguments =
               M.singleton
                 "nixpkgs"
-                (EvaluateTask.SubPathOf "n" Nothing)
+                (EvaluateTask.SubPathOf "n" Nothing),
+            EvaluateTask.inputMetadata = "src" =: defaultMeta,
+            EvaluateTask.selector = EvaluateTask.OnPush $ EvaluateTask.MkOnPush {name = "ci", inputs = "nixpkgs" =: ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")}
           }
     s `shouldBe` TaskStatus.Successful ()
     drvPath <-

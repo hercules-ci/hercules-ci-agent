@@ -1,0 +1,45 @@
+
+= `netrc` File
+
+Both Nix and Git can use so-called `netrc` files to look up credentials for use
+with private repositories.
+
+Hercules CI Agent will inherit the entries from the Nix configuration, such as
+`/etc/nix/nix.conf`, `~/.config/nix/nix.conf` and append any credentials
+received from hercules-ci.com or Hercules CI Enterprise. The configuration
+file contents take precedence.
+
+This means that even without configuring entries in Nix's netrc files, your agent can
+fetch private sources. You can make use of `builtins.fetchGit` with `https`-based
+clone URLs, or you can download tarballs from the GitHub API, such as
+`https://api.github.com/repos/some-org/some-repo/tarball/$\{hash}`.
+
+All of these netrc-based credentials are only used in a controlled manner to:
+
+ * support the `builtins` fetchers and flakes during evaluation,
+ * to support substitution before derivation builds, and
+ * substitution before effect execution
+
+However,
+
+ * netrc entries might NOT be passed to fixed-output-derivation based fetchers
+ * and will NOT be passed to the xref::effects.adoc[effects] sandbox, which has its own xref::secrets-json.adoc[mechanism] for accessing credentials.
+
+[[non-api-github-tarballs]]
+== Non-API tarballs
+
+Tarball URLs on the non-API endpoint, are not supported by default, because of
+a limitation of GitHub's tokens. This means tarball URLs of the following format
+are not supported by default: `https://github.com/some-org/some-repo/archive/$\{hash}.tar.gz`. We recommend to use the API urls mentioned above, but it is possible to configure a personal access token for `github.com` to make this work. The downside is that the token is bound to a person rather than the organization and it is more sensitive to leaks because it does not expire.
+
+[[git-ssh]]
+== SSH-based checkout
+
+Similarly, the you can configure an SSH key for the agent in `~hercules-ci-agent/.ssh` (ie the agent user's `$HOME/.ssh`), although `https`-based fetching is to be preferred.
+
+[[security]]
+== Security notes
+
+The service-provided netrc credentials are not scoped to specific repositories. This could be made configurable. Contact us if your organization needs to allow only certain repositories to read repositories of elevated confidentiality.
+
+Netrc credentials added to Nix's configuration files will apply to jobs from all repositories.

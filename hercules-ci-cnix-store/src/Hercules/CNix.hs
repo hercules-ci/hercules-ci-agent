@@ -14,8 +14,12 @@ where
 
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Hercules.CNix.Store
+import Hercules.CNix.Verbosity
+  ( Verbosity (Debug, Talkative),
+    setVerbosity,
+  )
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude hiding (evalState, throwIO)
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -57,16 +61,10 @@ init =
     } |]
 
 setTalkative :: IO ()
-setTalkative =
-  [C.throwBlock| void {
-    nix::verbosity = nix::lvlTalkative;
-  } |]
+setTalkative = setVerbosity Talkative
 
 setDebug :: IO ()
-setDebug =
-  [C.throwBlock| void {
-    nix::verbosity = nix::lvlVomit;
-  } |]
+setDebug = setVerbosity Debug
 
 setGlobalOption :: Text -> Text -> IO ()
 setGlobalOption opt value = do

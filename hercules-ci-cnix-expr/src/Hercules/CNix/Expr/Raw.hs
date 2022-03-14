@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -6,7 +5,7 @@ module Hercules.CNix.Expr.Raw where
 
 import Hercules.CNix.Expr.Context
 import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exceptions as C
+import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude hiding (evalState)
 import Prelude ()
 
@@ -28,6 +27,12 @@ C.include "<gc/gc_allocator.h>"
 
 C.using "namespace nix"
 
+-- | A heap object.
+--
+-- Nix doesn't store all its objects on the heap, but we do.
+--
+-- Also, Nix calls them @Value@s but it includes thunks, which are not values
+-- and some may never produce values, such as @throw "msg"@.
 newtype RawValue = RawValue (Ptr Value')
 
 -- | Takes ownership of the value.
@@ -56,7 +61,6 @@ data RawValueType
 
 -- | You may need to 'forceValue' first.
 rawValueType :: RawValue -> IO RawValueType
-#ifdef NIX_2_4
 rawValueType (RawValue v) =
   f
     <$> [C.block| int {
@@ -88,51 +92,6 @@ rawValueType (RawValue v) =
     f 10 = Float
     f 11 = Thunk
     f _ = Other
-#else
-rawValueType (RawValue v) =
-  f
-    <$> [C.block| int {
-      switch ($(Value* v)->type) {
-        case tInt:         return 1;
-        case tBool:        return 2;
-        case tString:      return 3;
-        case tPath:        return 4;
-        case tNull:        return 5;
-        case tAttrs:       return 6;
-        case tList1:       return 7;
-        case tList2:       return 8;
-        case tListN:       return 9;
-        case tThunk:       return 10;
-        case tApp:         return 11;
-        case tLambda:      return 12;
-        case tBlackhole:   return 13;
-        case tPrimOp:      return 14;
-        case tPrimOpApp:   return 15;
-        case tExternal:    return 16;
-        case tFloat:       return 17;
-        default: return 0;
-      }
-    }|]
-  where
-    f 1 = Int
-    f 2 = Bool
-    f 3 = String
-    f 4 = Path
-    f 5 = Null
-    f 6 = Attrs
-    f 7 = List
-    f 8 = List
-    f 9 = List
-    f 10 = Thunk
-    f 11 = App
-    f 12 = Lambda
-    f 13 = Blackhole
-    f 14 = PrimOp
-    f 15 = PrimOpApp
-    f 16 = External
-    f 17 = Float
-    f _ = Other
-#endif
 
 forceValue :: Exception a => Ptr EvalState -> RawValue -> IO (Either a ())
 forceValue evalState (RawValue v) =
@@ -142,3 +101,15 @@ forceValue evalState (RawValue v) =
       if (v == NULL) throw std::invalid_argument("forceValue value must be non-null");
       $(EvalState *evalState)->forceValue(*v, nix::noPos);
     }|]
+
+-- | Brings RawValueType closer to the 2.4 ValueType.
+--
+-- This function won't be necessary when support for 2.3 is dropped and we
+-- switch entirely to the Haskell equivalent of C++ ValueType.
+canonicalRawType :: RawValueType -> RawValueType
+canonicalRawType = \case
+  App -> Thunk
+  Blackhole -> Thunk
+  PrimOp -> Lambda
+  PrimOpApp -> Lambda
+  x -> x

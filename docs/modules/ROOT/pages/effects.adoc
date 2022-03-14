@@ -1,0 +1,99 @@
+= Effects
+
+Effects provide a means to perform actions that affect real-world resources in a controlled manner.
+
+== Running effects
+
+Effects run as part of a xref:hercules-ci:ROOT:glossary.adoc#job[job], after all its builds have completed successfully and after preceding jobs for the same repository have completed effect execution.
+
+== Sandbox type
+
+Currently, effects run in Linux containers only. Note that you _can_ deploy to a macOS machine via SSH from a Linux agent using e.g. xref:hercules-ci-effects:ROOT:reference/nix-functions/runNixDarwin.adoc[hercules-ci-effects runNixDarwin].
+
+[[paths]]
+== Paths
+
+This container contains at least the Nix store and `/dev`, `/proc`, `/sys`, each filled as appropriate for a container.
+
+The store and a nix-daemon socket are accessible.
+
+It may further provide `/etc/resolv.conf` and other files that are required for network access.
+
+An empty directory is created, to serve as the working directory and `TMP`.
+
+The `/bin/sh` and `/usr/bin/env` executables are _not_ provided by the sandbox and should be installed by the effect instead. Effects defined directly or indirectly through xref:hercules-ci-effects:ROOT:reference/nix-functions/mkEffect.adoc[hercules-ci-effects mkEffect] provide this xref:hercules-ci-effects:ROOT:reference/nix-functions/mkEffect.adoc#param-initScript[by default].
+
+[[execution]]
+== Execution
+
+The process started inside the container is the builder, similar to how the Nix sandbox starts the derivation, but in the effects sandbox, the process appears as uid 0 ("root"), allowing it to modify the root filesystem as necessary. This is possible via uid remapping. The process does not gain any real privileges from being uid 0 in the effects sandbox.
+
+[[environment]]
+== Environment
+
+These are the notable environment variables set by the sandbox itself.
+
+[[IN_HERCULES_CI_EFFECT]]
+=== `IN_HERCULES_CI_EFFECT`
+
+Value: `true`
+
+[[HERCULES_CI_API_BASE_URL]]
+=== `HERCULES_CI_API_BASE_URL`
+
+The xref:agent-config.adoc#apiBaseUrl[apiBaseUrl] configuration value.
+
+[[HERCULES_CI_SECRETS_JSON]]
+=== `HERCULES_CI_SECRETS_JSON`
+
+A file path pointing to a file with secrets data.
+
+See <<Secrets>>.
+
+[[HERCULES_CI_PROJECT_ID]]
+=== `HERCULES_CI_PROJECT_ID`
+
+The `id` UUID of the project that created the job that contains the effect.
+
+[[HERCULES_CI_PROJECT_PATH]]
+=== `HERCULES_CI_PROJECT_PATH`
+
+A slash separated string containing in order: the site name (typically `github`), the owner (user or organization) and the repository name.
+
+Example: `github/hercules-ci/hercules-ci-agent`
+
+== Secrets
+
+The contents of `$HERCULES_CI_SECRETS_JSON` are computed by looking up the `secretsMap` values in the agent's xref:secrets-json.adoc[`secrets.json`], and filtering using the xref:secrets-json.adoc#condition[`condition`] field. Its contents arise from roughly the following pseudocode:
+
+[source,nix,subs="+macros"]
+----
+agentSecrets = fromJSON (readFile xref:secrets-json.adoc[secrets.json]);
+HERCULES_CI_SECRETS_JSON = writeSecureFile
+  (
+    (filterAttrs (k: secret: xref:secrets-json.adoc#condition[conditionHolds] secret.condition)
+      (mapAttrs (k: agentSecretName: agentSecrets.${agentSecretName})
+        drv.secretsMap
+      )
+    ) // {
+      hercules-ci = {
+        data.<<api-token,token>> = <<api-token,…>>;
+      };
+    }
+  );
+----
+
+[[api-token]]
+=== API token
+
+The `hercules-ci` secret is provided, containing a `token` string attribute in its `data`.
+This token can be used with the Hercules CI API and has appropriate permissions for the effect's execution.
+
+This is picked up automatically by the xref:hercules-ci-agent:hci:index.adoc[`hci` command] and hercules-ci-effects bash functions like xref:hercules-ci-effects:ROOT:reference/bash-functions/getStateFile.adoc[`getStateFile`].
+
+[[network]]
+== Network
+
+Network access is provided via the container runtime used.
+
+The current implementation is based on `runc` and bind mounts `/etc/resolv.conf`. If your host setup demands a different approach, please open an issue describing your needs or contact mailto:support@hercules-ci.com if you are hesitant to share any network information.

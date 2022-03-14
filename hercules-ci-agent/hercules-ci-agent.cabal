@@ -1,26 +1,32 @@
 cabal-version: 2.4
 
 name:           hercules-ci-agent
-version:        0.8.7
+version:        0.9.0
 synopsis:       Runs Continuous Integration tasks on your machines
 category:       Nix, CI, Testing, DevOps
 homepage:       https://docs.hercules-ci.com
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
 author:         Hercules CI contributors
 maintainer:     info@hercules-ci.com
-copyright:      2018-2020 Hercules CI
+copyright:      2018-2021 Hercules CI
 license:        Apache-2.0
 build-type:     Custom
 extra-source-files:
     CHANGELOG.md
     cbits/hercules-aliases.h
     cbits/hercules-logger.hh
-    cbits/nix-2.3/hercules-store.hh
     cbits/nix-2.4/hercules-store.hh
     testdata/vm-test-run-agent-test.drv
+data-files:
+    data/default-herculesCI-for-flake.nix
 
+-- Deprecated
 flag nix-2_4
-  description: Build for Nix >=2.4pre*
+  description: Build for Nix >=2.4*
+  default: True
+
+flag nix-2_5
+  description: Build for Nix >=2.5*
   default: False
 
 source-repository head
@@ -33,6 +39,12 @@ common cxx-opts
     -std=c++17
     -Wall
   extra-libraries: stdc++
+
+  if flag(nix-2_5)
+    cxx-options:
+      -DNIX_2_5
+    cpp-options:
+      -DNIX_2_5
 
   if os(darwin)
     -- avoid https://gitlab.haskell.org/ghc/ghc/issues/11829
@@ -51,13 +63,6 @@ common cxx-opts
     if os(darwin)
       ghc-options: -pgmc=clang++
 
-  if flag(nix-2_4)
-    cpp-options:
-        -DNIX_2_4
-    cxx-options:
-        -DNIX_2_4
-
-
 custom-setup
   setup-depends:
     base
@@ -69,24 +74,34 @@ library
   exposed-modules:
       Data.Fixed.Extras
       Data.Time.Extras
+      Hercules.Agent.Binary
       Hercules.Agent.NixFile
+      Hercules.Agent.NixFile.GitSource
+      Hercules.Agent.NixFile.HerculesCIArgs
+      Hercules.Agent.NixFile.CiNixArgs
+      Hercules.Agent.NixPath
       Hercules.Agent.Producer
       Hercules.Agent.Sensitive
       Hercules.Agent.Socket
       Hercules.Agent.STM
+      Hercules.Agent.WorkerProcess
       Hercules.Agent.WorkerProtocol.Command
       Hercules.Agent.WorkerProtocol.Command.Build
       Hercules.Agent.WorkerProtocol.Command.BuildResult
       Hercules.Agent.WorkerProtocol.Command.Effect
       Hercules.Agent.WorkerProtocol.Command.Eval
+      Hercules.Agent.WorkerProtocol.Command.StartDaemon
       Hercules.Agent.WorkerProtocol.Event
       Hercules.Agent.WorkerProtocol.Event.Attribute
       Hercules.Agent.WorkerProtocol.Event.AttributeError
       Hercules.Agent.WorkerProtocol.Event.BuildResult
+      Hercules.Agent.WorkerProtocol.Event.DaemonStarted
       Hercules.Agent.WorkerProtocol.LogSettings
       Hercules.Agent.WorkerProtocol.Orphans
       Hercules.Effect
       Hercules.Effect.Container
+      Hercules.Secrets
+      Hercules.UserException
       Data.Conduit.Extras
       Data.Conduit.Katip.Orphans
 
@@ -99,7 +114,7 @@ library
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns
   build-depends:
-      aeson
+      aeson >= 2
     , async
     , base >=4.7 && <5
     , binary
@@ -113,6 +128,7 @@ library
     , filepath
     , hercules-ci-api-agent
     , hercules-ci-api-core
+    , hercules-ci-cnix-expr
     , hercules-ci-cnix-store
     , katip
     , lens
@@ -127,9 +143,11 @@ library
     , process-extras
     , safe-exceptions
     , stm
+    , tagged
     , temporary
     , text
     , time
+    , transformers
     , transformers-base
     , unbounded-delays
     , unix
@@ -167,16 +185,16 @@ executable hercules-ci-agent
       Hercules.Agent.Files
       Hercules.Agent.Init
       Hercules.Agent.Log
+      Hercules.Agent.Netrc
+      Hercules.Agent.Netrc.Env
       Hercules.Agent.Nix
       Hercules.Agent.Nix.Env
       Hercules.Agent.Nix.Init
       Hercules.Agent.Nix.RetrieveDerivationInfo
-      Hercules.Agent.NixPath
       Hercules.Agent.Options
       Hercules.Agent.SecureDirectory
       Hercules.Agent.ServiceInfo
       Hercules.Agent.Token
-      Hercules.Agent.WorkerProcess
       Paths_hercules_ci_agent
   autogen-modules:
       Paths_hercules_ci_agent
@@ -259,18 +277,16 @@ executable hercules-ci-agent-worker
       Paths_hercules_ci_agent
       Hercules.Agent.Worker.HerculesStore
       Hercules.Agent.Worker.HerculesStore.Context
+      Hercules.Agent.Worker.Logging
+      Hercules.Agent.Worker.NixDaemon
   autogen-modules:
       Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent-worker
+
   cxx-sources:
       cbits/hercules-logger.cxx
-  if flag(nix-2_4)
-    cxx-sources:
       cbits/nix-2.4/hercules-store.cxx
-  else
-    cxx-sources:
-      cbits/nix-2.3/hercules-store.cxx
 
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
@@ -286,12 +302,7 @@ executable hercules-ci-agent-worker
     -with-rtsopts=-maxN8
   include-dirs:
       cbits
-  if flag(nix-2_4)
-    include-dirs:
       cbits/nix-2.4
-  else
-    include-dirs:
-      cbits/nix-2.3
   extra-libraries:
       boost_context
   build-depends:
@@ -321,6 +332,7 @@ executable hercules-ci-agent-worker
     , lifted-base
     , monad-control
     , mtl
+    , network
     , network-uri
     , protolude
     , process
@@ -340,13 +352,13 @@ executable hercules-ci-agent-worker
       nix-store >= 2.0
     , nix-expr >= 2.0
     , nix-main >= 2.0
-    , bdw-gc
   default-language: Haskell2010
 
 test-suite hercules-test
   type: exitcode-stdio-1.0
   main-is: TestMain.hs
   other-modules:
+      Data.Conduit.Extras
       Hercules.Agent.Log
       Hercules.Agent.NixPath
       Hercules.Agent.NixPathSpec
@@ -354,9 +366,12 @@ test-suite hercules-test
       Hercules.Agent.Nix.RetrieveDerivationInfoSpec
       Hercules.Agent.WorkerProcess
       Hercules.Agent.WorkerProcessSpec
+      Hercules.Secrets
+      Hercules.SecretsSpec
       Paths_hercules_ci_agent
       Spec
   hs-source-dirs:
+      src
       test
       hercules-ci-agent
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
@@ -382,9 +397,11 @@ test-suite hercules-test
     , lifted-async
     , lifted-base
     , monad-control
+    , mtl
     , process
     , protolude
     , safe-exceptions
+    , tagged
     , temporary
     , text
     , transformers-base
