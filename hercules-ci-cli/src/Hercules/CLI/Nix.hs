@@ -14,7 +14,7 @@ import qualified Hercules.API.Inputs.ImmutableGitInput as API.ImmutableGitInput
 import Hercules.API.Projects (getJobSource)
 import Hercules.Agent.NixFile (getOnPushOutputValueByPath)
 import qualified Hercules.Agent.NixFile.GitSource as GitSource
-import Hercules.Agent.NixFile.HerculesCIArgs (HerculesCIArgs)
+import Hercules.Agent.NixFile.HerculesCIArgs (CISystems (CISystems), HerculesCIArgs)
 import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
 import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDefaultApiBaseUrl, runHerculesClient)
 import Hercules.CLI.Common (runAuthenticated)
@@ -38,7 +38,7 @@ createHerculesCIArgs passedRef = do
   ref <- computeRef passedRef
   let gitSource = GitSource.fromRefRevPath ref gitRev (toS gitRoot)
   url <- determineDefaultApiBaseUrl
-  pure $ HerculesCIArgs.fromGitSource gitSource HerculesCIArgs.HerculesCIMeta {apiBaseUrl = url}
+  pure $ HerculesCIArgs.fromGitSource gitSource HerculesCIArgs.HerculesCIMeta {apiBaseUrl = url, ciSystems = CISystems Nothing}
 
 computeRef :: Maybe Text -> IO Text
 computeRef Nothing = getRef

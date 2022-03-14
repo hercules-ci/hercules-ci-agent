@@ -11,7 +11,8 @@ import Protolude
 
 -- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.
 data HerculesCIMeta = HerculesCIMeta
-  { apiBaseUrl :: Text
+  { apiBaseUrl :: Text,
+    ciSystems :: CISystems
   }
   deriving (Generic, ToJSON)
 
@@ -27,6 +28,10 @@ data HerculesCIArgs = HerculesCIArgs
   }
   deriving (Generic, ToJSON)
   deriving (ToRawValue) via (ViaJSON HerculesCIArgs)
+
+newtype CISystems = CISystems (Maybe (Map Text ()))
+  deriving (Generic, ToJSON)
+  deriving (ToRawValue) via (ViaJSON CISystems)
 
 fromGitSource :: GitSource -> HerculesCIMeta -> HerculesCIArgs
 fromGitSource primary hci =

@@ -16,6 +16,7 @@ data EvaluateTask = EvaluateTask
     nixPath :: [NixPathElement (SubPathOf Identifier)], -- NIX_PATH element -> identifier
     logToken :: Text,
     selector :: Selector,
+    ciSystems :: Maybe (Map Text ()),
     extraGitCredentials :: Maybe [Credential]
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)

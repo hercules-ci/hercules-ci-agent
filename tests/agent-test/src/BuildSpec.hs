@@ -47,6 +47,7 @@ defaultEvalTask =
       nixPath = mempty,
       logToken = "mock-eval-log-token",
       selector = EvaluateTask.ConfigOrLegacy,
+      ciSystems = Nothing,
       extraGitCredentials = mempty
     }
 

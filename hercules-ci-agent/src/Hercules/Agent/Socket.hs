@@ -112,7 +112,7 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
       setExpectedAckForMsgs :: [Frame ap ap] -> m ()
       setExpectedAckForMsgs msgs =
         msgs
-          & foldMap (\case Frame.Msg {n = n} -> Option $ Just $ Max n; _ -> mempty)
+          & foldMap (\case Frame.Msg {n = n} -> Just $ Max n; _ -> mempty)
           & traverse_ (\(Max n) -> setExpectedAck n)
       send :: Connection -> [Frame ap ap] -> m ()
       send conn = sendSorted . sortBy (compare `on` msgN)

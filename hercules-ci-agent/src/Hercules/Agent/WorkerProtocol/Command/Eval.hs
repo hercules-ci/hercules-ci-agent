@@ -22,6 +22,7 @@ data Eval = Eval
     apiBaseUrl :: Text,
     logSettings :: LogSettings,
     selector :: ViaJSON EvaluateTask.Selector,
+    ciSystems :: Maybe (Map Text ()),
     allowInsecureBuiltinFetchers :: Bool,
     allowedPaths :: [ByteString]
   }

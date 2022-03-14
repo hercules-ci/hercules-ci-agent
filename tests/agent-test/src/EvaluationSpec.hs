@@ -60,6 +60,7 @@ defaultTask =
       nixPath = mempty,
       logToken = "mock-eval-log-token",
       selector = ConfigOrLegacy,
+      ciSystems = Nothing,
       extraGitCredentials = Nothing
     }
 
@@ -191,6 +192,56 @@ spec = describe "Evaluation" $ do
             OnPushHandlerEvent.handlerExtraInputs op `shouldBe` mempty
           _ ->
             failWith $ "Events should be a [JobConfig, OnPushHandlerEvent op], not " <> show r
+
+  let simpleFlakeBehavior = \tarball -> do
+        it "reports the default onPush handler" do
+          \srv -> do
+            id <- randomId
+            (s, r) <-
+              runEval
+                srv
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: ("/tarball/" <> tarball),
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            s `shouldBe` TaskStatus.Successful ()
+            case r of
+              [EvaluateEvent.JobConfig _jc, EvaluateEvent.OnPushHandlerEvent op] -> do
+                OnPushHandlerEvent.handlerName op `shouldBe` "default"
+                OnPushHandlerEvent.handlerExtraInputs op `shouldBe` mempty
+              _ ->
+                failWith $ "Events should be a [JobConfig, OnPushHandlerEvent op], not " <> show r
+        it "reports the package" do
+          \srv -> do
+            id <- randomId
+            (s, r) <-
+              runEval
+                srv
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: ("/tarball/" <> tarball),
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                    EvaluateTask.selector =
+                      EvaluateTask.OnPush $
+                        EvaluateTask.MkOnPush {name = "default", inputs = mempty}
+                  }
+            s `shouldBe` TaskStatus.Successful ()
+            case attrLike r of
+              [EvaluateEvent.Attribute ae] -> do
+                AttributeEvent.expressionPath ae `shouldBe` ["packages", "x86_64-linux", "default"]
+                toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
+                toS (AttributeEvent.derivationPath ae) `shouldContain` "-default-package"
+              _ -> failWith $ "Events should be a single attribute, not: " <> show r
+  context "when a flake without onPush is provided" do
+    simpleFlakeBehavior "flake"
+  context "when a flake without onPush, with empty herculesCI is provided" do
+    simpleFlakeBehavior "flake-herculesCI-empty"
+  context "when a flake without onPush, with herculesCI.ciSystems is provided" do
+    simpleFlakeBehavior "flake-ciSystems"
+  context "when a flake with onPush, using functions is provided" do
+    simpleFlakeBehavior "flake-onPush-functions"
+
   context "when the nix expression is one derivation in an attrset" $
     it "returns that attribute" $
       \srv -> do

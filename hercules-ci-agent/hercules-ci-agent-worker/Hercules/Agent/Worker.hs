@@ -44,7 +44,7 @@ import Hercules.API.Logs.LogHello (LogHello (LogHello, clientProtocolVersion, st
 import Hercules.API.Logs.LogMessage (LogMessage)
 import qualified Hercules.API.Logs.LogMessage as LogMessage
 import Hercules.Agent.NixFile (HerculesCISchema, getHerculesCI, homeExprRawValue, loadNixFile, parseExtraInputs)
-import Hercules.Agent.NixFile.HerculesCIArgs (HerculesCIMeta (HerculesCIMeta), fromGitSource)
+import Hercules.Agent.NixFile.HerculesCIArgs (CISystems (CISystems), HerculesCIMeta (HerculesCIMeta), fromGitSource)
 import qualified Hercules.Agent.NixFile.HerculesCIArgs
 import Hercules.Agent.Sensitive
 import qualified Hercules.Agent.Socket as Socket
@@ -558,7 +558,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
       do
         homeExpr <- escalateAs UserException =<< liftIO (loadNixFile evalState (toS $ Eval.cwd eval) (coerce $ Eval.gitSource eval))
         let hargs = fromGitSource (coerce $ Eval.gitSource eval) meta
-            meta = HerculesCIMeta {apiBaseUrl = Eval.apiBaseUrl eval}
+            meta = HerculesCIMeta {apiBaseUrl = Eval.apiBaseUrl eval, ciSystems = CISystems (Eval.ciSystems eval)}
         liftIO (flip runReaderT evalState $ getHerculesCI homeExpr hargs) >>= \case
           Nothing ->
             -- legacy

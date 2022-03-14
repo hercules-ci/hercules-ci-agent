@@ -17,6 +17,8 @@ extra-source-files:
     cbits/hercules-logger.hh
     cbits/nix-2.4/hercules-store.hh
     testdata/vm-test-run-agent-test.drv
+data-files:
+    data/default-herculesCI-for-flake.nix
 
 -- Deprecated
 flag nix-2_4

@@ -324,6 +324,7 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                 },
             Eval.gitSource = ViaJSON gitSource,
             Eval.apiBaseUrl = apiBaseUrl,
+            Eval.ciSystems = EvaluateTask.ciSystems task,
             Eval.selector = ViaJSON $ EvaluateTask.selector task,
             Eval.allowInsecureBuiltinFetchers = Config.allowInsecureBuiltinFetchers cfg,
             Eval.allowedPaths = allowedPaths

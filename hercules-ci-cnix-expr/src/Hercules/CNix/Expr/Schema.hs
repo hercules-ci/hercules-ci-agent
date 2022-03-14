@@ -30,7 +30,8 @@ module Hercules.CNix.Expr.Schema
 
     -- * Functions
     type (->.),
-    -- ($.),
+    (.$),
+    (>>$.),
     type (->?),
     ($?),
     (>>$?),
@@ -39,7 +40,7 @@ module Hercules.CNix.Expr.Schema
     type StringWithoutContext,
 
     -- * Attribute sets
-
+    basicAttrsWithProvenance,
     --
     -- Common type that can represent both simultaneously.
     type Attrs',
@@ -83,7 +84,7 @@ import Data.Coerce (coerce)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified GHC.TypeLits as TL
-import Hercules.CNix.Expr (CheckType, EvalState, HasRawValueType, NixAttrs, NixFunction, NixPath, NixString, RawValue, Value, apply, checkType, getAttr, getRawValueType, getStringIgnoreContext, hasContext, rawValueType, toRawValue, valueFromExpressionString)
+import Hercules.CNix.Expr (CheckType, EvalState, HasRawValueType, NixAttrs, NixFunction, NixPath, NixString, RawValue, Value (rtValue), apply, checkType, getAttr, getRawValueType, getStringIgnoreContext, hasContext, rawValueType, toRawValue, valueFromExpressionString)
 import qualified Hercules.CNix.Expr as Expr
 import Hercules.CNix.Expr.Raw (RawValueType, canonicalRawType)
 import Protolude hiding (TypeError, check, evalState)
@@ -128,8 +129,12 @@ data a |. b
 -- | Function schema.
 data a ->. b
 
+infixr 1 ->.
+
 -- | Optional function. If the value is not a function, use it as the result.
 type a ->? b = (a ->. b) |. b
+
+infixr 1 ->?
 
 -- | Attribute set schema with known attributes and wildcard type for remaining attributes.
 data Attrs' (as :: [Attr]) w
@@ -149,13 +154,13 @@ data Attr
 
 data StringWithoutContext
 
-infix 1 :.
+infix 0 :.
 
-infix 1 :?
+infix 0 :?
 
-infix 1 ::.
+infix 0 ::.
 
-infix 1 ::?
+infix 0 ::?
 
 -- | Optional (@_?@) attribute name and type (@::_@)
 --
@@ -172,7 +177,7 @@ type a ::. b = a ':. b
 -- phantom type.
 --
 -- The phantom specifies the expactation, not a checked type.
-data PSObject a = PSObject
+data PSObject (a :: Type) = PSObject
   { -- | Tracks the origin of the object, which is useful informaton for error messages.
     provenance :: Provenance,
     -- | The Nix object, which may be a thunk (producing errors, non-termination, etc) or a 'Value' of any type.
@@ -384,6 +389,13 @@ x >>$? a =
   )
     =<< x
 
+-- | Application. Like '$.' but takes care of monadic binding as a convenience.
+(>>$.) :: (MonadEval m, PossibleTypesForSchema a, PossibleTypesForSchema b) => m (PSObject (a ->. b)) -> m (PSObject a) -> m (PSObject b)
+f >>$. a = do
+  f' <- f
+  a' <- a
+  f' .$ a'
+
 -- | Parses an expression from string
 exprWithBasePath ::
   forall schema m.
@@ -496,3 +508,6 @@ instance FromPSObject Bool Bool where
   fromPSObject o = do
     v <- check o
     liftIO (Expr.getBool v)
+
+basicAttrsWithProvenance :: Value NixAttrs -> Provenance -> PSObject (Attrs '[])
+basicAttrsWithProvenance attrs p = PSObject {value = rtValue attrs, provenance = p}
