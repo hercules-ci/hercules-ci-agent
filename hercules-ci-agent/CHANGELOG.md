@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-This release comes with an [Upgrade Guide! ✨](https://hercules-ci.com/hercules-ci/guides/upgrade-to-agent-0.9/)
+This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/hercules-ci/guides/upgrade-to-agent-0.9/)
 
 ### Added
 
