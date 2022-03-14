@@ -26,7 +26,7 @@ This release comes with an [Upgrade Guide! ✨](https://hercules-ci.com/hercules
  - Conditions on secrets, disallowing access to secrets except when the conditions are met. This enforces the four eyes principle when branch protection is set up to match the secrets' conditions.
    A missing `condition` field does not give a great error message for security reasons, so follow the [upgrade guide](https://hercules-ci.com/hercules-ci/guides/upgrade-to-agent-0.9/).
 
- - Hardening against rogue contributors. Trivial attacks trying to read system paths or secrets are no longer possible. Similar to typical CIs, secrets can still be stolen, but only through effects. Prevent secrets theft through reviews and branch protection.
+ - Hardening against rogue contributors. Trivial attacks trying to read system paths or secrets are no longer possible. Similar to typical CIs, secrets _can_ be stolen under specific circumstances: either a misconfiguration of branch protection or by approval of a second maintainer. Note that issue was already largely addressed by only processing contributions from GitHub users with write access to the repository, which also still applies.
 
  - Built-in support for fetching private repositories and tarballs.
 
