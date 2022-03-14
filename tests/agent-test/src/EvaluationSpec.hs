@@ -24,6 +24,7 @@ import qualified Hercules.API.TaskStatus as TaskStatus
 import MockTasksApi
 import Protolude
 import Test.Hspec
+import TestSupport (apiBaseUrl)
 import Prelude
   ( error,
     userError,
@@ -482,7 +483,7 @@ spec = describe "Evaluation" $ do
                 EvaluateTask.OnPush $
                   EvaluateTask.MkOnPush
                     { name = "default",
-                      inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl "http://api/tarball/nixpkgs"
+                      inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
                     }
             }
       s `shouldBe` TaskStatus.Successful ()
@@ -507,7 +508,7 @@ spec = describe "Evaluation" $ do
                   EvaluateTask.OnPush $
                     EvaluateTask.MkOnPush
                       { name = "default",
-                        inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl "http://api/tarball/nixpkgs"
+                        inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
                       }
               }
         s `shouldBe` TaskStatus.Successful ()
@@ -549,7 +550,7 @@ spec = describe "Evaluation" $ do
                     EvaluateTask.OnPush $
                       EvaluateTask.MkOnPush
                         { name = "default",
-                          inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl "http://api/tarball/nixpkgs"
+                          inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
                         },
                   EvaluateTask.inputMetadata = "src" =: defaultMeta
                 }
@@ -590,7 +591,7 @@ spec = describe "Evaluation" $ do
                 EvaluateTask.OnPush $
                   EvaluateTask.MkOnPush
                     { name = "default",
-                      inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl "http://api/tarball/nixpkgs"
+                      inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
                     }
             }
       s `shouldBe` TaskStatus.Successful ()
@@ -633,7 +634,7 @@ spec = describe "Evaluation" $ do
                 EvaluateTask.OnPush $
                   EvaluateTask.MkOnPush
                     { name = "default",
-                      inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl "http://api/tarball/nixpkgs"
+                      inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
                     },
               EvaluateTask.inputMetadata = "src" =: defaultMeta
             }

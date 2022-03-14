@@ -24,6 +24,7 @@ import MockTasksApi
 import Protolude
 import System.Timeout (timeout)
 import Test.Hspec
+import TestSupport (apiBaseUrl)
 import Prelude
   ( error,
     userError,
@@ -82,7 +83,7 @@ spec = describe "Build" $
                 "nixpkgs"
                 (EvaluateTask.SubPathOf "n" Nothing),
             EvaluateTask.inputMetadata = "src" =: defaultMeta,
-            EvaluateTask.selector = EvaluateTask.OnPush $ EvaluateTask.MkOnPush {name = "ci", inputs = "nixpkgs" =: ImmutableInput.ArchiveUrl "http://api/tarball/nixpkgs"}
+            EvaluateTask.selector = EvaluateTask.OnPush $ EvaluateTask.MkOnPush {name = "ci", inputs = "nixpkgs" =: ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")}
           }
     s `shouldBe` TaskStatus.Successful ()
     drvPath <-
