@@ -107,7 +107,7 @@ library
     -fwarn-name-shadowing
     -fwarn-incomplete-patterns
 
-test-suite test
+test-suite hercules-ci-cnix-store-tests
   type: exitcode-stdio-1.0
   main-is: TestMain.hs
   other-modules:

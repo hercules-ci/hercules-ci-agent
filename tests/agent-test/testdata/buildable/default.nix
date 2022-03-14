@@ -12,7 +12,7 @@
     outputs = { nixpkgs, ... }:
       let pkgs = import nixpkgs {};
       in {
-        it = pkgs.runCommand "one" {} ''
+        it = pkgs.runCommand "one" { t = builtins.currentTime; } ''
           echo 1>&2 hello on stderr
           echo hello on stdout
           echo 1 >$out

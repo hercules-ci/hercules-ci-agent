@@ -29,6 +29,7 @@ executable hercules-ci-agent-test
       EvaluationSpec
       MockTasksApi
       Spec
+      TestSupport
       Orphans
   hs-source-dirs:
       src

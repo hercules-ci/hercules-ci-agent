@@ -91,6 +91,7 @@ import System.Directory
   )
 import System.Environment (getEnvironment)
 import System.FilePath ((</>))
+import TestSupport
 import qualified Prelude
 
 data ServerState = ServerState
@@ -150,8 +151,7 @@ toServicePayload = \case
 
 fixup :: AgentTask.AgentTask -> IO AgentTask.AgentTask
 fixup (AgentTask.Evaluate t) = do
-  env <- getEnvironment
-  let base = maybe "http://api" toS $ L.lookup "BASE_URL" env
+  let base = apiBaseUrl
       otherInputs' =
         t & EvaluateTask.otherInputs & map \input ->
           if "/" `T.isPrefixOf` input
@@ -280,7 +280,8 @@ logSocket server conn = do
       -- FIXME
       recv :: Handler (Frame LogMessage LogMessage)
       recv = recv' conn
-  send [Frame.Oob {o = serviceInfo}]
+  si <- liftIO serviceInfo
+  send [Frame.Oob {o = si}]
   _hello <- recv
   send [Frame.Ack (-1)]
   forever $ do
@@ -306,7 +307,8 @@ socket server conn = do
       send = send' conn
       recv :: MonadIO m => m (Frame AgentPayload AgentPayload)
       recv = recv' conn
-  send [Frame.Oob {o = SP.ServiceInfo serviceInfo}]
+  si <- liftIO serviceInfo
+  send [Frame.Oob {o = SP.ServiceInfo si}]
   _hello <- recv
   send [Frame.Ack (-1)]
   _writerThreadId <- liftIO $
@@ -396,13 +398,15 @@ sourceball ::
     )
 sourceball "broken-tarball" = pure (Conduit.sourceLazy "i'm not a tarball")
 sourceball fname = do
-  cfname <- liftIO $ canonicalizePath $ toS ("testdata" </> toS fname)
+  env <- liftIO getEnvironment
+  let testdata = fromMaybe "testdata" $ L.lookup "TESTDATA" env
+  cfname <- liftIO $ canonicalizePath $ toS (testdata </> toS fname)
   isFile <- liftIO $ doesFileExist cfname
   if isFile
     then pure $ Conduit.sourceFile cfname
     else
       pure
-        ( Conduit.yield ("testdata" </> toS cfname)
+        ( Conduit.yield (testdata </> toS cfname)
             .| relativePathConduit
             .| void Tar.tar
             .| gzip
@@ -501,16 +505,17 @@ lifeCycleEndpoints _server =
       LifeCycle.hello = \_ _ -> pure NoContent,
       LifeCycle.heartbeat = \_ _ -> pure NoContent,
       LifeCycle.goodbye = \_ _ -> pure NoContent,
-      LifeCycle.getServiceInfo = pure serviceInfo
+      LifeCycle.getServiceInfo = liftIO serviceInfo
     }
 
-serviceInfo :: SI.ServiceInfo
-serviceInfo =
-  SI.ServiceInfo
-    { SI.version = (2, 0),
-      SI.agentSocketBaseURL = "http://api",
-      SI.bulkSocketBaseURL = "http://api"
-    }
+serviceInfo :: IO SI.ServiceInfo
+serviceInfo = do
+  pure
+    SI.ServiceInfo
+      { SI.version = (2, 0),
+        SI.agentSocketBaseURL = apiBaseUrl,
+        SI.bulkSocketBaseURL = apiBaseUrl
+      }
 
 handleAgentCreate ::
   CreateAgentSession.CreateAgentSession ->

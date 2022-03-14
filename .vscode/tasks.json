@@ -1,0 +1,27 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "test agent",
+      "type": "shell",
+      "command": "pidof lorri || { echo lorri down?; exit 1; } && time direnv exec . ./scripts/test-agent",
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "unit tests",
+      "type": "shell",
+      "command": "pidof lorri || { echo lorri down?; exit 1; } && time direnv exec . bash -c 'cabal v2-build all && cabal v2-test all'",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}
