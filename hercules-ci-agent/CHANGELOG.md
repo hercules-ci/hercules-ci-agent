@@ -8,14 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+This release comes with an [Upgrade Guide! ✨](https://hercules-ci.com/hercules-ci/guides/upgrade-to-agent-0.9/)
+
 ### Added
 
  - Flakes support!
 
    Instead of needing a `ci.nix`, the agent will pick up `flake.nix` and look
-   for the `herculesCI` attribute in the flake.
-
-   TODO: document `herculesCI.onPush` etc
+   for the [`herculesCI`](https://docs.hercules-ci.com/hercules-ci-agent/evaluation/#_herculesci_value) attribute in the flake.
 
    Only the `outputs.effects` sub-attributes may define effects, making attacks on secrets harder to conceal.
 
@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Jobs that run with the latest successful dependency build
 
  - Conditions on secrets, disallowing access to secrets except when the conditions are met. This enforces the four eyes principle when branch protection is set up to match the secrets' conditions.
+   A missing `condition` field does not give a great error message for security reasons, so follow the [upgrade guide](https://hercules-ci.com/hercules-ci/guides/upgrade-to-agent-0.9/).
 
  - Hardening against rogue contributors. Trivial attacks trying to read system paths or secrets are no longer possible. Similar to typical CIs, secrets can still be stolen, but only through effects. Prevent secrets theft through reviews and branch protection.
 
