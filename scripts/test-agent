@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+
+# Quick, ad-hoc test launcher mirroring agent-test.nix
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+set -euo pipefail
+
+announce() {
+  echo -e "\033[1;34m$*\033[0m"
+}
+green() {
+  echo -e "\033[1;32m$*\033[0m"
+}
+red() {
+  echo -e "\033[1;31m$*\033[0m"
+}
+dim() {
+  echo -e "\033[2;37m$*\033[0m"
+}
+one() {
+  if [[ $# == 1 ]]; then
+    echo "$1"
+  else
+    for i in "$@"; do
+      echo " - $i" >&2
+    done
+    red "Expected to find only one but found all of the above." >&2
+    return 1
+  fi
+}
+
+expect_failure() {
+  set +ex; while read -r ln; do dim "[expected failure] $ln"; done
+}
+
+cleanup() {
+  r=$?
+  set +ex
+  announce "Cleaning up..."
+  chmod -R u+w "$tmp"
+  rm -rf "$tmp"
+  # echo My pid $$
+  # echo Test pid $TEST_PID
+  # echo Agent pid $AGENT_PID
+  agent_pids=$(ps --ppid "$AGENT_PID" -o pid= --no-header)
+  pids="$agent_pids $AGENT_PID $TEST_PID"
+  # shellcheck disable=SC2086
+  kill $pids 2>&1 | expect_failure
+  sleep 0.1
+  if [[ -n $pids ]]; then
+    # shellcheck disable=SC2086
+    kill -9 $pids 2>&1 | expect_failure
+  fi
+  announce "Done."
+  case $r in
+    0)
+      :
+      ;;
+    130)
+      red Interrupted
+      ;;
+    *)
+      red "Found a problem. Exit code: $r"
+      ;;
+  esac
+}
+AGENT_PID=
+TEST_PID=
+trap cleanup EXIT
+tmp="$(mktemp -d)"
+
+announce "Building agent and test suite..."
+
+# cabal v2-build all
+cabal v2-build hercules-ci-agent hercules-ci-agent-test
+
+# announce "Unit tests..."
+# cabal v2-test all
+
+announce "Preparing temporary files..."
+
+export PORT=$((10000 + (RANDOM % 20000)))
+
+mkdir -p "$tmp/agent/secrets" "$tmp/testdata"
+
+cat >"$tmp/agent.toml" <<EOF
+allowInsecureBuiltinFetchers = true
+apiBaseUrl = "http://127.0.0.1:$PORT"
+baseDirectory = "$tmp/agent"
+clusterJoinTokenPath = "/dev/null"
+concurrentTasks = 6
+logLevel = "DebugS"
+nixUserIsTrusted = false
+EOF
+
+echo '{}' >"$tmp/agent/secrets/secrets.json"
+echo '{}' >"$tmp/agent/secrets/binary-caches.json"
+
+announce "Launching test suite..."
+
+ln -s "$PWD"/tests/agent-test/testdata/* "$tmp/testdata/"
+ln -s "$NIXPKGSBALL" "$tmp/testdata/nixpkgs"
+
+# See note [cabal-v2-run]
+# shellcheck disable=SC2086
+BASE_URL="http://127.0.0.1:$PORT" \
+TESTDATA="$tmp/testdata" \
+"$(one $PWD/dist-newstyle/build/*/ghc-*/hercules-ci-agent-test-*/x/hercules-ci-agent-test/build/hercules-ci-agent-test/hercules-ci-agent-test)" &
+TEST_PID=$!
+
+until nc -w 1 127.0.0.1 "$PORT"; do sleep 0.1; done
+
+announce "Launching agent..."
+
+hercules_ci_agent_bindir="$(
+  echo "$PWD"/dist-newstyle/build/*/ghc-*/hercules-ci-agent-*/build/hercules-ci-agent-worker
+)"
+export hercules_ci_agent_bindir
+export hercules_ci_agent_datadir="$PWD/hercules-ci-agent"
+
+# See note [cabal-v2-run]
+# shellcheck disable=SC2086
+"$(one $PWD/dist-newstyle/build/*/ghc-*/hercules-ci-agent-*/build/hercules-ci-agent/hercules-ci-agent)" \
+  --config "$tmp/agent.toml" \
+  2> >(set +ex; while read -r ln; do dim "[agent] $ln"; done) \
+  &
+AGENT_PID=$!
+
+wait $TEST_PID
+TEST_PID=
+
+green All good!
+
+# Note [cabal-v2-run]
+# cabal v2-run doesn't seem to work right. It calls the binary in ~/.cabal/bin,
+# but it doesn't install first. Maybe we're supposed to cabal v2-install manually
+# first, but that seems to be slow because of setup-type: custom. Maybe the
+# custom setup is also the reason why v2-run is bugged? (if it is)

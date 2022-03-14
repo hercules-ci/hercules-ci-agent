@@ -1,19 +1,12 @@
 { flake, daemonIsNixUnstable }:
 { pkgs, ... }:
 let
-  tarball = x: pkgs.runCommand "${x.name or "tarball"}.tar.gz"
-    {
-      inherit x;
-    } ''
-    tar -C $x --transform='flags=r;s|^|nixpkgs/|' -c . | gzip -1 >$out
-  '';
-
   testdata = pkgs.runCommand "testdata" { } ''
     mkdir -p $out/testdata
     for p in ${./agent-test/testdata}/*; do
       ln -s $p $out/testdata/$(basename $p);
     done
-    ln -s ${tarball pkgs.path} $out/testdata/nixpkgs
+    ln -s ${pkgs.callPackage ./nixpkgsball.nix { }} $out/testdata/nixpkgs
   '';
 
   agentStartTimeoutSec = 5 * 60;

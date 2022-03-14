@@ -304,6 +304,7 @@
                       else pkgs.mkShell { };
                     shell = baseShell.overrideAttrs (o: {
                       NIX_PATH = "nixpkgs=${pkgs.path}";
+                      NIXPKGSBALL = pkgs.callPackage ./tests/nixpkgsball.nix { };
                       nativeBuildInputs =
                         o.nativeBuildInputs or [ ] ++ [
                           pkgs.jq
