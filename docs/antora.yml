@@ -1,7 +1,7 @@
 name: hercules-ci-agent
 title: Hercules CI Agent
-version: '0.9'
-prerelease: prerelease
+version: 'master'
+prerelease: '0.9 prerelease'
 nav:
 - modules/ROOT/nav.adoc
 - modules/hci/nav.adoc
