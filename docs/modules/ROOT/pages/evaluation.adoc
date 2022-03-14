@@ -34,7 +34,7 @@ When you define the `herculesCI` attribute as a function, it will receive the fo
 [[params-herculesCI-commit]]
 === `ref`, `branch`, `tag`, `rev`, `shortRev`
 
-These strings represent the version and origin of the source that led to the `herculesCI` attribute.
+These strings represent the version and origin of the source that contains the `herculesCI` attribute.
 
 `branch` and `tag` may be null.
 
