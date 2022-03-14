@@ -2,7 +2,10 @@
 
 Project configuration for Hercules CI is written in the Nix language. Your agent will evaluate the `herculesCI` attribute of a flake, or, if a repository does not contain `flake.nix`, the agent will look for that attribute in `nix/ci.nix`, `ci.nix` or `default.nix`.
 
-If the `herculesCI` attribute is not present, evaluation will fall back to the xref:legacy-evaluation.adoc[pre-0.9 evaluation behavior].
+Inside this expression, Hercules CI looks for an optional but recommended `herculesCI` attribute. If this attribute is not present, the evaluator will either:
+
+ * if it is **a flake**, evaluate a default `onPush` job with sensible defaults, or
+ * if it is a `ci.nix` or `default.nix`, fall back to the xref:legacy-evaluation.adoc[pre-0.9 evaluation behavior].
 
 A simple example of an `herculesCI` attribute looks as follows:
 
@@ -24,6 +27,8 @@ The `herculesCI` attribute can be a function producing an attribute set. If no p
 
 [[params-herculesCI]]
 == `herculesCI` Parameters
+
+When you define the `herculesCI` attribute as a function, it will receive the following arguments, providing context for your CI/CD configuration <<attributes-herculesCI, attributes>>
 
 // hercules-ci-agent/src/Hercules/Agent/NixFile/HerculesCIArgs.hs
 [[params-herculesCI-commit]]
@@ -50,7 +55,7 @@ A path containing the files of the checked out revision.
 Same as top-level <<params-herculesCI-commit>>.
 
 // hercules-ci-agent/src/Hercules/Agent/NixFile/HerculesCIArgs.hs
-[[param-herculesCI]]
+[[param-herculesCI-herculesCI]]
 === `herculesCI`
 
 Information about the Hercules CI instance the agent is connected to. This is mostly for Hercules CI Enterprise users; who self-manage the entire stack.
@@ -72,7 +77,7 @@ The `herculesCI` value primarily defines handlers for what to build and run for 
 
 This declares what to do when a Git `ref` is updated, such as when you push a commit or after you merge a pull request.
 
-If `onPush` is omitted and your `herculesCI` attribute is in a flake, Hercules CI will use the flake to generate a `default` job.
+If `onPush` is omitted and your `herculesCI` attribute is in a flake, Hercules CI will use the flake to generate <<default-job,a `default` job>>.
 
 If `onPush` is set to `{ }`, no jobs will be created for the push event.
 
@@ -146,3 +151,36 @@ All three are defined through derivations.
 Unlike the legacy format and `nix-build`, nested attribute sets _are_ traversed by default.
 
 You can mark attribute sets not to be traversed by adding an attribute `recurseForDerivations = false` inside them, as is done by the function `lib.dontRecurseIntoAttrs` of type `attrs -> attrs`.
+
+== Default `onPush` job
+
+When the `herculesCI.onPush` attribute is omitted, Hercules CI will supply a default definition.
+
+This will build the flake attributes:
+
+  - `packages`
+  - `checks`
+  - `devShell`
+  - `devShells`
+  - `apps`
+  - `nixosConfigurations`
+  - `darwinConfigurations`
+  - `effects`
+
+If `effects` is a function, it will receive the <<params-herculesCI, same arguments>> as the `herculesCI` attribute.
+
+=== Ignored attributes
+
+The following attributes are silently ignored, because they do not have a well-defined or independently testable structure.
+
+  - `overlays`
+  - `submodules`
+  - `nixosModules`
+  - `darwinModules`
+  - `legacyPackages`
+
+Unknown attributes are also ignored and produce a `trace` line in the evaluation log.
+
+=== Default systems
+
+The `herculesCI` attribute, if it exists, is read for its `ciSystems` attribute; an optional list of "system" strings. If specified, it restricts the job to just the listed architecture-platform combinations.
