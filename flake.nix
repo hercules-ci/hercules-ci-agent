@@ -325,6 +325,16 @@
                   in
                   if isDevVariant then shell else pkgs.mkShell { name = "unsupported-shell"; };
 
+                devShells.releaser = pkgs.mkShell {
+                  nativeBuildInputs = [
+                    (pkgs.haskellPackages.ghcWithPackages (p: [
+                      p.releaser
+                      p.protolude
+                    ]))
+                    pkgs.haskellPackages.cabal-install
+                  ];
+                };
+
                 checks = config.checkSet // suffixAttrs "-nixUnstable" config.variants.nixUnstable.checkSet;
 
                 checkSet =
