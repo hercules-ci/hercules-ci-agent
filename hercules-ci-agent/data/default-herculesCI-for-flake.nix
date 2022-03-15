@@ -151,5 +151,6 @@ in
 {
   inherit
     addDefaults
+    flakeToOutputs
     ;
 }

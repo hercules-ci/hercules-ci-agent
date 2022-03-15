@@ -97,6 +97,11 @@
             "x86_64-linux"
           ];
           flake = {
+            lib = {
+              inherit (import ./hercules-ci-agent/data/default-herculesCI-for-flake.nix)
+                flakeToOutputs;
+            };
+
             overlay =
               final: prev: (import ./nix/make-overlay.nix self) final prev;
 
