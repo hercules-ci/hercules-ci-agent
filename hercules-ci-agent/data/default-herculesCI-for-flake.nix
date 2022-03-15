@@ -42,7 +42,9 @@ let
       };
     };
 
-  flakeToOutputs = flake: args: mapAttrs (translateFlakeAttr args) flake.outputs;
+  flakeToOutputs = flake: args: translateFlakeOutputs flake.outputs;
+
+  translateFlakeOutputs = outputs: args: mapAttrs (translateFlakeAttr args) outputs;
 
   filterSystems = ciSystems:
     if ciSystems == null
@@ -152,5 +154,6 @@ in
   inherit
     addDefaults
     flakeToOutputs
+    translateFlakeOutputs
     ;
 }
