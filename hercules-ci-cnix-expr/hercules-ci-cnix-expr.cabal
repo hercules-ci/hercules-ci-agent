@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           hercules-ci-cnix-expr
-version:        0.2.0.2
+version:        0.3.0.0
 synopsis:       Bindings for the Nix evaluator
 category:       Nix, CI, Testing, DevOps
 homepage:       https://docs.hercules-ci.com
@@ -76,6 +76,8 @@ library
       Hercules.CNix.Expr.Typed
       Hercules.CNix.Expr.Schema
   other-modules:
+      Paths_hercules_ci_cnix_expr
+  autogen-modules:
       Paths_hercules_ci_cnix_expr
 
   hs-source-dirs:

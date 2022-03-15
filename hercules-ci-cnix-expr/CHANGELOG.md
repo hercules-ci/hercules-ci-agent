@@ -5,21 +5,27 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## Unreleased
+## 0.3.0.0 - 2022-03-15
 
 ### Added
 
- - `getLocalFlake` using either flake-compat or Nix 2.4pre
+ - `ToValue` and `ToRawValue` classes for converting Haskell values
+   to Nix values.
 
- - `ToValue` and `ToRawValue` classes for converting Haskell values to Nix values.
-
- - `Hercules.CNix.Expr.Schema` module for a typed interface between code in the Nix language and Haskell. This also includes provenance tracking, improving error messages while reducing error handling noise in the Haskell code.
+ - `Hercules.CNix.Expr.Schema` module for a typed interface between
+   code in the Nix language and Haskell. This also includes
+   provenance tracking, improving error messages while reducing
+   error handling noise in the Haskell code.
 
  - `addAllowedPath`, `addInternalAllowedPaths` for use with restricted mode.
 
 ### Changed
 
- - Flakes are enabled during `init` on Nix 2.4pre
+ - Flakes are enabled during `init`
+
+### Removed
+
+ - Nix 2.3 support
 
 ## 0.2.0.2 - 2022-03-09
 
