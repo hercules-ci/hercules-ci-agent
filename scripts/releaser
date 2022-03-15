@@ -97,10 +97,9 @@ releasePackage pkg extraBumps = do
         }
       extraBumps oldVersion newVersion
       tarball <- cabalSdist2 dir
+      cabalMakeHaddocks dir
       cabalUpload tarball
-      -- TODO newer releaser
-      -- cabalMakeHaddocks dir
-      -- cabalUploadDocs
+      cabalUploadDocs
       gitCommit $ releaseName
       gitTag releaseName
       gitPush "origin"
