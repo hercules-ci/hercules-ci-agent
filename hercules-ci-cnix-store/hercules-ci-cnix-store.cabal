@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           hercules-ci-cnix-store
-version:        0.2.1.2
+version:        0.3.0.0
 synopsis:       Haskell bindings for Nix's libstore
 category:       Nix
 homepage:       https://docs.hercules-ci.com
@@ -75,7 +75,6 @@ library
       Hercules.CNix.Verbosity
   include-dirs:
       include
-      compat-2.4/include
   pkgconfig-depends:
       nix-store >= 2.4 && < 2.8
     , nix-main >= 2.4 && < 2.8
