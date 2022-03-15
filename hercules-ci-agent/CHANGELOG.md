@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## Unreleased
+## [0.9.0] - 2022-03-15
 
 This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/hercules-ci/guides/upgrade-to-agent-0.9/)
 
@@ -534,6 +534,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Initial release
 
+[0.9.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.7...hercules-ci-agent-0.9.0
 [0.8.7]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.6...hercules-ci-agent-0.8.7
 [0.8.6]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.5...hercules-ci-agent-0.8.6
 [0.8.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.4...hercules-ci-agent-0.8.5
