@@ -96,16 +96,27 @@ releasePackage pkg extraBumps = do
               <> [""]
         }
       extraBumps oldVersion newVersion
-      withCurrentDirectory dir $ do
-        tarball <- cabalSdist "."
-        cabalUpload tarball
-        -- TODO newer releaser
-        -- cabalMakeHaddocks dir
-        -- cabalUploadDocs
-        gitCommit $ releaseName
-        gitTag releaseName
-        gitPush "origin"
-        gitPushTags "origin"
+      tarball <- cabalSdist2 dir
+      cabalUpload tarball
+      -- TODO newer releaser
+      -- cabalMakeHaddocks dir
+      -- cabalUploadDocs
+      gitCommit $ releaseName
+      gitTag releaseName
+      gitPush "origin"
+      gitPushTags "origin"
+
+cabalSdist2 :: FilePath -> IO FilePath
+cabalSdist2 dir = do
+  logStep "Running $ cabal dist"
+  -- cabalinfo <- cabalRead dir
+  out <- lines <$> readProcess "cabal" ["v2-sdist", dir] mempty
+  sdistTarball <- case out of
+    ['W':'r':'o':'t':'e':_, path] -> pure path
+    _ -> error ("Unexpected cabal v2-sdist output: " <> show out)
+  -- let sdistTarball = "dist-newstyle/sdist/" <> name cabalinfo <> "-" <> version cabalinfo <> ".tar.gz"
+  logStep $ "Created " <> sdistTarball
+  return sdistTarball
 
 data ChangelogOptions = ChangelogOptions
   { changelogFile :: FilePath
