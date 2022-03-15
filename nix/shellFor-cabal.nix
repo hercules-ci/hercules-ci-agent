@@ -16,6 +16,8 @@ haskellPackages.shellFor {
     p.hercules-ci-cnix-expr
     p.hercules-ci-cnix-store
     p.cachix
+    # TODO: https://github.com/NixOS/nixpkgs/pull/164305
+    { getCabalDeps.libraryHaskellDepends = [ haskellPackages.releaser ]; outPath = "/nix/store/shellFor-cabal-dummy-out-path"; }
   ];
   buildInputs = [
     pkgs.boost
