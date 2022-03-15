@@ -99,7 +99,7 @@
           flake = {
             lib = {
               inherit (import ./hercules-ci-agent/data/default-herculesCI-for-flake.nix)
-                flakeToOutputs;
+                translateFlakeOutputs;
             };
 
             overlay =
@@ -216,6 +216,17 @@
                 description = "A NixOS configuration with Hercules CI Agent";
               };
             };
+
+            herculesCI = args@{ ... }: {
+              onPush = {
+                default = {
+                  outputs = self.lib.translateFlakeOutputs config.variants.nix_stable.flake args.herculesCI;
+                };
+                nix_2_5 = {
+                  outputs = self.lib.translateFlakeOutputs config.variants.nix_2_5.flake args.herculesCI;
+                };
+              };
+            };
           };
           perSystem = system: { config, pkgs, ... }:
             let
@@ -258,13 +269,17 @@
                     config = { };
                     inherit system;
                   };
-                packages.hercules-ci-api-swagger = pkgs.hercules-ci-agent-packages.hercules-ci-api-swagger;
-                packages.hercules-ci-cli = pkgs.hercules-ci-agent-packages.hercules-ci-cli;
-                packages.hercules-ci-agent = pkgs.hercules-ci-agent;
-                packages.hercules-ci-agent-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-agent;
-                packages.hercules-ci-cli-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-cli;
-                packages.hercules-ci-agent-nix_2_5 = config.variants.nix_2_5.packages.hercules-ci-agent;
-                packages.hercules-ci-cli-nix_2_5 = config.variants.nix_2_5.packages.hercules-ci-cli;
+                packages = {
+                  hercules-ci-api-swagger = pkgs.hercules-ci-agent-packages.hercules-ci-api-swagger;
+                  hercules-ci-cli = pkgs.hercules-ci-agent-packages.hercules-ci-cli;
+                  hercules-ci-agent = pkgs.hercules-ci-agent;
+                } // lib.optionalAttrs flakeArgs.config.enableAliases {
+                  hercules-ci-agent-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-agent;
+                  hercules-ci-cli-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-cli;
+                  hercules-ci-agent-nix_2_5 = config.variants.nix_2_5.packages.hercules-ci-agent;
+                  hercules-ci-cli-nix_2_5 = config.variants.nix_2_5.packages.hercules-ci-cli;
+                };
+
                 pre-commit.pkgs = pkgs;
                 pre-commit.settings = {
                   hooks = {
@@ -316,7 +331,9 @@
                   in
                   if isDevVariant then shell else pkgs.mkShell { name = "unsupported-shell"; };
 
-                checks = config.checkSet // suffixAttrs "-nixUnstable" config.variants.nixUnstable.checkSet;
+                checks = config.checkSet // lib.optionalAttrs flakeArgs.config.enableAliases (
+                  suffixAttrs "-nixUnstable" config.variants.nixUnstable.checkSet
+                );
 
                 checkSet =
                   let
@@ -348,10 +365,15 @@
                 };
               };
             };
+
+          variants.nix_stable.enableAliases = false;
+
+          variants.nixUnstable.enableAliases = false;
           variants.nixUnstable.extraOverlay = final: prev: {
             # nixUnstable is currently behind regular nix
             # nix = addDebug prev.nixUnstable;
           };
+          variants.nix_2_5.enableAliases = false;
           variants.nix_2_5.extraOverlay = final: prev: {
             nix = addDebug prev.nix_2_5;
           };
@@ -360,6 +382,12 @@
           # Set by variants
           extraOverlay = lib.mkOption {
             default = _: _: { };
+          };
+          enableAliases = lib.mkOption {
+            default = true;
+            description = ''
+              Whether to enable version-suffixed attributes like hercules-ci-agent_nix_2_5
+            '';
           };
         };
       })).config.flake;
