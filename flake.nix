@@ -211,20 +211,6 @@
                 description = "A NixOS configuration with Hercules CI Agent";
               };
             };
-
-            herculesCI.onPush.default = {
-              outputs = { ... }: {
-                flake = {
-                  inherit (self)
-                    checks
-                    defaultApp
-                    devShell
-                    legacyPackages
-                    packages
-                    ;
-                };
-              };
-            };
           };
           perSystem = system: { config, pkgs, ... }:
             let
