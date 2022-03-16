@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## 0.3.0 - 2022-03-15
+
+### Added
+
+ - `hci secret echo` to assemble a secret and print it on stdout.
+   Not unlike `hci secret add` but for people who don't have local
+   secrets as part of their setup.
+
+ - `hci secret add/echo --password` to ask a password on the terminal.
+
+ - `hci secret add/echo` add a default `condition` to the secret.
+
+ - Parity with hercules-ci-agent 0.9.0: flake support, `onPush` jobs
+   in `hci effect run`.
+
+### Fixed
+
+ - Nix warnings don't pollute the shell completions anymore
+
 ## 0.2.6 - 2022-03-09
 
 ### Added

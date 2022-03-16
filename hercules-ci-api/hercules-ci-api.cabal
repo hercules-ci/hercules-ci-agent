@@ -1,6 +1,6 @@
 cabal-version:      1.12
 name:               hercules-ci-api
-version:            0.7.1.0
+version:            0.7.2.0
 synopsis:           Hercules CI API definition with Servant
 homepage:           https://github.com/hercules-ci/hercules-ci-agent#readme
 bug-reports:        https://github.com/hercules-ci/hercules-ci-agent/issues

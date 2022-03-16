@@ -1,7 +1,8 @@
 #!/usr/bin/env nix-shell
 #!nix-shell -i runghc
-#!nix-shell releaser-shell.nix
+#!nix-shell ../shell.nix
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE BlockArguments #-}
 import Releaser.Primitives hiding (cabalWriteVersion)
 import System.Process
 import System.FilePath
@@ -35,6 +36,8 @@ main = do
   hSetBuffering stderr LineBuffering
   gitAssertEmptyStaging
   -- Disabled because metadata change does not warrant a bump
+  whenConfirmed "Check haddocks buildable?" do
+    cmd "cabal" ["v2-haddock", "--haddock-for-hackage", "all"]
   whenConfirmed "Update cabal-pkg-config-version-hook?" $
     releasePackage "cabal-pkg-config-version-hook" (bumpExactVersion "cabal-pkg-config-version-hook")
   whenConfirmed "Update hercules-ci-api-core?" $
@@ -96,16 +99,42 @@ releasePackage pkg extraBumps = do
               <> [""]
         }
       extraBumps oldVersion newVersion
-      withCurrentDirectory dir $ do
-        tarball <- cabalSdist "."
-        cabalUpload tarball
-        -- TODO newer releaser
-        -- cabalMakeHaddocks dir
-        -- cabalUploadDocs
-        gitCommit $ releaseName
-        gitTag releaseName
-        gitPush "origin"
-        gitPushTags "origin"
+      tarball <- cabalSdist2 dir
+      docs <- cabalMakeHaddocks2 dir
+      cabalUpload tarball
+      cabalUploadDocs docs
+      gitCommit $ releaseName
+      gitTag releaseName
+      gitPush "origin"
+      gitPushTags "origin"
+
+cabalSdist2 :: FilePath -> IO FilePath
+cabalSdist2 dir = do
+  logStep "Running $ cabal dist"
+  -- cabalinfo <- cabalRead dir
+  out <- lines <$> readProcess "cabal" ["v2-sdist", dir] mempty
+  sdistTarball <- case out of
+    ['W':'r':'o':'t':'e':_, path] -> pure path
+    _ -> error ("Unexpected cabal v2-sdist output: " <> show out)
+  -- let sdistTarball = "dist-newstyle/sdist/" <> name cabalinfo <> "-" <> version cabalinfo <> ".tar.gz"
+  logStep $ "Created " <> sdistTarball
+  return sdistTarball
+
+cabalMakeHaddocks2 :: FilePath -> IO FilePath
+cabalMakeHaddocks2 dir = do
+  logStep "Running $ cabal haddock"
+  cabalinfo <- cabalRead dir
+  cmd "cabal" ["v2-haddock", "--haddock-for-hackage", dir]
+  let docsTarball = "dist-newstyle/" <> name cabalinfo <> "-" <> version cabalinfo <> "-docs.tar.gz"
+  logStep $ "Created " <> docsTarball
+  return docsTarball
+
+cmd :: String -> [String] -> IO ()
+cmd exe args = do
+  e <- rawSystem exe args
+  case e of
+    ExitSuccess {} -> pure ()
+    e -> throwIO e
 
 data ChangelogOptions = ChangelogOptions
   { changelogFile :: FilePath
