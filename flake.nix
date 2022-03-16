@@ -315,7 +315,7 @@
                           pkgs.haskellPackages.stack
                           # pkgs.valgrind (broken on x86_64-darwin)
                         ] ++ lib.optionals shellWithHaskell [
-                          pkgs.haskellPackages.haskell-language-server
+                          haskellPackages.haskell-language-server
                           pkgs.haskellPackages.implicit-hie # gen-hie
                           pkgs.haskellPackages.ghcid
                         ];
