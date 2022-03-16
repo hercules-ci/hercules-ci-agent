@@ -5,7 +5,7 @@ let inherit (pkgs) lib;
 in
 haskellPackages.shellFor {
   # Just in case
-  NIX_PATH = "${pkgs.path}";
+  NIX_PATH = "nixpkgs=${pkgs.path}";
 
   packages = p: [
     p.hercules-ci-api-core
