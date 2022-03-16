@@ -61,7 +61,8 @@ defaultTask =
       logToken = "mock-eval-log-token",
       selector = ConfigOrLegacy,
       ciSystems = Nothing,
-      extraGitCredentials = Nothing
+      extraGitCredentials = Nothing,
+      isFlakeJob = False
     }
 
 defaultMeta :: Map Text A.Value

@@ -17,7 +17,12 @@ data EvaluateTask = EvaluateTask
     logToken :: Text,
     selector :: Selector,
     ciSystems :: Maybe (Map Text ()),
-    extraGitCredentials :: Maybe [Credential]
+    extraGitCredentials :: Maybe [Credential],
+    -- | Whether to use Nix's fetching mechanism for everything.
+    --
+    -- Putting checkouts in the store isn't always desirable, so we keep the
+    -- non-flake behavior of custom checkouts for non-flake use cases.
+    isFlakeJob :: Bool
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
