@@ -33,8 +33,16 @@ executable hercules-ci-agent-test
       Orphans
   hs-source-dirs:
       src
+  cpp-options:
+      -- a hacky way of adding this to haskell language server globally
+      -- via stack repl, which is then merged
+      -DNIX_IS_AT_LEAST(a,b,c)=1
+
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N
+    -- a hacky way of disambiguating optparse applicative modules
+    -- TODO PackageImports?
+    -hide-package=optparse-applicative
   build-depends:
       aeson >= 2
     , async

@@ -1,0 +1,25 @@
+resolver: ghc-9.0.2
+# compiler: ghc-9.0.2
+
+packages:
+  # - ./cabal-pkg-config-version-hook
+  - ./hercules-ci-agent
+  - ./hercules-ci-api-agent
+  - ./hercules-ci-api-core
+  - ./hercules-ci-api
+  - ./hercules-ci-cli
+  - ./hercules-ci-cnix-expr
+  - ./tests/agent-test
+  # Disable so that cachix, its consumer becomes a regular dependency, in order
+  # not to confuse the stack repl + hie-bios + hls setup.
+  # - ./hercules-ci-cnix-store
+
+system-ghc: true
+
+# extra-deps:
+  # - cachix-0.6.1@sha256:7b835ba840e5cb801da19125f86628c042120179eb3505c59984c7ab97b35faa,3616
+
+nix:
+  enable: false
+  packages: []
+  shell-file: ./shell.nix

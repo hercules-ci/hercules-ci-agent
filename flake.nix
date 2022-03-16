@@ -1,7 +1,7 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixos-unstable.url = "github:hercules-ci/nixpkgs/haskell-updates";
+  inputs.nixos-unstable.url = "github:hercules-ci/nixpkgs/haskell-updates-ghc-9.0-stack";
   inputs.nix-darwin.url = "github:LnL7/nix-darwin"; # test only
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
@@ -311,9 +311,11 @@
                           pkgs.devTools.cabal2nix
                           pkgs.nix-prefetch-git
                           pkgs.nixpkgs-fmt
+                          # pkgs.haskell.packages.ghc8107.stack
+                          pkgs.haskellPackages.stack
                           # pkgs.valgrind (broken on x86_64-darwin)
                         ] ++ lib.optionals shellWithHaskell [
-                          pkgs.haskellPackages.haskell-language-server
+                          haskellPackages.haskell-language-server
                           pkgs.haskellPackages.implicit-hie # gen-hie
                           pkgs.haskellPackages.ghcid
                         ];
