@@ -104,8 +104,6 @@ library
       Hercules.UserException
       Data.Conduit.Extras
       Data.Conduit.Katip.Orphans
-
-  other-modules:
       Paths_hercules_ci_agent
   autogen-modules:
       Paths_hercules_ci_agent
@@ -195,9 +193,6 @@ executable hercules-ci-agent
       Hercules.Agent.SecureDirectory
       Hercules.Agent.ServiceInfo
       Hercules.Agent.Token
-      Paths_hercules_ci_agent
-  autogen-modules:
-      Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
@@ -274,13 +269,10 @@ executable hercules-ci-agent-worker
       Hercules.Agent.Worker.Build.Logger
       Hercules.Agent.Worker.Build.Logger.Context
       Hercules.Agent.Worker.Effect
-      Paths_hercules_ci_agent
       Hercules.Agent.Worker.HerculesStore
       Hercules.Agent.Worker.HerculesStore.Context
       Hercules.Agent.Worker.Logging
       Hercules.Agent.Worker.NixDaemon
-  autogen-modules:
-      Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent-worker
 
@@ -368,7 +360,6 @@ test-suite hercules-test
       Hercules.Agent.WorkerProcessSpec
       Hercules.Secrets
       Hercules.SecretsSpec
-      Paths_hercules_ci_agent
       Spec
   hs-source-dirs:
       src
