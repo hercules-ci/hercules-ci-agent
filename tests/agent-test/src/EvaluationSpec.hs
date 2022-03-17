@@ -16,8 +16,10 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as Buil
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent as OnPushHandlerEvent
-import Hercules.API.Agent.Evaluate.EvaluateTask (Selector (ConfigOrLegacy))
+import Hercules.API.Agent.Evaluate.EvaluateTask (Identifier, Selector (ConfigOrLegacy))
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnPush as EvaluateTask.OnPush
+import Hercules.API.Agent.Evaluate.ImmutableInput (ImmutableInput (ArchiveUrl))
 import qualified Hercules.API.Agent.Evaluate.ImmutableInput as API.ImmutableInput
 import Hercules.API.Id (Id (Id))
 import qualified Hercules.API.TaskStatus as TaskStatus
@@ -55,6 +57,7 @@ defaultTask =
     { id = Prelude.error "override EvaluateTask.id please",
       primaryInput = "",
       inputMetadata = mempty,
+      inputs = mempty,
       otherInputs = mempty,
       autoArguments = mempty,
       nixPath = mempty,
@@ -64,6 +67,9 @@ defaultTask =
       extraGitCredentials = Nothing,
       isFlakeJob = False
     }
+
+srcInput :: Text -> Map Identifier ImmutableInput
+srcInput url = M.singleton "src" (ArchiveUrl url)
 
 defaultMeta :: Map Text A.Value
 defaultMeta =
@@ -80,15 +86,17 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                -- localhost because it (almost) always resolves and refuses
-                -- to connect quickly and :61 because it's a port number that
-                -- want from assigned to reserved in 2017 and is therefore
-                -- very very rarely used.
-                EvaluateTask.otherInputs = "src" =: "http://localhost:61/problem.tar.gz",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    -- localhost because it (almost) always resolves and refuses
+                    -- to connect quickly and :61 because it's a port number that
+                    -- went from assigned to reserved in 2017 and is therefore
+                    -- very very rarely used.
+                    EvaluateTask.otherInputs = "src" =: "http://localhost:61/problem.tar.gz",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         let TaskStatus.Exceptional msg = s
         toS msg `shouldContain` "HttpExceptionRequest"
         toS msg `shouldContain` "Connection refused"
@@ -101,11 +109,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/broken-tarball",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/broken-tarball",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s
           `shouldBe` TaskStatus.Exceptional
             "SubprocessFailure {message = \"Extracting tarball\"}"
@@ -117,11 +127,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/no-nix-file",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/no-nix-file",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case r of
           [EvaluateEvent.Message msg] ->
@@ -139,11 +151,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/ci-dot-nix",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/ci-dot-nix",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case attrLike r of
           [EvaluateEvent.Attribute ae] -> do
@@ -159,11 +173,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/ambiguous-nix-file",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/ambiguous-nix-file",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case r of
           [EvaluateEvent.Message msg] ->
@@ -174,6 +190,49 @@ spec = describe "Evaluation" $ do
                   message = "Don't know what to do, expecting only one of nix/ci.nix or ci.nix"
                 }
           _ -> failWith $ "Events should be a single message, not: " <> show r
+  context "when a ci.nix contains the herculesCI special attribute" do
+    it "reports the onPush handler" \srv -> do
+      id <- randomId
+      (s, r) <-
+        runEval
+          srv
+          ( fixupInputs
+              defaultTask
+                { EvaluateTask.id = id,
+                  EvaluateTask.otherInputs = "src" =: "/tarball/ci-dot-nix-herculesCI",
+                  EvaluateTask.inputMetadata = "src" =: defaultMeta
+                }
+          )
+      s `shouldBe` TaskStatus.Successful ()
+      case r of
+        [EvaluateEvent.JobConfig _jc, EvaluateEvent.OnPushHandlerEvent op] -> do
+          OnPushHandlerEvent.handlerName op `shouldBe` "default"
+          OnPushHandlerEvent.handlerExtraInputs op `shouldBe` mempty
+        _ ->
+          failWith $ "Events should be a [JobConfig, OnPushHandlerEvent op], not " <> show r
+    it "reports the package" \srv -> do
+      id <- randomId
+      (s, r) <-
+        runEval
+          srv
+          ( fixupInputs
+              defaultTask
+                { EvaluateTask.id = id,
+                  EvaluateTask.otherInputs = "src" =: "/tarball/ci-dot-nix-herculesCI",
+                  EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                  EvaluateTask.selector =
+                    EvaluateTask.OnPush $
+                      EvaluateTask.OnPush.MkOnPush {name = "default", inputs = mempty}
+                }
+          )
+      s `shouldBe` TaskStatus.Successful ()
+      case attrLike r of
+        [EvaluateEvent.Attribute ae] -> do
+          AttributeEvent.expressionPath ae `shouldBe` ["packages", "x86_64-linux", "default"]
+          toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
+          toS (AttributeEvent.derivationPath ae) `shouldContain` "-default-package"
+        _ -> failWith $ "Events should be a single attribute, not: " <> show r
+
   context "when a flake with onPush is provided" $
     it "reports the onPush handler" $
       \srv -> do
@@ -181,11 +240,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/flake-onPush",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/flake-onPush",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case r of
           [EvaluateEvent.JobConfig _jc, EvaluateEvent.OnPushHandlerEvent op] -> do
@@ -194,18 +255,20 @@ spec = describe "Evaluation" $ do
           _ ->
             failWith $ "Events should be a [JobConfig, OnPushHandlerEvent op], not " <> show r
 
-  let simpleFlakeBehavior = \tarball -> do
+  let simpleFlakeBehavior tarball = do
         it "reports the default onPush handler" do
           \srv -> do
             id <- randomId
             (s, r) <-
               runEval
                 srv
-                defaultTask
-                  { EvaluateTask.id = id,
-                    EvaluateTask.otherInputs = "src" =: ("/tarball/" <> tarball),
-                    EvaluateTask.inputMetadata = "src" =: defaultMeta
-                  }
+                ( fixupInputs
+                    defaultTask
+                      { EvaluateTask.id = id,
+                        EvaluateTask.otherInputs = "src" =: ("/tarball/" <> tarball),
+                        EvaluateTask.inputMetadata = "src" =: defaultMeta
+                      }
+                )
             s `shouldBe` TaskStatus.Successful ()
             case r of
               [EvaluateEvent.JobConfig _jc, EvaluateEvent.OnPushHandlerEvent op] -> do
@@ -219,14 +282,16 @@ spec = describe "Evaluation" $ do
             (s, r) <-
               runEval
                 srv
-                defaultTask
-                  { EvaluateTask.id = id,
-                    EvaluateTask.otherInputs = "src" =: ("/tarball/" <> tarball),
-                    EvaluateTask.inputMetadata = "src" =: defaultMeta,
-                    EvaluateTask.selector =
-                      EvaluateTask.OnPush $
-                        EvaluateTask.MkOnPush {name = "default", inputs = mempty}
-                  }
+                ( fixupInputs
+                    defaultTask
+                      { EvaluateTask.id = id,
+                        EvaluateTask.otherInputs = "src" =: ("/tarball/" <> tarball),
+                        EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                        EvaluateTask.selector =
+                          EvaluateTask.OnPush $
+                            EvaluateTask.OnPush.MkOnPush {name = "default", inputs = mempty}
+                      }
+                )
             s `shouldBe` TaskStatus.Successful ()
             case attrLike r of
               [EvaluateEvent.Attribute ae] -> do
@@ -250,11 +315,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/simple",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/simple",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case attrLike r of
           [EvaluateEvent.Attribute ae] -> do
@@ -270,11 +337,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/attribute-types",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/attribute-types",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case attrLike r of
           [ EvaluateEvent.Attribute depsOnly,
@@ -304,11 +373,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/naked-derivation",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/naked-derivation",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case attrLike r of
           [EvaluateEvent.Attribute ae] -> do
@@ -324,11 +395,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/list",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/list",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case r of
           [EvaluateEvent.AttributeError AttributeErrorEvent.AttributeErrorEvent {errorMessage = msg}] -> do
@@ -341,11 +414,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/empty-attrset",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/empty-attrset",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case r of
           [] -> pass
@@ -358,11 +433,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/naked-derivation-default-args",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/naked-derivation-default-args",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case attrLike r of
           [EvaluateEvent.Attribute ae] -> do
@@ -380,13 +457,15 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs =
-                  "src"
-                    =: "/tarball/naked-derivation-default-args-twice",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs =
+                      "src"
+                        =: "/tarball/naked-derivation-default-args-twice",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case attrLike r of
           [EvaluateEvent.Attribute ae] -> do
@@ -404,11 +483,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/abort-at-root",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/abort-at-root",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case r of
           [EvaluateEvent.AttributeError ae] -> do
@@ -425,11 +506,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/abort-in-attribute",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/abort-in-attribute",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         case attrLike r of
           [EvaluateEvent.AttributeError ae, EvaluateEvent.Attribute a] -> do
@@ -451,11 +534,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/too-many-attrs",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/too-many-attrs",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s
           `shouldBe` TaskStatus.Exceptional
             "FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}"
@@ -476,11 +561,13 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/too-many-errors",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/too-many-errors",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
         s
           `shouldBe` TaskStatus.Exceptional
             "WorkerException {originalException = FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}, exitStatus = Nothing}"
@@ -502,18 +589,20 @@ spec = describe "Evaluation" $ do
       (s, r) <-
         runEval
           srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs =
-                "src" =: "/tarball/nix-path-simple"
-                  <> "oi1" =: "/tarball/simple",
-              EvaluateTask.nixPath =
-                [ EvaluateTask.NixPathElement
-                    (Just "simple")
-                    (EvaluateTask.SubPathOf "oi1" Nothing)
-                ],
-              EvaluateTask.inputMetadata = "src" =: defaultMeta
-            }
+          ( fixupInputs
+              defaultTask
+                { EvaluateTask.id = id,
+                  EvaluateTask.otherInputs =
+                    "src" =: "/tarball/nix-path-simple"
+                      <> "oi1" =: "/tarball/simple",
+                  EvaluateTask.nixPath =
+                    [ EvaluateTask.NixPathElement
+                        (Just "simple")
+                        (EvaluateTask.SubPathOf "oi1" Nothing)
+                    ],
+                  EvaluateTask.inputMetadata = "src" =: defaultMeta
+                }
+          )
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
@@ -527,17 +616,19 @@ spec = describe "Evaluation" $ do
       (s, r) <-
         runEval
           srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/nixpkgs-reference",
-              EvaluateTask.inputMetadata = "src" =: defaultMeta,
-              EvaluateTask.selector =
-                EvaluateTask.OnPush $
-                  EvaluateTask.MkOnPush
-                    { name = "default",
-                      inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
-                    }
-            }
+          ( fixupInputs
+              defaultTask
+                { EvaluateTask.id = id,
+                  EvaluateTask.otherInputs = "src" =: "/tarball/nixpkgs-reference",
+                  EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                  EvaluateTask.selector =
+                    EvaluateTask.OnPush $
+                      EvaluateTask.OnPush.MkOnPush
+                        { name = "default",
+                          inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
+                        }
+                }
+          )
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.Attribute ae] -> do
@@ -552,17 +643,19 @@ spec = describe "Evaluation" $ do
         (s, r) <-
           runEval
             srv
-            defaultTask
-              { EvaluateTask.id = id,
-                EvaluateTask.otherInputs = "src" =: "/tarball/nixpkgs-reference",
-                EvaluateTask.inputMetadata = "src" =: defaultMeta,
-                EvaluateTask.selector =
-                  EvaluateTask.OnPush $
-                    EvaluateTask.MkOnPush
-                      { name = "default",
-                        inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
-                      }
-              }
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/nixpkgs-reference",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                    EvaluateTask.selector =
+                      EvaluateTask.OnPush $
+                        EvaluateTask.OnPush.MkOnPush
+                          { name = "default",
+                            inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
+                          }
+                  }
+            )
         s `shouldBe` TaskStatus.Successful ()
         let drvMap ::
               Map
@@ -595,17 +688,19 @@ spec = describe "Evaluation" $ do
           (s, r) <-
             runEval
               srv
-              defaultTask
-                { EvaluateTask.id = id,
-                  EvaluateTask.otherInputs = "src" =: "/tarball/ifd",
-                  EvaluateTask.selector =
-                    EvaluateTask.OnPush $
-                      EvaluateTask.MkOnPush
-                        { name = "default",
-                          inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
-                        },
-                  EvaluateTask.inputMetadata = "src" =: defaultMeta
-                }
+              ( fixupInputs
+                  defaultTask
+                    { EvaluateTask.id = id,
+                      EvaluateTask.otherInputs = "src" =: "/tarball/ifd",
+                      EvaluateTask.selector =
+                        EvaluateTask.OnPush $
+                          EvaluateTask.OnPush.MkOnPush
+                            { name = "default",
+                              inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
+                            },
+                      EvaluateTask.inputMetadata = "src" =: defaultMeta
+                    }
+              )
           s `shouldBe` TaskStatus.Successful ()
           case attrLike r of
             [ EvaluateEvent.BuildRequired br1,
@@ -635,17 +730,19 @@ spec = describe "Evaluation" $ do
       (s, r) <-
         runEval
           srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/ifd-fail",
-              EvaluateTask.inputMetadata = "src" =: defaultMeta,
-              EvaluateTask.selector =
-                EvaluateTask.OnPush $
-                  EvaluateTask.MkOnPush
-                    { name = "default",
-                      inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
-                    }
-            }
+          ( fixupInputs
+              defaultTask
+                { EvaluateTask.id = id,
+                  EvaluateTask.otherInputs = "src" =: "/tarball/ifd-fail",
+                  EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                  EvaluateTask.selector =
+                    EvaluateTask.OnPush $
+                      EvaluateTask.OnPush.MkOnPush
+                        { name = "default",
+                          inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
+                        }
+                }
+          )
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [ EvaluateEvent.BuildRequired br1,
@@ -679,17 +776,19 @@ spec = describe "Evaluation" $ do
       (s, r) <-
         runEval
           srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/effect-attack",
-              EvaluateTask.selector =
-                EvaluateTask.OnPush $
-                  EvaluateTask.MkOnPush
-                    { name = "default",
-                      inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
-                    },
-              EvaluateTask.inputMetadata = "src" =: defaultMeta
-            }
+          ( fixupInputs
+              defaultTask
+                { EvaluateTask.id = id,
+                  EvaluateTask.otherInputs = "src" =: "/tarball/effect-attack",
+                  EvaluateTask.selector =
+                    EvaluateTask.OnPush $
+                      EvaluateTask.OnPush.MkOnPush
+                        { name = "default",
+                          inputs = "nixpkgs" =: API.ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")
+                        },
+                  EvaluateTask.inputMetadata = "src" =: defaultMeta
+                }
+          )
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [ EvaluateEvent.Attribute a1,
@@ -709,11 +808,13 @@ spec = describe "Evaluation" $ do
       (s, r) <-
         runEval
           srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/path-attack",
-              EvaluateTask.inputMetadata = "src" =: defaultMeta
-            }
+          ( fixupInputs
+              defaultTask
+                { EvaluateTask.id = id,
+                  EvaluateTask.otherInputs = "src" =: "/tarball/path-attack",
+                  EvaluateTask.inputMetadata = "src" =: defaultMeta
+                }
+          )
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.AttributeError ae] -> do
@@ -727,11 +828,13 @@ spec = describe "Evaluation" $ do
       (s, r) <-
         runEval
           srv
-          defaultTask
-            { EvaluateTask.id = id,
-              EvaluateTask.otherInputs = "src" =: "/tarball/path-attack-2",
-              EvaluateTask.inputMetadata = "src" =: defaultMeta
-            }
+          ( fixupInputs
+              defaultTask
+                { EvaluateTask.id = id,
+                  EvaluateTask.otherInputs = "src" =: "/tarball/path-attack-2",
+                  EvaluateTask.inputMetadata = "src" =: defaultMeta
+                }
+          )
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
         [EvaluateEvent.AttributeError ae] -> do

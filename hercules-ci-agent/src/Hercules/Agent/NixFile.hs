@@ -50,6 +50,7 @@ import Hercules.CNix.Expr
     match',
     toRawValue,
     unsafeAssertType,
+    valueFromExpressionString,
   )
 import Hercules.CNix.Expr.Raw (RawValue)
 import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), Provenance (Other), StringWithoutContext, basicAttrsWithProvenance, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (.$), (>>$.), type (->.), type (->?), type (::.), type (::?))
@@ -142,6 +143,12 @@ type DefaultHerculesCIHelperSchema =
     '[ "addDefaults" ::. Attrs '[] ->. Attrs '[] ->. HerculesCISchema
      ]
 
+exprString :: forall a m. MonadEval m => ByteString -> m (PSObject a)
+exprString bs = do
+  evalState <- ask
+  value <- liftIO $ valueFromExpressionString evalState bs "/var/lib/empty/hercules-ci-agent-builtin"
+  pure PSObject {value = value, provenance = Schema.Other "hercules-ci-agent built-in expression"}
+
 getHerculesCI :: MonadEval m => HomeExpr -> HerculesCIArgs -> m (Maybe (PSObject HerculesCISchema))
 getHerculesCI homeExpr args = do
   home <- getHomeExprObject homeExpr
@@ -153,10 +160,18 @@ getHerculesCI homeExpr args = do
           herculesCI $? args'
     Flake flake ->
       Just <$> do
+        -- fixup primaryRepo.outPath, which we didn't set to the right value for
+        -- flakes earlier, because we don't have a local checkout.
+        args'' <-
+          exprString @(Attrs _ ->. HomeSchema ->. Attrs _)
+            "args': flake: args' // { primaryRepo = args'.primaryRepo // { outPath = flake.outPath; }; }"
+            >>$. pure args'
+            >>$. pure home
+
         dh <- loadDefaultHerculesCI
         fn <- dh #. #addDefaults
         let flakeObj = basicAttrsWithProvenance flake $ Schema.Other "your flake"
-        hci <- fn .$ flakeObj >>$. pure args'
+        hci <- fn .$ flakeObj >>$. pure args''
         pure hci {Schema.provenance = Other "the herculesCI attribute of your flake (after adding defaults)"}
 
 parseExtraInputs :: MonadEval m => PSObject ExtraInputsSchema -> m (Map ByteString InputDeclaration)

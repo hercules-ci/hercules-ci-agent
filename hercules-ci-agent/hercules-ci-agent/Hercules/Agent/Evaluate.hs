@@ -41,6 +41,9 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.JobConfig as JobConfi
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll as PushedAll
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
+import Hercules.API.Agent.Evaluate.ImmutableGitInput (ImmutableGitInput)
+import qualified Hercules.API.Agent.Evaluate.ImmutableGitInput as ImmutableGitInput
+import qualified Hercules.API.Agent.Evaluate.ImmutableInput as ImmutableInput
 import Hercules.API.Servant (noContent)
 import qualified Hercules.Agent.Cache as Agent.Cache
 import qualified Hercules.Agent.Cachix.Env as Cachix.Env
@@ -100,11 +103,108 @@ performEvaluation store task' =
       fix $ \continue ->
         joinSTM $ listen batchProducer (\b -> withSync b (postBatch task' . catMaybes) *> continue) pure
 
+getSrcInput :: MonadIO m => EvaluateTask.EvaluateTask -> m (Maybe ImmutableGitInput)
+getSrcInput task = case M.lookup "src" (EvaluateTask.inputs task) of
+  Just (ImmutableInput.Git x) ->
+    purer x
+  Nothing -> do
+    throwIO $ FatalError $ "No src input provided" <> show task
+  Just {} -> do
+    pure Nothing
+
 produceEvaluationTaskEvents ::
   Store ->
   EvaluateTask.EvaluateTask ->
   (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
   App ()
+produceEvaluationTaskEvents store task writeToBatch | EvaluateTask.isFlakeJob task = withWorkDir "eval" $ \tmpdir -> do
+  logLocM DebugS "Retrieving evaluation task (flake)"
+  let emitSingle = writeToBatch . Syncable
+      sync = syncer writeToBatch
+  msgCounter <- liftIO $ newIORef 0
+  let fixIndex ::
+        MonadIO m =>
+        EvaluateEvent.EvaluateEvent ->
+        m EvaluateEvent.EvaluateEvent
+      fixIndex (EvaluateEvent.Message m) = do
+        i <- liftIO $ atomicModifyIORef msgCounter (\i0 -> (i0 + 1, i0))
+        pure $ EvaluateEvent.Message m {Message.index = i}
+      fixIndex other = pure other
+  eventCounter <- liftIO $ newIORef 0
+  topDerivationPaths <- liftIO $ newIORef mempty
+  let emit :: EvaluateEvent.EvaluateEvent -> App ()
+      emit update = do
+        n <- liftIO $ atomicModifyIORef eventCounter $ \n -> dup (n + 1)
+        if n > eventLimit
+          then do
+            truncMsg <-
+              fixIndex $
+                EvaluateEvent.Message
+                  Message.Message
+                    { index = -1,
+                      typ = Message.Error,
+                      message =
+                        "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than "
+                          <> show eventLimit
+                          <> " attributes or messages, please contact info@hercules-ci.com."
+                    }
+            emitSingle truncMsg
+            panic "Evaluation limit reached."
+          else emitSingle =<< fixIndex update
+  let allowedPaths = []
+
+  TraversalQueue.with $ \(derivationQueue :: Queue StorePath) ->
+    let doIt =
+          ( do
+              Async.Lifted.concurrently_ evaluation emitDrvs
+              -- derivationInfo upload has finished
+              -- allAttrPaths :: IORef has been populated
+          )
+            `finally` pushDrvs
+        uploadDrvInfos drvPath = do
+          TraversalQueue.enqueue derivationQueue drvPath
+          TraversalQueue.waitUntilDone derivationQueue
+        addTopDerivation drvPath = do
+          TraversalQueue.enqueue derivationQueue drvPath
+          liftIO $ atomicModifyIORef topDerivationPaths ((,()) . S.insert drvPath)
+        evaluation = do
+          let evalProc =
+                do runEvalProcess
+                  tmpdir -- unused
+                  ""
+                  mempty
+                  mempty
+                  captureAttrDrvAndEmit
+                  uploadDrvInfos
+                  sync
+                  task
+                  allowedPaths
+          evalProc `finally` do
+            -- Always upload drv infos, even in case of a crash in the worker
+            TraversalQueue.waitUntilDone derivationQueue
+              `finally` TraversalQueue.close derivationQueue
+        pushDrvs = do
+          caches <- activePushCaches
+          paths <- liftIO $ readIORef topDerivationPaths
+          forM_ caches $ \cache -> do
+            withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations"
+            Agent.Cache.push cache (toList paths) pushEvalWorkers
+            emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll {cache = cache}
+        captureAttrDrvAndEmit msg = do
+          case msg of
+            EvaluateEvent.Attribute ae -> do
+              storePath <- liftIO $ parseStorePath store (encodeUtf8 $ AttributeEvent.derivationPath ae)
+              addTopDerivation storePath
+            _ -> pass
+          emit msg
+        emitDrvs =
+          TraversalQueue.work derivationQueue $ \recurse drvPath -> do
+            drvInfo <- retrieveDerivationInfo store drvPath
+            for_ (M.keys $ DerivationInfo.inputDerivations drvInfo) \inp -> do
+              inputStorePath <- liftIO $ parseStorePath store (encodeUtf8 inp)
+              recurse inputStorePath -- asynchronously
+            emit $ EvaluateEvent.DerivationInfo drvInfo
+     in doIt
 produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpdir -> do
   logLocM DebugS "Retrieving evaluation task"
   let emitSingle = writeToBatch . Syncable
@@ -133,12 +233,6 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
   projectDir <- case M.lookup "src" inputLocations of
     Nothing -> panic "No primary source provided"
     Just x -> pure x
-  (ref, rev) <- case M.lookup "src" (EvaluateTask.inputMetadata task) of
-    Nothing -> do
-      panic $ "No primary source metadata provided" <> show task
-    Just meta -> pure $ fromMaybe (panic "no ref/rev in primary source metadata") do
-      (,) <$> (meta ^? at "ref" . traverse . _String)
-        <*> (meta ^? at "rev" . traverse . _String)
   nixPath <-
     EvaluateTask.nixPath task
       & ( traverse
@@ -250,7 +344,6 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
                       uploadDrvInfos
                       sync
                       task
-                      (ref, rev)
                       allowedPaths
               evalProc `finally` do
                 -- Always upload drv infos, even in case of a crash in the worker
@@ -301,16 +394,26 @@ runEvalProcess ::
   (StorePath -> App ()) ->
   App () ->
   EvaluateTask.EvaluateTask ->
-  (Text, Text) ->
   [ByteString] ->
   App ()
-runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush task (ref, rev) allowedPaths = do
+runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush task allowedPaths = do
   extraOpts <- Nix.askExtraOptions
   bulkBaseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   apiBaseUrl <- asks (toS . showBaseUrl . Env.herculesBaseUrl)
   cfg <- asks Env.config
-  let gitSource = fromRefRevPath ref rev (toS projectDir)
-      eval =
+  srcInput <- getSrcInput task
+  gitSource <-
+    case srcInput of
+      Just git -> pure $ fromRefRevPath (ImmutableGitInput.ref git) (ImmutableGitInput.rev git) (toS projectDir)
+      Nothing -> do
+        (ref, rev) <- case M.lookup "src" (EvaluateTask.inputMetadata task) of
+          Nothing -> do
+            panic $ "No primary source metadata provided" <> show task
+          Just meta -> pure $ fromMaybe (panic "no ref/rev in primary source metadata") do
+            (,) <$> (meta ^? at "ref" . traverse . _String)
+              <*> (meta ^? at "rev" . traverse . _String)
+        pure $ fromRefRevPath ref rev (toS projectDir)
+  let eval =
         Eval.Eval
           { Eval.cwd = projectDir,
             Eval.file = toS file,
@@ -323,9 +426,11 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                   baseURL = toS $ Network.URI.uriToString identity bulkBaseURL ""
                 },
             Eval.gitSource = ViaJSON gitSource,
+            Eval.srcInput = ViaJSON <$> srcInput,
             Eval.apiBaseUrl = apiBaseUrl,
             Eval.ciSystems = EvaluateTask.ciSystems task,
             Eval.selector = ViaJSON $ EvaluateTask.selector task,
+            Eval.isFlakeJob = EvaluateTask.isFlakeJob task,
             Eval.allowInsecureBuiltinFetchers = Config.allowInsecureBuiltinFetchers cfg,
             Eval.allowedPaths = allowedPaths
           }
