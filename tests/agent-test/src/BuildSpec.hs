@@ -16,6 +16,7 @@ import Hercules.API.Agent.Evaluate.EvaluateEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnPush as EvaluateTask.OnPush
 import qualified Hercules.API.Agent.Evaluate.ImmutableInput as ImmutableInput
 import Hercules.API.Id (Id (Id))
 import qualified Hercules.API.Logs.LogEntry as LogEntry
@@ -43,12 +44,14 @@ defaultEvalTask =
       primaryInput = mempty,
       otherInputs = mempty,
       autoArguments = mempty,
+      inputs = mempty,
       inputMetadata = mempty,
       nixPath = mempty,
       logToken = "mock-eval-log-token",
       selector = EvaluateTask.ConfigOrLegacy,
       ciSystems = Nothing,
-      extraGitCredentials = mempty
+      extraGitCredentials = mempty,
+      isFlakeJob = False
     }
 
 defaultMeta :: Map Text A.Value
@@ -76,16 +79,18 @@ spec = describe "Build" $
     (s, r) <-
       runEval
         srv
-        defaultEvalTask
-          { EvaluateTask.id = id,
-            EvaluateTask.otherInputs = "src" =: "/tarball/buildable" <> M.singleton "n" "/tarball/nixpkgs",
-            EvaluateTask.autoArguments =
-              M.singleton
-                "nixpkgs"
-                (EvaluateTask.SubPathOf "n" Nothing),
-            EvaluateTask.inputMetadata = "src" =: defaultMeta,
-            EvaluateTask.selector = EvaluateTask.OnPush $ EvaluateTask.MkOnPush {name = "ci", inputs = "nixpkgs" =: ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")}
-          }
+        ( fixupInputs
+            defaultEvalTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/buildable" <> M.singleton "n" "/tarball/nixpkgs",
+                EvaluateTask.autoArguments =
+                  M.singleton
+                    "nixpkgs"
+                    (EvaluateTask.SubPathOf "n" Nothing),
+                EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                EvaluateTask.selector = EvaluateTask.OnPush $ EvaluateTask.OnPush.MkOnPush {name = "ci", inputs = "nixpkgs" =: ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")}
+              }
+        )
     s `shouldBe` TaskStatus.Successful ()
     drvPath <-
       case attrLike r of

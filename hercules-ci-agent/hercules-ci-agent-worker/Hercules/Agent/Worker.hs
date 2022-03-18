@@ -35,6 +35,7 @@ import qualified Data.Vector as V
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent (OnPushHandlerEvent))
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnPush as OnPush
 import qualified Hercules.API.Agent.Evaluate.ImmutableGitInput as API.ImmutableGitInput
 import qualified Hercules.API.Agent.Evaluate.ImmutableInput as API.ImmutableInput
 import qualified Hercules.API.Agent.LifeCycle.ServiceInfo
@@ -44,6 +45,7 @@ import Hercules.API.Logs.LogHello (LogHello (LogHello, clientProtocolVersion, st
 import Hercules.API.Logs.LogMessage (LogMessage)
 import qualified Hercules.API.Logs.LogMessage as LogMessage
 import Hercules.Agent.NixFile (HerculesCISchema, getHerculesCI, homeExprRawValue, loadNixFile, parseExtraInputs)
+import qualified Hercules.Agent.NixFile as NixFile
 import Hercules.Agent.NixFile.HerculesCIArgs (CISystems (CISystems), HerculesCIMeta (HerculesCIMeta), fromGitSource)
 import qualified Hercules.Agent.NixFile.HerculesCIArgs
 import Hercules.Agent.Sensitive
@@ -75,7 +77,7 @@ import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.CNix as CNix
-import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, withEvalStateConduit)
+import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, init, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, toValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
 import qualified Hercules.CNix.Expr.Raw
 import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, requireDict, (#.), (#?), (#?!), ($?))
@@ -481,6 +483,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setGlobalOption
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setOption
   let store = nixStore hStore
+      isFlake = Eval.isFlakeJob eval
   s <- storeUri store
   UnliftIO unlift <- lift askUnliftIO
   let decode = decodeUtf8With lenientDecode
@@ -556,7 +559,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
         evalArgs evalState (autoArgArgs (Eval.autoArguments eval))
     Data.Conduit.handleC (yieldAttributeError []) $
       do
-        homeExpr <- escalateAs UserException =<< liftIO (loadNixFile evalState (toS $ Eval.cwd eval) (coerce $ Eval.gitSource eval))
+        homeExpr <- getHomeExpr evalState eval
         let hargs = fromGitSource (coerce $ Eval.gitSource eval) meta
             meta = HerculesCIMeta {apiBaseUrl = Eval.apiBaseUrl eval, ciSystems = CISystems (Eval.ciSystems eval)}
         liftIO (flip runReaderT evalState $ getHerculesCI homeExpr hargs) >>= \case
@@ -567,17 +570,31 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
             case Event.fromViaJSON (Eval.selector eval) of
               EvaluateTask.ConfigOrLegacy -> do
                 yield Event.JobConfig
-                sendConfig evalState herculesCI
+                sendConfig evalState isFlake herculesCI
               EvaluateTask.OnPush onPush ->
                 transPipe (`runReaderT` evalState) do
                   walkOnPush store evalState onPush herculesCI
     yield Event.EvaluationDone
 
-walkOnPush :: (MonadEval m, MonadUnliftIO m, KatipContext m, MonadThrow m) => Store -> Ptr EvalState -> EvaluateTask.OnPush -> PSObject HerculesCISchema -> ConduitT i Event m ()
+getHomeExpr :: (MonadThrow m, MonadIO m) => Ptr EvalState -> Eval -> m NixFile.HomeExpr
+getHomeExpr evalState eval =
+  if Eval.isFlakeJob eval
+    then
+      NixFile.Flake <$> liftIO do
+        srcInput <- case Eval.srcInput eval of
+          Just x -> pure x
+          Nothing -> panic "srcInput is required for flake job"
+        raw <- mkImmutableGitInputFlakeThunk evalState (Event.fromViaJSON srcInput)
+        let pso :: PSObject (Schema.Attrs '[])
+            pso = Schema.PSObject {value = raw, provenance = Schema.Other "flake.nix"}
+        toValue evalState pso
+    else escalateAs UserException =<< liftIO (loadNixFile evalState (toS $ Eval.cwd eval) (coerce $ Eval.gitSource eval))
+
+walkOnPush :: (MonadEval m, MonadUnliftIO m, KatipContext m, MonadThrow m) => Store -> Ptr EvalState -> OnPush.OnPush -> PSObject HerculesCISchema -> ConduitT i Event m ()
 walkOnPush store evalState onPushParams herculesCI = do
-  onPushHandler <- herculesCI #?! #onPush >>= requireDict (EvaluateTask.name onPushParams)
+  onPushHandler <- herculesCI #?! #onPush >>= requireDict (OnPush.name onPushParams)
   inputs <- liftIO $ do
-    inputs <- for (EvaluateTask.inputs onPushParams) \input -> do
+    inputs <- for (OnPush.inputs onPushParams) \input -> do
       inputToValue evalState input
     toRawValue evalState inputs
   outputsFun <- onPushHandler #. #outputs
@@ -597,8 +614,8 @@ mkImmutableGitInputFlakeThunk evalState git = do
     (API.ImmutableGitInput.ref git)
     (API.ImmutableGitInput.rev git)
 
-sendConfig :: MonadIO m => Ptr EvalState -> PSObject HerculesCISchema -> ConduitT i Event m ()
-sendConfig evalState herculesCI = flip runReaderT evalState $ do
+sendConfig :: MonadIO m => Ptr EvalState -> Bool -> PSObject HerculesCISchema -> ConduitT i Event m ()
+sendConfig evalState isFlake herculesCI = flip runReaderT evalState $ do
   herculesCI #? #onPush >>= traverse_ \onPushes -> do
     attrs <- dictionaryToMap onPushes
     for_ (M.mapWithKey (,) attrs) \(name, onPush) -> do
@@ -607,7 +624,8 @@ sendConfig evalState herculesCI = flip runReaderT evalState $ do
       when enable . lift . yield . Event.OnPushHandler . ViaJSON $
         OnPushHandlerEvent
           { handlerName = decodeUtf8 name,
-            handlerExtraInputs = M.mapKeys decodeUtf8 (fromMaybe mempty ei)
+            handlerExtraInputs = M.mapKeys decodeUtf8 (fromMaybe mempty ei),
+            isFlake = isFlake
           }
 
 -- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.

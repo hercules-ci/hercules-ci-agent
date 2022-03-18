@@ -10,6 +10,7 @@ module MockTasksApi
     ServerHandle (),
     serverState,
     logEntries,
+    fixupInputs,
   )
 where
 
@@ -57,6 +58,7 @@ import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatu
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest as BuildRequest
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
+import qualified Hercules.API.Agent.Evaluate.ImmutableInput as ImmutableInput
 import Hercules.API.Agent.LifeCycle (LifeCycleAPI (..))
 import qualified Hercules.API.Agent.LifeCycle as LifeCycle
 import qualified Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 as CreateAgentSession
@@ -178,6 +180,9 @@ runEval sh@(ServerHandle st) task = do
   s <- await sh (idText $ EvaluateTask.id task)
   evs <- readIORef (evalEvents st)
   pure $ (,) s $ fromMaybe [] $ M.lookup (EvaluateTask.id task) evs
+
+fixupInputs :: EvaluateTask.EvaluateTask -> EvaluateTask.EvaluateTask
+fixupInputs t = t {EvaluateTask.inputs = ImmutableInput.ArchiveUrl <$> EvaluateTask.otherInputs t}
 
 runBuild ::
   ServerHandle ->

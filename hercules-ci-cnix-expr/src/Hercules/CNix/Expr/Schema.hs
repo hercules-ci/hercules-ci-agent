@@ -84,7 +84,7 @@ import Data.Coerce (coerce)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified GHC.TypeLits as TL
-import Hercules.CNix.Expr (CheckType, EvalState, HasRawValueType, NixAttrs, NixFunction, NixPath, NixString, RawValue, Value (rtValue), apply, checkType, getAttr, getRawValueType, getStringIgnoreContext, hasContext, rawValueType, toRawValue, valueFromExpressionString)
+import Hercules.CNix.Expr (CheckType, EvalState, HasRawValueType, NixAttrs, NixFunction, NixPath, NixString, RawValue, ToRawValue (..), ToValue (..), Value (rtValue), apply, checkType, getAttr, getRawValueType, getStringIgnoreContext, hasContext, rawValueType, toRawValue, valueFromExpressionString)
 import qualified Hercules.CNix.Expr as Expr
 import Hercules.CNix.Expr.Raw (RawValueType, canonicalRawType)
 import Protolude hiding (TypeError, check, evalState)
@@ -185,6 +185,18 @@ data PSObject (a :: Type) = PSObject
     -- Use 'check' and/or '|.' to evaluate it (whnf) and narrow down its runtime type to a specific 'Value'.
     value :: RawValue
   }
+
+instance ToRawValue (PSObject a) where
+  toRawValue _ = pure . value
+
+instance
+  ( CheckType (NixTypeForSchema t),
+    HasRawValueType (NixTypeForSchema t)
+  ) =>
+  ToValue (PSObject t)
+  where
+  type NixTypeFor (PSObject t) = NixTypeForSchema t
+  toValue es v = runReaderT (check v) es
 
 (.$) :: (MonadIO m) => PSObject (a ->. b) -> PSObject a -> m (PSObject b)
 f .$ a = do

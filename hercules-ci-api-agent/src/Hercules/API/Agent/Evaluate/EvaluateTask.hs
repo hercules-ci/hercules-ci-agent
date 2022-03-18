@@ -1,8 +1,10 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 
 module Hercules.API.Agent.Evaluate.EvaluateTask where
 
 import Data.Aeson (Value)
+import Hercules.API.Agent.Evaluate.EvaluateTask.OnPush (OnPush)
 import Hercules.API.Agent.Evaluate.ImmutableInput (ImmutableInput)
 import Hercules.API.Prelude
 import Hercules.API.Task (Task)
@@ -12,12 +14,18 @@ data EvaluateTask = EvaluateTask
     primaryInput :: Text, -- Obsolete since >= 0.8
     otherInputs :: Map Identifier Text, -- identifier -> HTTP URL
     inputMetadata :: Map Identifier (Map Text Value),
+    inputs :: Map Identifier ImmutableInput,
     autoArguments :: Map Text (SubPathOf Identifier), -- argument name -> identifier
     nixPath :: [NixPathElement (SubPathOf Identifier)], -- NIX_PATH element -> identifier
     logToken :: Text,
     selector :: Selector,
     ciSystems :: Maybe (Map Text ()),
-    extraGitCredentials :: Maybe [Credential]
+    extraGitCredentials :: Maybe [Credential],
+    -- | Whether to use Nix's fetching mechanism for everything.
+    --
+    -- Putting checkouts in the store isn't always desirable, so we keep the
+    -- non-flake behavior of custom checkouts for non-flake use cases.
+    isFlakeJob :: Bool
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
@@ -31,12 +39,6 @@ data Credential = Credential
 data Selector
   = ConfigOrLegacy
   | OnPush OnPush
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
-
-data OnPush = MkOnPush
-  { name :: Text,
-    inputs :: Map Text ImmutableInput
-  }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 type Identifier = Text
