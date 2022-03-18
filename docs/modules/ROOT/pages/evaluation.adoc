@@ -89,17 +89,17 @@ The name will be used as part of the commit status for each resulting job.
 
 // hercules-ci-agent/src/Hercules/Agent/NixFile.hs InputDeclSchema
 [[attribute-herculesCI.onPush-extraInputs]]
-=== `onPush.<name>.extraInputs.<inputName>`
+=== `onPush.<name>.extraInputs.<inputName>` (beta)
 
 Specifies a location to an unpinned dependency. The name chosen for the `<inputName>` placeholder will be used as an attribute argument for <<params-herculesCI.onPush-outputs>>.
 
 [[attribute-herculesCI.onPush-extraInputs-project]]
-=== `onPush.<name>.extraInputs.<inputName>.project`
+=== `onPush.<name>.extraInputs.<inputName>.project` (beta)
 
 The name of a repository in the same organization.
 
 [[attribute-herculesCI.onPush-extraInputs-ref]]
-=== `onPush.<name>.extraInputs.<inputName>.ref`
+=== `onPush.<name>.extraInputs.<inputName>.ref` (beta)
 
 A Git ref indicating the branch or tag to check out. Example: `refs/heads/staging` for a branch called `staging`.
 
