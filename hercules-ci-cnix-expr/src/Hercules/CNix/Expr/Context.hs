@@ -1,10 +1,16 @@
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 
 module Hercules.CNix.Expr.Context
-  ( module Hercules.CNix.Expr.Context,
+  ( context,
+    evalContext,
+    EvalState,
+    Value',
+    Attr',
+    BindingsBuilder',
     module Hercules.CNix.Store.Context,
+    (=:),
   )
 where
 

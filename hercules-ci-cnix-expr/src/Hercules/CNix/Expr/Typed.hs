@@ -2,7 +2,30 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Hercules.CNix.Expr.Typed where
+module Hercules.CNix.Expr.Typed
+  ( Value (..),
+    NixInt,
+    NixFloat,
+    NixString,
+    NixPath,
+    NixAttrs,
+    NixList,
+    NixFunction,
+    NixPrimOp,
+    NixPrimOpApp,
+    NixExternal,
+    unsafeAssertType,
+    Match (..),
+    match,
+    match',
+    getBool,
+    getStringIgnoreContext,
+    hasContext,
+    CheckType (..),
+    assertType,
+    HasRawValueType (..),
+  )
+where
 
 import Control.Exception (throwIO)
 import Hercules.CNix.Expr.Context

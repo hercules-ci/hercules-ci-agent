@@ -1,7 +1,15 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Hercules.CNix.Expr.Raw where
+module Hercules.CNix.Expr.Raw
+  ( RawValue (..),
+    mkRawValue,
+    RawValueType (..),
+    rawValueType,
+    forceValue,
+    canonicalRawType,
+  )
+where
 
 import Hercules.CNix.Expr.Context
 import qualified Language.C.Inline.Cpp as C

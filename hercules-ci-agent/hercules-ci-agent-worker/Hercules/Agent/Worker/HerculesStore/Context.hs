@@ -1,8 +1,13 @@
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 
-module Hercules.Agent.Worker.HerculesStore.Context where
+module Hercules.Agent.Worker.HerculesStore.Context
+  ( context,
+    HerculesStore,
+    ExceptionPtr,
+  )
+where
 
 import qualified Data.Map as M
 import Hercules.CNix.Expr.Context (Ref)

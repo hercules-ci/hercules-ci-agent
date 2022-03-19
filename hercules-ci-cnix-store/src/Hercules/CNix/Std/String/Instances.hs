@@ -4,7 +4,7 @@
 
 -- | Define instances for C++ types in the Context module that can't be in that
 -- module because of TH staging restrictions.
-module Hercules.CNix.Std.String.Instances where
+module Hercules.CNix.Std.String.Instances () where
 
 import Data.Semigroup (Semigroup ((<>)))
 import Hercules.CNix.Std.Set

@@ -1,7 +1,11 @@
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 
-module Hercules.CNix.Std.String.Context where
+module Hercules.CNix.Std.String.Context
+  ( CStdString,
+    stdStringCtx,
+  )
+where
 
 import qualified Data.Map as M
 import qualified Language.C.Inline as C

@@ -2,7 +2,10 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Hercules.Agent.Worker.NixDaemon where
+module Hercules.Agent.Worker.NixDaemon
+  ( nixDaemon,
+  )
+where
 
 import Control.Concurrent.STM.TVar (modifyTVar, newTVarIO, readTVar)
 import qualified Data.Binary

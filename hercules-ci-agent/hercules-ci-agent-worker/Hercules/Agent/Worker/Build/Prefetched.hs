@@ -8,10 +8,15 @@
 -- easy to maintain approach to do decouple it with inline-c-cpp. Perhaps it's
 -- better to use an FFI generator instead?
 
-module Hercules.Agent.Worker.Build.Prefetched where
+module Hercules.Agent.Worker.Build.Prefetched
+  ( buildDerivation,
+    Hercules.Agent.Worker.Build.Prefetched.getDerivation,
+    BuildResult (..),
+  )
+where
 
 import qualified Data.ByteString.Char8 as C8
-import Foreign (FinalizerPtr, ForeignPtr, alloca, newForeignPtr, nullPtr, peek)
+import Foreign (alloca, peek)
 import Foreign.C (peekCString)
 import Hercules.CNix.Encapsulation
 import Hercules.CNix.Store
@@ -91,10 +96,6 @@ data BuildResult = BuildResult
     errorMessage :: Text
   }
   deriving (Show)
-
-nullableForeignPtr :: FinalizerPtr a -> Ptr a -> IO (Maybe (ForeignPtr a))
-nullableForeignPtr _ rawPtr | rawPtr == nullPtr = pure Nothing
-nullableForeignPtr finalize rawPtr = Just <$> newForeignPtr finalize rawPtr
 
 getDerivation :: Store -> StorePath -> IO (Maybe Derivation)
 getDerivation (Store store) derivationPath =

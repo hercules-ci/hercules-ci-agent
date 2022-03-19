@@ -1,7 +1,12 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Hercules.CNix.Exception where
+module Hercules.CNix.Exception
+  ( handleExceptions,
+    handleExceptions',
+    handleExceptionPtr,
+  )
+where
 
 import Hercules.CNix.Store.Context (context)
 import qualified Language.C.Inline.Cpp as C
@@ -15,12 +20,21 @@ C.include "<nix/config.h>"
 C.include "<nix/shared.hh>"
 C.include "<nix/globals.hh>"
 
+-- | Log C++ exceptions and call 'exitWith' the way Nix would exit when an
+-- exception occurs.
 handleExceptions :: IO a -> IO a
 handleExceptions io = do
   progName <- System.Environment.getProgName
   handleExceptions' exitWith (toS progName) io
 
-handleExceptions' :: (ExitCode -> IO a) -> Text -> IO a -> IO a
+-- | Log C++ exceptions and call 'exitWith' the way Nix would exit.
+handleExceptions' ::
+  -- | What to do when Nix would want to exit with 'ExitCode'
+  (ExitCode -> IO a) ->
+  -- | Program name (command name)
+  Text ->
+  IO a ->
+  IO a
 handleExceptions' handleExit programName io =
   let select (C.CppStdException eptr _msg _t) = Just eptr
       select _ = Nothing
@@ -31,6 +45,7 @@ handleExceptions' handleExit programName io =
       doHandle = handleExit . convertExit <=< handleExceptionPtr (encodeUtf8 programName)
    in handleJust select doHandle io
 
+-- | Low-level wrapper around @nix::handleExceptions(rethrow_exception(e))@.
 handleExceptionPtr :: ByteString -> C.CppExceptionPtr -> IO C.CInt
 handleExceptionPtr programName eptr =
   [C.throwBlock| int {
