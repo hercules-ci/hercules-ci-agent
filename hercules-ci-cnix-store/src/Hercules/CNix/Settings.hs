@@ -3,7 +3,16 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Hercules.CNix.Settings where
+module Hercules.CNix.Settings
+  ( getExtraPlatforms,
+    getSystem,
+    getSystemFeatures,
+    getSubstituters,
+    getTrustedPublicKeys,
+    getNarinfoCacheNegativeTtl,
+    getNetrcFile,
+  )
+where
 
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import qualified Data.Set as S

@@ -1,8 +1,14 @@
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskellQuotes #-}
 
-module Hercules.Agent.Worker.Build.Logger.Context where
+module Hercules.Agent.Worker.Build.Logger.Context
+  ( Fields,
+    HerculesLoggerEntry,
+    LogEntryQueue,
+    context,
+  )
+where
 
 import qualified Data.Map as M
 import qualified Language.C.Inline.Context as C

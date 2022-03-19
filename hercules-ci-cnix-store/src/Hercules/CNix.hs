@@ -3,7 +3,16 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Hercules.CNix
-  ( module Hercules.CNix,
+  ( init,
+    setTalkative,
+    setDebug,
+    setGlobalOption,
+    setOption,
+    logInfo,
+    appendString,
+    nixVersion,
+
+    -- * Re-exports
     module Hercules.CNix.Store,
   )
 where

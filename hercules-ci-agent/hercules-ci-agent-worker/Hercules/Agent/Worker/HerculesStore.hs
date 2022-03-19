@@ -3,8 +3,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Hercules.Agent.Worker.HerculesStore
-  ( module Hercules.Agent.Worker.HerculesStore,
+  ( withHerculesStore,
     HerculesStore,
+    nixStore,
+    printDiagnostics,
+    setBuilderCallback,
   )
 where
 

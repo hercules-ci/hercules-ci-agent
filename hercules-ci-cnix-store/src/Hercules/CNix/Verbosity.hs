@@ -1,7 +1,14 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Hercules.CNix.Verbosity where
+module Hercules.CNix.Verbosity
+  ( Verbosity (..),
+    setVerbosity,
+    getVerbosity,
+    setShowTrace,
+    getShowTrace,
+  )
+where
 
 import Foreign (fromBool, toBool)
 import Hercules.CNix.Store.Context (context)

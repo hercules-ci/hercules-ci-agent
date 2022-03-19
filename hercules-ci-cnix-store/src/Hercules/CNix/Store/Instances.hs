@@ -4,7 +4,7 @@
 
 -- | Define instances for C++ types in the Context module that can't be in that
 -- module because of TH staging restrictions.
-module Hercules.CNix.Store.Instances where
+module Hercules.CNix.Store.Instances () where
 
 import Data.Data (Proxy (Proxy))
 import Data.Function (($))
