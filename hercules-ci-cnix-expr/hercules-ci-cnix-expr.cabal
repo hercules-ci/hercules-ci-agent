@@ -13,6 +13,8 @@ license:        Apache-2.0
 build-type:     Custom
 extra-source-files:
     CHANGELOG.md
+    test/data/sample.json
+    test/data/simple-flake/flake.nix
 
 data-dir: data
 data-files:
