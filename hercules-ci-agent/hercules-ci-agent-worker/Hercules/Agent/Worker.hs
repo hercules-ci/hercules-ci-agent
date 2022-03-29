@@ -32,6 +32,7 @@ import qualified Data.Set as S
 import Data.UUID (UUID)
 import Data.Vector (Vector)
 import qualified Data.Vector as V
+import Foreign (alloca, peek)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent (OnPushHandlerEvent))
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
@@ -86,6 +87,7 @@ import Hercules.CNix.Std.Vector (StdVector)
 import qualified Hercules.CNix.Std.Vector as Std.Vector
 import Hercules.CNix.Store.Context (NixStorePathWithOutputs)
 import Hercules.CNix.Util (installDefaultSigINTHandler)
+import Hercules.CNix.Verbosity (setShowTrace)
 import Hercules.Error
 import Hercules.UserException (UserException (UserException))
 import Katip
@@ -105,6 +107,7 @@ import qualified Prelude
 C.context (C.cppCtx <> C.fptrCtx)
 
 C.include "<nix/error.hh>"
+C.include "<nix/util.hh>"
 C.include "<iostream>"
 C.include "<sstream>"
 
@@ -129,6 +132,7 @@ main :: IO ()
 main = do
   hSetBuffering stderr LineBuffering
   Hercules.CNix.Expr.init
+  setShowTrace True
   _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
   installDefaultSigINTHandler
   Logger.initLogger
@@ -188,7 +192,7 @@ taskWorker options = do
                 runCommand st ch command
             )
               `safeLiftedCatch` ( \e -> liftIO $ do
-                                    e' <- renderException e
+                                    (e', _trace) <- renderException e
                                     writeChan ch (Just $ Exception e')
                                     exitFailure
                                 )
@@ -219,26 +223,41 @@ printCommands =
         pure x
     )
 
-renderException :: SomeException -> IO Text
+renderException :: SomeException -> IO (Text, Maybe Text)
 renderException e | Just (C.CppStdException ex _msg _ty) <- fromException e = renderStdException ex
 renderException e
   | Just (C.CppNonStdException _ex maybeType) <- fromException e =
-    pure $ "Unexpected C++ exception" <> foldMap (\t -> " of type " <> decodeUtf8With lenientDecode t) maybeType
-renderException e | Just (FatalError msg) <- fromException e = pure msg
-renderException e = pure $ toS $ displayException e
+    pure ("Unexpected C++ exception" <> foldMap (\t -> " of type " <> decodeUtf8With lenientDecode t) maybeType, Nothing)
+renderException e | Just (FatalError msg) <- fromException e = pure (msg, Nothing)
+renderException e = pure (toS $ displayException e, Nothing)
 
-renderStdException :: C.CppExceptionPtr -> IO Text
-renderStdException e =
-  [C.throwBlock| char * {
+renderStdException :: C.CppExceptionPtr -> IO (Text, Maybe Text)
+renderStdException e = alloca \traceStrPtr -> do
+  msg <-
+    [C.throwBlock| char * {
+    char **traceStrPtr = $(char **traceStrPtr);
+    *traceStrPtr = nullptr;
     std::string r;
     std::exception_ptr *e = $fptr-ptr:(std::exception_ptr *e);
     try {
       std::rethrow_exception(*e);
     } catch (const nix::Error &e) {
-      // r = e.what();
-      std::stringstream s;
-      nix::showErrorInfo(s, e.info(), true);
-      r = s.str();
+      {
+        std::stringstream s;
+        nix::showErrorInfo(s, e.info(), false);
+        r = s.str();
+      }
+      {
+        std::stringstream s;
+        nix::showErrorInfo(s, e.info(), true);
+        std::string t = s.str();
+        // starts with r?
+        if (t.rfind(r, 0) == 0) {
+          t.replace(0, r.size(), "");
+          t = nix::trim(t);
+        }
+        *traceStrPtr = strdup(t.c_str());
+      }
     } catch (const std::exception &e) {
       r = e.what();
     } catch (...) {
@@ -248,8 +267,12 @@ renderStdException e =
 
     return strdup(r.c_str());
   }|]
-    >>= unsafePackMallocCString
-    <&> decodeUtf8With lenientDecode
+      >>= unsafePackMallocCString
+      <&> decodeUtf8With lenientDecode
+  traceText <-
+    peek traceStrPtr >>= traverseNonNull \s ->
+      unsafePackMallocCString s <&> decodeUtf8With lenientDecode
+  pure (msg, traceText)
 
 connectCommand ::
   (MonadUnliftIO m, KatipContext m, MonadThrow m) =>
@@ -287,7 +310,7 @@ runCommand herculesState ch command = do
                   runConduitRes
                     ( Data.Conduit.handleC
                         ( \e -> do
-                            yield . Event.Error =<< liftIO (renderException e)
+                            yield . Event.Error . fst =<< liftIO (renderException e)
                             liftIO $ throwTo mainThread e
                         )
                         ( do
@@ -449,17 +472,19 @@ yieldAttributeError path e
                 <> ", which is required during evaluation."
                 <> foldMap (" " <>) (buildExceptionDetail e'),
             AttributeError.errorDerivation = Just (buildExceptionDerivationPath e'),
-            AttributeError.errorType = Just "BuildException"
+            AttributeError.errorType = Just "BuildException",
+            AttributeError.trace = Nothing -- would be nice to get a trace here. Throw and catch more C++ exception types?
           }
 yieldAttributeError path e = do
-  e' <- liftIO $ renderException e
+  (e', maybeTrace) <- liftIO $ renderException e
   yield $
     Event.AttributeError $
       AttributeError.AttributeError
         { AttributeError.path = path,
           AttributeError.message = e',
           AttributeError.errorDerivation = Nothing,
-          AttributeError.errorType = Just (show (typeOf e))
+          AttributeError.errorType = Just (show (typeOf e)),
+          AttributeError.trace = maybeTrace
         }
 
 maybeThrowBuildException :: MonadIO m => BuildResult.BuildStatus -> Text -> m ()

@@ -497,7 +497,8 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                       { AttributeErrorEvent.expressionPath = decode <$> WorkerAttributeError.path e,
                         AttributeErrorEvent.errorMessage = WorkerAttributeError.message e,
                         AttributeErrorEvent.errorType = WorkerAttributeError.errorType e,
-                        AttributeErrorEvent.errorDerivation = WorkerAttributeError.errorDerivation e
+                        AttributeErrorEvent.errorDerivation = WorkerAttributeError.errorDerivation e,
+                        AttributeErrorEvent.trace = WorkerAttributeError.trace e
                       }
                 continue
               Event.EvaluationDone ->

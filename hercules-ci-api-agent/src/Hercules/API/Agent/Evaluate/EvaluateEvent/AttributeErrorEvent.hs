@@ -9,7 +9,8 @@ data AttributeErrorEvent = AttributeErrorEvent
   { expressionPath :: [Text],
     errorMessage :: Text,
     errorDerivation :: Maybe Text,
-    errorType :: Maybe Text
+    errorType :: Maybe Text,
+    trace :: Maybe Text
   }
   deriving (Generic, Show, Eq, NFData)
 
