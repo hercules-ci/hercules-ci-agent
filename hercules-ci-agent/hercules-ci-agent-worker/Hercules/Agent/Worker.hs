@@ -56,7 +56,6 @@ import Hercules.Agent.Worker.Effect (runEffect)
 import Hercules.Agent.Worker.HerculesStore (nixStore, setBuilderCallback, withHerculesStore)
 import Hercules.Agent.Worker.HerculesStore.Context (HerculesStore)
 import Hercules.Agent.Worker.Logging (withKatip)
-import Hercules.Agent.Worker.NixDaemon (nixDaemon)
 import Hercules.Agent.WorkerProtocol.Command
   ( Command,
   )
@@ -135,9 +134,6 @@ main = do
   Logger.initLogger
   args <- Environment.getArgs
   case args of
-    ["nix-daemon", options] -> do
-      setOptions options
-      nixDaemon
     [options] -> taskWorker options
     _ -> throwIO $ FatalError "worker: Unrecognized command line arguments"
 

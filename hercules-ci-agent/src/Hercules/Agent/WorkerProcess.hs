@@ -1,6 +1,7 @@
 module Hercules.Agent.WorkerProcess
   ( runWorker,
     getWorkerExe,
+    getDaemonExe,
     WorkerEnvSettings (..),
     prepareEnv,
     modifyEnv,
@@ -65,6 +66,10 @@ prepareEnv workerEnvSettings = do
 getWorkerExe :: MonadIO m => m [Char]
 getWorkerExe = do
   liftIO getBinDir <&> (</> "hercules-ci-agent-worker")
+
+getDaemonExe :: MonadIO m => m [Char]
+getDaemonExe = do
+  liftIO getBinDir <&> (</> "hercules-ci-nix-daemon")
 
 -- | Control a child process by communicating over stdin and stdout
 -- using a 'Binary' interface.

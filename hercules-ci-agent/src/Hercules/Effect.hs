@@ -7,16 +7,11 @@ module Hercules.Effect where
 import Control.Monad.Catch (MonadThrow)
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as C8
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
 import Hercules.API.Id (Id, idText)
 import Hercules.Agent.Sensitive (Sensitive (Sensitive, reveal), revealContainer)
-import Hercules.Agent.WorkerProcess (runWorker)
 import qualified Hercules.Agent.WorkerProcess as WorkerProcess
-import Hercules.Agent.WorkerProtocol.Command.StartDaemon (StartDaemon (StartDaemon))
-import qualified Hercules.Agent.WorkerProtocol.Command.StartDaemon as StartDaemon
-import Hercules.Agent.WorkerProtocol.Event.DaemonStarted (DaemonStarted (DaemonStarted))
 import Hercules.CNix (Derivation)
 import Hercules.CNix.Store (getDerivationArguments, getDerivationBuilder, getDerivationEnv)
 import Hercules.Effect.Container (BindMount (BindMount))
@@ -25,11 +20,12 @@ import Hercules.Error (escalateAs)
 import qualified Hercules.Formats.Secret as Formats.Secret
 import Hercules.Secrets (SecretContext, evalCondition, evalConditionTrace)
 import Katip (KatipContext, Severity (..), logLocM, logStr)
+import Network.Socket (Family (AF_UNIX), SockAddr (SockAddrUnix), SocketType (Stream), bind, listen, socket, withFdSocket)
 import Protolude
 import System.FilePath
-import UnliftIO (timeout)
-import qualified UnliftIO
+import System.Posix (dup, fdToHandle)
 import UnliftIO.Directory (createDirectory, createDirectoryIfMissing)
+import UnliftIO.Process (withCreateProcess)
 import qualified UnliftIO.Process as Process
 
 parseDrvSecretsMap :: Map ByteString ByteString -> Either Text (Map Text Text)
@@ -206,32 +202,27 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
 
 withNixDaemonProxy :: [(Text, Text)] -> FilePath -> IO a -> IO a
 withNixDaemonProxy extraNixOptions socketPath wrappedAction = do
-  workerExe <- WorkerProcess.getWorkerExe
-  let opts = ["nix-daemon", show extraNixOptions]
+  -- Open the socket asap, so we don't have to wait for
+  -- a readiness signal from the daemon, or poll, etc.
+  sock <- socket AF_UNIX Stream 0
+  bind sock (SockAddrUnix socketPath)
+  listen sock 100
+
+  -- (Ab)use stdin to transfer the socket while securely
+  -- closing all other fds
+  socketAsHandle <- withFdSocket sock \fd -> do
+    fd' <- dup (fromIntegral fd)
+    fdToHandle fd'
+
+  exe <- WorkerProcess.getDaemonExe
+  let opts = extraNixOptions >>= \(k, v) -> ["--option", toS k, toS v]
       procSpec =
-        (Process.proc workerExe opts)
-          { -- Process.env = Just workerEnv,
-            Process.close_fds = True
-            -- Process.cwd = Just workDir
+        (Process.proc exe opts)
+          { -- close all other fds to be secure
+            Process.close_fds = True,
+            Process.std_in = Process.UseHandle socketAsHandle,
+            Process.std_err = Process.Inherit,
+            Process.std_out = Process.UseHandle stderr
           }
-  daemonCmdChan <- liftIO newChan
-  daemonReadyVar <- liftIO newEmptyMVar
-  let onDaemonEvent :: MonadIO m => DaemonStarted -> m ()
-      onDaemonEvent DaemonStarted {} = liftIO (void $ tryPutMVar daemonReadyVar ())
-  liftIO $ writeChan daemonCmdChan (Just $ Just $ StartDaemon {socketPath = socketPath})
-  UnliftIO.withAsync (runWorker procSpec (\_ s -> liftIO (C8.hPutStrLn stderr ("hci proxy nix-daemon: " <> s))) daemonCmdChan onDaemonEvent) $ \daemonAsync -> do
-    race (readMVar daemonReadyVar) (wait daemonAsync) >>= \case
-      Left _ -> pass
-      Right e -> throwIO $ FatalError $ "Hercules CI proxy nix-daemon exited before being told to; status " <> show e
-
-    a <- wrappedAction
-
-    timeoutResult <- timeout (60 * 1000 * 1000) $ do
-      writeChan daemonCmdChan (Just Nothing)
-      writeChan daemonCmdChan Nothing
-      void $ wait daemonAsync
-    case timeoutResult of
-      Nothing -> putErrText "warning: Hercules CI proxy nix-daemon did not shut down in time."
-      _ -> pass
-
-    pure a
+  withCreateProcess procSpec $ \_in _out _err _processHandle -> do
+    wrappedAction
