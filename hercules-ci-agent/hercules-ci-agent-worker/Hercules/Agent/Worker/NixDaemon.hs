@@ -1,5 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Hercules.Agent.Worker.NixDaemon
@@ -24,6 +25,7 @@ import Protolude
 import System.Posix.Internals (setNonBlockingFD)
 import UnliftIO (BufferMode (NoBuffering), hSetBuffering, timeout)
 import UnliftIO.IO (hFlush)
+import Prelude (IOError)
 
 C.context C.cppCtx
 
@@ -58,20 +60,32 @@ nixDaemon = do
   let socketLoop =
         forever do
           (clientSocket, _) <- accept sock
-          (pid, _uid, _gid) <- getPeerCredential clientSocket
-          uninterruptibleMask \_unmask -> do
-            let removeMe = do
+          let removeMe = do
+                t <- myThreadId
+                atomically do
+                  modifyTVar clientThreads (M.delete t)
+
+              handleWithPid pid =
+                handle
+                  ( \(e :: SomeException) ->
+                      putErrText ("Connection for pid " <> showPid pid <> " ending with exception: " <> toS (displayException e))
+                  )
+                  . (<* putErrText ("Connection for pid " <> showPid pid <> " exiting normally"))
+
+              client = do
+                (pid, _uid, _gid) <- getPeerCredential clientSocket
+                handleWithPid pid do
                   t <- myThreadId
                   atomically do
-                    modifyTVar clientThreads (M.delete t)
-            t <-
-              forkFinally -- TODO forkOS?
-                (handleClient clientSocket)
-                \case
-                  Left _e -> removeMe -- >> putErrText ("Connection for pid " <> showPid pid <> " ended: " <> toS (displayException _e))
-                  Right _ -> removeMe
-            atomically do
-              modifyTVar clientThreads (M.insert t pid)
+                    modifyTVar clientThreads (M.insert t pid)
+                  putErrText $ "Handling nix-daemon connection for pid " <> showPid pid
+                  handleClient clientSocket
+          forkFinally
+            client
+            \_ -> do
+              removeMe
+              close clientSocket `catch` \(_ :: IOError) -> pass
+
   withAsync socketLoop \_socketLoopAsync ->
     void getStdinMessage
 
