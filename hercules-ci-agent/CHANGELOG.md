@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2] - 2022-03-30
+
+### Added
+
+ - Separate traces in the dashboard (as in `--show-trace`)
+
+### Fixed
+
+ - Effects: `error: cannot open connection to remote store 'daemon': error: reading from file: Connection reset by peer`
+
 ## [0.9.1] - 2022-03-18
 
 ### Added
@@ -543,6 +553,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Initial release
 
+[0.9.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.1...hercules-ci-agent-0.9.2
 [0.9.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.0...hercules-ci-agent-0.9.1
 [0.9.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.7...hercules-ci-agent-0.9.0
 [0.8.7]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.6...hercules-ci-agent-0.8.7
