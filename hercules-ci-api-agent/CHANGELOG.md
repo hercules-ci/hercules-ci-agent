@@ -5,6 +5,12 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.4.4.0 - 2022-03-30
+
+### Added
+
+ - A field for traces in evaluation errors (`--show-trace`)
+
 ## 0.4.3.0 - 2022-03-18
 
 ### Added
