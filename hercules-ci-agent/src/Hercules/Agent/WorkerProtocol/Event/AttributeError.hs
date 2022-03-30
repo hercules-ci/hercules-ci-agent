@@ -10,6 +10,7 @@ data AttributeError = AttributeError
   { path :: [ByteString],
     message :: Text,
     errorType :: Maybe Text,
-    errorDerivation :: Maybe Text
+    errorDerivation :: Maybe Text,
+    trace :: Maybe Text
   }
   deriving (Generic, Binary, Show, Eq)
