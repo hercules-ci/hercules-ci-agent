@@ -4,6 +4,7 @@
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Hercules.Agent.Worker
@@ -85,6 +86,7 @@ import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.CNix.Expr.Typed (Value)
 import Hercules.CNix.Std.Vector (StdVector)
 import qualified Hercules.CNix.Std.Vector as Std.Vector
+import Hercules.CNix.Store (addTemporaryRoot)
 import Hercules.CNix.Store.Context (NixStorePathWithOutputs)
 import Hercules.CNix.Util (installDefaultSigINTHandler)
 import Hercules.CNix.Verbosity (setShowTrace)
@@ -99,6 +101,7 @@ import qualified System.Environment as Environment
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.Posix.Signals (Handler (Catch), installHandler, raiseSignal, sigINT, sigTERM)
 import System.Timeout (timeout)
+import qualified UnliftIO
 import UnliftIO.Async (wait, withAsync)
 import UnliftIO.Exception (bracket, catch)
 import Prelude ()
@@ -494,6 +497,22 @@ maybeThrowBuildException result plainDrvText =
     BuildResult.DependencyFailure -> throwIO $ BuildException plainDrvText (Just "A dependency could not be built.")
     BuildResult.Success -> pass
 
+mkCache :: forall k a m. (MonadUnliftIO m, Ord k) => IO (k -> m a -> m a)
+mkCache = do
+  doneRef <- liftIO $ newIORef mempty
+  let hasBeenBuilt :: k -> m (Maybe (Either SomeException a))
+      hasBeenBuilt p = liftIO $ readIORef doneRef <&> \c -> M.lookup p c
+      cacheBy p io = do
+        b <- hasBeenBuilt p
+        case b of
+          Just x -> liftIO $ escalate x
+          Nothing -> do
+            r <- UnliftIO.tryAny io
+            liftIO do
+              modifyIORef doneRef (M.insert p (r :: Either SomeException a))
+              escalate r
+  pure cacheBy
+
 runEval ::
   forall i m.
   (MonadResource m, KatipContext m, MonadUnliftIO m, MonadThrow m) =>
@@ -508,11 +527,14 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
   s <- storeUri store
   UnliftIO unlift <- lift askUnliftIO
   let decode = decodeUtf8With lenientDecode
-  liftIO $
-    setBuilderCallback hStore $
-      traverseSPWOs $ \storePathWithOutputs -> unlift $ do
-        drvStorePath <- liftIO $ getStorePath storePathWithOutputs
-        drvPath <- liftIO $ CNix.storePathToPath store drvStorePath
+
+  cachingBuilt <- liftIO mkCache
+
+  liftIO . setBuilderCallback hStore $
+    traverseSPWOs $ \storePathWithOutputs -> unlift $ do
+      drvStorePath <- liftIO $ getStorePath storePathWithOutputs
+      drvPath <- liftIO $ CNix.storePathToPath store drvStorePath
+      cachingBuilt drvPath do
         let pathText = decode drvPath
         outputs <- liftIO $ getOutputs storePathWithOutputs
         katipAddContext (sl "fullpath" pathText) $
@@ -568,6 +590,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                               "It could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
                                 <> show (e2 :: SomeException)
                           )
+              liftIO $ addTemporaryRoot store outputPath
             logLocM DebugS "Built"
   withEvalStateConduit store $ \evalState -> do
     liftIO do
