@@ -260,6 +260,15 @@ ensurePath (Store store) (StorePath storePath) =
     store.ensurePath(storePath);
   } |]
 
+addTemporaryRoot :: Store -> StorePath -> IO ()
+addTemporaryRoot (Store store) storePath = do
+  [C.throwBlock| void {
+    ReceiveInterrupts _;
+    Store &store = **$(refStore* store);
+    StorePath &storePath = *$fptr-ptr:(nix::StorePath *storePath);
+    store.addTempRoot(storePath);
+  } |]
+
 clearPathInfoCache :: Store -> IO ()
 clearPathInfoCache (Store store) =
   [C.throwBlock| void {
