@@ -19,7 +19,7 @@ data Event
   | AttributeError AttributeError
   | EvaluationDone
   | Error Text
-  | Build ByteString Text (Maybe UUID)
+  | Build ByteString Text (Maybe UUID) Bool
   | BuildResult BuildResult
   | EffectResult Int
   | JobConfig

@@ -86,7 +86,6 @@ import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.CNix.Expr.Typed (Value)
 import Hercules.CNix.Std.Vector (StdVector)
 import qualified Hercules.CNix.Std.Vector as Std.Vector
-import Hercules.CNix.Store (addTemporaryRoot)
 import Hercules.CNix.Store.Context (NixStorePathWithOutputs)
 import Hercules.CNix.Util (installDefaultSigINTHandler)
 import Hercules.CNix.Verbosity (setShowTrace)
@@ -539,9 +538,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
         outputs <- liftIO $ getOutputs storePathWithOutputs
         katipAddContext (sl "fullpath" pathText) $
           for_ outputs $ \outputName -> do
-            logLocM DebugS "Building"
             withDrvInProgress st drvStorePath $ do
-              liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing
               derivation <- liftIO $ getDerivation store drvStorePath
               drvName <- liftIO $ getDerivationNameFromPath drvStorePath
               drvOutputs <- liftIO $ getDerivationOutputs store drvName derivation
@@ -553,9 +550,24 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                     Nothing ->
                       -- FIXME ca-derivations
                       panic $ "output path unknown for output " <> show outputName <> " on " <> pathText <> ". ca-derivations is not supported yet."
-              katipAddContext (sl "outputPath" (show outputPath :: Text)) $
-                logLocM DebugS "Naively calling ensurePath"
-              liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e0 -> do
+
+              isValid <- liftIO $ isValidPath store outputPath
+              -- FIXME: refactor away `continue` (creates big diff)
+              continue <-
+                if isValid
+                  then do
+                    logLocM DebugS "Output already valid"
+                    -- Report IFD
+                    liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing False
+                    pure pass
+                  else do
+                    logLocM DebugS "Building"
+                    liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing True
+                    pure $ katipAddContext (sl "outputPath" (show outputPath :: Text)) do
+                      logLocM DebugS "Attempting early ensurePath"
+                      liftIO (ensurePath (wrappedStore st) outputPath)
+
+              continue `catch` \e0 -> do
                 katipAddContext (sl "message" (show (e0 :: SomeException) :: Text)) $
                   logLocM DebugS "Recovering from failed wrapped.ensurePath"
                 (attempt0, result) <-
@@ -569,7 +581,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                 liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e1 -> do
                   katipAddContext (sl "message" (show (e1 :: SomeException) :: Text)) $
                     logLocM DebugS "Recovering from fresh ensurePath"
-                  liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) (Just attempt0)
+                  liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) (Just attempt0) True
                   -- TODO sync
                   result' <-
                     liftIO $

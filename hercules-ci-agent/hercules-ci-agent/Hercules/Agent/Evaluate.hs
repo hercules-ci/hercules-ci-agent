@@ -512,11 +512,12 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                         Message.message = e
                       }
                 continue
-              Event.Build drv outputName notAttempt -> do
+              Event.Build drv outputName notAttempt waitForStatus -> do
                 store <- asks (Cachix.Env.nixStore . Env.cachixEnv)
                 storePath <- liftIO (parseStorePath store drv)
                 let drvText = decode drv
-                status <-
+                -- FIXME remove _ <- (big diff)
+                _ <-
                   withNamedContext "derivation" (decode drv) $ do
                     currentIndex <- liftIO $ atomicModifyIORef buildRequiredIndex (\i -> (i + 1, i))
                     emit $
@@ -540,11 +541,11 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                           { derivationPath = drvText,
                             forceRebuild = isJust notAttempt
                           }
-                    flush
-                    status <- drvPoller notAttempt drvText
-                    logLocM DebugS $ "Got derivation status " <> logStr (show status :: Text)
-                    return status
-                writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drvText) status
+                    when waitForStatus do
+                      flush
+                      status <- drvPoller notAttempt drvText
+                      logLocM DebugS $ "Got derivation status " <> logStr (show status :: Text)
+                      writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drvText) status
                 continue
               Event.OnPushHandler (ViaJSON e) -> do
                 emit $ EvaluateEvent.OnPushHandlerEvent e
