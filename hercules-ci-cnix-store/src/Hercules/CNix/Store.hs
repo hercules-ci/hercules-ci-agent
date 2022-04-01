@@ -814,6 +814,17 @@ followLinksToStorePath (Store store) bs =
       return new StorePath(store.followLinksToStorePath(s));
     }|]
 
+-- | Whether a path exists and is registered.
+isValidPath :: Store -> StorePath -> IO Bool
+isValidPath (Store store) path =
+  [C.throwBlock| bool {
+    ReceiveInterrupts _;
+    Store &store = **$(refStore* store);
+    StorePath &path = *$fptr-ptr:(nix::StorePath *path);
+    return store.isValidPath(path);
+  }|]
+    <&> (/= 0)
+
 queryPathInfo ::
   Store ->
   -- | Exact store path, not a subpath
