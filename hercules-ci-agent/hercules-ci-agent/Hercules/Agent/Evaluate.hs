@@ -516,36 +516,34 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                 store <- asks (Cachix.Env.nixStore . Env.cachixEnv)
                 storePath <- liftIO (parseStorePath store drv)
                 let drvText = decode drv
-                -- FIXME remove _ <- (big diff)
-                _ <-
-                  withNamedContext "derivation" (decode drv) $ do
-                    currentIndex <- liftIO $ atomicModifyIORef buildRequiredIndex (\i -> (i + 1, i))
-                    emit $
-                      EvaluateEvent.BuildRequired
-                        BuildRequired.BuildRequired
-                          { BuildRequired.derivationPath = drvText,
-                            BuildRequired.index = currentIndex,
-                            BuildRequired.outputName = outputName
-                          }
-                    let pushDerivations = do
-                          caches <- activePushCaches
-                          forM_ caches $ \cache -> do
-                            withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations for import from derivation"
-                            Agent.Cache.push cache [storePath] pushEvalWorkers
-                    Async.Lifted.concurrently_
-                      (uploadDerivationInfos storePath)
-                      pushDerivations
-                    emit $
-                      EvaluateEvent.BuildRequest
-                        BuildRequest.BuildRequest
-                          { derivationPath = drvText,
-                            forceRebuild = isJust notAttempt
-                          }
-                    when waitForStatus do
-                      flush
-                      status <- drvPoller notAttempt drvText
-                      logLocM DebugS $ "Got derivation status " <> logStr (show status :: Text)
-                      writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drvText) status
+                withNamedContext "derivation" (decode drv) $ do
+                  currentIndex <- liftIO $ atomicModifyIORef buildRequiredIndex (\i -> (i + 1, i))
+                  emit $
+                    EvaluateEvent.BuildRequired
+                      BuildRequired.BuildRequired
+                        { BuildRequired.derivationPath = drvText,
+                          BuildRequired.index = currentIndex,
+                          BuildRequired.outputName = outputName
+                        }
+                  let pushDerivations = do
+                        caches <- activePushCaches
+                        forM_ caches $ \cache -> do
+                          withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations for import from derivation"
+                          Agent.Cache.push cache [storePath] pushEvalWorkers
+                  Async.Lifted.concurrently_
+                    (uploadDerivationInfos storePath)
+                    pushDerivations
+                  emit $
+                    EvaluateEvent.BuildRequest
+                      BuildRequest.BuildRequest
+                        { derivationPath = drvText,
+                          forceRebuild = isJust notAttempt
+                        }
+                  when waitForStatus do
+                    flush
+                    status <- drvPoller notAttempt drvText
+                    logLocM DebugS $ "Got derivation status " <> logStr (show status :: Text)
+                    writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drvText) status
                 continue
               Event.OnPushHandler (ViaJSON e) -> do
                 emit $ EvaluateEvent.OnPushHandlerEvent e

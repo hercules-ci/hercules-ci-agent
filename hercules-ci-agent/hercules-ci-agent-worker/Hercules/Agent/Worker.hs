@@ -443,6 +443,10 @@ autoArgArgs kvs = do
     Eval.LiteralArg s -> ["--argstr", encodeUtf8 k, s]
     Eval.ExprArg s -> ["--arg", encodeUtf8 k, s]
 
+-- Ensure that a nested build invocation does not happen by a mistake in wiring.
+--
+-- (It does not happen, but this de-escalates a potential recursion bug to just
+--  an error.)
 withDrvInProgress :: MonadUnliftIO m => HerculesState -> StorePath -> m a -> m a
 withDrvInProgress HerculesState {drvsInProgress = ref} drvPath =
   bracket acquire release . const
@@ -552,56 +556,53 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                       panic $ "output path unknown for output " <> show outputName <> " on " <> pathText <> ". ca-derivations is not supported yet."
 
               isValid <- liftIO $ isValidPath store outputPath
-              -- FIXME: refactor away `continue` (creates big diff)
-              continue <-
-                if isValid
-                  then do
-                    logLocM DebugS "Output already valid"
-                    -- Report IFD
-                    liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing False
-                    pure pass
-                  else do
-                    logLocM DebugS "Building"
-                    liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing True
-                    pure $ katipAddContext (sl "outputPath" (show outputPath :: Text)) do
+              if isValid
+                then do
+                  logLocM DebugS "Output already valid"
+                  -- Report IFD
+                  liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing False
+                else do
+                  logLocM DebugS "Building"
+                  liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing True
+                  ( katipAddContext (sl "outputPath" (show outputPath :: Text)) do
                       logLocM DebugS "Attempting early ensurePath"
                       liftIO (ensurePath (wrappedStore st) outputPath)
-
-              continue `catch` \e0 -> do
-                katipAddContext (sl "message" (show (e0 :: SomeException) :: Text)) $
-                  logLocM DebugS "Recovering from failed wrapped.ensurePath"
-                (attempt0, result) <-
-                  liftIO $
-                    atomically $ do
-                      c <- readTVar drvsCompl
-                      anyAlternative $ M.lookup drvStorePath c
-                liftIO $ maybeThrowBuildException result (decode drvPath)
-                liftIO clearSubstituterCaches
-                liftIO $ clearPathInfoCache store
-                liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e1 -> do
-                  katipAddContext (sl "message" (show (e1 :: SomeException) :: Text)) $
-                    logLocM DebugS "Recovering from fresh ensurePath"
-                  liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) (Just attempt0) True
-                  -- TODO sync
-                  result' <-
-                    liftIO $
-                      atomically $ do
-                        c <- readTVar drvsCompl
-                        (attempt1, r) <- anyAlternative $ M.lookup drvStorePath c
-                        guard (attempt1 /= attempt0)
-                        pure r
-                  liftIO $ maybeThrowBuildException result' (decode drvPath)
-                  liftIO clearSubstituterCaches
-                  liftIO $ clearPathInfoCache store
-                  liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e2 ->
-                    liftIO $
-                      throwIO $
-                        BuildException
-                          (decode drvPath)
-                          ( Just $
-                              "It could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
-                                <> show (e2 :: SomeException)
-                          )
+                    )
+                    `catch` \e0 -> do
+                      katipAddContext (sl "message" (show (e0 :: SomeException) :: Text)) $
+                        logLocM DebugS "Recovering from failed wrapped.ensurePath"
+                      (attempt0, result) <-
+                        liftIO $
+                          atomically $ do
+                            c <- readTVar drvsCompl
+                            anyAlternative $ M.lookup drvStorePath c
+                      liftIO $ maybeThrowBuildException result (decode drvPath)
+                      liftIO clearSubstituterCaches
+                      liftIO $ clearPathInfoCache store
+                      liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e1 -> do
+                        katipAddContext (sl "message" (show (e1 :: SomeException) :: Text)) $
+                          logLocM DebugS "Recovering from fresh ensurePath"
+                        liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) (Just attempt0) True
+                        -- TODO sync
+                        result' <-
+                          liftIO $
+                            atomically $ do
+                              c <- readTVar drvsCompl
+                              (attempt1, r) <- anyAlternative $ M.lookup drvStorePath c
+                              guard (attempt1 /= attempt0)
+                              pure r
+                        liftIO $ maybeThrowBuildException result' (decode drvPath)
+                        liftIO clearSubstituterCaches
+                        liftIO $ clearPathInfoCache store
+                        liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e2 ->
+                          liftIO $
+                            throwIO $
+                              BuildException
+                                (decode drvPath)
+                                ( Just $
+                                    "It could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
+                                      <> show (e2 :: SomeException)
+                                )
               liftIO $ addTemporaryRoot store outputPath
             logLocM DebugS "Built"
   withEvalStateConduit store $ \evalState -> do
