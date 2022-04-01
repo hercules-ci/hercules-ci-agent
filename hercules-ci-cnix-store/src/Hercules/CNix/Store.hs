@@ -260,6 +260,15 @@ ensurePath (Store store) (StorePath storePath) =
     store.ensurePath(storePath);
   } |]
 
+addTemporaryRoot :: Store -> StorePath -> IO ()
+addTemporaryRoot (Store store) storePath = do
+  [C.throwBlock| void {
+    ReceiveInterrupts _;
+    Store &store = **$(refStore* store);
+    StorePath &storePath = *$fptr-ptr:(nix::StorePath *storePath);
+    store.addTempRoot(storePath);
+  } |]
+
 clearPathInfoCache :: Store -> IO ()
 clearPathInfoCache (Store store) =
   [C.throwBlock| void {
@@ -804,6 +813,17 @@ followLinksToStorePath (Store store) bs =
       std::string s = std::string($bs-ptr:bs, $bs-len:bs);
       return new StorePath(store.followLinksToStorePath(s));
     }|]
+
+-- | Whether a path exists and is registered.
+isValidPath :: Store -> StorePath -> IO Bool
+isValidPath (Store store) path =
+  [C.throwBlock| bool {
+    ReceiveInterrupts _;
+    Store &store = **$(refStore* store);
+    StorePath &path = *$fptr-ptr:(nix::StorePath *path);
+    return store.isValidPath(path);
+  }|]
+    <&> (/= 0)
 
 queryPathInfo ::
   Store ->
