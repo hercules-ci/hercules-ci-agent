@@ -71,16 +71,15 @@
     },
     "nixos-unstable": {
       "locked": {
-        "lastModified": 1647445921,
-        "narHash": "sha256-lNPvVxLLSN6V9nbEzh1XJpusI4W1M1QHBQVEVqkg1+Q=",
-        "owner": "hercules-ci",
+        "lastModified": 1649014612,
+        "narHash": "sha256-gJBss4NDhyH21tywYduTxnhbmyJj0C6RBD/8Ze2ABzQ=",
+        "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "70e6eb9ec8d548b836f8dedbf63d86a6bd737dc3",
+        "rev": "1ddbc47dc7439f50d12e8daabd01efaa78320e39",
         "type": "github"
       },
       "original": {
-        "owner": "hercules-ci",
-        "ref": "haskell-updates-ghc-9.0-stack",
+        "owner": "NixOS",
         "repo": "nixpkgs",
         "type": "github"
       }
