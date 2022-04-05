@@ -6,7 +6,9 @@ We recommend to audit the use of secrets in effects on a regular basis:
 
  * Keep the `secretsMap` attribute minimal. Unnecessary secrets present in the sandbox increases the risk of exposing them unnecessarily.
 
- * Make sure the `condition` fields in your agents' xref:secrets-json.adoc[`secrets.json`] files are set to allow only the minimum amount of access required. Try to avoid the "not" operator (currently not implemented); add more clauses to "and" operators and remove clauses from "or" operators where possible.
+ * Make sure the `condition` fields in your agents' xref:secrets-json.adoc[`secrets.json`] files are set to allow only the minimum amount of access required. Try to avoid the "not" operator (currently not even implemented); add more clauses to "and" operators and remove clauses from "or" operators where possible.
+
+    * Specifically, `"and": []`` evaluates to _allow_; the identity of "and".
 
  * Set up GitHub branch protection. By limiting access to secrets from the protected branches, you can apply the four eyes principle to the use of secrets. The "isDefaultBranch" or "isBranch" conditions when used appropriately can enforce that only the branches for which you have configured protection can use a secret.
 
