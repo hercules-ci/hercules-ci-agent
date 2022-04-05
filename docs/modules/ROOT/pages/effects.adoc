@@ -2,6 +2,9 @@
 
 Effects provide a means to perform actions that affect real-world resources in a controlled manner.
 
+This document serves as reference documentation.
+See also the xref:hercules-ci:ROOT:effects/index.adoc[Effects Introduction] and the deployment guides in xref:hercules-ci-effects:ROOT:index.adoc[`hercules-ci-effects`].
+
 == Running effects
 
 Effects run as part of a xref:hercules-ci:ROOT:glossary.adoc#job[job], after all its builds have completed successfully and after preceding jobs for the same repository have completed effect execution.
