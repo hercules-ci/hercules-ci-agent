@@ -488,9 +488,36 @@ getLocalFlake evalState path = do
   }|]
 
 getFlakeFromGit :: Ptr EvalState -> Text -> Text -> Text -> IO RawValue
-getFlakeFromGit evalState url ref rev = do
-  -- TODO: use a URL library, test
-  getFlakeFromFlakeRef evalState (encodeUtf8 $ "git+" <> url <> "?ref=" <> ref <> "&rev=" <> rev)
+getFlakeFromGit evalState url ref rev =
+  let
+    urlb = encodeUtf8 url
+    refb = encodeUtf8 ref
+    revb = encodeUtf8 rev
+  in [C.throwBlock| Value *{
+    EvalState &evalState = *$(EvalState *evalState);
+    Value *r = new (NoGC) Value();
+    std::string url($bs-ptr:urlb, $bs-len:urlb);
+    std::string ref($bs-ptr:refb, $bs-len:refb);
+    std::string rev($bs-ptr:revb, $bs-len:revb);
+
+    fetchers::Attrs attrs;
+    attrs.emplace("type", "git");
+    attrs.emplace("url", url);
+    attrs.emplace("ref", ref);
+    attrs.emplace("rev", rev);
+
+    auto flakeRef = nix::FlakeRef::fromAttrs(attrs);
+    nix::flake::callFlake(evalState,
+      nix::flake::lockFlake(evalState, flakeRef,
+        nix::flake::LockFlags {
+          .updateLockFile = false,
+          .useRegistries = false,
+          .allowMutable = false,
+        }),
+      *r);
+    return r;
+  }|]
+    >>= mkRawValue
 
 getFlakeFromArchiveUrl :: Ptr EvalState -> Text -> IO RawValue
 getFlakeFromArchiveUrl evalState url = do

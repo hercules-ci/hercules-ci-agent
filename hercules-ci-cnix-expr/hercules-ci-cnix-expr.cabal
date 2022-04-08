@@ -137,13 +137,16 @@ test-suite hercules-ci-cnix-expr-tests
     , base
     , bytestring
     , containers
+    , filepath
     , hercules-ci-cnix-expr
     , hercules-ci-cnix-store
     , hspec
+    , process
     , protolude
     , QuickCheck
     , scientific
     , temporary
+    , text
     , unordered-containers
     , vector
   build-tool-depends:

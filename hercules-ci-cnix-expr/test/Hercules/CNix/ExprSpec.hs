@@ -5,17 +5,22 @@ module Hercules.CNix.ExprSpec (spec) where
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
+import Data.List ((\\))
 import qualified Data.Map as M
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import Hercules.CNix.Expr
 import qualified Hercules.CNix.Expr.Typed as Typed
 import Protolude hiding (evalState)
 import qualified SingleState
+import System.FilePath ((</>))
+import System.IO.Temp (withSystemTempDirectory)
+import System.Process (waitForProcess)
+import qualified System.Process
 import Test.Hspec
 
 setup :: (Ptr EvalState -> IO a) -> IO a
 setup f = f SingleState.evalState
-
--- withTempStore \store -> withEvalState store f
 
 checkWithNix :: Ptr EvalState -> ByteString -> RawValue -> IO ()
 checkWithNix evalState s a = do
@@ -120,3 +125,33 @@ spec = do
         Right r -> pure (r :: A.Value)
       a <- toRawValue evalState jsonValue
       a & checkWithNix evalState ("a: a == builtins.fromJSON ''" <> jsonExample <> "''")
+  describe "getFlakeFromGit" do
+    it "works" $ setup \evalState -> do
+      withSystemTempDirectory "cnix-expr-test" \dir -> do
+        let run exe args = do
+              -- putErrText $ "Running " <> show exe <> " " <> show args
+              r <- System.Process.withCreateProcess ((System.Process.proc exe args) {System.Process.cwd = Just dir}) \_ _ _ -> waitForProcess
+              case r of
+                ExitFailure n -> panic ("command " <> show exe <> " " <> show args <> " failed with exit code " <> show n)
+                ExitSuccess -> pass
+            readProc exe args = do
+              -- putErrText $ "Reading " <> show exe <> " " <> show args
+              (t, r) <- System.Process.withCreateProcess ((System.Process.proc exe args) {System.Process.cwd = Just dir, System.Process.std_out = System.Process.CreatePipe}) \_ (Just stdo) _ p -> do
+                t <- T.hGetContents stdo
+                (t,) <$> waitForProcess p
+              case r of
+                ExitFailure n -> panic ("command " <> show exe <> " " <> show args <> " failed with exit code " <> show n)
+                ExitSuccess -> pass
+              pure t
+
+        run "git" ["-c", "init.defaultBranch=main", "init"]
+        writeFile (dir </> "flake.nix") "{ outputs = { ... }: { hello = ''world''; }; }"
+        run "git" ["add", "flake.nix"]
+        run "git" ["-c", "user.name=Tester", "-c", "user.email=test@example.com", "commit", "-m", "go go go", "flake.nix"]
+        -- man git check-ref-format
+        let ref = (['!' .. 'A'] ++ ['Z' .. 'a'] ++ "Ü" ++ ['z' .. '}']) \\ "\\~^?*[:"
+        run "git" ["branch", ref]
+        rev <- T.strip . toS <$> readProc "git" ["show", "--format=format:%H", "--quiet"]
+        r <- getFlakeFromGit evalState ("file://" <> toS dir) (toS ref) rev
+        r & checkWithNix evalState "r: r.hello == ''world''"
+        r & checkWithNix evalState ("r: r.sourceInfo.rev == ''" <> encodeUtf8 rev <> "''")
