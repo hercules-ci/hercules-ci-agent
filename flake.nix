@@ -14,6 +14,7 @@
     , ...
     }:
     let
+      inherit (nixos-unstable.legacyPackages.x86_64-linux) emptyFile;
       debug = false;
       ifDebug = f:
         if debug then f else x: x;
@@ -223,6 +224,13 @@
                 };
               };
             };
+
+            # Disabled checks
+
+            # Error: https://hercules-ci.com/accounts/github/hercules-ci/derivations/%2Fnix%2Fstore%2Fi9x1mv2m95l4y4yzsgb9qgg39m4c9ql7-python3.9-pre-commit-2.18.1.drv/log?via-job=3a8af400-acee-42a1-9fb0-0ae6af20133b
+            # PR: https://github.com/NixOS/nixpkgs/pull/167879
+            checks.x86_64-darwin.pre-commit = lib.mkForce emptyFile;
+            devShell.x86_64-darwin = lib.mkForce emptyFile;
           };
           perSystem = system: { config, pkgs, ... }:
             let
