@@ -17,6 +17,7 @@ let
     addBuildTool
     addSetupDepends
     allowInconsistentDependencies
+    appendConfigureFlags
     appendPatch
     disableLibraryProfiling
     enableDWARFDebugging
@@ -32,6 +33,11 @@ let
     if lib.versionAtLeast stdPkg.version v
     then stdPkg
     else altPkg;
+
+  addCompactUnwind =
+    if pkgs.stdenv.hostPlatform.isDarwin
+    then x: appendConfigureFlags x [ "--ghc-option=-fcompact-unwind" ]
+    else x: x;
 
   internal =
     rec {
@@ -85,7 +91,9 @@ let
                   overrideCabal
                     (
                       addBuildDepends
-                        (enableDWARFDebugging basePkg)
+                        (enableDWARFDebugging
+                          (addCompactUnwind basePkg)
+                        )
                         [ pkgs.makeWrapper pkgs.boost ]
                     )
                     (
@@ -142,9 +150,11 @@ let
                   generateOptparseApplicativeCompletion "hci" (
                     justStaticExecutables (
                       haskell.lib.disableLibraryProfiling (
-                        callPkg super "hercules-ci-cli" ../hercules-ci-cli {
-                          hercules-ci-agent = self.hercules-ci-agent_lib;
-                        }
+                        addCompactUnwind (
+                          callPkg super "hercules-ci-cli" ../hercules-ci-cli {
+                            hercules-ci-agent = self.hercules-ci-agent_lib;
+                          }
+                        )
                       )
                     )
                   )
