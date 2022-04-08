@@ -563,6 +563,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Initial release
 
+[0.9.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.2...hercules-ci-agent-0.9.3
 [0.9.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.1...hercules-ci-agent-0.9.2
 [0.9.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.0...hercules-ci-agent-0.9.1
 [0.9.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.7...hercules-ci-agent-0.9.0
