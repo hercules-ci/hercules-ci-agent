@@ -4,11 +4,14 @@ import Hercules.CNix.Expr (init)
 import Protolude
 import SingleState
 import qualified Spec
+import System.Environment (getEnvironment, setEnv)
+import System.FilePath ((</>))
+import System.IO.Temp (withSystemTempDirectory)
 import System.Mem (performMajorGC)
 import Test.Hspec.Runner
 
 main :: IO ()
-main = do
+main = withTempHome do
   init
   withGlobalState $ do
     -- for_ [(1 :: Int)..1000] \_ -> do
@@ -22,3 +25,18 @@ main = do
       defaultConfig
         { configColorMode = ColorAlways
         }
+
+-- Perfect for any housing crisis
+withTempHome :: IO () -> IO ()
+withTempHome io =
+  withSystemTempDirectory "test-home" \home -> do
+    -- HOME may not affect Nix getHome(), as its static variable may already be bound
+    setEnv "HOME" home
+
+    setEnv "XDG_CACHE_HOME" (home </> ".cache")
+    setEnv "XDG_CONFIG_HOME" (home </> ".config")
+    setEnv "XDG_DATA_HOME" (home </> ".local" </> "share")
+
+    getEnvironment >>= traverse_ \(k, v) ->
+      putStrLn (k <> " = " <> v)
+    io

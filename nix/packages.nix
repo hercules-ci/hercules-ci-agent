@@ -157,16 +157,18 @@ let
                     '';
                 }
                 );
-              hercules-ci-cnix-expr =
-                addBuildDepends
-                  (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
-                    inherit nix;
-                  })
-                  [
-                    # https://github.com/NixOS/nix/pull/4904
-                    nlohmann_json
-                  ]
-              ;
+              hercules-ci-cnix-expr = addBuildTool
+                (
+                  addBuildDepends
+                    (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
+                      inherit nix;
+                    })
+                    [
+                      # https://github.com/NixOS/nix/pull/4904
+                      nlohmann_json
+                    ]
+                )
+                pkgs.git;
               hercules-ci-cnix-store =
                 addBuildDepends
                   (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { inherit nix; })
