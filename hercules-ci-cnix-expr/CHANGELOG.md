@@ -5,6 +5,12 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.3.1.2 - 2022-04-08
+
+### Fixed
+
+ - `getFlakeFromGit` now handles branch names correctly
+
 ## 0.3.1.1 - 2022-03-21
 
 ### Fixed
