@@ -6,6 +6,7 @@
   inputs.pre-commit-hooks-nix.url = "github:hercules-ci/pre-commit-hooks.nix/flakeModule";
   inputs.flake-modules-core.url = "github:hercules-ci/flake-modules-core";
   inputs.flake-modules-core.inputs.nixpkgs.follows = "nixos-unstable";
+  inputs.nix.url = "github:NixOS/nix/2.8.0";
 
   outputs =
     inputs@{ self
@@ -367,8 +368,7 @@
               };
             };
           variants.nixUnstable.extraOverlay = final: prev: {
-            # nixUnstable is currently behind regular nix
-            # nix = addDebug prev.nixUnstable;
+            nix = addDebug inputs.nix.defaultPackage.${prev.stdenv.hostPlatform.system};
           };
           variants.nix_2_5.extraOverlay = final: prev: {
             nix = addDebug prev.nix_2_5;
