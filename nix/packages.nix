@@ -172,6 +172,8 @@ let
                   addBuildDepends
                     (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
                       inherit nix;
+                      # https://github.com/NixOS/cabal2nix/pull/546
+                      nix-cmd = nix;
                     })
                     [
                       # https://github.com/NixOS/nix/pull/4904

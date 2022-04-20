@@ -290,6 +290,7 @@
                       "Hercules/Agent/Compat.hs"
                       "Hercules/Agent/StoreFFI.hs"
                       "Hercules/CNix/Expr.hs" # parse error in quasiquotation
+                      "Hercules/CNix/Store.hs" # parse error in quasiquotation + CPP
                     ];
                     shellcheck.enable = true;
                     nixpkgs-fmt.enable = true;

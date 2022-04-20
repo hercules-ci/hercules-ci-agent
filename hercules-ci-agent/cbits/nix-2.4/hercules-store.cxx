@@ -216,14 +216,16 @@ void WrappingStore::queryMissing(const std::vector<DerivedPath> & targets,
                              downloadSize, narSize);
 }
 
-#if NIX_IS_AT_LEAST(2,6,0)
+#if !NIX_IS_AT_LEAST(2,8,0)
+#  if NIX_IS_AT_LEAST(2,6,0)
 std::optional<std::string>
-#else
+#  else
 std::shared_ptr<std::string>
-#endif
+#  endif
 WrappingStore::getBuildLog(const StorePath& path) {
   return wrappedStore->getBuildLog(path);
 }
+#endif
 
 void WrappingStore::connect() {
   wrappedStore->connect();

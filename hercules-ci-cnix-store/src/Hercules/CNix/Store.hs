@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -527,7 +528,18 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                       [&](DerivationOutputDeferred) -> void {
                         typ = 3;
                       },
-                    }, i->second.output);
+#if NIX_IS_AT_LEAST(2,8,0)
+                      [&](DerivationOutputImpure) -> void {
+                        typ = 4;
+                      },
+#endif
+                    },
+#if NIX_IS_AT_LEAST(2,8,0)
+                      i->second.raw()
+#else
+                      i->second.output
+#endif
+                    );
                     i++;
                   }|]
                   name <- unsafePackMallocCString =<< peek nameP
@@ -556,6 +568,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                       fim <- getFileIngestionMethod
                       pure $ DerivationOutputCAFloating fim hashType
                     3 -> pure DerivationOutputDeferred
+                    4 -> panic "getDerivationOutputs: impure derivations not supported yet"
                     _ -> panic "getDerivationOutputs: impossible getDerivationOutputs typ"
                   pure
                     ( DerivationOutput
