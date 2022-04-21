@@ -1,7 +1,7 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixos-unstable.url = "github:NixOS/nixpkgs";
+  inputs.nixos-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.nix-darwin.url = "github:LnL7/nix-darwin"; # test only
   inputs.pre-commit-hooks-nix.url = "github:hercules-ci/pre-commit-hooks.nix/flakeModule";
   inputs.flake-modules-core.url = "github:hercules-ci/flake-modules-core";
