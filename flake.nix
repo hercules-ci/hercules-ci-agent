@@ -372,7 +372,7 @@
           #   nix = addDebug inputs.nix.defaultPackage.${prev.stdenv.hostPlatform.system};
           # };
           variants.nix_2_7.extraOverlay = final: prev: {
-            nix = addDebug prev.nix_2_7;
+            nix = addDebug prev.nixVersions.nix_2_7;
           };
         };
         options = {
