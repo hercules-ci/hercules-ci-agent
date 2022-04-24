@@ -6,7 +6,6 @@
   inputs.pre-commit-hooks-nix.url = "github:hercules-ci/pre-commit-hooks.nix/flakeModule";
   inputs.flake-modules-core.url = "github:hercules-ci/flake-modules-core";
   inputs.flake-modules-core.inputs.nixpkgs.follows = "nixos-unstable";
-  inputs.nix.url = "github:NixOS/nix/2.8.0";
 
   outputs =
     inputs@{ self
@@ -277,10 +276,10 @@
                 packages.hercules-ci-api-swagger = pkgs.hercules-ci-agent-packages.hercules-ci-api-swagger;
                 packages.hercules-ci-cli = pkgs.hercules-ci-agent-packages.hercules-ci-cli;
                 packages.hercules-ci-agent = pkgs.hercules-ci-agent;
-                packages.hercules-ci-agent-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-agent;
-                packages.hercules-ci-cli-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-cli;
-                packages.hercules-ci-agent-nix_2_5 = config.variants.nix_2_5.packages.hercules-ci-agent;
-                packages.hercules-ci-cli-nix_2_5 = config.variants.nix_2_5.packages.hercules-ci-cli;
+                # packages.hercules-ci-agent-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-agent;
+                # packages.hercules-ci-cli-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-cli;
+                packages.hercules-ci-agent-nix_2_7 = config.variants.nix_2_7.packages.hercules-ci-agent;
+                packages.hercules-ci-cli-nix_2_7 = config.variants.nix_2_7.packages.hercules-ci-cli;
                 pre-commit.pkgs = pkgs;
                 pre-commit.settings = {
                   hooks = {
@@ -335,7 +334,9 @@
                   in
                   if isDevVariant then shell else pkgs.mkShell { name = "unsupported-shell"; };
 
-                checks = config.checkSet // suffixAttrs "-nixUnstable" config.variants.nixUnstable.checkSet;
+                checks = config.checkSet
+                  # // suffixAttrs "-nixUnstable" config.variants.nixUnstable.checkSet
+                ;
 
                 checkSet =
                   let
@@ -348,7 +349,7 @@
                   // lib.optionalAttrs (pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64)
                     {
                       agent-functional-test = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = false; });
-                      agent-functional-test-daemon-nixUnstable = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = true; });
+                      # agent-functional-test-daemon-nixUnstable = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = true; });
                       multi-example-eq = multi-example.eq;
                       multi-example-multi = multi-example.multi;
                     } // lib.optionalAttrs pkgs.stdenv.isDarwin {
@@ -367,11 +368,11 @@
                 };
               };
             };
-          variants.nixUnstable.extraOverlay = final: prev: {
-            nix = addDebug inputs.nix.defaultPackage.${prev.stdenv.hostPlatform.system};
-          };
-          variants.nix_2_5.extraOverlay = final: prev: {
-            nix = addDebug prev.nix_2_5;
+          # variants.nixUnstable.extraOverlay = final: prev: {
+          #   nix = addDebug inputs.nix.defaultPackage.${prev.stdenv.hostPlatform.system};
+          # };
+          variants.nix_2_7.extraOverlay = final: prev: {
+            nix = addDebug prev.nix_2_7;
           };
         };
         options = {
