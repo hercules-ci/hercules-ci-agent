@@ -268,6 +268,9 @@ executable hercules-ci-agent-worker
       Hercules.Agent.Worker.Build.Logger
       Hercules.Agent.Worker.Build.Logger.Context
       Hercules.Agent.Worker.Effect
+      Hercules.Agent.Worker.Env
+      Hercules.Agent.Worker.Error
+      Hercules.Agent.Worker.Evaluate
       Hercules.Agent.Worker.HerculesStore
       Hercules.Agent.Worker.HerculesStore.Context
       Hercules.Agent.Worker.Logging
