@@ -66,6 +66,20 @@ data BuildException = BuildException
 
 instance Exception BuildException
 
+data RealisationRequired = RealisationRequired {realisationRequiredDerivationPath :: ByteString, realisationRequiredOutputName :: ByteString}
+  deriving (Show, Typeable)
+
+instance Exception RealisationRequired
+
+data EvalEnv = EvalEnv
+  { evalEnvHerculesState :: HerculesState,
+    evalEnvState :: Ptr EvalState,
+    evalEnvIsNonBlocking :: IORef Bool
+  }
+
+evalEnvStore :: EvalEnv -> Store
+evalEnvStore = nixStore . herculesStore . evalEnvHerculesState
+
 -- TODO: test
 autoArgArgs :: Map Text Eval.Arg -> [ByteString]
 autoArgArgs kvs = do
@@ -164,6 +178,8 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
 
   cachingBuilt <- liftIO mkCache
 
+  isNonBlocking <- liftIO (newIORef False)
+
   liftIO . setBuilderCallback hStore $
     traverseSPWOs $ \storePathWithOutputs -> unlift $ do
       drvStorePath <- liftIO $ getStorePath storePathWithOutputs
@@ -195,6 +211,11 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                 else do
                   logLocM DebugS "Building"
                   liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing True
+
+                  don'tBlock <- liftIO (readIORef isNonBlocking)
+                  when don'tBlock do
+                    throwIO (RealisationRequired drvPath outputName)
+
                   ( katipAddContext (sl "outputPath" (show outputPath :: Text)) do
                       logLocM DebugS "Attempting early ensurePath"
                       liftIO (ensurePath (wrappedStore st) outputPath)
@@ -237,6 +258,14 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
               liftIO $ addTemporaryRoot store outputPath
             logLocM DebugS "Built"
   withEvalStateConduit store $ \evalState -> do
+    let evalEnv :: EvalEnv
+        evalEnv =
+          EvalEnv
+            { evalEnvHerculesState = st,
+              evalEnvIsNonBlocking = isNonBlocking,
+              evalEnvState = evalState
+            }
+
     liftIO do
       addInternalAllowedPaths evalState
       for_ (Eval.allowedPaths eval) (addAllowedPath evalState)
@@ -253,7 +282,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
         liftIO (flip runReaderT evalState $ getHerculesCI homeExpr hargs) >>= \case
           Nothing ->
             -- legacy
-            walk store evalState args (homeExprRawValue homeExpr)
+            walk evalEnv args (homeExprRawValue homeExpr)
           Just herculesCI -> do
             case Event.fromViaJSON (Eval.selector eval) of
               EvaluateTask.ConfigOrLegacy -> do
@@ -261,7 +290,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                 sendConfig evalState isFlake herculesCI
               EvaluateTask.OnPush onPush ->
                 transPipe (`runReaderT` evalState) do
-                  walkOnPush store evalState onPush herculesCI
+                  walkOnPush evalEnv onPush herculesCI
     yield Event.EvaluationDone
 
 getHomeExpr :: (MonadThrow m, MonadIO m) => Ptr EvalState -> Eval -> m NixFile.HomeExpr
@@ -278,8 +307,9 @@ getHomeExpr evalState eval =
         toValue evalState pso
     else escalateAs UserException =<< liftIO (loadNixFile evalState (toS $ Eval.cwd eval) (coerce $ Eval.gitSource eval))
 
-walkOnPush :: (MonadEval m, MonadUnliftIO m, KatipContext m, MonadThrow m) => Store -> Ptr EvalState -> OnPush.OnPush -> PSObject HerculesCISchema -> ConduitT i Event m ()
-walkOnPush store evalState onPushParams herculesCI = do
+walkOnPush :: (MonadEval m, MonadUnliftIO m, KatipContext m, MonadThrow m) => EvalEnv -> OnPush.OnPush -> PSObject HerculesCISchema -> ConduitT i Event m ()
+walkOnPush evalEnv onPushParams herculesCI = do
+  let evalState = evalEnvState evalEnv
   onPushHandler <- herculesCI #?! #onPush >>= requireDict (OnPush.name onPushParams)
   inputs <- liftIO $ do
     inputs <- for (OnPush.inputs onPushParams) \input -> do
@@ -287,7 +317,7 @@ walkOnPush store evalState onPushParams herculesCI = do
     toRawValue evalState inputs
   outputsFun <- onPushHandler #. #outputs
   outputs <- outputsFun $? (Schema.PSObject {value = inputs, provenance = Schema.Data})
-  simpleWalk store evalState (Schema.value outputs)
+  simpleWalk evalEnv (Schema.value outputs)
 
 inputToValue :: Ptr EvalState -> API.ImmutableInput.ImmutableInput -> IO RawValue
 inputToValue evalState (API.ImmutableInput.ArchiveUrl u) = getFlakeFromArchiveUrl evalState u
@@ -319,75 +349,74 @@ sendConfig evalState isFlake herculesCI = flip runReaderT evalState $ do
 -- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.
 simpleWalk ::
   (MonadUnliftIO m, KatipContext m) =>
-  Store ->
-  Ptr EvalState ->
+  EvalEnv ->
   RawValue ->
   ConduitT i Event m ()
-simpleWalk store evalState = walk' [] 10
-  where
-    handleErrors path = Data.Conduit.handleC (yieldAttributeError path)
-    walk' ::
-      (MonadUnliftIO m, KatipContext m) =>
-      -- Attribute path
-      [ByteString] ->
-      -- Depth of tree remaining
-      Integer ->
-      -- Current node of the walk
-      RawValue ->
-      -- Program that performs the walk and emits 'Event's
-      ConduitT i1 Event m ()
-    walk' path depthRemaining v =
-      handleErrors path $
-        liftIO (match evalState v)
-          >>= \case
-            Left e ->
-              yieldAttributeError path e
-            Right m -> case m of
-              IsAttrs attrValue -> do
-                isDeriv <- liftIO $ isDerivation evalState v
-                if isDeriv
-                  then walkDerivation store evalState False path attrValue
-                  else do
-                    attrs <- liftIO $ getAttrs attrValue
-                    void $
-                      flip M.traverseWithKey attrs $
-                        \name value ->
-                          if depthRemaining > 0
-                            then
-                              walk'
-                                (path ++ [name])
-                                (depthRemaining - 1)
-                                value
-                            else yield (Event.Error $ "Max recursion depth reached at path " <> show path)
-              _any -> do
-                vt <- liftIO $ rawValueType v
-                unless
-                  ( lastMay path == Just "recurseForDerivations"
-                      && vt == Hercules.CNix.Expr.Raw.Bool
-                  )
-                  do
-                    logLocM DebugS $
-                      logStr $
-                        "Ignoring "
-                          <> show path
-                          <> " : "
-                          <> (show vt :: Text)
+simpleWalk evalEnv = do
+  let store = evalEnvStore evalEnv
+      evalState = evalEnvState evalEnv
+      handleErrors path = Data.Conduit.handleC (yieldAttributeError path)
+      walk' ::
+        (MonadUnliftIO m, KatipContext m) =>
+        -- Attribute path
+        [ByteString] ->
+        -- Depth of tree remaining
+        Integer ->
+        -- Current node of the walk
+        RawValue ->
+        -- Program that performs the walk and emits 'Event's
+        ConduitT i1 Event m ()
+      walk' path depthRemaining v =
+        handleErrors path $
+          liftIO (match evalState v)
+            >>= \case
+              Left e ->
+                yieldAttributeError path e
+              Right m -> case m of
+                IsAttrs attrValue -> do
+                  isDeriv <- liftIO $ isDerivation evalState v
+                  if isDeriv
+                    then walkDerivation store evalState False path attrValue
+                    else do
+                      attrs <- liftIO $ getAttrs attrValue
+                      void $
+                        flip M.traverseWithKey attrs $
+                          \name value ->
+                            if depthRemaining > 0
+                              then
+                                walk'
+                                  (path ++ [name])
+                                  (depthRemaining - 1)
+                                  value
+                              else yield (Event.Error $ "Max recursion depth reached at path " <> show path)
+                _any -> do
+                  vt <- liftIO $ rawValueType v
+                  unless
+                    ( lastMay path == Just "recurseForDerivations"
+                        && vt == Hercules.CNix.Expr.Raw.Bool
+                    )
+                    do
+                      logLocM DebugS $ logStr $ "Ignoring " <> show path <> " : " <> (show vt :: Text)
+  walk' [] 10
 
 traverseSPWOs :: (StorePathWithOutputs -> IO ()) -> StdVector NixStorePathWithOutputs -> IO ()
 traverseSPWOs f v = do
   v' <- Std.Vector.toListFP v
   traverse_ f v'
 
+-- TODO: breadth-first IFD for the original 'walk'
+
 -- | Documented in @docs/modules/ROOT/pages/legacy-evaluation.adoc@.
 walk ::
   (MonadUnliftIO m, KatipContext m) =>
-  Store ->
-  Ptr EvalState ->
+  EvalEnv ->
   Value NixAttrs ->
   RawValue ->
   ConduitT i Event m ()
-walk store evalState = walk' True [] 10
+walk evalEnv = walk' True [] 10
   where
+    store = evalEnvStore evalEnv
+    evalState = evalEnvState evalEnv
     handleErrors path = Data.Conduit.handleC (yieldAttributeError path)
     walk' ::
       (MonadUnliftIO m, KatipContext m) =>
