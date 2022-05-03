@@ -25,6 +25,10 @@ source-repository head
   type: git
   location: https://github.com/hercules-ci/hercules-ci-agent
 
+flag nix-2_8
+  description: Build for Nix >=2.8
+  default: True
+
 -- Deprecated
 flag nix-2_4
   description: Build for Nix >=2.4pre*
@@ -115,6 +119,10 @@ library
       nix-store >= 2.4
     , nix-expr >= 2.4
     , nix-main >= 2.4
+  if flag(nix-2_8)
+    pkgconfig-depends:
+      -- MixEvalArgs has moved here
+      nix-cmd >= 2.8
 
 
 test-suite hercules-ci-cnix-expr-tests

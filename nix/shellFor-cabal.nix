@@ -28,10 +28,7 @@ haskellPackages.shellFor {
   buildInputs = [
     pkgs.boost
     pkgs.nlohmann_json # FIXME remove
-
-    # cabal: The pkg-config package 'nix-store' version >=2.0 && <2.4 is required
-    # but the version installed on the system is version 2.4pre20210601_5985b8b
-    (pkgs.nix.overrideAttrs (o: { suffix = ""; version = "2.4"; }))
+    pkgs.nix
   ];
   nativeBuildInputs = [
     pkgs.cabal-install

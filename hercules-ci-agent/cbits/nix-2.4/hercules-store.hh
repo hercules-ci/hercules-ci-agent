@@ -135,12 +135,14 @@ public:
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) override;
 
-#if NIX_IS_AT_LEAST(2,6,0)
+#if !NIX_IS_AT_LEAST(2,8,0)
+#  if NIX_IS_AT_LEAST(2,6,0)
   virtual std::optional<std::string>
-#else
+#  else
   virtual std::shared_ptr<std::string>
-#endif
+#  endif
     getBuildLog(const StorePath & path) override;
+#endif
 
   virtual unsigned int getProtocol() override;
 

@@ -4,7 +4,7 @@ import Hercules.CNix.Expr (init)
 import Protolude
 import SingleState
 import qualified Spec
-import System.Environment (getEnvironment, setEnv)
+import System.Environment (setEnv)
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import System.Mem (performMajorGC)
@@ -37,6 +37,4 @@ withTempHome io =
     setEnv "XDG_CONFIG_HOME" (home </> ".config")
     setEnv "XDG_DATA_HOME" (home </> ".local" </> "share")
 
-    getEnvironment >>= traverse_ \(k, v) ->
-      putStrLn (k <> " = " <> v)
     io

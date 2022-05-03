@@ -63,6 +63,18 @@ let
 
               hercules-ci-optparse-applicative =
                 super.callPackage ./hercules-ci-optparse-applicative.nix { };
+              inline-c-cpp =
+                overrideSrc super.inline-c-cpp {
+                  src =
+                    # https://github.com/fpco/inline-c/pull/132
+                    assert (super.inline-c-cpp.version == "0.5.0.0");
+                    (pkgs.fetchFromGitHub {
+                      owner = "hercules-ci";
+                      repo = "inline-c";
+                      rev = "aebca859f0c2edfc9f32916b929e3b35ba843945";
+                      sha256 = "sha256-u6CcpiqbQUqqTbJaaQ3YBQcrINjU9jcxIEUR/ThW2Y0=";
+                    }) + "/inline-c-cpp";
+                };
               protolude =
                 updateTo "0.3" super.protolude (super.callPackage ./protolude-0.3.nix { });
               servant-auth =
@@ -172,6 +184,8 @@ let
                   addBuildDepends
                     (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
                       inherit nix;
+                      # https://github.com/NixOS/cabal2nix/pull/546
+                      nix-cmd = nix;
                     })
                     [
                       # https://github.com/NixOS/nix/pull/4904
