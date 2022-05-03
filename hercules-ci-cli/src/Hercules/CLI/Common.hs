@@ -17,3 +17,14 @@ runAuthenticated m = do
   clientEnv <- Hercules.CLI.Client.init
   token <- readToken determineDomain
   runRIO (HerculesClientToken $ Token $ encodeUtf8 token, clientEnv) m
+
+runAuthenticatedOrDummy ::
+  -- | Use fake credential if 'False'.
+  Bool ->
+  RIO (HerculesClientToken, HerculesClientEnv) b ->
+  IO b
+runAuthenticatedOrDummy True = runAuthenticated
+runAuthenticatedOrDummy False = \m -> do
+  clientEnv <- Hercules.CLI.Client.init
+  token <- fromMaybe "dummy-token" <$> tryReadEffectToken
+  runRIO (HerculesClientToken $ Token $ encodeUtf8 token, clientEnv) m
