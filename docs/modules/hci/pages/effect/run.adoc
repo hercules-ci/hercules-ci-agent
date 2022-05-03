@@ -26,6 +26,8 @@ Pretend we're on another git ref. This sets the `src.ref` attribute appropriatel
 
 Don't get an API token. Disallows access to state files, but can run in untrusted environment or unconfigured repo.
 
+This does not inhibit use of a token provided via the `HERCULES_CI_API_TOKEN` variable.
+
 [[option-project]]
 === `--project PROJECT`
 
