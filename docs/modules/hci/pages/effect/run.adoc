@@ -26,9 +26,18 @@ Pretend we're on another git ref. This sets the `src.ref` attribute appropriatel
 
 Don't get an API token. Disallows access to state files, but can run in untrusted environment or unconfigured repo.
 
-This does not inhibit use of a token provided via the `HERCULES_CI_API_TOKEN` variable.
+This does not inhibit use of a token provided via the xref:environment.adoc#HERCULES_CI_API_TOKEN[`HERCULES_CI_API_TOKEN`] variable.
 
 [[option-project]]
 === `--project PROJECT`
 
 Project path, e.g. `github/my-org/my-project`. Default: auto-detected.
+
+[[implicit-inputs]]
+== Implicit inputs
+
+This command uses `git` metadata from the working directory, unless <<option-as-ref>> (or similar) and <<option-project>> are specified.
+
+Values for secrets are looked up in a xref:environment.adoc#secrets.json[local `secrets.json`] or from xref:environment.adoc#HERCULES_CI_SECRETS_JSON[`HERCULES_CI_SECRETS_JSON`].
+
+include::hci:partial$implicit-api.adoc[]

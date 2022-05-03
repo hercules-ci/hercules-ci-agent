@@ -17,3 +17,10 @@ Name of the state file.
 === `--file FILE`
 
 Local path of the state file or `-` for stdin.
+
+[[implicit-inputs]]
+== Implicit inputs
+
+This command uses `git` metadata from the working directory, unless <<option-project>> is specified.
+
+include::hci:partial$implicit-api.adoc[]
