@@ -109,8 +109,18 @@ readPersonalToken domain = do
     Nothing -> throwIO NoCredentialException {noCredentialDomain = domain}
     Just cred -> pure (personalToken cred)
 
+-- | Try to get a token from the local environment.
+--
+-- 1. HERCULES_CI_API_TOKEN
+-- 2. HERCULES_CI_SECRETS_JSON
 tryReadEffectToken :: IO (Maybe Text)
-tryReadEffectToken = runMaybeT do
+tryReadEffectToken = runMaybeT $ tryReadEffectTokenFromEnv <|> tryReadEffectTokenFromFile
+
+tryReadEffectTokenFromEnv :: MaybeT IO Text
+tryReadEffectTokenFromEnv = T.pack <$> MaybeT (System.Environment.lookupEnv "HERCULES_CI_API_TOKEN")
+
+tryReadEffectTokenFromFile :: MaybeT IO Text
+tryReadEffectTokenFromFile = do
   inEffect <- MaybeT $ System.Environment.lookupEnv "IN_HERCULES_CI_EFFECT"
   guard $ inEffect == "true"
   secretsJsonPath <- MaybeT $ System.Environment.lookupEnv "HERCULES_CI_SECRETS_JSON"
@@ -123,8 +133,8 @@ tryReadEffectToken = runMaybeT do
       Just x -> pure x
       Nothing -> throwIO $ FatalError $ "HERCULES_CI_SECRETS_JSON, " <> T.pack secretsJsonPath <> " doesn't have key hercules-ci.data.token"
 
-readToken :: Text -> IO Text
-readToken domain = do
+readToken :: IO Text -> IO Text
+readToken getDomain = do
   tryReadEffectToken >>= \case
     Just x -> pure x
-    Nothing -> readPersonalToken domain
+    Nothing -> readPersonalToken =<< getDomain

@@ -5,11 +5,10 @@ Configure token for authentication to hercules-ci.com or Hercules CI Enterprise.
 This will present a unique URL for a page where you can approve the login.
 
 When successful, an authentication token is persisted to 
-`$XDG_CONFIG_HOME/hercules-ci/credentials.json`, which is
-`~/.config/hercules-ci/credentials.json` on most systems.
+xref:environment.adoc#credentials.json[`credentials.json`].
 
 This token can then be used by the other `hci` subcommands.
 
-Users of Hercules CI Enterprise should set the `HERCULES_CI_API_BASE_URL`
+Users of Hercules CI Enterprise should set the xref:environment.adoc#HERCULES_CI_API_BASE_URL[`HERCULES_CI_API_BASE_URL`]
 environment variable in their profile and/or session before logging in and
 before running any other commands.

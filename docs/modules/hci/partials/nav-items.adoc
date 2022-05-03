@@ -1,4 +1,5 @@
 * xref:installation.adoc[Installation]
+* xref:environment.adoc[Environment]
 * xref:effect/run.adoc[`hci effect run`] +
 ifeval::[{descriptions} == true]
 Run an effect locally.

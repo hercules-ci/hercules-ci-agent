@@ -16,6 +16,7 @@ import qualified Hercules.Formats.Secret as Secret
 import Hercules.UserException (UserException (UserException))
 import qualified Options.Applicative as Optparse
 import Protolude
+import System.Environment (lookupEnv)
 import System.FilePath (takeDirectory, (</>))
 import UnliftIO.Directory (XdgDirectory (XdgConfig), createDirectoryIfMissing, doesFileExist, getXdgDirectory)
 
@@ -108,6 +109,12 @@ echo = do
 
 getSecretsFilePath :: ProjectPath -> IO FilePath
 getSecretsFilePath projectPath = do
+  lookupEnv "HERCULES_CI_SECRETS_JSON" >>= \case
+    Nothing -> getSecretsFilePathXdg projectPath
+    Just x -> pure x
+
+getSecretsFilePathXdg :: ProjectPath -> IO FilePath
+getSecretsFilePathXdg projectPath = do
   dir <- getXdgDirectory XdgConfig "hercules-ci"
   let toPathElement = toS . T.map (\case '/' -> '_'; x -> x)
   pure $ dir </> "secrets" </> toPathElement (projectPathSite projectPath) </> toPathElement (projectPathOwner projectPath) </> "secrets.json"

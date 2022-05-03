@@ -1,0 +1,1 @@
+Hercules CI API access is affected by the optional xref:environment.adoc#HERCULES_CI_API_BASE_URL[`HERCULES_CI_API_BASE_URL`] and xref:environment.adoc#HERCULES_CI_API_TOKEN[`HERCULES_CI_API_TOKEN`].

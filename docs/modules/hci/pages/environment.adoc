@@ -1,0 +1,61 @@
+
+= `hci` Environment
+
+The `hci` command makes use of a number of environment variables and files.
+
+[[files]]
+== Files
+
+[[credentials.json]]
+=== `~/.config/hercules-ci/credentials.json`
+
+Contains the Hercules CI API token.
+
+It can contain multiple tokens: one per <<HERCULES_CI_API_BASE_URL>>.
+
+This file is written by xref:login.adoc[`hci login`].
+
+It is ignored when <<HERCULES_CI_API_TOKEN>> is set.
+
+[[secrets.json]]
+=== `~/.config/hercules-ci/secrets/<forge>/<owner>/secrets.json`
+
+A xref:hercules-ci-agent:ROOT:secrets-json.adoc[`secrets.json`] file for use by xref:effect/run.adoc[`hci effect run`].
+
+`<forge>` is typically `github`.
+
+`<owner>` is the name of your organization as it appears in URLs, or for personal account if you've installed Hercules CI on your personal account.
+
+The xref:secret/init-local.adoc[`hci secret init-local`] command will report the location of the file and does not reset its contents.
+
+An alternate location can be specified with <<HERCULES_CI_SECRETS_JSON>>.
+
+
+[[variables]]
+== Environment variables
+
+[[HERCULES_CI_API_BASE_URL]]
+=== `HERCULES_CI_API_BASE_URL`
+
+The base URL of the Hercules CI API, for Hercules CI Enterprise users. This variable is xref:hercules-ci-agent:ROOT:effects.adoc#HERCULES_CI_API_BASE_URL[also available in effects]. See xref:hercules-ci-agent:ROOT:agent-config.adoc#apiBaseUrl[apiBaseUrl].
+
+[[HERCULES_CI_API_TOKEN]]
+=== `HERCULES_CI_API_TOKEN`
+
+An alternative way of passing an API token to the Hercules CI API for authentication.
+
+This overrides the applicable token in <<credentials.json>> if present.
+
+By default, `hci` will suggest to authenticate with xref:login.adoc[`hci login`] instead, which uses that file.
+
+[[HERCULES_CI_SECRETS_JSON]]
+=== `HERCULES_CI_SECRETS_JSON`
+
+The location of a local `secrets.json` file for use with xref:effect/run.adoc[`hci effect run`].
+
+When unset, a default value is derived from the working directory repository upstream owner.
+
+[[XDG_CONFIG_HOME]]
+=== `XDG_CONFIG_HOME`
+
+Default: `~/.config`. Affects the location of <<files>>. All documentation will assume the default value.
