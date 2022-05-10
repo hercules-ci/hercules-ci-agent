@@ -5,6 +5,7 @@ module EvaluationSpec where
 import qualified Data.Aeson as A
 import Data.List (last)
 import qualified Data.Map as M
+import qualified Data.Text as T
 import qualified Data.UUID.V4 as UUID
 import Hercules.API.Agent.Evaluate.EvaluateEvent
   ( EvaluateEvent,
@@ -45,7 +46,6 @@ isAttrLike :: EvaluateEvent -> Bool
 isAttrLike EvaluateEvent.Attribute {} = True
 isAttrLike EvaluateEvent.AttributeError {} = True
 isAttrLike EvaluateEvent.Message {} = True -- this is a bit of a stretch but hey
-isAttrLike EvaluateEvent.BuildRequired {} = True -- this is a bit of a stretch but hey
 isAttrLike _ = False
 
 (=:) :: k -> a -> Map k a
@@ -703,26 +703,30 @@ spec = describe "Evaluation" $ do
               )
           s `shouldBe` TaskStatus.Successful ()
           case attrLike r of
-            [ EvaluateEvent.BuildRequired br1,
-              EvaluateEvent.Attribute ae1,
-              EvaluateEvent.BuildRequired br2,
-              EvaluateEvent.Attribute ae2
+            [ EvaluateEvent.Attribute _nondetA,
+              EvaluateEvent.Attribute _nondetB
               ] -> do
-                BuildRequired.index br1 `shouldBe` 0
-                toS (BuildRequired.derivationPath br1) `shouldContain` "/nix/store/"
-                toS (BuildRequired.derivationPath br1) `shouldContain` "-ifd-2.nix"
-                BuildRequired.outputName br1 `shouldBe` "out"
-                AttributeEvent.expressionPath ae1 `shouldBe` ["figletIfd"]
-                toS (AttributeEvent.derivationPath ae1) `shouldContain` "/nix/store"
-                toS (AttributeEvent.derivationPath ae1) `shouldContain` "-figlet"
-                BuildRequired.index br2 `shouldBe` 1
-                toS (BuildRequired.derivationPath br2) `shouldContain` "/nix/store/"
-                toS (BuildRequired.derivationPath br2) `shouldContain` "-ifd-1.nix"
-                BuildRequired.outputName br2 `shouldBe` "out"
-                AttributeEvent.expressionPath ae2 `shouldBe` ["helloIfd"]
-                toS (AttributeEvent.derivationPath ae2) `shouldContain` "/nix/store"
-                toS (AttributeEvent.derivationPath ae2) `shouldContain` "-hello"
-            bad -> failWith $ "Events should be a two attributes, not: " <> show bad
+                pass
+            bad -> do
+              failWith $ "Events should have two attributes, not: " <> show bad
+          do
+            let attr = r & findJust "hello attribute" \case EvaluateEvent.Attribute a | AttributeEvent.expressionPath a == ["helloIfd"] -> Just a; _ -> Nothing
+            void $ evaluate attr
+            toS (AttributeEvent.derivationPath attr) `shouldContain` "/nix/store"
+            toS (AttributeEvent.derivationPath attr) `shouldContain` "-hello"
+          do
+            let attr = r & findJust "figlet attribute" \case EvaluateEvent.Attribute a | AttributeEvent.expressionPath a == ["figletIfd"] -> Just a; _ -> Nothing
+            toS (AttributeEvent.derivationPath attr) `shouldContain` "/nix/store"
+            toS (AttributeEvent.derivationPath attr) `shouldContain` "-figlet"
+          do
+            let br1 = r & findJust "ifd-2 required" \case EvaluateEvent.BuildRequired a | "-ifd-2.nix.drv" `T.isSuffixOf` BuildRequired.derivationPath a -> Just a; _ -> Nothing
+            toS (BuildRequired.derivationPath br1) `shouldContain` "/nix/store/"
+            BuildRequired.outputName br1 `shouldBe` "out"
+          do
+            let br1 = r & findJust "ifd-2 required" \case EvaluateEvent.BuildRequired a | "-ifd-1.nix.drv" `T.isSuffixOf` BuildRequired.derivationPath a -> Just a; _ -> Nothing
+            toS (BuildRequired.derivationPath br1) `shouldContain` "/nix/store/"
+            BuildRequired.outputName br1 `shouldBe` "out"
+
     it "can request a build" ifdTest
     it "can request a build again" $ \srv -> ifdTest srv >> ifdTest srv
     it "can handle a failed build" $ \srv -> do
@@ -745,31 +749,35 @@ spec = describe "Evaluation" $ do
           )
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
-        [ EvaluateEvent.BuildRequired br1,
-          EvaluateEvent.AttributeError ae1,
-          EvaluateEvent.BuildRequired br2,
-          EvaluateEvent.Attribute ae2
-          ] -> do
-            BuildRequired.index br1 `shouldBe` 0
-            toS (BuildRequired.derivationPath br1) `shouldContain` "/nix/store/"
-            toS (BuildRequired.derivationPath br1) `shouldContain` "-ifd-2.nix"
-            BuildRequired.outputName br1 `shouldBe` "out"
-            AttributeErrorEvent.expressionPath ae1 `shouldBe` ["figletIfd"]
-            length (AttributeErrorEvent.errorDerivation ae1) `shouldBe` 1
-            toS (fromMaybe "" (AttributeErrorEvent.errorDerivation ae1)) `shouldContain` "/nix/store"
-            toS (fromMaybe "" (AttributeErrorEvent.errorDerivation ae1)) `shouldContain` "-ifd-2.nix"
-            toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "/nix/store"
-            toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "-ifd-2.nix"
-            toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "Could not build derivation"
-            toS (AttributeErrorEvent.errorMessage ae1) `shouldContain` "evaluat"
-            BuildRequired.index br2 `shouldBe` 1
-            toS (BuildRequired.derivationPath br2) `shouldContain` "/nix/store/"
-            toS (BuildRequired.derivationPath br2) `shouldContain` "-ifd-1.nix"
-            BuildRequired.outputName br2 `shouldBe` "out"
-            AttributeEvent.expressionPath ae2 `shouldBe` ["helloIfd"]
-            toS (AttributeEvent.derivationPath ae2) `shouldContain` "/nix/store"
-            toS (AttributeEvent.derivationPath ae2) `shouldContain` "-hello"
-        bad -> failWith $ "Events should be a two attributes, not: " <> show bad
+        [ _nondetA,
+          _nondetB
+          ] -> pass
+        bad -> failWith $ "Events should have two attributes, not: " <> show bad
+
+      do
+        let attr = r & findJust "happy attribute" \case EvaluateEvent.Attribute a -> Just a; _ -> Nothing
+        AttributeEvent.expressionPath attr `shouldBe` ["helloIfd"]
+        toS (AttributeEvent.derivationPath attr) `shouldContain` "/nix/store"
+        toS (AttributeEvent.derivationPath attr) `shouldContain` "-hello"
+      do
+        let attr = r & findJust "sad attribute" \case EvaluateEvent.AttributeError a -> Just a; _ -> Nothing
+        AttributeErrorEvent.expressionPath attr `shouldBe` ["figletIfd"]
+        length (AttributeErrorEvent.errorDerivation attr) `shouldBe` 1
+        toS (fromMaybe "" (AttributeErrorEvent.errorDerivation attr)) `shouldContain` "/nix/store"
+        toS (fromMaybe "" (AttributeErrorEvent.errorDerivation attr)) `shouldContain` "-ifd-2.nix"
+        toS (AttributeErrorEvent.errorMessage attr) `shouldContain` "/nix/store"
+        toS (AttributeErrorEvent.errorMessage attr) `shouldContain` "-ifd-2.nix"
+        toS (AttributeErrorEvent.errorMessage attr) `shouldContain` "Could not build derivation"
+        toS (AttributeErrorEvent.errorMessage attr) `shouldContain` "evaluat"
+      do
+        let br1 = r & findJust "ifd-2 required" \case EvaluateEvent.BuildRequired a | "-ifd-2.nix.drv" `T.isSuffixOf` BuildRequired.derivationPath a -> Just a; _ -> Nothing
+        toS (BuildRequired.derivationPath br1) `shouldContain` "/nix/store/"
+        BuildRequired.outputName br1 `shouldBe` "out"
+      do
+        let br1 = r & findJust "ifd-2 required" \case EvaluateEvent.BuildRequired a | "-ifd-1.nix.drv" `T.isSuffixOf` BuildRequired.derivationPath a -> Just a; _ -> Nothing
+        toS (BuildRequired.derivationPath br1) `shouldContain` "/nix/store/"
+        BuildRequired.outputName br1 `shouldBe` "out"
+
   describe "when using the herculesCI attribute based format" do
     it "rejects effects outside outputs.effects" $ \srv -> do
       id <- randomId
@@ -852,3 +860,6 @@ noANSI :: [Char] -> [Char]
 noANSI ('\ESC' : cs) = noANSI . drop 1 . dropWhile (/= 'm') $ cs
 noANSI (c : cs) = c : noANSI cs
 noANSI [] = []
+
+findJust :: Text -> (a -> Maybe b) -> [a] -> b
+findJust err f l = l & mapMaybe f & headMay & fromMaybe (panic $ "Could not find " <> err)

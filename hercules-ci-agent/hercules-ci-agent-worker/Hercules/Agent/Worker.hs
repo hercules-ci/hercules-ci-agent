@@ -109,6 +109,9 @@ taskWorker :: [Char] -> IO ()
 taskWorker options = do
   setOptions options
   drvsCompleted_ <- newTVarIO mempty
+  drvBuildAsyncs_ <- newTVarIO mempty
+  drvRebuildAsyncs_ <- newTVarIO mempty
+  drvOutputSubstituteAsyncs_ <- newTVarIO mempty
   drvsInProgress_ <- newIORef mempty
   withStore $ \wrappedStore_ -> withHerculesStore wrappedStore_ $ \herculesStore_ -> withKatip $ do
     liftIO $ setBuilderCallback herculesStore_ mempty
@@ -116,6 +119,9 @@ taskWorker options = do
     let st =
           HerculesState
             { drvsCompleted = drvsCompleted_,
+              drvBuildAsyncs = drvBuildAsyncs_,
+              drvRebuildAsyncs = drvRebuildAsyncs_,
+              drvOutputSubstituteAsyncs = drvOutputSubstituteAsyncs_,
               drvsInProgress = drvsInProgress_,
               herculesStore = herculesStore_,
               wrappedStore = wrappedStore_,

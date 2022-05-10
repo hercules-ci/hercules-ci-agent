@@ -6,6 +6,7 @@
 module Hercules.Agent.Worker.Evaluate where
 
 import Conduit
+import Control.Concurrent.Async (pollSTM)
 import Control.Concurrent.STM hiding (check)
 import Control.Monad.Except
 import Control.Monad.IO.Unlift
@@ -28,6 +29,7 @@ import qualified Hercules.Agent.NixFile.HerculesCIArgs
 import Hercules.Agent.Worker.Env (HerculesState (..))
 import Hercules.Agent.Worker.Error (renderException)
 import Hercules.Agent.Worker.HerculesStore (nixStore, setBuilderCallback)
+import Hercules.Agent.Worker.STM (asyncInTVarMap)
 import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
 import Hercules.Agent.WorkerProtocol.Command.Eval
   ( Eval,
@@ -40,6 +42,7 @@ import Hercules.Agent.WorkerProtocol.Event
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
+import qualified Hercules.Agent.WorkerProtocol.Event.AttributeIFD as Event.AttributeIFD
 import Hercules.CNix as CNix
 import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, toValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
@@ -55,6 +58,7 @@ import Hercules.UserException (UserException (UserException))
 import Katip
 import Protolude hiding (bracket, catch, check, evalState, wait, withAsync, yield)
 import qualified UnliftIO
+import UnliftIO.Async (wait)
 import UnliftIO.Exception (bracket, catch)
 import Prelude ()
 
@@ -66,10 +70,18 @@ data BuildException = BuildException
 
 instance Exception BuildException
 
-data RealisationRequired = RealisationRequired {realisationRequiredDerivationPath :: ByteString, realisationRequiredOutputName :: ByteString}
-  deriving (Show, Typeable)
+data AsyncRealisationRequired = AsyncRealisationRequired
+  { realisationRequiredDerivationPath :: StorePath,
+    realisationRequiredOutputName :: ByteString
+  }
+  deriving (Show, Typeable, Eq, Ord)
 
-instance Exception RealisationRequired
+instance Exception AsyncRealisationRequired
+
+isAsyncRealisationRequired :: SomeException -> Bool
+isAsyncRealisationRequired e = case fromException e of
+  Just (_ :: AsyncRealisationRequired) -> True
+  Nothing -> False
 
 data EvalEnv = EvalEnv
   { evalEnvHerculesState :: HerculesState,
@@ -145,8 +157,8 @@ maybeThrowBuildException result plainDrvText =
     BuildResult.DependencyFailure -> throwIO $ BuildException plainDrvText (Just "A dependency could not be built.")
     BuildResult.Success -> pass
 
-mkCache :: forall k a m. (MonadUnliftIO m, Ord k) => IO (k -> m a -> m a)
-mkCache = do
+mkCache :: forall k a m. (MonadUnliftIO m, Ord k) => (SomeException -> Bool) -> IO (k -> m a -> m a)
+mkCache cacheableException = do
   doneRef <- liftIO $ newIORef mempty
   let hasBeenBuilt :: k -> m (Maybe (Either SomeException a))
       hasBeenBuilt p = liftIO $ readIORef doneRef <&> \c -> M.lookup p c
@@ -157,7 +169,11 @@ mkCache = do
           Nothing -> do
             r <- UnliftIO.tryAny io
             liftIO do
-              modifyIORef doneRef (M.insert p (r :: Either SomeException a))
+              let cacheable = case r of
+                    Right {} -> True
+                    Left e -> cacheableException e
+              when cacheable do
+                modifyIORef doneRef (M.insert p (r :: Either SomeException a))
               escalate r
   pure cacheBy
 
@@ -176,7 +192,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
   UnliftIO unlift <- lift askUnliftIO
   let decode = decodeUtf8With lenientDecode
 
-  cachingBuilt <- liftIO mkCache
+  cachingBuilt <- liftIO $ mkCache (not . isAsyncRealisationRequired)
 
   isNonBlocking <- liftIO (newIORef False)
 
@@ -201,6 +217,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                     Nothing ->
                       -- FIXME ca-derivations
                       panic $ "output path unknown for output " <> show outputName <> " on " <> pathText <> ". ca-derivations is not supported yet."
+              liftIO $ addTemporaryRoot store outputPath
 
               isValid <- liftIO $ isValidPath store outputPath
               if isValid
@@ -209,54 +226,53 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                   -- Report IFD
                   liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing False
                 else do
-                  logLocM DebugS "Building"
-                  liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing True
-
                   don'tBlock <- liftIO (readIORef isNonBlocking)
-                  when don'tBlock do
-                    throwIO (RealisationRequired drvPath outputName)
+                  let doBlock = not don'tBlock
 
-                  ( katipAddContext (sl "outputPath" (show outputPath :: Text)) do
-                      logLocM DebugS "Attempting early ensurePath"
-                      liftIO (ensurePath (wrappedStore st) outputPath)
-                    )
-                    `catch` \e0 -> do
-                      katipAddContext (sl "message" (show (e0 :: SomeException) :: Text)) $
-                        logLocM DebugS "Recovering from failed wrapped.ensurePath"
-                      (attempt0, result) <-
-                        liftIO $
+                  liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing doBlock
+
+                  buildAsync <- liftIO $ asyncInTVarMap (drvStorePath, outputName) (drvOutputSubstituteAsyncs st) do
+                    ensurePath (wrappedStore st) outputPath
+                      `catch` \(_e :: SomeException) -> do
+                        -- wait for build that was requested before
+
+                        (attempt0, result) <- wait <=< liftIO $ asyncInTVarMap drvStorePath (drvBuildAsyncs st) do
                           atomically $ do
                             c <- readTVar drvsCompl
                             anyAlternative $ M.lookup drvStorePath c
-                      liftIO $ maybeThrowBuildException result (decode drvPath)
-                      liftIO clearSubstituterCaches
-                      liftIO $ clearPathInfoCache store
-                      liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e1 -> do
-                        katipAddContext (sl "message" (show (e1 :: SomeException) :: Text)) $
-                          logLocM DebugS "Recovering from fresh ensurePath"
-                        liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) (Just attempt0) True
-                        -- TODO sync
-                        result' <-
-                          liftIO $
-                            atomically $ do
-                              c <- readTVar drvsCompl
-                              (attempt1, r) <- anyAlternative $ M.lookup drvStorePath c
-                              guard (attempt1 /= attempt0)
-                              pure r
-                        liftIO $ maybeThrowBuildException result' (decode drvPath)
-                        liftIO clearSubstituterCaches
-                        liftIO $ clearPathInfoCache store
-                        liftIO (ensurePath (wrappedStore st) outputPath) `catch` \e2 ->
-                          liftIO $
-                            throwIO $
-                              BuildException
-                                (decode drvPath)
-                                ( Just $
-                                    "It could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
-                                      <> show (e2 :: SomeException)
-                                )
-              liftIO $ addTemporaryRoot store outputPath
-            logLocM DebugS "Built"
+
+                        maybeThrowBuildException result (decode drvPath)
+                        clearSubstituterCaches
+                        clearPathInfoCache store
+                        ensurePath (wrappedStore st) outputPath `catch` \(_e1 :: SomeException) -> do
+                          writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) (Just attempt0) doBlock
+
+                          (_, result') <-
+                            wait =<< asyncInTVarMap drvStorePath (drvRebuildAsyncs st) do
+                              atomically $ do
+                                c <- readTVar drvsCompl
+                                (attempt1, r) <- anyAlternative $ M.lookup drvStorePath c
+                                guard (attempt1 /= attempt0)
+                                pure (attempt1, r)
+
+                          maybeThrowBuildException result' (decode drvPath)
+                          clearSubstituterCaches
+                          clearPathInfoCache store
+                          ensurePath (wrappedStore st) outputPath `catch` \e2 ->
+                            liftIO $
+                              throwIO $
+                                BuildException
+                                  (decode drvPath)
+                                  ( Just $
+                                      "It could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
+                                        <> show (e2 :: SomeException)
+                                  )
+                    pure outputPath
+
+                  if don'tBlock
+                    then throwIO (AsyncRealisationRequired drvStorePath outputName)
+                    else void $ wait buildAsync
+
   withEvalStateConduit store $ \evalState -> do
     let evalEnv :: EvalEnv
         evalEnv =
@@ -346,58 +362,184 @@ sendConfig evalState isFlake herculesCI = flip runReaderT evalState $ do
             isFlake = isFlake
           }
 
+data TreeWork = TreeWork
+  { treeWorkAttrPath :: [ByteString],
+    -- Redundant but convenient
+    treeWorkThunk :: RawValue,
+    -- Redundant but convenient
+    treeWorkRemainingDepth :: Int
+  }
+
+type Enqueue i m o = i -> (o -> m ()) -> IO ()
+
+pollingWith ::
+  forall i m o.
+  (Ord i, MonadIO m) =>
+  -- | A 'finally'-like function that powers an assertion.
+  --
+  -- Not used for resource allocation; does not have to be perfect.
+  (m () -> IO () -> m ()) ->
+  -- | Arg will not be empty. Return must not be empty.
+  (forall x. Map i x -> m (Map i o)) ->
+  -- | Do work. Enqueue function can be called from anywhere, but will be ignored after the returned action is done.
+  ((i -> (o -> m ()) -> IO ()) -> m ()) ->
+  -- | Iterate until work done.
+  m ()
+pollingWith ffinally poller startWork = do
+  q <- liftIO (newIORef mempty)
+  operational <- liftIO (newIORef True)
+
+  let checkOperational = do
+        op <- readIORef operational
+        when (not op) (panic "pollingWith has stopped. Can not continue.")
+
+      enqueue :: Enqueue i m o
+      enqueue i f = do
+        checkOperational
+        modifyIORef' q $
+          M.alter
+            \case
+              Nothing -> Just f
+              Just f0 -> Just (\o -> f0 o *> f o)
+            i
+
+      loop :: m ()
+      loop = do
+        -- peek all, restore blocked next
+        q0 <- liftIO (atomicModifyIORef' q (mempty,))
+        if null q0
+          then pass
+          else do
+            justCompleted <- poller q0
+            let blocked = M.difference q0 justCompleted
+
+            when (null justCompleted) do
+              panic "pollingWith: poller must not return empty"
+
+            liftIO (atomicModifyIORef' q \q1 -> (M.unionWith (liftA2 (>>)) blocked q1, ()))
+
+            sequenceA_ $ M.intersectionWith ($) q0 justCompleted
+
+            loop
+
+  startWork enqueue
+  loop `ffinally` writeIORef operational False
+
 -- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.
 simpleWalk ::
   (MonadUnliftIO m, KatipContext m) =>
   EvalEnv ->
   RawValue ->
   ConduitT i Event m ()
-simpleWalk evalEnv = do
+simpleWalk evalEnv initialThunk = do
   let store = evalEnvStore evalEnv
       evalState = evalEnvState evalEnv
-      handleErrors path = Data.Conduit.handleC (yieldAttributeError path)
+
       walk' ::
         (MonadUnliftIO m, KatipContext m) =>
-        -- Attribute path
-        [ByteString] ->
-        -- Depth of tree remaining
-        Integer ->
-        -- Current node of the walk
-        RawValue ->
+        ((StorePath, ByteString) -> (Either SomeException () -> ConduitT i1 Event m ()) -> IO ()) ->
+        TreeWork ->
         -- Program that performs the walk and emits 'Event's
         ConduitT i1 Event m ()
-      walk' path depthRemaining v =
-        handleErrors path $
-          liftIO (match evalState v)
-            >>= \case
-              Left e ->
-                yieldAttributeError path e
-              Right m -> case m of
-                IsAttrs attrValue -> do
-                  isDeriv <- liftIO $ isDerivation evalState v
-                  if isDeriv
-                    then walkDerivation store evalState False path attrValue
-                    else do
-                      attrs <- liftIO $ getAttrs attrValue
-                      void $
-                        flip M.traverseWithKey attrs $
-                          \name value ->
-                            if depthRemaining > 0
-                              then
-                                walk'
-                                  (path ++ [name])
-                                  (depthRemaining - 1)
-                                  value
-                              else yield (Event.Error $ "Max recursion depth reached at path " <> show path)
-                _any -> do
-                  vt <- liftIO $ rawValueType v
-                  unless
-                    ( lastMay path == Just "recurseForDerivations"
-                        && vt == Hercules.CNix.Expr.Raw.Bool
-                    )
-                    do
-                      logLocM DebugS $ logStr $ "Ignoring " <> show path <> " : " <> (show vt :: Text)
-  walk' [] 10
+      walk' enqueue treeWork = do
+        let path = treeWorkAttrPath treeWork
+            depthRemaining = treeWorkRemainingDepth treeWork
+            v = treeWorkThunk treeWork
+
+            handleExceptions m =
+              -- not catchC or handleC, to make sure async exceptions aren't masked
+              tryC m >>= \case
+                Left e -> handler (handleExceptions m) e
+                Right r -> pure r
+
+            handler m e = case fromException e of
+              Just rr -> do
+                drvPath <- liftIO $ storePathToPath store $ realisationRequiredDerivationPath rr
+                -- let pathText = decodeUtf8With lenientDecode drvPath
+                let ev =
+                      Event.AttributeIFD.AttributeIFD
+                        { path = treeWorkAttrPath treeWork,
+                          derivationPath = drvPath,
+                          derivationOutput = realisationRequiredOutputName rr,
+                          done = False
+                        }
+                yield (Event.AttributeIFD ev)
+
+                liftIO $ enqueue (realisationRequiredDerivationPath rr, realisationRequiredOutputName rr) \outcome -> do
+                  yield (Event.AttributeIFD $ ev {Event.AttributeIFD.done = True})
+                  case outcome of
+                    Right {} -> m
+                    Left exception ->
+                      -- TODO: throw a Nix native exception in the builder callback instead?
+                      yieldAttributeError path exception
+              Nothing -> do
+                yieldAttributeError (treeWorkAttrPath treeWork) e
+
+        handleExceptions do
+          m <- liftIO $ escalate =<< match evalState v
+          case m of
+            IsAttrs attrValue -> do
+              isDeriv <- liftIO $ isDerivation evalState v
+              if isDeriv
+                then walkDerivation store evalState False path attrValue
+                else do
+                  attrs <- liftIO $ getAttrs attrValue
+                  void $
+                    flip M.traverseWithKey attrs $
+                      \name value ->
+                        if depthRemaining > 0
+                          then
+                            walk'
+                              enqueue
+                              TreeWork
+                                { treeWorkRemainingDepth = depthRemaining - 1,
+                                  treeWorkAttrPath = path ++ [name],
+                                  treeWorkThunk = value
+                                }
+                          else yield (Event.Error $ "Max recursion depth reached at path " <> show path)
+            _any -> do
+              vt <- liftIO $ rawValueType v
+              unless
+                ( lastMay path == Just "recurseForDerivations"
+                    && vt == Hercules.CNix.Expr.Raw.Bool
+                )
+                do
+                  logLocM DebugS $ logStr $ "Ignoring " <> show path <> " : " <> (show vt :: Text)
+
+  let poller ::
+        MonadIO m =>
+        Map (StorePath, ByteString) x ->
+        ConduitT
+          i
+          Event
+          m
+          (Map (StorePath, ByteString) (Either SomeException ()))
+      poller q = do
+        liftIO $ atomically do
+          allBuilds <- readTVar (drvOutputSubstituteAsyncs (evalEnvHerculesState evalEnv))
+          x <-
+            q & M.traverseWithKey \qKey _ -> do
+              case M.lookup qKey allBuilds of
+                Nothing -> panic "A realisation should have been started before throwing AsyncRealisationRequired"
+                Just asy -> pollSTM asy
+          let completed = void <$> M.mapMaybe identity x
+          guard (not (null completed))
+          pure completed
+
+      bestEffortFinally f ff = catchC f (\e -> liftIO ff >> throwIO (e :: SomeException))
+
+  liftIO $ writeIORef (evalEnvIsNonBlocking evalEnv) True
+
+  pollingWith bestEffortFinally poller \enqueue -> do
+    walk'
+      enqueue
+      TreeWork
+        { treeWorkAttrPath = [],
+          treeWorkRemainingDepth = 10,
+          treeWorkThunk = initialThunk
+        }
+
+  liftIO $ writeIORef (evalEnvIsNonBlocking evalEnv) False
 
 traverseSPWOs :: (StorePathWithOutputs -> IO ()) -> StdVector NixStorePathWithOutputs -> IO ()
 traverseSPWOs f v = do

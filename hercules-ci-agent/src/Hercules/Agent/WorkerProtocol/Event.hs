@@ -10,6 +10,7 @@ import Data.UUID (UUID)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent)
 import Hercules.Agent.WorkerProtocol.Event.Attribute
 import Hercules.Agent.WorkerProtocol.Event.AttributeError
+import Hercules.Agent.WorkerProtocol.Event.AttributeIFD (AttributeIFD)
 import Hercules.Agent.WorkerProtocol.Event.BuildResult
 import Protolude hiding (get, put)
 import Prelude ()
@@ -17,6 +18,7 @@ import Prelude ()
 data Event
   = Attribute Attribute
   | AttributeError AttributeError
+  | AttributeIFD AttributeIFD
   | EvaluationDone
   | Error Text
   | Build ByteString Text (Maybe UUID) Bool

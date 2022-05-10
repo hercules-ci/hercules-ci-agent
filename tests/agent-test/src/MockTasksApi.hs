@@ -482,7 +482,7 @@ handleGetDerivationStatus server drv _auth = do
   drvPaths <- liftIO $ readIORef (drvTasks server)
   uuid <- liftIO UUID.nextRandom
   case M.lookup drv drvPaths of
-    Nothing -> pure $ Just (uuid, DerivationStatus.BuildFailure) -- TODO exception failure
+    Nothing -> pure Nothing
     Just taskId -> do
       dones <- liftIO $ atomically $ readTVar (done server)
       pure ((\s -> (uuid, translate s)) <$> M.lookup (idText taskId) dones)
