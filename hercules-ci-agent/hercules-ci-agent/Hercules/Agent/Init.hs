@@ -59,7 +59,7 @@ setupLogging cfg f = do
   handleScribe <- K.mkHandleScribe K.ColorIfTerminal stderr (Compat.katipLevel (Config.logLevel cfg)) K.V2
   let mkLogEnv =
         K.registerScribe "stderr" handleScribe K.defaultScribeSettings
-          =<< K.initLogEnv emptyNamespace ""
+          =<< K.initLogEnv (K.Namespace ["Agent"]) ""
   bracket mkLogEnv K.closeScribes f
 
 emptyNamespace :: K.Namespace
