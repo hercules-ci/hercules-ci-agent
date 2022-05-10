@@ -274,6 +274,7 @@ executable hercules-ci-agent-worker
       Hercules.Agent.Worker.HerculesStore
       Hercules.Agent.Worker.HerculesStore.Context
       Hercules.Agent.Worker.Logging
+      Hercules.Agent.Worker.STM
   hs-source-dirs:
       hercules-ci-agent-worker
 
@@ -359,6 +360,7 @@ test-suite hercules-test
       Hercules.Agent.Nix.RetrieveDerivationInfoSpec
       Hercules.Agent.WorkerProcess
       Hercules.Agent.WorkerProcessSpec
+      Hercules.Agent.Worker.STMSpec
       Hercules.Secrets
       Hercules.SecretsSpec
       Spec
@@ -366,6 +368,7 @@ test-suite hercules-test
       src
       test
       hercules-ci-agent
+      hercules-ci-agent-worker
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options: -Werror=incomplete-patterns -Werror=missing-fields -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N
   build-depends:
@@ -393,6 +396,7 @@ test-suite hercules-test
     , process
     , protolude
     , safe-exceptions
+    , stm
     , tagged
     , temporary
     , text
