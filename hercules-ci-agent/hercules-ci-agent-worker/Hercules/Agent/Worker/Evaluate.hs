@@ -437,7 +437,7 @@ simpleWalk evalEnv initialThunk = do
 
       walk' ::
         (MonadUnliftIO m, KatipContext m) =>
-        ((StorePath, ByteString) -> (Either SomeException () -> ConduitT i1 Event m ()) -> IO ()) ->
+        ([ByteString] -> AsyncRealisationRequired -> (Either SomeException () -> ConduitT i1 Event m ()) -> ConduitT i1 Event m ()) ->
         TreeWork ->
         -- Program that performs the walk and emits 'Event's
         ConduitT i1 Event m ()
@@ -454,24 +454,11 @@ simpleWalk evalEnv initialThunk = do
 
             handler m e = case fromException e of
               Just rr -> do
-                drvPath <- liftIO $ storePathToPath store $ realisationRequiredDerivationPath rr
-                -- let pathText = decodeUtf8With lenientDecode drvPath
-                let ev =
-                      Event.AttributeIFD.AttributeIFD
-                        { path = treeWorkAttrPath treeWork,
-                          derivationPath = drvPath,
-                          derivationOutput = realisationRequiredOutputName rr,
-                          done = False
-                        }
-                yield (Event.AttributeIFD ev)
-
-                liftIO $ enqueue (realisationRequiredDerivationPath rr, realisationRequiredOutputName rr) \outcome -> do
-                  yield (Event.AttributeIFD $ ev {Event.AttributeIFD.done = True})
-                  case outcome of
-                    Right {} -> m
-                    Left exception ->
-                      -- TODO: throw a Nix native exception in the builder callback instead?
-                      yieldAttributeError path exception
+                enqueue path rr \case
+                  Right {} -> m
+                  Left exception ->
+                    -- TODO: throw a Nix native exception in the builder callback instead?
+                    yieldAttributeError path exception
               Nothing -> do
                 yieldAttributeError (treeWorkAttrPath treeWork) e
 
@@ -518,10 +505,7 @@ simpleWalk evalEnv initialThunk = do
 withIFDQueue ::
   MonadUnliftIO m =>
   EvalEnv ->
-  ( ( (StorePath, ByteString) ->
-      (Either SomeException () -> ConduitT i Event m ()) ->
-      IO ()
-    ) ->
+  ( ([ByteString] -> AsyncRealisationRequired -> (Either SomeException () -> ConduitT i Event m ()) -> ConduitT i Event m ()) ->
     ConduitT i Event m ()
   ) ->
   ConduitT i Event m ()
@@ -544,10 +528,24 @@ withIFDQueue evalEnv doIt = do
 
       bestEffortFinally f ff = catchC f (\e -> liftIO ff >> throwIO (e :: SomeException))
 
+      betterEnqueue enqueue attrPath rr m = do
+        drvPath <- liftIO $ storePathToPath (evalEnvStore evalEnv) $ realisationRequiredDerivationPath rr
+        let ev =
+              Event.AttributeIFD.AttributeIFD
+                { path = attrPath,
+                  derivationPath = drvPath,
+                  derivationOutput = realisationRequiredOutputName rr,
+                  done = False
+                }
+        yield (Event.AttributeIFD ev)
+        liftIO $ enqueue (realisationRequiredDerivationPath rr, realisationRequiredOutputName rr) \outcome -> do
+          yield (Event.AttributeIFD $ ev {Event.AttributeIFD.done = True})
+          m outcome
+
   reset <- liftIO $ readIORef (evalEnvIsNonBlocking evalEnv)
   liftIO $ writeIORef (evalEnvIsNonBlocking evalEnv) True
 
-  pollingWith bestEffortFinally poller doIt
+  pollingWith bestEffortFinally poller (doIt . betterEnqueue)
 
   liftIO $ writeIORef (evalEnvIsNonBlocking evalEnv) reset
 
