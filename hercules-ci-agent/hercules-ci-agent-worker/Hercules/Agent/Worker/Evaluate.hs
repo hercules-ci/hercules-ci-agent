@@ -506,14 +506,30 @@ simpleWalk evalEnv initialThunk = do
                 do
                   logLocM DebugS $ logStr $ "Ignoring " <> show path <> " : " <> (show vt :: Text)
 
+  withIFDQueue evalEnv \enqueue ->
+    walk'
+      enqueue
+      TreeWork
+        { treeWorkAttrPath = [],
+          treeWorkRemainingDepth = 10,
+          treeWorkThunk = initialThunk
+        }
+
+withIFDQueue ::
+  MonadUnliftIO m =>
+  EvalEnv ->
+  ( ( (StorePath, ByteString) ->
+      (Either SomeException () -> ConduitT i Event m ()) ->
+      IO ()
+    ) ->
+    ConduitT i Event m ()
+  ) ->
+  ConduitT i Event m ()
+withIFDQueue evalEnv doIt = do
   let poller ::
         MonadIO m =>
         Map (StorePath, ByteString) x ->
-        ConduitT
-          i
-          Event
-          m
-          (Map (StorePath, ByteString) (Either SomeException ()))
+        ConduitT i Event m (Map (StorePath, ByteString) (Either SomeException ()))
       poller q = do
         liftIO $ atomically do
           allBuilds <- readTVar (drvOutputSubstituteAsyncs (evalEnvHerculesState evalEnv))
@@ -528,18 +544,12 @@ simpleWalk evalEnv initialThunk = do
 
       bestEffortFinally f ff = catchC f (\e -> liftIO ff >> throwIO (e :: SomeException))
 
+  reset <- liftIO $ readIORef (evalEnvIsNonBlocking evalEnv)
   liftIO $ writeIORef (evalEnvIsNonBlocking evalEnv) True
 
-  pollingWith bestEffortFinally poller \enqueue -> do
-    walk'
-      enqueue
-      TreeWork
-        { treeWorkAttrPath = [],
-          treeWorkRemainingDepth = 10,
-          treeWorkThunk = initialThunk
-        }
+  pollingWith bestEffortFinally poller doIt
 
-  liftIO $ writeIORef (evalEnvIsNonBlocking evalEnv) False
+  liftIO $ writeIORef (evalEnvIsNonBlocking evalEnv) reset
 
 traverseSPWOs :: (StorePathWithOutputs -> IO ()) -> StdVector NixStorePathWithOutputs -> IO ()
 traverseSPWOs f v = do
