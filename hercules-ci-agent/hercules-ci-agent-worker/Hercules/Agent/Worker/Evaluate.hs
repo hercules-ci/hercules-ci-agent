@@ -425,6 +425,34 @@ pollingWith ffinally poller startWork = do
   startWork enqueue
   loop `ffinally` writeIORef operational False
 
+handleExceptions ::
+  (Exception t, MonadUnliftIO m) =>
+  ( [ByteString] ->
+    t ->
+    (Either SomeException b -> ConduitT i Event m ()) ->
+    ConduitT i Event m ()
+  ) ->
+  [ByteString] ->
+  ConduitT i Event m () ->
+  ConduitT i Event m ()
+handleExceptions enqueue path m = go
+  where
+    go =
+      -- not catchC or handleC, to make sure async exceptions aren't masked
+      tryC m >>= \case
+        Left e -> handler e
+        Right r -> pure r
+
+    handler e = case fromException e of
+      Just rr -> do
+        enqueue path rr \case
+          Right {} -> m
+          Left exception ->
+            -- TODO: throw a Nix native exception in the builder callback instead?
+            yieldAttributeError path exception
+      Nothing -> do
+        yieldAttributeError path e
+
 -- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.
 simpleWalk ::
   (MonadUnliftIO m, KatipContext m) =>
@@ -446,23 +474,7 @@ simpleWalk evalEnv initialThunk = do
             depthRemaining = treeWorkRemainingDepth treeWork
             v = treeWorkThunk treeWork
 
-            handleExceptions m =
-              -- not catchC or handleC, to make sure async exceptions aren't masked
-              tryC m >>= \case
-                Left e -> handler (handleExceptions m) e
-                Right r -> pure r
-
-            handler m e = case fromException e of
-              Just rr -> do
-                enqueue path rr \case
-                  Right {} -> m
-                  Left exception ->
-                    -- TODO: throw a Nix native exception in the builder callback instead?
-                    yieldAttributeError path exception
-              Nothing -> do
-                yieldAttributeError (treeWorkAttrPath treeWork) e
-
-        handleExceptions do
+        handleExceptions enqueue path do
           m <- liftIO $ escalate =<< match evalState v
           case m of
             IsAttrs attrValue -> do
