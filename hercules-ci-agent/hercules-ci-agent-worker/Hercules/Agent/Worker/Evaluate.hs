@@ -570,83 +570,81 @@ traverseSPWOs f v = do
 
 -- | Documented in @docs/modules/ROOT/pages/legacy-evaluation.adoc@.
 walk ::
+  forall i m.
   (MonadUnliftIO m, KatipContext m) =>
   EvalEnv ->
   Value NixAttrs ->
   RawValue ->
   ConduitT i Event m ()
-walk evalEnv = walk' True [] 10
-  where
-    store = evalEnvStore evalEnv
-    evalState = evalEnvState evalEnv
-    handleErrors path = Data.Conduit.handleC (yieldAttributeError path)
-    walk' ::
-      (MonadUnliftIO m, KatipContext m) =>
-      -- If True, always walk this attribute set. Only True for the root.
-      Bool ->
-      -- Attribute path
-      [ByteString] ->
-      -- Depth of tree remaining
-      Integer ->
-      -- Auto arguments to pass to (attrset-)functions
-      Value NixAttrs ->
-      -- Current node of the walk
-      RawValue ->
-      -- Program that performs the walk and emits 'Event's
-      ConduitT i1 Event m ()
-    walk' forceWalkAttrset path depthRemaining autoArgs v =
-      -- logLocM DebugS $ logStr $ "Walking " <> (show path :: Text)
-      handleErrors path $
-        liftIO (match evalState v)
-          >>= \case
-            Left e ->
-              yieldAttributeError path e
-            Right m -> case m of
-              IsAttrs attrValue -> do
-                isDeriv <- liftIO $ isDerivation evalState v
-                if isDeriv
-                  then walkDerivation store evalState True path attrValue
-                  else do
-                    walkAttrset <-
-                      if forceWalkAttrset
-                        then pure True
-                        else -- Hydra doesn't seem to obey this, because it walks the
-                        -- x64_64-linux etc attributes per package. Maybe those
-                        -- are special cases?
-                        -- For now, we will assume that people don't build a whole Nixpkgs
-                          liftIO $ getRecurseForDerivations evalState attrValue
-                    isfunctor <- liftIO $ isFunctor evalState v
-                    if isfunctor && walkAttrset
-                      then do
-                        x <- liftIO (autoCallFunction evalState v autoArgs)
-                        walk' True path (depthRemaining - 1) autoArgs x
-                      else do
-                        attrs <- liftIO $ getAttrs attrValue
-                        void $
-                          flip M.traverseWithKey attrs $
-                            \name value ->
-                              when (depthRemaining > 0 && walkAttrset) $
-                                walk' -- TODO: else warn
-                                  False
-                                  (path ++ [name])
-                                  (depthRemaining - 1)
-                                  autoArgs
-                                  value
-              _any -> do
-                vt <- liftIO $ rawValueType v
-                unless
-                  ( lastMay path
-                      == Just "recurseForDerivations"
-                      && vt
-                      == Hercules.CNix.Expr.Raw.Bool
-                  )
-                  $ logLocM DebugS $
-                    logStr $
-                      "Ignoring "
-                        <> show path
-                        <> " : "
-                        <> (show vt :: Text)
-                pass
+walk evalEnv autoArgs v0 = withIFDQueue evalEnv \enqueue ->
+  let start = walk' True [] 10 v0
+      store = evalEnvStore evalEnv
+      evalState = evalEnvState evalEnv
+      walk' ::
+        (MonadUnliftIO m, KatipContext m) =>
+        -- If True, always walk this attribute set. Only True for the root.
+        Bool ->
+        -- Attribute path
+        [ByteString] ->
+        -- Depth of tree remaining
+        Integer ->
+        -- Current node of the walk
+        RawValue ->
+        -- Program that performs the walk and emits 'Event's
+        ConduitT i Event m ()
+      walk' forceWalkAttrset path depthRemaining v =
+        -- logLocM DebugS $ logStr $ "Walking " <> (show path :: Text)
+        handleExceptions enqueue path $
+          liftIO (match evalState v)
+            >>= \case
+              Left e ->
+                throwIO e
+              Right m -> case m of
+                IsAttrs attrValue -> do
+                  isDeriv <- liftIO $ isDerivation evalState v
+                  if isDeriv
+                    then walkDerivation store evalState True path attrValue
+                    else do
+                      walkAttrset <-
+                        if forceWalkAttrset
+                          then pure True
+                          else -- Hydra doesn't seem to obey this, because it walks the
+                          -- x64_64-linux etc attributes per package. Maybe those
+                          -- are special cases?
+                          -- For now, we will assume that people don't build a whole Nixpkgs
+                            liftIO $ getRecurseForDerivations evalState attrValue
+                      isfunctor <- liftIO $ isFunctor evalState v
+                      if isfunctor && walkAttrset
+                        then do
+                          x <- liftIO (autoCallFunction evalState v autoArgs)
+                          walk' True path (depthRemaining - 1) x
+                        else do
+                          attrs <- liftIO $ getAttrs attrValue
+                          void $
+                            flip M.traverseWithKey attrs $
+                              \name value ->
+                                when (depthRemaining > 0 && walkAttrset) $
+                                  walk' -- TODO: else warn
+                                    False
+                                    (path ++ [name])
+                                    (depthRemaining - 1)
+                                    value
+                _any -> do
+                  vt <- liftIO $ rawValueType v
+                  unless
+                    ( lastMay path
+                        == Just "recurseForDerivations"
+                        && vt
+                        == Hercules.CNix.Expr.Raw.Bool
+                    )
+                    $ logLocM DebugS $
+                      logStr $
+                        "Ignoring "
+                          <> show path
+                          <> " : "
+                          <> (show vt :: Text)
+                  pass
+   in start
 
 -- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.
 walkDerivation ::
