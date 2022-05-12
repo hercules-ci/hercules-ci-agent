@@ -31,6 +31,7 @@ library
       Hercules.API.Agent.Evaluate.EvaluateEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
+      Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeIFDEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest
       Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired
       Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo

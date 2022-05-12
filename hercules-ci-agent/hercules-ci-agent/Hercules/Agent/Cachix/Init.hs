@@ -56,7 +56,7 @@ toNetrcLines = concatMap toNetrcLine . M.toList
   where
     toNetrcLine (name, keys) = do
       pt <- toList $ CachixCache.authToken keys
-      pure $ "machine " <> name <> ".cachix.org" <> " password " <> pt
+      pure $ "machine " <> name <> ".cachix.org" <> " login authtoken password " <> pt
 
 toPushCaches :: Map Text CachixCache.CachixCache -> IO (Map Text PushCache)
 toPushCaches = sequenceA . M.mapMaybeWithKey toPushCaches'

@@ -12,6 +12,7 @@ import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
 import Control.Exception.Lifted (finally)
 import Control.Lens (at, (^?))
+import Control.Monad.IO.Unlift (askUnliftIO, unliftIO)
 import qualified Data.Aeson as A
 import Data.Aeson.Lens (_String)
 import qualified Data.ByteString.Lazy as BL
@@ -34,6 +35,7 @@ import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatu
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent as AttributeErrorEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeIFDEvent as AttributeIFDEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest as BuildRequest
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as BuildRequired
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
@@ -77,6 +79,7 @@ import Hercules.Agent.WorkerProtocol.Event (ViaJSON (ViaJSON))
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as WorkerAttribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as WorkerAttributeError
+import qualified Hercules.Agent.WorkerProtocol.Event.AttributeIFD as AttributeIFD
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.CNix.Store (Store, StorePath, parseStorePath)
 import Hercules.Error (defaultRetry, quickRetry)
@@ -89,6 +92,7 @@ import Servant.Client.Core (showBaseUrl)
 import qualified System.Directory as Dir
 import System.FilePath
 import System.Process
+import UnliftIO (atomicModifyIORef')
 
 eventLimit :: Int
 eventLimit = 50000
@@ -435,6 +439,7 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
             Eval.allowedPaths = allowedPaths
           }
   buildRequiredIndex <- liftIO $ newIORef (0 :: Int)
+  attributeIFDCounter <- liftIO $ newIORef (0 :: Int)
   commandChan <- newChan
   writeChan commandChan $ Just $ Command.Eval eval
   for_ (EvaluateTask.extraGitCredentials task) \creds ->
@@ -501,6 +506,18 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                         AttributeErrorEvent.trace = WorkerAttributeError.trace e
                       }
                 continue
+              Event.AttributeIFD e -> do
+                index <- atomicModifyIORef' attributeIFDCounter \n -> (n + 1, n)
+                emit $
+                  EvaluateEvent.AttributeIFD $
+                    AttributeIFDEvent.AttributeIFDEvent
+                      { AttributeIFDEvent.expressionPath = decode <$> AttributeIFD.path e,
+                        AttributeIFDEvent.derivationPath = decode $ AttributeIFD.derivationPath e,
+                        AttributeIFDEvent.derivationOutput = decode $ AttributeIFD.derivationOutput e,
+                        AttributeIFDEvent.done = AttributeIFD.done e,
+                        AttributeIFDEvent.index = index
+                      }
+                continue
               Event.EvaluationDone ->
                 writeChan commandChan Nothing
               Event.Error e -> do
@@ -539,11 +556,17 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                         { derivationPath = drvText,
                           forceRebuild = isJust notAttempt
                         }
-                  when waitForStatus do
-                    flush
-                    status <- drvPoller notAttempt drvText
-                    logLocM DebugS $ "Got derivation status " <> logStr (show status :: Text)
-                    writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drvText) status
+                  let doPoll = do
+                        status <- drvPoller notAttempt drvText
+                        logLocM DebugS $ "Got derivation status " <> logStr (show status :: Text)
+                        writeChan commandChan $ Just $ Command.BuildResult $ uncurry (BuildResult.BuildResult drvText) status
+                  if waitForStatus
+                    then do
+                      flush
+                      doPoll
+                    else void $ do
+                      uio <- askUnliftIO
+                      liftIO $ forkIO $ unliftIO uio doPoll
                 continue
               Event.OnPushHandler (ViaJSON e) -> do
                 emit $ EvaluateEvent.OnPushHandlerEvent e

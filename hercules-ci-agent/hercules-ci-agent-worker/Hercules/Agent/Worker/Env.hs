@@ -12,6 +12,9 @@ import Protolude
 
 data HerculesState = HerculesState
   { drvsCompleted :: TVar (Map StorePath (UUID, BuildResult.BuildStatus)),
+    drvBuildAsyncs :: TVar (Map StorePath (Async (UUID, BuildResult.BuildStatus))),
+    drvRebuildAsyncs :: TVar (Map StorePath (Async (UUID, BuildResult.BuildStatus))),
+    drvOutputSubstituteAsyncs :: TVar (Map (StorePath, ByteString) (Async StorePath)),
     drvsInProgress :: IORef (Set StorePath),
     herculesStore :: Ptr (Ref HerculesStore),
     wrappedStore :: Store,

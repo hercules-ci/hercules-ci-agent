@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+ - Concurrent IFD, reducing evaluation wall clock time
+ - Nix 2.8.0 support
+
+### Fixed
+
+ - Workaround for cachix#406 (add `login` to `netrc`)
+ - A crash in `inline-c-cpp` exception handling (`inline-c-cpp` update)
+
+### Removed
+
+ - `hercules-ci-agent-nix_2_5` variant: upgrade to plain `hercules-ci-agent` (2.8.0) or `_nix_2_7`.
+
 ## [0.9.3] - 2022-04-08
 
 ### Added
