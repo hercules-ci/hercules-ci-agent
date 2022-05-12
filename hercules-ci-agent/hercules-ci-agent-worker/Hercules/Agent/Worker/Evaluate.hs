@@ -566,8 +566,6 @@ traverseSPWOs f v = do
   v' <- Std.Vector.toListFP v
   traverse_ f v'
 
--- TODO: breadth-first IFD for the original 'walk'
-
 -- | Documented in @docs/modules/ROOT/pages/legacy-evaluation.adoc@.
 walk ::
   forall i m.
