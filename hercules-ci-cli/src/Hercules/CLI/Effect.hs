@@ -113,17 +113,18 @@ runParser = do
 getEffectDrv :: Store -> Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO (HerculesClientToken, HerculesClientEnv) Derivation
 getEffectDrv store evalState projectOptionMaybe ref attr = do
   storeDir <- liftIO $ CNix.storeDir store
-  if decodeUtf8With lenientDecode storeDir `T.isPrefixOf` attr
-    then liftIO $ do
-      -- Support derivation in arbitrary location
-      -- Used in hercules-ci-effects test runner
-      let path = attr
-      contents <- BS.readFile $ toS path
-      let stripDrv s = fromMaybe s (T.stripSuffix ".drv" s)
-      derivation <- CNix.getDerivationFromString store (path & T.takeWhileEnd (/= '/') & stripDrv & encodeUtf8) contents
-      prepareDerivation store derivation
-      pure derivation
-    else evaluateEffectDerivation evalState store projectOptionMaybe ref attr
+  derivation <-
+    if decodeUtf8With lenientDecode storeDir `T.isPrefixOf` attr
+      then liftIO $ do
+        -- Support derivation in arbitrary location
+        -- Used in hercules-ci-effects test runner
+        let path = attr
+        contents <- BS.readFile $ toS path
+        let stripDrv s = fromMaybe s (T.stripSuffix ".drv" s)
+        CNix.getDerivationFromString store (path & T.takeWhileEnd (/= '/') & stripDrv & encodeUtf8) contents
+      else evaluateEffectDerivation evalState store projectOptionMaybe ref attr
+  prepareDerivation store derivation
+  pure derivation
 
 evaluateEffectDerivation :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Store -> Maybe ProjectPath -> Text -> Text -> RIO r Derivation
 evaluateEffectDerivation evalState store projectOptionMaybe ref attr = do
