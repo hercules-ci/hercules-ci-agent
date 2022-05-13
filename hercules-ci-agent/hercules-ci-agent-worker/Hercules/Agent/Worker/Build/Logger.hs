@@ -265,6 +265,7 @@ withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
 filterProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 filterProgress = filterC \case
   Chunk LogEntry.Result {rtype = LogEntry.ResultTypeProgress} -> False
+  Chunk LogEntry.Result {rtype = LogEntry.ResultTypeSetExpected} -> False
   _ -> True
 
 nubProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()

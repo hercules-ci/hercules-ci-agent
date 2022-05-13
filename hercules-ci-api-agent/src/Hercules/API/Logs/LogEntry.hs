@@ -23,6 +23,9 @@ newtype ResultType = ResultType Word64
 pattern ResultTypeProgress :: ResultType
 pattern ResultTypeProgress = ResultType 105
 
+pattern ResultTypeSetExpected :: ResultType
+pattern ResultTypeSetExpected = ResultType 106
+
 pattern ResultTypeBuildLogLine :: ResultType
 pattern ResultTypeBuildLogLine = ResultType 101
 
