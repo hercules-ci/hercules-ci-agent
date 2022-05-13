@@ -268,6 +268,7 @@ executable hercules-ci-agent-worker
       Hercules.Agent.Worker.Build.Prefetched
       Hercules.Agent.Worker.Build.Logger
       Hercules.Agent.Worker.Build.Logger.Context
+      Hercules.Agent.Worker.Conduit
       Hercules.Agent.Worker.Effect
       Hercules.Agent.Worker.Env
       Hercules.Agent.Worker.Error
@@ -362,6 +363,9 @@ test-suite hercules-test
       Hercules.Agent.Nix.RetrieveDerivationInfoSpec
       Hercules.Agent.WorkerProcess
       Hercules.Agent.WorkerProcessSpec
+      Hercules.Agent.Worker.Conduit
+      Hercules.Agent.Worker.ConduitSpec
+      Hercules.Agent.Worker.STM
       Hercules.Agent.Worker.STMSpec
       Hercules.Secrets
       Hercules.SecretsSpec

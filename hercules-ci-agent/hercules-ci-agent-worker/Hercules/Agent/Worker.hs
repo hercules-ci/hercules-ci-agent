@@ -36,6 +36,7 @@ import Hercules.Agent.Sensitive
 import qualified Hercules.Agent.Socket as Socket
 import Hercules.Agent.Worker.Build (runBuild)
 import qualified Hercules.Agent.Worker.Build.Logger as Logger
+import Hercules.Agent.Worker.Conduit (takeCWhileStopEarly, withMessageLimit)
 import Hercules.Agent.Worker.Effect (runEffect)
 import Hercules.Agent.Worker.Env (HerculesState (..))
 import Hercules.Agent.Worker.Error (ExceptionText (exceptionTextMessage), exceptionTextMessage, renderException)
@@ -273,6 +274,7 @@ logger logSettings_ storeProtocolVersionValue entriesSource = do
           entriesSource
             .| Logger.unbatch
             .| Logger.filterProgress
+            .| dropMiddle
             .| renumber 0
             .| batchAndEnd
             .| socketSink socket
@@ -296,6 +298,67 @@ logger logSettings_ storeProtocolVersionValue entriesSource = do
       Just _ -> pass
       Nothing -> panic "Could not push logs within 10 minutes after completion"
     logLocM DebugS "Logger done"
+
+dropMiddle :: MonadIO m => ConduitM (Flush LogEntry) (Flush LogEntry) m ()
+dropMiddle = do
+  -- rich logging
+  takeCWhileStopEarly isChunk richLogLimit
+  -- degrade to text logging (in case rich logging produces excessive non-textual data)
+  visibleLinesOnly .| withMessageLimit isChunk textOnlyLogLimit tailLimit snipStart snip snipped
+
+-- Sum must be < 100_000
+richLogLimit, textOnlyLogLimit, tailLimit :: Int
+richLogLimit = 40_000
+textOnlyLogLimit = 49_900
+tailLimit = 10_000
+
+snipStart :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+snipStart =
+  yield $
+    Chunk $
+      LogEntry.Msg
+        { i = 0,
+          ms = 0,
+          level = 0 {- error -},
+          msg = "hercules-ci-agent: Soft log limit has been reached. Final log lines will appear when done."
+        }
+
+snipped :: Monad m => Int -> ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+snipped n =
+  yield $
+    Chunk $
+      LogEntry.Msg
+        { i = 0,
+          ms = 0,
+          level = 0 {- error -},
+          msg = "hercules-ci-agent: " <> show n <> " log lines were omitted before the last " <> show tailLimit <> "."
+        }
+
+snip :: Monad m => Int -> ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+snip n =
+  yield $
+    Chunk $
+      LogEntry.Msg
+        { i = 0,
+          ms = 0,
+          level = 0 {- error -},
+          msg = "hercules-ci-agent: skipping " <> show n <> " log lines."
+        }
+
+visibleLinesOnly :: Monad m => ConduitM (Flush LogEntry) (Flush LogEntry) m ()
+visibleLinesOnly =
+  filterC isVisible
+
+isVisible :: Flush LogEntry -> Bool
+isVisible Flush = True
+isVisible (Chunk LogEntry.Msg {msg = msg}) | msg /= "" = True
+isVisible (Chunk LogEntry.Start {text = msg}) | msg /= "" = True
+isVisible (Chunk LogEntry.Result {rtype = LogEntry.ResultTypeBuildLogLine}) = True
+isVisible _ = False
+
+isChunk :: Flush LogEntry -> Bool
+isChunk Chunk {} = True
+isChunk _ = False
 
 socketSink :: MonadIO m => Socket.Socket r w -> ConduitT w o m ()
 socketSink socket = awaitForever $ liftIO . atomically . Socket.write socket
