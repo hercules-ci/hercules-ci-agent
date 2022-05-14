@@ -2,12 +2,16 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use const" #-}
 
 module Hercules.Agent.Worker.Evaluate where
 
 import Conduit
 import Control.Concurrent.Async (pollSTM)
 import Control.Concurrent.STM hiding (check)
+import Control.Exception.Safe (isAsyncException)
 import Control.Monad.Except
 import Control.Monad.IO.Unlift
 import Data.Coerce (coerce)
@@ -27,7 +31,7 @@ import qualified Hercules.Agent.NixFile as NixFile
 import Hercules.Agent.NixFile.HerculesCIArgs (CISystems (CISystems), HerculesCIMeta (HerculesCIMeta), fromGitSource)
 import qualified Hercules.Agent.NixFile.HerculesCIArgs
 import Hercules.Agent.Worker.Env (HerculesState (..))
-import Hercules.Agent.Worker.Error (renderException)
+import Hercules.Agent.Worker.Error (ExceptionText (exceptionTextDerivationPath), exceptionTextMessage, exceptionTextTrace, renderException, throwBuildError)
 import Hercules.Agent.Worker.HerculesStore (nixStore, setBuilderCallback)
 import Hercules.Agent.Worker.STM (asyncInTVarMap)
 import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
@@ -61,14 +65,6 @@ import qualified UnliftIO
 import UnliftIO.Async (wait)
 import UnliftIO.Exception (bracket, catch)
 import Prelude ()
-
-data BuildException = BuildException
-  { buildExceptionDerivationPath :: Text,
-    buildExceptionDetail :: Maybe Text
-  }
-  deriving (Show, Typeable)
-
-instance Exception BuildException
 
 data AsyncRealisationRequired = AsyncRealisationRequired
   { realisationRequiredDerivationPath :: StorePath,
@@ -123,38 +119,25 @@ withDrvInProgress HerculesState {drvsInProgress = ref} drvPath =
 anyAlternative :: (Foldable l, Alternative f) => l a -> f a
 anyAlternative = getAlt . foldMap (Alt . pure)
 
-yieldAttributeError :: MonadIO m => [ByteString] -> SomeException -> ConduitT i Event m ()
-yieldAttributeError path e
-  | (Just e') <- fromException e =
-    yield $
-      Event.AttributeError $
-        AttributeError.AttributeError
-          { AttributeError.path = path,
-            AttributeError.message =
-              "Could not build derivation " <> buildExceptionDerivationPath e'
-                <> ", which is required during evaluation."
-                <> foldMap (" " <>) (buildExceptionDetail e'),
-            AttributeError.errorDerivation = Just (buildExceptionDerivationPath e'),
-            AttributeError.errorType = Just "BuildException",
-            AttributeError.trace = Nothing -- would be nice to get a trace here. Throw and catch more C++ exception types?
-          }
-yieldAttributeError path e = do
-  (e', maybeTrace) <- liftIO $ renderException e
+yieldAttributeError :: MonadIO m => Store -> [ByteString] -> SomeException -> ConduitT i Event m ()
+yieldAttributeError store path e = do
+  exceptionText <- liftIO $ renderException e
+  drvPath <- liftIO $ traverse (storePathToPath store) (exceptionTextDerivationPath exceptionText)
   yield $
     Event.AttributeError $
       AttributeError.AttributeError
         { AttributeError.path = path,
-          AttributeError.message = e',
-          AttributeError.errorDerivation = Nothing,
-          AttributeError.errorType = Just (show (typeOf e)),
-          AttributeError.trace = maybeTrace
+          AttributeError.message = exceptionTextMessage exceptionText,
+          AttributeError.errorDerivation = drvPath <&> decodeUtf8With lenientDecode,
+          AttributeError.errorType = if isJust (exceptionTextDerivationPath exceptionText) then Just "BuildException" else Just (show (typeOf e)),
+          AttributeError.trace = exceptionTextTrace exceptionText
         }
 
-maybeThrowBuildException :: MonadIO m => BuildResult.BuildStatus -> Text -> m ()
-maybeThrowBuildException result plainDrvText =
+maybeThrowBuildException :: MonadIO m => BuildResult.BuildStatus -> StorePath -> m ()
+maybeThrowBuildException result drv =
   case result of
-    BuildResult.Failure -> throwIO $ BuildException plainDrvText Nothing
-    BuildResult.DependencyFailure -> throwIO $ BuildException plainDrvText (Just "A dependency could not be built.")
+    BuildResult.Failure -> liftIO $ throwBuildError ("Could not build derivation " <> show drv <> ", which is required during evaluation.") drv
+    BuildResult.DependencyFailure -> liftIO $ throwBuildError ("Could not build a dependency of derivation " <> show drv <> ", which is required during evaluation.") drv
     BuildResult.Success -> pass
 
 mkCache :: forall k a m. (MonadUnliftIO m, Ord k) => (SomeException -> Bool) -> IO (k -> m a -> m a)
@@ -241,7 +224,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                             c <- readTVar drvsCompl
                             anyAlternative $ M.lookup drvStorePath c
 
-                        maybeThrowBuildException result (decode drvPath)
+                        maybeThrowBuildException result drvStorePath
                         clearSubstituterCaches
                         clearPathInfoCache store
                         ensurePath (wrappedStore st) outputPath `catch` \(_e1 :: SomeException) -> do
@@ -255,23 +238,25 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                                 guard (attempt1 /= attempt0)
                                 pure (attempt1, r)
 
-                          maybeThrowBuildException result' (decode drvPath)
+                          maybeThrowBuildException result' drvStorePath
                           clearSubstituterCaches
                           clearPathInfoCache store
                           ensurePath (wrappedStore st) outputPath `catch` \e2 ->
                             liftIO $
-                              throwIO $
-                                BuildException
-                                  (decode drvPath)
-                                  ( Just $
-                                      "It could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
-                                        <> show (e2 :: SomeException)
-                                  )
+                              throwBuildError
+                                ( "Build failure: output could not be retrieved on the evaluating agent, despite a successful rebuild. Exception: "
+                                    <> show (e2 :: SomeException)
+                                )
+                                drvStorePath
                     pure outputPath
 
-                  if don'tBlock
-                    then throwIO (AsyncRealisationRequired drvStorePath outputName)
-                    else void $ wait buildAsync
+                  maybeAlreadyDone <- liftIO $ poll buildAsync
+                  case maybeAlreadyDone of
+                    Just r -> void $ escalate r
+                    Nothing -> do
+                      if don'tBlock
+                        then throwIO (AsyncRealisationRequired drvStorePath outputName)
+                        else void $ wait buildAsync
 
   withEvalStateConduit store $ \evalState -> do
     let evalEnv :: EvalEnv
@@ -290,7 +275,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
     args <-
       liftIO $
         evalArgs evalState (autoArgArgs (Eval.autoArguments eval))
-    Data.Conduit.handleC (yieldAttributeError []) $
+    Data.Conduit.handleC (yieldAttributeError store []) $
       do
         homeExpr <- getHomeExpr evalState eval
         let hargs = fromGitSource (coerce $ Eval.gitSource eval) meta
@@ -427,6 +412,7 @@ pollingWith ffinally poller startWork = do
 
 handleExceptions ::
   (Exception t, MonadUnliftIO m) =>
+  Store ->
   ( [ByteString] ->
     t ->
     (Either SomeException b -> ConduitT i Event m ()) ->
@@ -435,7 +421,7 @@ handleExceptions ::
   [ByteString] ->
   ConduitT i Event m () ->
   ConduitT i Event m ()
-handleExceptions enqueue path m = go
+handleExceptions store enqueue path m = go
   where
     go =
       -- not catchC or handleC, to make sure async exceptions aren't masked
@@ -443,15 +429,17 @@ handleExceptions enqueue path m = go
         Left e -> handler e
         Right r -> pure r
 
+    handler e | isAsyncException e = throwIO e
     handler e = case fromException e of
       Just rr -> do
         enqueue path rr \case
-          Right {} -> m
+          Right {} -> go
           Left exception ->
             -- TODO: throw a Nix native exception in the builder callback instead?
-            yieldAttributeError path exception
+            --       trace would have to be preserved from the first execution
+            yieldAttributeError store path exception
       Nothing -> do
-        yieldAttributeError path e
+        yieldAttributeError store path e
 
 -- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.
 simpleWalk ::
@@ -474,7 +462,7 @@ simpleWalk evalEnv initialThunk = do
             depthRemaining = treeWorkRemainingDepth treeWork
             v = treeWorkThunk treeWork
 
-        handleExceptions enqueue path do
+        handleExceptions store enqueue path do
           m <- liftIO $ escalate =<< match evalState v
           case m of
             IsAttrs attrValue -> do
@@ -592,7 +580,7 @@ walk evalEnv autoArgs v0 = withIFDQueue evalEnv \enqueue ->
         ConduitT i Event m ()
       walk' forceWalkAttrset path depthRemaining v =
         -- logLocM DebugS $ logStr $ "Walking " <> (show path :: Text)
-        handleExceptions enqueue path $
+        handleExceptions store enqueue path $
           liftIO (match evalState v)
             >>= \case
               Left e ->
@@ -696,7 +684,7 @@ walkDerivation store evalState effectsAnywhere path attrValue = do
                 Attribute.typ = typ
               }
   case typE of
-    Left (Left e) -> yieldAttributeError path e
+    Left (Left e) -> yieldAttributeError store path e
     Left (Right t) -> yieldAttribute t
     Right _ -> yieldAttribute Attribute.Regular
   where

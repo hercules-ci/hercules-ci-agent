@@ -38,7 +38,7 @@ import Hercules.Agent.Worker.Build (runBuild)
 import qualified Hercules.Agent.Worker.Build.Logger as Logger
 import Hercules.Agent.Worker.Effect (runEffect)
 import Hercules.Agent.Worker.Env (HerculesState (..))
-import Hercules.Agent.Worker.Error (renderException)
+import Hercules.Agent.Worker.Error (ExceptionText (exceptionTextMessage), exceptionTextMessage, renderException)
 import Hercules.Agent.Worker.Evaluate (runEval)
 import Hercules.Agent.Worker.HerculesStore (setBuilderCallback, withHerculesStore)
 import Hercules.Agent.Worker.Logging (withKatip)
@@ -144,8 +144,8 @@ taskWorker options = do
                 runCommand st ch command
             )
               `safeLiftedCatch` ( \e -> liftIO $ do
-                                    (e', _trace) <- renderException e
-                                    writeChan ch (Just $ Exception e')
+                                    textual <- renderException e
+                                    writeChan ch (Just $ Exception $ exceptionTextMessage textual)
                                     exitFailure
                                 )
           )
@@ -211,7 +211,7 @@ runCommand herculesState ch command = do
                   runConduitRes
                     ( Data.Conduit.handleC
                         ( \e -> do
-                            yield . Event.Error . fst =<< liftIO (renderException e)
+                            yield . Event.Error . exceptionTextMessage =<< liftIO (renderException e)
                             liftIO $ throwTo mainThread e
                         )
                         ( do
