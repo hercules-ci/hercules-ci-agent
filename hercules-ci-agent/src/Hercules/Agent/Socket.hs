@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -32,7 +33,7 @@ import Network.URI (URI, uriAuthority, uriPath, uriPort, uriQuery, uriRegName, u
 import Network.WebSockets (Connection, runClientWith)
 import qualified Network.WebSockets as WS
 import Protolude hiding (atomically, handle, race, race_)
-import UnliftIO.Async (race, race_)
+import UnliftIO.Async (AsyncCancelled (AsyncCancelled), race, race_)
 import UnliftIO.Exception (handle)
 import UnliftIO.STM (readTVarIO)
 import UnliftIO.Timeout (timeout)
@@ -133,7 +134,7 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
           liftIO (A.eitherDecode <$> WS.receiveData conn) >>= \case
             Left e -> liftIO $ throwIO (FatalError $ "Error decoding service message: " <> toS e)
             Right r -> pure r
-      handshake conn = katipAddNamespace "Handshake" do
+      handshake conn (removeHandshakeTimeout :: IO ()) = katipAddNamespace "Handshake" do
         siMsg <- recv conn
         case siMsg of
           Frame.Oob {o = o'} ->
@@ -149,6 +150,7 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
         case ackMsg of
           Frame.Ack {n = n} -> cleanAcknowledged n
           _ -> throwIO $ FatalError "Expected acknowledgement. This is either a bug or you might need to update your agent."
+        liftIO removeHandshakeTimeout
         sendUnacked conn
       sendUnacked :: Connection -> m ()
       sendUnacked conn = do
@@ -222,13 +224,32 @@ runReliableSocket socketConfig writeQueue serviceMessageChan highestAcked = kati
             -- terminate other threads via race_
             pass
           else noAckCleanupThread' expectedN
-  forever $
+  forever do
+    removeTimeout <- prepareTimeout handshakeTimeoutMicroseconds HandshakeTimeout
     handle logWarningPause $
       withConnection' socketConfig $
         \conn -> do
           katipAddNamespace "Handshake" do
-            handshake conn
+            handshake conn removeTimeout
           readThread conn `race_` writeThread conn `race_` noAckCleanupThread
+
+handshakeTimeoutMicroseconds :: Int
+handshakeTimeoutMicroseconds = 30_000_000
+
+data HandshakeTimeout = HandshakeTimeout
+  deriving (Show, Exception)
+
+prepareTimeout :: (Exception e, MonadIO m) => Int -> e -> m (IO ())
+prepareTimeout delay exc = do
+  requestingThread <- liftIO myThreadId
+  tid <- liftIO $ forkIO do
+    do
+      threadDelay delay
+      throwTo requestingThread exc
+      `catch` \(_ :: AsyncCancelled) ->
+        -- Removal of the timeout is normal, so do nothing
+        pass
+  pure $ throwTo tid AsyncCancelled
 
 msgN :: Frame o a -> Maybe Integer
 msgN Frame.Msg {n = n} = Just n
