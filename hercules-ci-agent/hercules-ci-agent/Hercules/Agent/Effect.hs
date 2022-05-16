@@ -1,6 +1,8 @@
 module Hercules.Agent.Effect where
 
+import qualified Data.Aeson as A
 import Data.IORef
+import qualified Data.Map as M
 import qualified Hercules.API.Agent.Effect.EffectTask as EffectTask
 import Hercules.API.TaskStatus (TaskStatus)
 import qualified Hercules.API.TaskStatus as TaskStatus
@@ -82,7 +84,15 @@ performEffect effectTask = withWorkDir "effect" $ \workDir -> do
                     isDefaultBranch = EffectTask.isDefaultBranch effectTask
                   }
             }
-  exitCode <- runWorker procSpec (stderrLineHandler "Effect worker") commandChan writeEvent
+  let stderrHandler =
+        stderrLineHandler
+          ( M.fromList
+              [ ("taskId", A.toJSON (EffectTask.id effectTask)),
+                ("derivationPath", A.toJSON (EffectTask.derivationPath effectTask))
+              ]
+          )
+          "Effect worker"
+  exitCode <- runWorker procSpec stderrHandler commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> logStr (show exitCode :: Text)
   let showSig n | n == PS.sigABRT = " (Aborted)"
       showSig n | n == PS.sigBUS = " (Bus)"

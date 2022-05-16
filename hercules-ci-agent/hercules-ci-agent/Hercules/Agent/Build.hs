@@ -1,5 +1,6 @@
 module Hercules.Agent.Build where
 
+import qualified Data.Aeson as A
 import Data.IORef.Lifted
 import qualified Data.Map as M
 import qualified Hercules.API.Agent.Build as API.Build
@@ -84,7 +85,15 @@ performBuild buildTask = do
                   },
               materializeDerivation = materialize
             }
-  exitCode <- runWorker procSpec (stderrLineHandler "Builder") commandChan writeEvent
+  let stderrHandler =
+        stderrLineHandler
+          ( M.fromList
+              [ ("taskId", A.toJSON (BuildTask.id buildTask)),
+                ("derivationPath", A.toJSON (BuildTask.derivationPath buildTask))
+              ]
+          )
+          "Builder"
+  exitCode <- runWorker procSpec stderrHandler commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> logStr (show exitCode :: Text)
   case exitCode of
     ExitSuccess -> pass
