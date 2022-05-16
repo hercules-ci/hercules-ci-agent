@@ -10,4 +10,6 @@ public:
     HerculesBuildError(const std::string msg, nix::StorePath drv) : BuildError(msg), drv(drv) {};
 };
 
+void copyErrorStrings(const nix::Error &err, const char **msg, const char **trace) noexcept;
+
 }

@@ -58,57 +58,31 @@ renderException e = pure $ basicExceptionText $ toS $ displayException e
 renderStdException :: C.CppExceptionPtr -> IO ExceptionText
 renderStdException e = alloca \traceStrPtr -> alloca \buildErrorDrvPtr -> do
   msg <-
-    [C.throwBlock| char * {
-    char **traceStrPtr = $(char **traceStrPtr);
-    nix::StorePath **buildErrorDrvPtr = $(nix::StorePath **buildErrorDrvPtr);
+    [C.throwBlock| const char * {
+    const char **traceStrPtr = $(const char **traceStrPtr);
     *traceStrPtr = nullptr;
-    std::string r;
+
+    nix::StorePath **buildErrorDrvPtr = $(nix::StorePath **buildErrorDrvPtr);
+    *buildErrorDrvPtr = nullptr;
+
     std::exception_ptr *e = $fptr-ptr:(std::exception_ptr *e);
     try {
       std::rethrow_exception(*e);
     } catch (const hercules::HerculesBuildError &e) {
       *buildErrorDrvPtr = new nix::StorePath(e.drv);
-      {
-        std::stringstream s;
-        nix::showErrorInfo(s, e.info(), false);
-        r = s.str();
-      }
-      {
-        std::stringstream s;
-        nix::showErrorInfo(s, e.info(), true);
-        std::string t = s.str();
-        // starts with r?
-        if (t.rfind(r, 0) == 0) {
-          t.replace(0, r.size(), "");
-          t = nix::trim(t);
-        }
-        *traceStrPtr = strdup(t.c_str());
-      }
+      const char *msg;
+      hercules::copyErrorStrings(e, &msg, traceStrPtr);
+      return msg;
     } catch (const nix::Error &e) {
-      {
-        std::stringstream s;
-        nix::showErrorInfo(s, e.info(), false);
-        r = s.str();
-      }
-      {
-        std::stringstream s;
-        nix::showErrorInfo(s, e.info(), true);
-        std::string t = s.str();
-        // starts with r?
-        if (t.rfind(r, 0) == 0) {
-          t.replace(0, r.size(), "");
-          t = nix::trim(t);
-        }
-        *traceStrPtr = strdup(t.c_str());
-      }
+      const char *msg;
+      hercules::copyErrorStrings(e, &msg, traceStrPtr);
+      return msg;
     } catch (const std::exception &e) {
-      r = e.what();
+      return strdup(e.what());
     } catch (...) {
       // shouldn't happen because inline-c-cpp only put std::exception in CppStdException
       throw std::runtime_error("renderStdException: Attempt to render unknown exception.");
     }
-
-    return strdup(r.c_str());
   }|]
       >>= unsafePackMallocCString
       <&> decodeUtf8With lenientDecode
