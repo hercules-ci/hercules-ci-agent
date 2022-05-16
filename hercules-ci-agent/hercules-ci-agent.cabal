@@ -280,6 +280,7 @@ executable hercules-ci-agent-worker
       hercules-ci-agent-worker
 
   cxx-sources:
+      cbits/hercules-error.cxx
       cbits/hercules-logger.cxx
       cbits/nix-2.4/hercules-store.cxx
 

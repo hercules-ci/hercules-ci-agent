@@ -765,7 +765,6 @@ spec = describe "Evaluation" $ do
         length (AttributeErrorEvent.errorDerivation attr) `shouldBe` 1
         toS (fromMaybe "" (AttributeErrorEvent.errorDerivation attr)) `shouldContain` "/nix/store"
         toS (fromMaybe "" (AttributeErrorEvent.errorDerivation attr)) `shouldContain` "-ifd-2.nix"
-        toS (AttributeErrorEvent.errorMessage attr) `shouldContain` "/nix/store"
         toS (AttributeErrorEvent.errorMessage attr) `shouldContain` "-ifd-2.nix"
         toS (AttributeErrorEvent.errorMessage attr) `shouldContain` "Could not build derivation"
         toS (AttributeErrorEvent.errorMessage attr) `shouldContain` "evaluat"
