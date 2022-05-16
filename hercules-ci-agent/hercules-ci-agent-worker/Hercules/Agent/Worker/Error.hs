@@ -35,7 +35,7 @@ throwBuildError msg drv = do
   [C.throwBlock| void {
     std::string msg($bs-ptr:msgB, $bs-len:msgB);
     nix::StorePath &drv = *$fptr-ptr:(nix::StorePath *drv);
-    throw HerculesBuildError(msg, drv);
+    throw hercules::HerculesBuildError(msg, drv);
   }|]
   panic "Could not throw HerculesBuildError!" -- tooling failure
 
@@ -66,7 +66,7 @@ renderStdException e = alloca \traceStrPtr -> alloca \buildErrorDrvPtr -> do
     std::exception_ptr *e = $fptr-ptr:(std::exception_ptr *e);
     try {
       std::rethrow_exception(*e);
-    } catch (const HerculesBuildError &e) {
+    } catch (const hercules::HerculesBuildError &e) {
       *buildErrorDrvPtr = new nix::StorePath(e.drv);
       {
         std::stringstream s;
