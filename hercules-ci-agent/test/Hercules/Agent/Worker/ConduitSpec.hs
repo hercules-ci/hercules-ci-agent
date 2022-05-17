@@ -35,11 +35,12 @@ spec = do
       (l :: [Int]) `shouldBe` [98, 99, 100]
   describe "takeCWhileStopEarly" do
     it "works for example" do
-      l <- runConduit (sourceList [1 .. 10] .| takeCWhileStopEarly even 2 .| sinkList)
+      (i, l) <- runConduit (sourceList [1 .. 10] .| (takeCWhileStopEarly even 2 `fuseBoth` sinkList))
       (l :: [Int]) `shouldBe` [1, 2, 3, 4]
+      i `shouldBe` (2, 4)
   describe "withMessageLimit" do
     let exampleConduit = do
-          withMessageLimit (const True) 20 10 pass (\between -> yield (-1 * between)) yield
+          withMessageLimit (const True) 20 10 (yield (-42)) (\between -> yield (-1 * between)) yield
 
     it "works for input 0" do
       r <- runConduit do
@@ -57,28 +58,28 @@ spec = do
 
     it "works for input 2" do
       r <- runConduit do
-        sourceList [1 .. 22 :: Int]
+        sourceList [1 .. 21 :: Int]
           .| exampleConduit
           .| sinkList
-      r `shouldBe` [1 .. 22]
+      r `shouldBe` [1 .. 20] <> [-42, 21]
 
     it "works for input 3" do
       r <- runConduit do
         sourceList [1 .. 30 :: Int]
           .| exampleConduit
           .| sinkList
-      r `shouldBe` [1 .. 30]
+      r `shouldBe` [1 .. 20] <> [-42] <> [21 .. 30]
 
     it "works for input 4" do
       r <- runConduit do
         sourceList [1 .. 31 :: Int]
           .| exampleConduit
           .| sinkList
-      r `shouldBe` [1 .. 20] <> [-1] <> [22 .. 31] <> [1]
+      r `shouldBe` [1 .. 20] <> [-42, -1] <> [22 .. 31] <> [1]
 
     it "works for input 5" do
       r <- runConduit do
         sourceList [1 .. 100 :: Int]
           .| exampleConduit
           .| sinkList
-      r `shouldBe` ([1 .. 20] <> [-70] <> [91 .. 100]) <> [70]
+      r `shouldBe` [1 .. 20] <> [-42, -70] <> [91 .. 100] <> [70]
