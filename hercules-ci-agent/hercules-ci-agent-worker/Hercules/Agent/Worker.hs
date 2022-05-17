@@ -302,7 +302,7 @@ logger logSettings_ storeProtocolVersionValue entriesSource = do
 dropMiddle :: MonadIO m => ConduitM (Flush LogEntry) (Flush LogEntry) m ()
 dropMiddle = do
   -- rich logging
-  takeCWhileStopEarly isChunk richLogLimit
+  _ <- takeCWhileStopEarly isChunk richLogLimit
   -- degrade to text logging (in case rich logging produces excessive non-textual data)
   visibleLinesOnly .| withMessageLimit isChunk textOnlyLogLimit tailLimit snipStart snip snipped
 
