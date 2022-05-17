@@ -24,16 +24,20 @@ sinkTail n = do
 
 -- | Take at most @n@ items that satisfy the predicate, then stop consuming,
 -- even if the next item does not match the predicate.
-takeCWhileStopEarly :: Monad m => (i -> Bool) -> Int -> ConduitT i i m ()
-takeCWhileStopEarly counts = go
+--
+-- Return the number of counted messages and the total number of messages written.
+takeCWhileStopEarly :: Monad m => (i -> Bool) -> Int -> ConduitT i i m (Int, Int)
+takeCWhileStopEarly counts limit = go 0 0
   where
-    go limit | limit <= 0 = pass
-    go limit =
-      await >>= traverse_ \item -> do
-        yield item
-        if item & counts
-          then go (limit - 1)
-          else go limit
+    go counted total | counted >= limit = pure (counted, total)
+    go counted total =
+      await >>= \case
+        Nothing -> pure (counted, total)
+        Just item -> do
+          yield item
+          if item & counts
+            then go (counted + 1) (total + 1)
+            else go counted (total + 1)
 
 countProduction :: (Num n, MonadIO m) => (i -> Bool) -> IORef n -> ConduitT i i m ()
 countProduction pred counter = awaitForever (\i -> increment i *> yield i)
@@ -54,7 +58,7 @@ withMessageLimit ::
   Int ->
   -- | Max tail part limit
   Int ->
-  -- | What to do when truncation may start
+  -- | What to do when truncatable output starts (waiting starts)
   ConduitT a a m () ->
   -- | What to do before yielding a truncated tail
   (Int -> ConduitT a a m ()) ->
@@ -62,8 +66,8 @@ withMessageLimit ::
   (Int -> ConduitT a a m ()) ->
   ConduitT a a m ()
 withMessageLimit pred firstLimit tailLimit afterFirst beforeTail afterTail = do
-  takeCWhileStopEarly pred firstLimit
-  afterFirst
+  (c, _inclFlush) <- takeCWhileStopEarly pred firstLimit
+  when (c == firstLimit) afterFirst
   (n, x) <- withInputProductionCount pred do
     sinkTail tailLimit
   let between = n - Seq.length x
