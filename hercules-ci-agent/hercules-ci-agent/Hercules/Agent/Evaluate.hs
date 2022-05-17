@@ -27,6 +27,7 @@ import qualified Data.Map as M
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.UUID (UUID)
+import Hercules.API (Id)
 import Hercules.API.Agent.Evaluate
   ( getDerivationStatus2,
     tasksUpdateEvaluation,
@@ -47,6 +48,7 @@ import Hercules.API.Agent.Evaluate.ImmutableGitInput (ImmutableGitInput)
 import qualified Hercules.API.Agent.Evaluate.ImmutableGitInput as ImmutableGitInput
 import qualified Hercules.API.Agent.Evaluate.ImmutableInput as ImmutableInput
 import Hercules.API.Servant (noContent)
+import Hercules.API.Task (Task)
 import qualified Hercules.Agent.Cache as Agent.Cache
 import qualified Hercules.Agent.Cachix.Env as Cachix.Env
 import qualified Hercules.Agent.Client
@@ -64,6 +66,7 @@ import Hercules.Agent.Nix.RetrieveDerivationInfo
   )
 import Hercules.Agent.NixFile (findNixFile)
 import Hercules.Agent.NixFile.GitSource (fromRefRevPath)
+import qualified Hercules.Agent.NixFile.GitSource as GitSource
 import Hercules.Agent.NixPath
   ( renderSubPath,
   )
@@ -475,7 +478,7 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                   ("protocol.file.allow", "always")
                 ]
           }
-  withProducer (produceWorkerEvents eval envSettings commandChan) $
+  withProducer (produceWorkerEvents (EvaluateTask.id task) eval envSettings commandChan) $
     \workerEventsP -> fix $ \continue ->
       joinSTM $
         listen
@@ -603,12 +606,13 @@ hostFromUrl t = do
   pure $ toS $ Network.URI.uriRegName a
 
 produceWorkerEvents ::
+  Id (Task a) ->
   Eval.Eval ->
   WorkerProcess.WorkerEnvSettings ->
   Chan (Maybe Command.Command) ->
   (Event.Event -> App ()) ->
   App ExitCode
-produceWorkerEvents eval envSettings commandChan writeEvent = do
+produceWorkerEvents taskId eval envSettings commandChan writeEvent = do
   workerExe <- WorkerProcess.getWorkerExe
   let opts = [show $ Eval.extraNixOptions eval]
   -- NiceToHave: replace renderNixPath by something structured like -I
@@ -620,7 +624,15 @@ produceWorkerEvents eval envSettings commandChan writeEvent = do
             close_fds = True, -- Disable on Windows?
             cwd = Just (Eval.cwd eval)
           }
-  WorkerProcess.runWorker wps (stderrLineHandler "evaluator") commandChan writeEvent
+      stderrHandler =
+        stderrLineHandler
+          ( M.fromList
+              [ ("taskId", A.toJSON taskId),
+                ("evalRev", A.toJSON (eval & Eval.gitSource & Event.fromViaJSON & GitSource.rev))
+              ]
+          )
+          "Effect worker"
+  WorkerProcess.runWorker wps stderrHandler commandChan writeEvent
 
 drvPoller :: Maybe UUID -> Text -> App (UUID, BuildResult.BuildStatus)
 drvPoller notAttempt drvPath = do

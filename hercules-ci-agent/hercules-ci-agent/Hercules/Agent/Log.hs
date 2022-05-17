@@ -31,13 +31,15 @@ panicWithLog msg = do
   logLocM ErrorS $ logStr msg
   panic msg
 
-stderrLineHandler :: KatipContext m => Text -> Int -> ByteString -> m ()
-stderrLineHandler _processRole _ ln
+stderrLineHandler :: KatipContext m => Map Text Value -> Text -> Int -> ByteString -> m ()
+stderrLineHandler callerContext _processRole _ ln
   | "@katip " `BS.isPrefixOf` ln,
     Just item <- A.decode (LBS.fromStrict $ BS.drop 7 ln) =
     -- "This is the lowest level function [...] useful when implementing centralised logging services."
-    Katip.Core.logKatipItem (Katip.Core.SimpleLogPayload . M.toList . fmap (Katip.Core.AnyLogPayload :: A.Value -> Katip.Core.AnyLogPayload) <$> item)
-stderrLineHandler processRole pid ln =
+    Katip.Core.logKatipItem (Katip.Core.SimpleLogPayload . M.toList . fmap (Katip.Core.AnyLogPayload :: A.Value -> Katip.Core.AnyLogPayload) . extendContext <$> item)
+  where
+    extendContext workerItem = M.union workerItem callerContext
+stderrLineHandler _ processRole pid ln =
   withNamedContext "worker" (pid :: Int) $
     logLocM InfoS $
       logStr $
