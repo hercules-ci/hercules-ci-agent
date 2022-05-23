@@ -14,6 +14,7 @@ build-type:     Custom
 extra-source-files:
     CHANGELOG.md
     cbits/hercules-aliases.h
+    cbits/hercules-error.hh
     cbits/hercules-logger.hh
     cbits/nix-2.4/hercules-store.hh
     testdata/vm-test-run-agent-test.drv
