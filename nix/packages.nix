@@ -27,7 +27,36 @@ let
     overrideCabal
     overrideSrc
     ;
-  callPkg = super: name: srcPath: args: overrideSrc (super.callCabal2nix name srcPath args) { src = srcPath; };
+
+  # https://github.com/NixOS/nixpkgs/pull/174176
+  buildFromCabalSdist = pkg:
+    haskell.lib.overrideSrc
+      pkg
+      {
+        src = cabalSdist { inherit (pkg) src; };
+        version = pkg.version;
+      }
+  ;
+
+  cabalSdist =
+    { src
+    , name ? if src?name then "${src.name}-sdist.tar.gz" else "source.tar.gz"
+    }:
+    pkgs.runCommandNoCCLocal name
+      {
+        inherit src;
+        nativeBuildInputs = [ haskellPackages.cabal-install ];
+        dontUnpack = false;
+      } ''
+      unpackPhase
+      cd "''${sourceRoot:-.}"
+      patchPhase
+      mkdir out
+      HOME=$PWD cabal sdist --output-directory out
+      mv out/*.tar.gz $out
+    '';
+
+  callPkg = super: name: srcPath: args: buildFromCabalSdist (super.callCabal2nix name srcPath args);
 
   updateTo = v: stdPkg: altPkg:
     if lib.versionAtLeast stdPkg.version v
