@@ -83,24 +83,12 @@
         "type": "indirect"
       }
     },
-    "nixpkgs_2": {
-      "locked": {
-        "lastModified": 1619531122,
-        "narHash": "sha256-ovm5bo6PkZzNKh2YGXbRKYIjega0EjiEP0YDwyeXEYU=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "bb80d578e8ad3cb5a607f468ac00cc546d0396dc",
-        "type": "github"
-      },
-      "original": {
-        "id": "nixpkgs",
-        "type": "indirect"
-      }
-    },
     "pre-commit-hooks-nix": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": [
+          "nixos-unstable"
+        ]
       },
       "locked": {
         "lastModified": 1653494825,

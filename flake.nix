@@ -4,6 +4,7 @@
   inputs.nixos-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.nix-darwin.url = "github:LnL7/nix-darwin"; # test only
   inputs.pre-commit-hooks-nix.url = "github:hercules-ci/pre-commit-hooks.nix/flakeModule";
+  inputs.pre-commit-hooks-nix.inputs.nixpkgs.follows = "nixos-unstable";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
   inputs.flake-parts.inputs.nixpkgs.follows = "nixos-unstable";
 
