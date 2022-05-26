@@ -1,22 +1,22 @@
 {
   "nodes": {
-    "flake-modules-core": {
+    "flake-parts": {
       "inputs": {
         "nixpkgs": [
           "nixos-unstable"
         ]
       },
       "locked": {
-        "lastModified": 1647368891,
-        "narHash": "sha256-czmhnXovaf7Qsg1ASXIfr8WOkRPWYVfI7Mc7V9QzvGE=",
+        "lastModified": 1653510071,
+        "narHash": "sha256-KoBs0USqNunyxaBOYx/trSREMf8f3fA+msDfADiMI5o=",
         "owner": "hercules-ci",
-        "repo": "flake-modules-core",
-        "rev": "fd84881e00ea7d070f8a11689ae333d15c317213",
+        "repo": "flake-parts",
+        "rev": "c7d1a3d10117247892df7db45cef562bf62789d5",
         "type": "github"
       },
       "original": {
         "owner": "hercules-ci",
-        "repo": "flake-modules-core",
+        "repo": "flake-parts",
         "type": "github"
       }
     },
@@ -103,11 +103,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1638351750,
-        "narHash": "sha256-90OHC+11DIHD1QyMIPUuM3n6zjH5Mhc8RBZa0h8969A=",
+        "lastModified": 1653494825,
+        "narHash": "sha256-hMhnHZGRlJBX3yWIvxuYIBo4g+XQy/DJ4z7ti0IX7x0=",
         "owner": "hercules-ci",
         "repo": "pre-commit-hooks.nix",
-        "rev": "3bb289628867ac40fc9e7c514f8266b1ce8c0910",
+        "rev": "89b64b7aca69fbd2957232d6a5a36bb93ad59d4b",
         "type": "github"
       },
       "original": {
@@ -119,7 +119,7 @@
     },
     "root": {
       "inputs": {
-        "flake-modules-core": "flake-modules-core",
+        "flake-parts": "flake-parts",
         "nix-darwin": "nix-darwin",
         "nixos-unstable": "nixos-unstable",
         "pre-commit-hooks-nix": "pre-commit-hooks-nix"
