@@ -33,14 +33,17 @@ let
     haskell.lib.overrideSrc
       pkg
       {
-        src = cabalSdist { inherit (pkg) src; };
+        src = cabalSdist {
+          inherit (pkg) src;
+          name = "${pkg.name}.tar.gz";
+        };
         version = pkg.version;
       }
   ;
 
   cabalSdist =
     { src
-    , name ? if src?name then "${src.name}-sdist.tar.gz" else "source.tar.gz"
+    , name ? "${src.name or "source"}.tar.gz"
     }:
     pkgs.runCommandNoCCLocal name
       {
@@ -93,17 +96,9 @@ let
               hercules-ci-optparse-applicative =
                 super.callPackage ./hercules-ci-optparse-applicative.nix { };
               inline-c-cpp =
-                overrideSrc super.inline-c-cpp {
-                  src =
-                    # https://github.com/fpco/inline-c/pull/132
-                    assert (super.inline-c-cpp.version == "0.5.0.0");
-                    (pkgs.fetchFromGitHub {
-                      owner = "hercules-ci";
-                      repo = "inline-c";
-                      rev = "aebca859f0c2edfc9f32916b929e3b35ba843945";
-                      sha256 = "sha256-u6CcpiqbQUqqTbJaaQ3YBQcrINjU9jcxIEUR/ThW2Y0=";
-                    }) + "/inline-c-cpp";
-                };
+                # https://github.com/fpco/inline-c/pull/132
+                assert lib.any (patch: lib.hasSuffix "inline-c-cpp-pr-132-1.patch" (baseNameOf patch)) super.inline-c-cpp.patches;
+                super.inline-c-cpp;
               protolude =
                 updateTo "0.3" super.protolude (super.callPackage ./protolude-0.3.nix { });
               servant-auth =

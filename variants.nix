@@ -21,7 +21,7 @@ in
     };
   };
   config = {
-    perSystem = system: { ... }: {
+    perSystem = { system, ... }: {
       options = {
         variants = mkOption {
           default = lib.mapAttrs (_: variant: variant.allSystems.${system} or (variant.perSystem system)) flakeVariants;

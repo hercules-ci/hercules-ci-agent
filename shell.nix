@@ -1,1 +1,1 @@
-(import ./nix/flake-compat.nix).shellNix.devShell.${builtins.currentSystem}
+(import ./nix/flake-compat.nix).shellNix.devShells.${builtins.currentSystem}.default
