@@ -1,16 +1,16 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixos-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.nix-darwin.url = "github:LnL7/nix-darwin"; # test only
   inputs.pre-commit-hooks-nix.url = "github:hercules-ci/pre-commit-hooks.nix/flakeModule";
-  inputs.pre-commit-hooks-nix.inputs.nixpkgs.follows = "nixos-unstable";
+  inputs.pre-commit-hooks-nix.inputs.nixpkgs.follows = "nixpkgs";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
-  inputs.flake-parts.inputs.nixpkgs.follows = "nixos-unstable";
+  inputs.flake-parts.inputs.nixpkgs.follows = "nixpkgs";
 
-  outputs = inputs@{ self, nixos-unstable, flake-parts, ... }:
+  outputs = inputs@{ self, nixpkgs, flake-parts, ... }:
     let
-      inherit (nixos-unstable.legacyPackages.x86_64-linux) emptyFile;
+      inherit (nixpkgs.legacyPackages.x86_64-linux) emptyFile;
       debug = false;
       ifDebug = f:
         if debug then f else x: x;
@@ -75,7 +75,7 @@
       };
 
 
-      suffixAttrs = suf: inputs.nixos-unstable.lib.mapAttrs' (n: v: { name = n + suf; value = v; });
+      suffixAttrs = suf: inputs.nixpkgs.lib.mapAttrs' (n: v: { name = n + suf; value = v; });
     in
     flake-parts.lib.mkFlake { inherit self; } (flakeArgs@{ config, lib, ... }: {
       imports = [
@@ -355,7 +355,7 @@
             };
             options = {
               nixpkgsSource = lib.mkOption {
-                default = inputs.nixos-unstable;
+                default = inputs.nixpkgs;
               };
               checkSet = lib.mkOption {
                 description = "All tests, excluding those from variants.";
