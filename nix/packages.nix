@@ -33,14 +33,17 @@ let
     haskell.lib.overrideSrc
       pkg
       {
-        src = cabalSdist { inherit (pkg) src; };
+        src = cabalSdist {
+          inherit (pkg) src;
+          name = "${pkg.name}.tar.gz";
+        };
         version = pkg.version;
       }
   ;
 
   cabalSdist =
     { src
-    , name ? if src?name then "${src.name}-sdist.tar.gz" else "source.tar.gz"
+    , name ? "${src.name or "source"}.tar.gz"
     }:
     pkgs.runCommandNoCCLocal name
       {
