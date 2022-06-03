@@ -305,7 +305,11 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
             // case to return true when it is not a bool. That logic was added
             // because an empty attrset was found here, observed in
             // nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
+#if NIX_IS_AT_LEAST(2,9,0)
+            return evalState.forceBool(*iter->value, iter->pos);
+#else
             return evalState.forceBool(*iter->value, *iter->pos);
+#endif
           }
         } |]
 
@@ -329,14 +333,22 @@ mkNullableRawValue :: Ptr Value' -> IO (Maybe RawValue)
 mkNullableRawValue p | p == nullPtr = pure Nothing
 mkNullableRawValue p = Just <$> mkRawValue p
 
-getAttrs :: Value NixAttrs -> IO (Map ByteString RawValue)
-getAttrs (Value (RawValue v)) = do
+getAttrs :: Ptr EvalState -> Value NixAttrs -> IO (Map ByteString RawValue)
+getAttrs evalState (Value (RawValue v)) = do
   begin <- [C.exp| Attr *{ $(Value *v)->attrs->begin() }|]
   end <- [C.exp| Attr *{ $(Value *v)->attrs->end() }|]
   let gather :: Map ByteString RawValue -> Ptr Attr' -> IO (Map ByteString RawValue)
       gather acc i | i == end = pure acc
       gather acc i = do
+#if NIX_IS_AT_LEAST(2,9,0)
+        name <- unsafeMallocBS [C.block| const char *{
+          EvalState &evalState = *$(EvalState *evalState);
+          SymbolStr str = evalState.symbols[$(Attr *i)->name];
+          return strdup(static_cast<std::string>(str).c_str());
+        }|]
+#else
         name <- unsafeMallocBS [C.exp| const char *{ strdup(static_cast<std::string>($(Attr *i)->name).c_str()) } |]
+#endif
         value <- mkRawValue =<< [C.exp| Value *{ new (NoGC) Value(*$(Attr *i)->value) } |]
         let acc' = M.insert name value acc
         seq acc' pass

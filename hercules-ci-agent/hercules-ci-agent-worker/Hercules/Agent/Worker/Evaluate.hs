@@ -470,7 +470,7 @@ simpleWalk evalEnv initialThunk = do
               if isDeriv
                 then walkDerivation store evalState False path attrValue
                 else do
-                  attrs <- liftIO $ getAttrs attrValue
+                  attrs <- liftIO $ getAttrs evalState attrValue
                   void $
                     flip M.traverseWithKey attrs $
                       \name value ->
@@ -605,7 +605,7 @@ walk evalEnv autoArgs v0 = withIFDQueue evalEnv \enqueue ->
                           x <- liftIO (autoCallFunction evalState v autoArgs)
                           walk' True path (depthRemaining - 1) x
                         else do
-                          attrs <- liftIO $ getAttrs attrValue
+                          attrs <- liftIO $ getAttrs evalState attrValue
                           void $
                             flip M.traverseWithKey attrs $
                               \name value ->
