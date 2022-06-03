@@ -102,7 +102,7 @@ ciNixAttributeCompleter = mkTextCompleter \partial -> do
           Just focusValue -> do
             match' evalState focusValue >>= \case
               IsAttrs attrset -> do
-                attrs <- getAttrs attrset
+                attrs <- getAttrs evalState attrset
                 isDeriv <- isDerivation evalState focusValue
                 if isDeriv
                   then pure [(mempty {Optparse.cioFiles = False}, prefixStr)]

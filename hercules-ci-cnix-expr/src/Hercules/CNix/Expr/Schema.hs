@@ -318,7 +318,8 @@ requireDict name as = do
 
 dictionaryToMap :: MonadEval m => PSObject (Dictionary w) -> m (Map ByteString (PSObject w))
 dictionaryToMap dict = do
-  (liftIO . Expr.getAttrs =<< check dict)
+  es <- ask
+  (liftIO . Expr.getAttrs es =<< check dict)
     <&> M.mapWithKey
       ( \name b ->
           PSObject {value = b, provenance = Attribute (provenance dict) (decodeUtf8With lenientDecode name)}
