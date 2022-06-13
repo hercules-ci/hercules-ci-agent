@@ -23,7 +23,8 @@ Build `nixUnstable` with cabal:
 
 * change `../nix/shellFor-cabal.nix` to pick the right job from the `ci` param, then
 * run:
-
-    cd hercules-ci-cnix-store-expr
-    nix-shell ../nix/shellFor-cabal.nix
-    cabal v2-test -fnix-2_4 --enable-debug-info --disable-library-stripping --disable-executable-stripping
+```
+cd hercules-ci-cnix-store-expr
+nix-shell ../nix/shellFor-cabal.nix
+cabal v2-test -fnix-2_4 --enable-debug-info --disable-library-stripping --disable-executable-stripping
+```
