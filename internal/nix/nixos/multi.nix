@@ -77,6 +77,9 @@ let
                 ExecStartPre = testCommand;
                 Restart = "on-failure";
                 RestartSec = 120;
+                # If a worker goes OOM, don't kill the main process. It needs to
+                # report the failure and it's unlikely to be part of the problem.
+                OOMPolicy = "continue";
               };
             };
 
