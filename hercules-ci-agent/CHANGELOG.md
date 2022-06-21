@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+ - NixOS module: keep main process running when worker triggers system OOM killer.
  - Missing file in hackage sdist
 
 ## [0.9.5] - 2022-05-17
