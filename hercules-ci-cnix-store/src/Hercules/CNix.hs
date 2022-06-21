@@ -19,7 +19,6 @@ where
 
 -- TODO: No more Ptr EvalState
 -- TODO: No more NixStore when EvalState is already there
--- TODO: Map Nix-specific C++ exceptions to a CNix exception type
 
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Hercules.CNix.Store

@@ -83,12 +83,6 @@ let
               cabal-pkg-config-version-hook =
                 callPkg super "cabal-pkg-config-version-hook" ../cabal-pkg-config-version-hook { };
 
-              # cachix = updateTo "0.6.1.0" super.cachix (self.callPackage ./cachix.nix { });
-              # cachix-api = updateTo "0.6.0" super.cachix-api (self.callPackage ./cachix-api.nix { });
-
-
-              # nix-narinfo = self.callPackage ./nix-narinfo.nix { };
-
               # Must match hercules-ci-cnix-store, which uses `pkgs.nix`.
               # Nixpkgs may override to a specific series.
               cachix = super.cachix.override (o: { nix = pkgs.nix; });
@@ -99,18 +93,6 @@ let
                 # https://github.com/fpco/inline-c/pull/132
                 assert lib.any (patch: lib.hasSuffix "inline-c-cpp-pr-132-1.patch" (baseNameOf patch)) super.inline-c-cpp.patches;
                 super.inline-c-cpp;
-              protolude =
-                updateTo "0.3" super.protolude (super.callPackage ./protolude-0.3.nix { });
-              servant-auth =
-                updateTo "0.4" super.servant-auth (super.callPackage ./servant-auth-0.4.nix { });
-              servant-auth-client =
-                updateTo "0.4.1" super.servant-auth-client (super.callPackage ./servant-auth-client-0.4.1.nix { });
-              servant-auth-server =
-                updateTo "0.4.6" super.servant-auth-server (super.callPackage ./servant-auth-server-0.4.6.nix { });
-              servant-auth-swagger =
-                updateTo "0.2.10.1" super.servant-auth-swagger (super.callPackage ./servant-auth-swagger-0.2.10.1.nix { });
-              dhall =
-                updateTo "1.28" super.dhall (super.callPackage ./dhall-1.28.nix { });
 
               hercules-ci-api = callPkg super "hercules-ci-api" ../hercules-ci-api { };
               hercules-ci-api-agent = callPkg super "hercules-ci-api-agent" ../hercules-ci-api-agent { };
@@ -225,10 +207,6 @@ let
                     nlohmann_json
                   ]
               ;
-
-              websockets = updateTo "0.12.6.1" super.websockets (self.callPackage ./websockets.nix { });
-
-              servant-websockets = self.callPackage ./servant-websockets.nix { };
 
               # Permission denied error in tests. Might be a system configuration error on the machine?
               # TODO: see if rio builds on hydra.nixos.org after https://github.com/NixOS/nixpkgs/pull/160733
