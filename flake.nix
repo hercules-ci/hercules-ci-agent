@@ -315,6 +315,7 @@
                         pkgs.nixpkgs-fmt
                         # pkgs.haskell.packages.ghc8107.stack
                         pkgs.haskellPackages.stack
+                        pkgs.pre-commit
                         # pkgs.valgrind (broken on x86_64-darwin)
                       ] ++ lib.optionals shellWithHaskell [
                         haskellPackages.haskell-language-server
@@ -323,7 +324,9 @@
                       ];
                     shellHook = ''
                       ${o.shellHook or ""}
+                      if [[ -z "''${IN_LORRI_SHELL:-}" ]]; then
                       ${config.pre-commit.installationScript}
+                      fi
                     '';
                   });
                 in
