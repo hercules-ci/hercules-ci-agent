@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Nix 2.10 support
 
+### Removed
+
+ - `-nix_2_7` variants. Nixpkgs has stopped offering older versions of Nix. If
+   you need an older version, you could inject an older Nixpkgs into this flake
+   using `hercules-ci-agent.inputs.nixpkgs.follows = ...`.
+
 ## [0.9.6] - 2022-06-21
 
 ### Added
