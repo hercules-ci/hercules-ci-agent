@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Workaround for cachix#406 (add `login` to `netrc`)
  - A crash in `inline-c-cpp` exception handling (`inline-c-cpp` update)
  - Towards the error "Could not push logs within 10 minutes after completion"
-    - Add a timeout to prevent  in case of a stuck handshake
+    - Add a timeout to prevent hang in case of a stuck handshake
     - Enforce log limit on client side as well in case of excessive log spam and an upload bottleneck
 
 ### Removed
