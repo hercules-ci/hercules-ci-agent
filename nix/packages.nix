@@ -213,6 +213,13 @@ let
               rio = haskell.lib.dontCheck super.rio;
 
               hie-bios = haskell.lib.compose.appendPatch ./hie-bios.patch super.hie-bios;
+
+              # Dodge build failures of components we don't need.
+              haskell-language-server = haskell.lib.compose.appendConfigureFlags [ "-f-fourmolu" ] (
+                super.haskell-language-server.override {
+                  hls-fourmolu-plugin = null;
+                }
+              );
             }
         );
 
