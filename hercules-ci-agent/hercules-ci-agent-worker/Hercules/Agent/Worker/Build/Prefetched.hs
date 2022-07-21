@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+#ifdef __GHCIDE__
+# define NIX_IS_AT_LEAST(mm,m,p) 1
+#endif
 
 -- This implements an optimized routine to build from a remote derivation.
 -- It is not in the "CNix" tree because it seems to be too specific for general use.

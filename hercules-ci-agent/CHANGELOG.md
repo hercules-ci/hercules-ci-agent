@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+ - Nix 2.10 support
+
+### Removed
+
+ - `-nix_2_7` variants. Nixpkgs has stopped offering older versions of Nix. If
+   you need an older version, you could inject an older Nixpkgs into this flake
+   using `hercules-ci-agent.inputs.nixpkgs.follows = ...`.
+
 ## [0.9.6] - 2022-06-21
 
 ### Added
@@ -29,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Workaround for cachix#406 (add `login` to `netrc`)
  - A crash in `inline-c-cpp` exception handling (`inline-c-cpp` update)
  - Towards the error "Could not push logs within 10 minutes after completion"
-    - Add a timeout to prevent  in case of a stuck handshake
+    - Add a timeout to prevent hang in case of a stuck handshake
     - Enforce log limit on client side as well in case of excessive log spam and an upload bottleneck
 
 ### Removed

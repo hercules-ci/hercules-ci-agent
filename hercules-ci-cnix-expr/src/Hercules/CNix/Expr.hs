@@ -8,6 +8,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+#ifdef __GHCIDE__
+# define NIX_IS_AT_LEAST(mm,m,p) 1
+#endif
 
 module Hercules.CNix.Expr
   ( init,

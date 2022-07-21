@@ -21,10 +21,8 @@ haskellPackages.shellFor {
     # not to confuse the stack repl + hie-bios + hls setup.
     # p.hercules-ci-cnix-store
     # p.cachix
-
-    # TODO: https://github.com/NixOS/nixpkgs/pull/164305
-    { getCabalDeps.libraryHaskellDepends = [ haskellPackages.releaser ]; outPath = "/nix/store/shellFor-cabal-dummy-out-path"; }
   ];
+  extraDependencies = p: { libraryHaskellDepends = [ p.releaser ]; };
   buildInputs = [
     pkgs.boost
     pkgs.nlohmann_json # FIXME remove

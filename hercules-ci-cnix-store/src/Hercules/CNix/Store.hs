@@ -4,6 +4,9 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
+#ifdef __GHCIDE__
+# define NIX_IS_AT_LEAST(mm,m,p) 1
+#endif
 
 module Hercules.CNix.Store
   ( module Hercules.CNix.Store,
