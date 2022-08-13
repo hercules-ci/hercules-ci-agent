@@ -60,6 +60,7 @@ let
     '';
 
   callPkg = super: name: srcPath: args: buildFromCabalSdist (super.callCabal2nix name srcPath args);
+  callPkgOpts = opts: super: name: srcPath: args: buildFromCabalSdist (super.callCabal2nixWithOptions name srcPath opts args);
 
   updateTo = v: stdPkg: altPkg:
     if lib.versionAtLeast stdPkg.version v
@@ -187,8 +188,10 @@ let
                 );
               hercules-ci-cnix-expr =
                 addBuildTool
-                  (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
+                  (callPkgOpts "--extra-arguments nix-cmd" super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
                     inherit nix;
+                    # https://github.com/NixOS/cabal2nix/pull/546
+                    nix-cmd = nix;
                   })
                   pkgs.git;
               hercules-ci-cnix-store =
