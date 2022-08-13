@@ -25,7 +25,6 @@ haskellPackages.shellFor {
   extraDependencies = p: { libraryHaskellDepends = [ p.releaser ]; };
   buildInputs = [
     pkgs.boost
-    pkgs.nlohmann_json # FIXME remove
     pkgs.nix
   ];
   nativeBuildInputs = [

@@ -185,28 +185,14 @@ let
                     '';
                 }
                 );
-              hercules-ci-cnix-expr = addBuildTool
-                (
-                  addBuildDepends
-                    (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
-                      inherit nix;
-                      # https://github.com/NixOS/cabal2nix/pull/546
-                      nix-cmd = nix;
-                    })
-                    [
-                      # https://github.com/NixOS/nix/pull/4904
-                      nlohmann_json
-                    ]
-                )
-                pkgs.git;
+              hercules-ci-cnix-expr =
+                addBuildTool
+                  (callPkg super "hercules-ci-cnix-expr" ../hercules-ci-cnix-expr {
+                    inherit nix;
+                  })
+                  pkgs.git;
               hercules-ci-cnix-store =
-                addBuildDepends
-                  (callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { inherit nix; })
-                  [
-                    # https://github.com/NixOS/nix/pull/4904
-                    nlohmann_json
-                  ]
-              ;
+                callPkg super "hercules-ci-cnix-store" ../hercules-ci-cnix-store { inherit nix; };
 
               # Permission denied error in tests. Might be a system configuration error on the machine?
               # TODO: see if rio builds on hydra.nixos.org after https://github.com/NixOS/nixpkgs/pull/160733
