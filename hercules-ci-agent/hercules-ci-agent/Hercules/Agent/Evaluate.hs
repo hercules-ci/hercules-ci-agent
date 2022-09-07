@@ -119,16 +119,15 @@ getSrcInput task = case M.lookup "src" (EvaluateTask.inputs task) of
   Just {} -> do
     pure Nothing
 
-produceEvaluationTaskEvents ::
-  Store ->
-  EvaluateTask.EvaluateTask ->
+makeEventEmitter ::
   (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
-  App ()
-produceEvaluationTaskEvents store task writeToBatch | EvaluateTask.isFlakeJob task = withWorkDir "eval" $ \tmpdir -> do
-  logLocM DebugS "Retrieving evaluation task (flake)"
+  App (EvaluateEvent.EvaluateEvent -> App ())
+makeEventEmitter writeToBatch = do
   let emitSingle = writeToBatch . Syncable
-      sync = syncer writeToBatch
+
+  eventCounter <- liftIO $ newIORef 0
   msgCounter <- liftIO $ newIORef 0
+
   let fixIndex ::
         MonadIO m =>
         EvaluateEvent.EvaluateEvent ->
@@ -137,13 +136,22 @@ produceEvaluationTaskEvents store task writeToBatch | EvaluateTask.isFlakeJob ta
         i <- liftIO $ atomicModifyIORef msgCounter (\i0 -> (i0 + 1, i0))
         pure $ EvaluateEvent.Message m {Message.index = i}
       fixIndex other = pure other
-  eventCounter <- liftIO $ newIORef 0
-  topDerivationPaths <- liftIO $ newIORef mempty
-  let emit :: EvaluateEvent.EvaluateEvent -> App ()
+
+      isLimited :: EvaluateEvent.EvaluateEvent -> Bool
+      isLimited = \case
+        EvaluateEvent.Attribute {} -> True
+        EvaluateEvent.AttributeError {} -> True
+        EvaluateEvent.Message {} ->
+          -- a simplistic solution against unexpected runaway Messages.
+          -- we don't expect >1 message, especially since we have a separate eval log now,
+          -- so realistically it doesn't impact the attribute limit at all.
+          True
+        _ -> False
+
       emit update = do
-        n <- liftIO $ atomicModifyIORef eventCounter $ \n -> dup (n + 1)
-        if n > eventLimit
-          then do
+        when (isLimited update) do
+          n <- liftIO $ atomicModifyIORef eventCounter $ \n -> dup (n + 1)
+          when (n > eventLimit) do
             truncMsg <-
               fixIndex $
                 EvaluateEvent.Message
@@ -157,7 +165,19 @@ produceEvaluationTaskEvents store task writeToBatch | EvaluateTask.isFlakeJob ta
                     }
             emitSingle truncMsg
             panic "Evaluation limit reached."
-          else emitSingle =<< fixIndex update
+        emitSingle =<< fixIndex update
+  pure emit
+
+produceEvaluationTaskEvents ::
+  Store ->
+  EvaluateTask.EvaluateTask ->
+  (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
+  App ()
+produceEvaluationTaskEvents store task writeToBatch | EvaluateTask.isFlakeJob task = withWorkDir "eval" $ \tmpdir -> do
+  logLocM DebugS "Retrieving evaluation task (flake)"
+  let sync = syncer writeToBatch
+  topDerivationPaths <- liftIO $ newIORef mempty
+  emit <- makeEventEmitter writeToBatch
   let allowedPaths = []
 
   TraversalQueue.with $ \(derivationQueue :: Queue StorePath) ->
@@ -214,8 +234,7 @@ produceEvaluationTaskEvents store task writeToBatch | EvaluateTask.isFlakeJob ta
      in doIt
 produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpdir -> do
   logLocM DebugS "Retrieving evaluation task"
-  let emitSingle = writeToBatch . Syncable
-      sync = syncer writeToBatch
+  let sync = syncer writeToBatch
   inputLocations <-
     EvaluateTask.otherInputs task
       & M.traverseWithKey \k src -> do
@@ -283,36 +302,11 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
                     Eval.ExprArg $
                       -- TODO pass directly to avoid having to escape (or just escape properly)
                       "builtins.fromJSON ''" <> BL.toStrict (A.encode attrs) <> "'' // { outPath = " <> argPath <> "; }"
-  msgCounter <- liftIO $ newIORef 0
-  let fixIndex ::
-        MonadIO m =>
-        EvaluateEvent.EvaluateEvent ->
-        m EvaluateEvent.EvaluateEvent
-      fixIndex (EvaluateEvent.Message m) = do
-        i <- liftIO $ atomicModifyIORef msgCounter (\i0 -> (i0 + 1, i0))
-        pure $ EvaluateEvent.Message m {Message.index = i}
-      fixIndex other = pure other
-  eventCounter <- liftIO $ newIORef 0
+
   topDerivationPaths <- liftIO $ newIORef mempty
-  let emit :: EvaluateEvent.EvaluateEvent -> App ()
-      emit update = do
-        n <- liftIO $ atomicModifyIORef eventCounter $ \n -> dup (n + 1)
-        if n > eventLimit
-          then do
-            truncMsg <-
-              fixIndex $
-                EvaluateEvent.Message
-                  Message.Message
-                    { index = -1,
-                      typ = Message.Error,
-                      message =
-                        "Evaluation limit reached. Does your nix expression produce infinite attributes? Please make sure that your project is finite. If it really does require more than "
-                          <> show eventLimit
-                          <> " attributes or messages, please contact info@hercules-ci.com."
-                    }
-            emitSingle truncMsg
-            panic "Evaluation limit reached."
-          else emitSingle =<< fixIndex update
+
+  emit <- makeEventEmitter writeToBatch
+
   let allowedPaths = toList inputLocations <&> toS <&> encodeUtf8
   adHocSystem <-
     readFileMaybe (projectDir </> "ci-default-system.txt")
