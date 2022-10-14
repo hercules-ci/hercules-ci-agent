@@ -38,6 +38,11 @@ in
         # If a worker goes OOM, don't kill the main process. It needs to
         # report the failure and it's unlikely to be part of the problem.
         OOMPolicy = "continue";
+
+        # Work around excessive stack use by libstdc++ regex
+        # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86164
+        # A 256 MiB stack allows between 400 KiB and 1.5 MiB file to be matched by ".*".
+        LimitSTACK = 256 * 1024 * 1024;
       };
     };
 
