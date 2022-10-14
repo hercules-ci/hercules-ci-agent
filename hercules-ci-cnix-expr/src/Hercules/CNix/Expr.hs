@@ -18,6 +18,7 @@ module Hercules.CNix.Expr
     setDebug,
     setGlobalOption,
     setOption,
+    initThread,
     logInfo,
     withEvalState,
     withEvalStateConduit,
@@ -144,6 +145,13 @@ init =
 #endif
       nix::settings.experimentalFeatures.assign(features);
     } |]
+
+initThread :: IO ()
+initThread =
+  void
+    [C.throwBlock| void {
+      nix::detectStackOverflow();
+    }|]
 
 setTalkative :: IO ()
 setTalkative =
