@@ -111,9 +111,9 @@ let
                     (
                       addBuildDepends
                         (enableDWARFDebugging
-                          (addCompactUnwind basePkg)
+                          (addCompactUnwind (addBuildTool basePkg pkgs.makeBinaryWrapper))
                         )
-                        [ pkgs.makeWrapper pkgs.boost ]
+                        [ pkgs.boost ]
                     )
                     (
                       o:
@@ -170,21 +170,26 @@ let
                     justStaticExecutables (
                       haskell.lib.disableLibraryProfiling (
                         addCompactUnwind (
-                          callPkg super "hercules-ci-cli" ../hercules-ci-cli {
-                            hercules-ci-agent = self.hercules-ci-agent_lib;
-                          }
+                          haskell.lib.compose.addBuildTool pkgs.makeBinaryWrapper (
+                            callPkg super "hercules-ci-cli" ../hercules-ci-cli {
+                              hercules-ci-agent = self.hercules-ci-agent_lib;
+                            }
+                          )
                         )
                       )
                     )
                   )
                 )
-                (o: {
-                  postInstall =
-                    o.postInstall or ""
-                    + ''
-                      wrapProgram $out/bin/hci --prefix PATH : ${makeBinPath (lib.optional pkgs.stdenv.isLinux pkgs.runc)}
-                    '';
-                }
+                (o:
+                  let binPath = lib.optionals pkgs.stdenv.isLinux [ pkgs.runc ];
+                  in
+                  {
+                    postInstall =
+                      o.postInstall or ""
+                      + lib.optionalString (binPath != [ ]) ''
+                        wrapProgram $out/bin/hci --prefix PATH : ${makeBinPath binPath}
+                      '';
+                  }
                 );
               hercules-ci-cnix-expr =
                 addBuildTool
