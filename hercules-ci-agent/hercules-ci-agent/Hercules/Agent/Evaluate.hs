@@ -568,6 +568,9 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
               Event.OnPushHandler (ViaJSON e) -> do
                 emit $ EvaluateEvent.OnPushHandlerEvent e
                 continue
+              Event.OnScheduleHandler (ViaJSON e) -> do
+                emit $ EvaluateEvent.OnScheduleHandlerEvent e
+                continue
               Event.JobConfig -> do
                 emit $ EvaluateEvent.JobConfig JobConfig.JobConfig {sourceCaches = Nothing, binaryCaches = Nothing}
                 continue

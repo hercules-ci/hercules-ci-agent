@@ -2,17 +2,20 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Hercules.Agent.NixFile
   ( -- * Schemas
     HomeSchema,
     HerculesCISchema,
     OnPushSchema,
+    OnScheduleSchema,
     ExtraInputsSchema,
     InputDeclSchema,
     InputsSchema,
     InputSchema,
     OutputsSchema,
+    TimeConstraintsSchema,
 
     -- * Loading
     findNixFile,
@@ -23,12 +26,13 @@ module Hercules.Agent.NixFile
     loadDefaultHerculesCI,
 
     -- * @onPush@
-    getOnPushOutputValueByPath,
+    getVirtualValueByPath,
     parseExtraInputs,
   )
 where
 
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
+import qualified Data.Map as M
 import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration (InputDeclaration (SiblingInput), SiblingInput (MkSiblingInput))
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration
 import Hercules.Agent.NixFile.CiNixArgs (CiNixArgs (CiNixArgs))
@@ -54,7 +58,7 @@ import Hercules.CNix.Expr
     valueFromExpressionString,
   )
 import Hercules.CNix.Expr.Raw (RawValue)
-import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), Provenance (Other), StringWithoutContext, basicAttrsWithProvenance, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (.$), (>>$.), type (->.), type (->?), type (::.), type (::?))
+import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), Provenance (Other), StringWithoutContext, basicAttrsWithProvenance, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (.$), (>>$.), type (->.), type (->?), type (.), type (::.), type (::?), type (?), type (|.))
 import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.Error (escalateAs)
 import Paths_hercules_ci_agent (getDataFileName)
@@ -129,14 +133,20 @@ getHomeExprObject (CiNix f obj) = pure PSObject {value = obj, provenance = Schem
 
 type HomeSchema = Attrs '["herculesCI" ::? Attrs '[] ->? HerculesCISchema]
 
-type HerculesCISchema = Attrs '["onPush" ::? Dictionary OnPushSchema]
+type HerculesCISchema =
+  Attrs
+    '[ "onPush" ::? Dictionary OnPushSchema,
+       "onSchedule" ::? Dictionary OnScheduleSchema
+     ]
 
 type OnPushSchema =
   Attrs
     '[ "extraInputs" ::? ExtraInputsSchema,
-       "outputs" ::. InputsSchema ->? OutputsSchema,
+       "outputs" ::. OutputsFunction,
        "enable" ::? Bool
      ]
+
+type OutputsFunction = InputsSchema ->? OutputsSchema
 
 type ExtraInputsSchema = Dictionary InputDeclSchema
 
@@ -145,6 +155,30 @@ type InputDeclSchema =
     '[ "project" ::. StringWithoutContext,
        "ref" ::? StringWithoutContext
      ]
+
+type OnScheduleSchema =
+  Attrs
+    '[ "extraInputs" ::? ExtraInputsSchema,
+       "outputs" ::. OutputsFunction,
+       "enable" ::? Bool,
+       "when" ::. TimeConstraintsSchema
+     ]
+
+type TimeConstraintsSchema =
+  Attrs
+    '[ "hour" ::? HoursSchema,
+       "minute" ::? MinuteSchema,
+       "dayOfWeek" ::? DaysOfWeekSchema,
+       "dayOfMonth" ::? DaysOfMonthSchema
+     ]
+
+type HoursSchema = Int64 |. [Int64]
+
+type MinuteSchema = Int64
+
+type DaysOfWeekSchema = [StringWithoutContext]
+
+type DaysOfMonthSchema = [Int64]
 
 type InputsSchema = Dictionary InputSchema
 
@@ -197,14 +231,19 @@ parseInputDecl d = do
   ref <- d #? #ref >>= traverse fromPSObject
   pure $ SiblingInput $ MkSiblingInput {project = project, ref = ref}
 
--- | Given a path, return the onPush output or legacy ci.nix value
+-- | A function for retrieving values from `herculesCI` and legacy ci.nix.
+-- It treats the expression as tree of attribute sets, making the required
+-- function applications and context gather implicit.
+--
+-- For example, given a path, this will return the onPush output or legacy
+-- ci.nix value. Oversimplifying:
 --
 -- @@@
 -- e.g.  ["a" "b"]  => ((import file).herculesCI args).onPush.a.outputs.b
 --       or falling back to
 --       ["a" "b"]  => (import file legacyArgs).a.b
 -- @@@
-getOnPushOutputValueByPath ::
+getVirtualValueByPath ::
   Ptr EvalState ->
   FilePath ->
   HerculesCIArgs ->
@@ -212,28 +251,61 @@ getOnPushOutputValueByPath ::
   (Map ByteString InputDeclaration -> IO (Value NixAttrs)) ->
   [ByteString] ->
   IO (Maybe RawValue)
-getOnPushOutputValueByPath evalState filePath args resolveInputs attrPath = do
+getVirtualValueByPath evalState filePath args resolveInputs attrPath = do
   homeExpr <- escalateAs FatalError =<< loadNixFile evalState filePath (HerculesCIArgs.primaryRepo args)
-  onPush <- flip runReaderT evalState $ runMaybeT do
-    herculesCI <- MaybeT $ getHerculesCI homeExpr args
-    MaybeT $ herculesCI #? #onPush
+  flip runReaderT evalState do
+    herculesCI <- getHerculesCI homeExpr args
+    onPushMaybe <- join <$> for herculesCI \hci -> hci #? #onPush
+    onScheduleMaybe <- join <$> for herculesCI \hci -> hci #? #onSchedule
+    let require = MaybeT . pure
+        m2s k (Just a) = M.singleton k a
+        m2s _ Nothing = mempty
 
-  -- No backtracking. It's either legacy or not...
-  case onPush of
-    Just jobs -> flip runReaderT evalState $ do
+    runMaybeT do
       case attrPath of
-        [] -> pure $ Just $ Schema.value jobs -- Technically mapAttrs .outputs, meh
-        (jobName : attrPath') -> do
-          Schema.lookupDictBS jobName jobs >>= \case
-            Just selectedJob -> do
-              outputs <- resolveAndInvokeOutputs selectedJob (liftIO . resolveInputs)
-              outputAttrs <- Schema.check outputs
-              liftIO $ attrByPath evalState (rtValue outputAttrs) attrPath'
-            Nothing -> pure Nothing
-    Nothing -> do
-      attrByPath evalState (homeExprRawValue homeExpr) attrPath
+        [] | isJust onPushMaybe || isJust onScheduleMaybe -> do
+          onPush' <- traverse (liftIO . toRawValue evalState) onPushMaybe
+          onSchedule' <- traverse (liftIO . toRawValue evalState) onScheduleMaybe
+          liftIO $ toRawValue evalState (m2s ("onPush" :: ByteString) onPush' <> m2s "onSchedule" onSchedule')
+        "onPush" : [] -> do
+          Schema.value <$> require onPushMaybe
+        "onPush" : jobName : attrPath' -> do
+          onPush <- require onPushMaybe
+          job <- MaybeT $ Schema.lookupDictBS jobName onPush
+          outputs <- resolveAndInvokeOutputs job (liftIO . resolveInputs)
+          outputAttrs <- Schema.check outputs
+          MaybeT $ liftIO $ attrByPath evalState (rtValue outputAttrs) attrPath'
+        "onSchedule" : [] -> do
+          Schema.value <$> require onScheduleMaybe
+        "onSchedule" : jobName : attrPath' -> do
+          onSchedule <- require onScheduleMaybe
+          job <- MaybeT $ Schema.lookupDictBS jobName onSchedule
+          outputs <- resolveAndInvokeOutputs job (liftIO . resolveInputs)
+          outputAttrs <- Schema.check outputs
+          MaybeT $ liftIO $ attrByPath evalState (rtValue outputAttrs) attrPath'
+        _ ->
+          case onPushMaybe of
+            Just jobs -> do
+              case attrPath of
+                [] -> pure $ Schema.value jobs -- Technically mapAttrs .outputs, meh
+                (jobName : attrPath') -> do
+                  Schema.lookupDictBS jobName jobs >>= \case
+                    Just selectedJob -> do
+                      outputs <- resolveAndInvokeOutputs selectedJob (liftIO . resolveInputs)
+                      outputAttrs <- Schema.check outputs
+                      MaybeT $ liftIO $ attrByPath evalState (rtValue outputAttrs) attrPath'
+                    Nothing -> empty
+            Nothing -> do
+              MaybeT $ liftIO $ attrByPath evalState (homeExprRawValue homeExpr) attrPath
 
-resolveAndInvokeOutputs :: MonadEval m => PSObject OnPushSchema -> (Map ByteString InputDeclaration -> m (Value NixAttrs)) -> m (PSObject OutputsSchema)
+resolveAndInvokeOutputs ::
+  ( MonadEval m,
+    a . "outputs" ~ OutputsFunction,
+    a ? "extraInputs" ~ ExtraInputsSchema
+  ) =>
+  PSObject (Attrs a) ->
+  (Map ByteString InputDeclaration -> m (Value NixAttrs)) ->
+  m (PSObject OutputsSchema)
 resolveAndInvokeOutputs job resolveInputs = do
   inputs <- job #? #extraInputs >>= traverse parseExtraInputs
   resolved <- resolveInputs (fromMaybe mempty inputs)

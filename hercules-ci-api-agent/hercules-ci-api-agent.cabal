@@ -39,9 +39,11 @@ library
       Hercules.API.Agent.Evaluate.EvaluateEvent.JobConfig
       Hercules.API.Agent.Evaluate.EvaluateEvent.Message
       Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent
+      Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll
       Hercules.API.Agent.Evaluate.EvaluateTask
       Hercules.API.Agent.Evaluate.EvaluateTask.OnPush
+      Hercules.API.Agent.Evaluate.EvaluateTask.OnSchedule
       Hercules.API.Agent.Evaluate.ImmutableInput
       Hercules.API.Agent.Evaluate.ImmutableGitInput
       Hercules.API.Agent.LifeCycle

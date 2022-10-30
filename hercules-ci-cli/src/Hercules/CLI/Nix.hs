@@ -12,7 +12,7 @@ import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration (InputDeclarat
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration as InputDeclaration
 import qualified Hercules.API.Inputs.ImmutableGitInput as API.ImmutableGitInput
 import Hercules.API.Projects (getJobSource)
-import Hercules.Agent.NixFile (getOnPushOutputValueByPath)
+import Hercules.Agent.NixFile (getVirtualValueByPath)
 import qualified Hercules.Agent.NixFile.GitSource as GitSource
 import Hercules.Agent.NixFile.HerculesCIArgs (CISystems (CISystems), HerculesCIArgs)
 import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
@@ -97,7 +97,7 @@ ciNixAttributeCompleter = mkTextCompleter \partial -> do
     runAuthenticated do
       uio <- askUnliftIO
       liftIO $
-        getOnPushOutputValueByPath evalState (toS $ GitSource.outPath $ HerculesCIArgs.primaryRepo args) args (resolveInputs uio evalState projectMaybe) (encodeUtf8 <$> prefix) >>= \case
+        getVirtualValueByPath evalState (toS $ GitSource.outPath $ HerculesCIArgs.primaryRepo args) args (resolveInputs uio evalState projectMaybe) (encodeUtf8 <$> prefix) >>= \case
           Nothing -> pure []
           Just focusValue -> do
             match' evalState focusValue >>= \case

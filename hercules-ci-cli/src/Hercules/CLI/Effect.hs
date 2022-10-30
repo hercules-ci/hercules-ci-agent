@@ -11,7 +11,7 @@ import qualified Data.Text as T
 import Hercules.API.Id (Id (Id, idUUID))
 import qualified Hercules.API.Projects as Projects
 import qualified Hercules.API.Projects.CreateUserEffectTokenResponse as CreateUserEffectTokenResponse
-import Hercules.Agent.NixFile (getOnPushOutputValueByPath)
+import Hercules.Agent.NixFile (getVirtualValueByPath)
 import qualified Hercules.Agent.NixFile.GitSource as GitSource
 import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
@@ -132,7 +132,7 @@ evaluateEffectDerivation evalState store projectOptionMaybe ref attr = do
   let attrPath = T.split (== '.') attr
       nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
   uio <- askUnliftIO
-  valMaybe <- liftIO $ getOnPushOutputValueByPath evalState (toS nixFile) args (resolveInputs uio evalState projectOptionMaybe) (map encodeUtf8 attrPath)
+  valMaybe <- liftIO $ getVirtualValueByPath evalState (toS nixFile) args (resolveInputs uio evalState projectOptionMaybe) (map encodeUtf8 attrPath)
   -- valMaybe <- liftIO $ attrByPath evalState rootValue
   attrValue <- case valMaybe of
     Nothing -> do

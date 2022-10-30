@@ -8,6 +8,7 @@ import qualified Data.Aeson as A
 import Data.Binary
 import Data.UUID (UUID)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent)
+import Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent (OnScheduleHandlerEvent)
 import Hercules.Agent.WorkerProtocol.Event.Attribute
 import Hercules.Agent.WorkerProtocol.Event.AttributeError
 import Hercules.Agent.WorkerProtocol.Event.AttributeIFD (AttributeIFD)
@@ -26,6 +27,7 @@ data Event
   | EffectResult Int
   | JobConfig
   | OnPushHandler (ViaJSON OnPushHandlerEvent)
+  | OnScheduleHandler (ViaJSON OnScheduleHandlerEvent)
   | Exception Text
   deriving (Generic, Binary, Show, Eq)
 

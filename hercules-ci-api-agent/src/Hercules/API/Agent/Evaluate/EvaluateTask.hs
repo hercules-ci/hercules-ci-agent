@@ -5,6 +5,7 @@ module Hercules.API.Agent.Evaluate.EvaluateTask where
 
 import Data.Aeson (Value)
 import Hercules.API.Agent.Evaluate.EvaluateTask.OnPush (OnPush)
+import Hercules.API.Agent.Evaluate.EvaluateTask.OnSchedule (OnSchedule)
 import Hercules.API.Agent.Evaluate.ImmutableInput (ImmutableInput)
 import Hercules.API.Prelude
 import Hercules.API.Task (Task)
@@ -39,6 +40,7 @@ data Credential = Credential
 data Selector
   = ConfigOrLegacy
   | OnPush OnPush
+  | OnSchedule OnSchedule
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 type Identifier = Text

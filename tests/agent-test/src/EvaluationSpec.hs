@@ -17,6 +17,8 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as Buil
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent as OnPushHandlerEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent (DayOfWeek (..))
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent as OnScheduleHandlerEvent
 import Hercules.API.Agent.Evaluate.EvaluateTask (Identifier, Selector (ConfigOrLegacy))
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnPush as EvaluateTask.OnPush
@@ -232,6 +234,35 @@ spec = describe "Evaluation" $ do
           toS (AttributeEvent.derivationPath ae) `shouldContain` "/nix/store"
           toS (AttributeEvent.derivationPath ae) `shouldContain` "-default-package"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
+
+  context "when a flake with onSchedule is provided" $
+    it "reports the onSchedule handler" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/flake-onSchedule",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
+        s `shouldBe` TaskStatus.Successful ()
+        case r of
+          [EvaluateEvent.JobConfig _jc, EvaluateEvent.OnPushHandlerEvent _default, EvaluateEvent.OnScheduleHandlerEvent op] -> do
+            OnScheduleHandlerEvent.handlerName op `shouldBe` "update"
+            OnScheduleHandlerEvent.handlerExtraInputs op `shouldBe` mempty
+            OnScheduleHandlerEvent.when op
+              `shouldBe` OnScheduleHandlerEvent.TimeConstraints
+                { minute = Just 37,
+                  hour = Just [12],
+                  dayOfWeek = Just [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+                  dayOfMonth = Just [1, 2, 3, 4, 5, 6, 7]
+                }
+          _ ->
+            failWith $ "Events should be a [JobConfig, EvaluateEvent.OnPushHandlerEvent, OnScheduleHandlerEvent], not " <> show r
 
   context "when a flake with onPush is provided" $
     it "reports the onPush handler" $
