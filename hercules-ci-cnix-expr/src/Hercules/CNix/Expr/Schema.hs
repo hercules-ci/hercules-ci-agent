@@ -112,6 +112,7 @@ data NixException
       -- ^ expected
   | InvalidText Provenance UnicodeException
   | StringContextNotAllowed Provenance
+  | InvalidValue Provenance Text
   deriving (Show, Eq)
 
 instance Exception NixException where
@@ -119,6 +120,7 @@ instance Exception NixException where
   displayException (TypeError p actual expected) = "Expecting a value of type " <> toS (englishOr (map show expected)) <> ", but got type " <> show actual <> "." <> appendProvenance p
   displayException (InvalidText p ue) = displayException ue <> appendProvenance p
   displayException (StringContextNotAllowed p) = "This string must not have a context. It must be usable without building store paths." <> appendProvenance p
+  displayException (InvalidValue p msg) = "Invalid value. " <> toS msg <> appendProvenance p
 
 appendProvenance :: Provenance -> [Char]
 appendProvenance (Attribute p name) = "\n  in attribute " <> show name <> appendProvenance p
