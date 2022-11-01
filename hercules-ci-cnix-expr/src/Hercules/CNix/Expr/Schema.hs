@@ -77,6 +77,7 @@ module Hercules.CNix.Expr.Schema
     -- * Utilities
     uncheckedCast,
     englishOr,
+    traverseArray,
   )
 where
 
@@ -84,7 +85,7 @@ import Data.Coerce (coerce)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified GHC.TypeLits as TL
-import Hercules.CNix.Expr (CheckType, EvalState, HasRawValueType, NixAttrs, NixFunction, NixPath, NixString, RawValue, ToRawValue (..), ToValue (..), Value (rtValue), apply, checkType, getAttr, getRawValueType, getStringIgnoreContext, hasContext, rawValueType, toRawValue, valueFromExpressionString)
+import Hercules.CNix.Expr (CheckType, EvalState, HasRawValueType, NixAttrs, NixFunction, NixList, NixPath, NixString, RawValue, ToRawValue (..), ToValue (..), Value (rtValue), apply, checkType, getAttr, getRawValueType, getStringIgnoreContext, hasContext, rawValueType, toRawValue, valueFromExpressionString)
 import qualified Hercules.CNix.Expr as Expr
 import Hercules.CNix.Expr.Raw (RawValueType, canonicalRawType)
 import Protolude hiding (TypeError, check, evalState)
@@ -95,6 +96,7 @@ data Provenance
   | Other Text
   | Data
   | Attribute Provenance Text
+  | ListItem Provenance Int
   | Application Provenance Provenance
   deriving (Show, Eq, Ord)
 
@@ -118,6 +120,7 @@ instance Exception NixException where
 
 appendProvenance :: Provenance -> [Char]
 appendProvenance (Attribute p name) = "\n  in attribute " <> show name <> appendProvenance p
+appendProvenance (ListItem p index) = "\n  in list item " <> show index <> appendProvenance p
 appendProvenance (Other x) = "\n  in " <> toS x
 appendProvenance Data = ""
 appendProvenance (Application p _p) = "\n  in function result" <> appendProvenance p
@@ -333,6 +336,7 @@ type family NixTypeForSchema s where
   NixTypeForSchema NixPath = NixPath
   NixTypeForSchema Bool = Bool
   NixTypeForSchema Int64 = Int64
+  NixTypeForSchema [a] = NixList
 
 class PossibleTypesForSchema s where
   typesForSchema :: Proxy s -> [RawValueType]
@@ -350,6 +354,9 @@ instance PossibleTypesForSchema NixPath
 instance PossibleTypesForSchema Bool
 
 instance PossibleTypesForSchema Int64
+
+instance PossibleTypesForSchema [a] where
+  typesForSchema _ = [getRawValueType (Proxy @NixList)]
 
 instance
   (PossibleTypesForSchema a, PossibleTypesForSchema b) =>
@@ -524,3 +531,19 @@ instance FromPSObject Bool Bool where
 
 basicAttrsWithProvenance :: Value NixAttrs -> Provenance -> PSObject (Attrs '[])
 basicAttrsWithProvenance attrs p = PSObject {value = rtValue attrs, provenance = p}
+
+instance FromPSObject Int64 Int64 where
+  fromPSObject o = do
+    v <- check o
+    liftIO (Expr.fromValue v)
+
+instance forall a b. FromPSObject a b => FromPSObject [a] [b] where
+  fromPSObject o = do
+    traverseArray fromPSObject o
+
+traverseArray :: (MonadEval m) => (PSObject a -> m b) -> PSObject [a] -> m [b]
+traverseArray f o = do
+  ov <- check o
+  l <- liftIO (Expr.fromValue ov)
+  l & zip [0 ..] & traverse \(i, a) ->
+    f (PSObject (ListItem (provenance o) i) a :: PSObject a)
