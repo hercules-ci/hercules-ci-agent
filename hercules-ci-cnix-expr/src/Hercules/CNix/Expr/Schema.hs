@@ -48,9 +48,11 @@ module Hercules.CNix.Expr.Schema
     -- * Attribute sets as records
     type Attrs,
     type (::.),
+    type (.),
     (#.),
     (>>.),
     type (::?),
+    type (?),
     (#?),
     (>>?),
     (#?!),
@@ -210,7 +212,7 @@ f .$ a = do
         value = v
       }
 
-type AttrType as s = AttrType' as as s
+type as . s = AttrType' as as s
 
 type family AttrType' all as s where
   AttrType' all ((s ':. t) ': as) s = t
@@ -226,7 +228,7 @@ type family AttrType' all as s where
           'TL.:$$: 'TL.Text "  Known attributes are " 'TL.:<>: 'TL.ShowType all
       )
 
-type OptionalAttrType as s = OptionalAttrType' as as s
+type as ? s = OptionalAttrType' as as s
 
 type family OptionalAttrType' all as s where
   OptionalAttrType' all ((s ':? t) ': as) s = t
@@ -255,11 +257,11 @@ infixl 9 >>.
 type MonadEval m = (MonadIO m, MonadReader (Ptr EvalState) m)
 
 -- | A combination of '>>=' and '#.'.
-(>>.) :: (KnownSymbol s, AttrType as s ~ b, MonadEval m) => m (PSObject (Attrs' as w)) -> AttrLabel s -> m (PSObject b)
+(>>.) :: (KnownSymbol s, as . s ~ b, MonadEval m) => m (PSObject (Attrs' as w)) -> AttrLabel s -> m (PSObject b)
 mas >>. p = mas >>= \as -> as #. p
 
 -- | Attribute selector. @a #. #b@ is @a.b@ in Nix. Operates on attributes that are required (@_.@) in the schema, throwing an error if necessary.
-(#.) :: (KnownSymbol s, AttrType as s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (PSObject b)
+(#.) :: (KnownSymbol s, as . s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (PSObject b)
 as #. p = do
   evalState <- ask
   let name = T.pack (symbolVal p)
@@ -269,11 +271,11 @@ as #. p = do
     Just b -> pure PSObject {value = b, provenance = Attribute (provenance as) name}
 
 -- | A combination of '>>=' and '#?'.
-(>>?) :: (KnownSymbol s, OptionalAttrType as s ~ b, MonadEval m) => m (PSObject (Attrs' as w)) -> AttrLabel s -> m (Maybe (PSObject b))
+(>>?) :: (KnownSymbol s, as ? s ~ b, MonadEval m) => m (PSObject (Attrs' as w)) -> AttrLabel s -> m (Maybe (PSObject b))
 mas >>? p = mas >>= \as -> as #? p
 
 -- | Attribute selector. @a #? #b@ is @a.b@ in Nix, but handles the missing case without exception. Operates on attributes that are optional (@_?@) in the schema, throwing an error if necessary.
-(#?) :: (KnownSymbol s, OptionalAttrType as s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (Maybe (PSObject b))
+(#?) :: (KnownSymbol s, as ? s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (Maybe (PSObject b))
 as #? p = do
   evalState <- ask
   let name = T.pack (symbolVal p)
@@ -285,7 +287,7 @@ as #? p = do
 --
 -- It provides a decent error message with attrset provenance, but can't provide
 -- extra context like you can when manually handling the @a '#?' b@ 'Nothing' case.
-(#?!) :: (KnownSymbol s, OptionalAttrType as s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (PSObject b)
+(#?!) :: (KnownSymbol s, as ? s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (PSObject b)
 as #?! p = do
   as #? p >>= \case
     Nothing -> throwIO $ MissingAttribute (provenance as) (T.pack (symbolVal p))
