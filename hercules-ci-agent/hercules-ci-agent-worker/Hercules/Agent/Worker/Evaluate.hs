@@ -23,13 +23,14 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent (OnPushHandlerEvent))
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent
-import Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent (DayOfWeek (..), OnScheduleHandlerEvent (OnScheduleHandlerEvent), TimeConstraints (TimeConstraints))
+import Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent (OnScheduleHandlerEvent (OnScheduleHandlerEvent), TimeConstraints (TimeConstraints))
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnPush as OnPush
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnSchedule as OnSchedule
 import qualified Hercules.API.Agent.Evaluate.ImmutableGitInput as API.ImmutableGitInput
 import qualified Hercules.API.Agent.Evaluate.ImmutableInput as API.ImmutableInput
+import Hercules.API.DayOfWeek (DayOfWeek (..))
 import Hercules.Agent.NixFile (HerculesCISchema, InputsSchema, OutputsSchema, getHerculesCI, homeExprRawValue, loadNixFile, parseExtraInputs)
 import qualified Hercules.Agent.NixFile as NixFile
 import Hercules.Agent.NixFile.HerculesCIArgs (CISystems (CISystems), HerculesCIMeta (HerculesCIMeta), fromGitSource)
@@ -387,25 +388,51 @@ sendConfig evalState isFlake herculesCI = flip runReaderT evalState $ do
 
 parseWhen :: MonadEval m => PSObject NixFile.TimeConstraintsSchema -> m Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent.TimeConstraints
 parseWhen w = do
-  minute_ <- w #? #minute >>= traverse fromPSObject
+  minute_ <-
+    w #? #minute >>= traverse \obj -> do
+      v <- fromPSObject obj
+      if v >= 0 && v < 60
+        then pure v
+        else throwIO $ Schema.InvalidValue (provenance obj) $ "minute value " <> show v <> " is out of range [0..59]."
+
+  let validateHour obj = do
+        v <- fromPSObject obj
+        if v >= 0 && v < 24
+          then pure v
+          else throwIO $ Schema.InvalidValue (provenance obj) $ "hour value " <> show v <> " is out of range [0..23]."
+
   hour_ <-
     w #? #hour
       >>= traverse
-        ( (\oneInt -> fromPSObject oneInt <&> \x -> [x])
-            |! (\intList -> fromPSObject intList)
+        ( (\oneInt -> validateHour oneInt <&> \x -> [x])
+            |! ( \hours -> do
+                   v <- traverseArray validateHour hours
+                   when (null v) do
+                     throwIO $ Schema.InvalidValue (provenance hours) $ "hour must not be an empty list."
+                   pure v
+               )
         )
   dayOfWeek <-
     w #? #dayOfWeek
       >>= traverse
         ( \dayStringsObject -> do
-            dayStringsObject & traverseArray parseDayOfWeek
+            days <- traverseArray parseDayOfWeek dayStringsObject
+            when (null days) do
+              throwIO $ Schema.InvalidValue (provenance dayStringsObject) $ "dayOfWeek must not be an empty list."
+            pure days
         )
   dayOfMonth <-
     w #? #dayOfMonth
-      >>= traverse
-        fromPSObject
-
-  -- TODO validate number ranges
+      >>= traverse \daysOfMonth -> do
+        v <-
+          daysOfMonth & traverseArray \obj -> do
+            v <- fromPSObject obj
+            if v >= 0 && v <= 31
+              then pure v
+              else throwIO $ Schema.InvalidValue (provenance obj) $ "month value " <> show v <> " is out of range [0..31]."
+        when (null v) do
+          throwIO $ Schema.InvalidValue (provenance daysOfMonth) $ "dayOfMonth must not be an empty list."
+        pure v
 
   pure $
     TimeConstraints

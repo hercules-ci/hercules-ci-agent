@@ -17,13 +17,13 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as Buil
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent as OnPushHandlerEvent
-import Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent (DayOfWeek (..))
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent as OnScheduleHandlerEvent
 import Hercules.API.Agent.Evaluate.EvaluateTask (Identifier, Selector (ConfigOrLegacy))
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnPush as EvaluateTask.OnPush
 import Hercules.API.Agent.Evaluate.ImmutableInput (ImmutableInput (ArchiveUrl))
 import qualified Hercules.API.Agent.Evaluate.ImmutableInput as API.ImmutableInput
+import Hercules.API.DayOfWeek (DayOfWeek (..))
 import Hercules.API.Id (Id (Id))
 import qualified Hercules.API.TaskStatus as TaskStatus
 import MockTasksApi

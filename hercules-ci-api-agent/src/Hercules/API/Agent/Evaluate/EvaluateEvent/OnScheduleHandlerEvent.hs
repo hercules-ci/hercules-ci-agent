@@ -3,6 +3,7 @@
 module Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent where
 
 import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration (InputDeclaration)
+import Hercules.API.DayOfWeek (DayOfWeek)
 import Hercules.API.Prelude
 
 data OnScheduleHandlerEvent = OnScheduleHandlerEvent
@@ -11,9 +12,6 @@ data OnScheduleHandlerEvent = OnScheduleHandlerEvent
     isFlake :: Bool,
     when :: TimeConstraints
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
-
-data DayOfWeek = Mon | Tue | Wed | Thu | Fri | Sat | Sun
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 data TimeConstraints = TimeConstraints
