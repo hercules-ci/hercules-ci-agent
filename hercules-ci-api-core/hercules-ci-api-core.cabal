@@ -20,6 +20,7 @@ source-repository head
 
 library
   exposed-modules:
+      Hercules.API.DayOfWeek
       Hercules.API.Id
       Hercules.API.Name
       Hercules.API.Prelude
