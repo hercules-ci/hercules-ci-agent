@@ -46,6 +46,7 @@ import Hercules.CNix.Expr
     autoCallFunction,
     evalFile,
     getAttr,
+    getFlakeFromFlakeRef,
     getLocalFlake,
     match',
     toRawValue,
@@ -59,7 +60,8 @@ import Hercules.Error (escalateAs)
 import Paths_hercules_ci_agent (getDataFileName)
 import Protolude hiding (evalState)
 import qualified System.Directory as Dir
-import System.FilePath (takeFileName, (</>))
+import System.FilePath (takeDirectory, takeFileName, (</>))
+import UnliftIO.Directory (doesPathExist)
 
 type Ambiguity = [FilePath]
 
@@ -101,7 +103,19 @@ loadNixFile evalState projectPath src = runExceptT do
   nixFile <- ExceptT $ findNixFile projectPath
   if takeFileName nixFile == "flake.nix"
     then do
-      val <- liftIO $ getLocalFlake evalState (toS projectPath) >>= assertType evalState
+      -- NB This branch of logic is not used by hercules-ci-agent, which fetches
+      --    directly from flakeref and does not go through a local path.
+      --    An actual consumer of this branch is the hci CLI.
+
+      -- TODO: Can Nix decide isGit (and more) for us?
+      isGit <- doesPathExist (takeDirectory nixFile </> ".git")
+      val <-
+        liftIO
+          ( if isGit
+              then getFlakeFromFlakeRef evalState ("git+file://" <> encodeUtf8 (toS projectPath))
+              else getLocalFlake evalState (toS projectPath)
+          )
+          >>= assertType evalState
       pure (Flake val)
     else do
       rootValueOrFunction <- liftIO $ evalFile evalState nixFile
