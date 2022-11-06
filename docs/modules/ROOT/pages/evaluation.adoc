@@ -127,11 +127,6 @@ These "output" attributes can be
 
 During the execution of the job, first, all derivations will be built. If the build went well, all effects will run, concurrently with effects in the same job, but only after preceding jobs have either completed or failed to build.
 
-[[attributes-herculesCI.onPush-outputs.effects]]
-=== `onPush.<name>.outputs.effects` Attributes
-
-This is this the only location in `outputs` where effects are allowed.
-
 ==== Derivations, shells and effects
 
 All three are defined through derivations.
@@ -151,6 +146,11 @@ All three are defined through derivations.
 Unlike the legacy format and `nix-build`, nested attribute sets _are_ traversed by default.
 
 You can mark attribute sets not to be traversed by adding an attribute `recurseForDerivations = false` inside them, as is done by the function `lib.dontRecurseIntoAttrs` of type `attrs -> attrs`.
+
+[[attributes-herculesCI.onPush-outputs.effects]]
+=== `onPush.<name>.outputs.effects` Attributes
+
+This is this the only location in `outputs` where effects are allowed.
 
 == Default `onPush` job
 
