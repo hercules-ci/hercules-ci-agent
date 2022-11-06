@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+ - `herculesCI.onSchedule` jobs, which a created at set times. These can be used
+   to automate work that doesn't start with a code change, such as automatic
+   updates or impure periodic deployments.
+
 ### Fixed
 
  - Work around excessive stack use by libstdc++ regex [issue](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86164)
