@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Hercules.CLI.Git where
 
@@ -71,6 +72,10 @@ getUpstreamURL = do
       (getBranchUpstream >>= getRemoteURL) `onException` do
         putErrText "hci: could not determine git upstream repository url"
 
+getUpstreamRef :: IO Text
+getUpstreamRef =
+  toS <$> readProcessString "git" ["rev-parse", "--symbolic-full-name", "@{u}"] mempty
+
 getBranchUpstream :: IO Text
 getBranchUpstream = do
   upstreamRef <-
@@ -82,12 +87,42 @@ getBranchUpstream = do
     else do
       exitMsg "upstream branch is not remote"
 
+getCurrentBranchMaybe :: IO (Maybe Text)
+getCurrentBranchMaybe =
+  do
+    x <- readProcessString "git" ["rev-parse", "--symbolic-full-name", "HEAD"] mempty
+
+    case x of
+      'r' : 'e' : 'f' : 's' : '/' : 'h' : 'e' : 'a' : 'd' : 's' : '/' : branch -> pure (Just (toS branch))
+      _ -> pure Nothing
+    `catch` \(_e :: SomeException) ->
+      pure Nothing
+
 getIsDefault :: IO Bool
 getIsDefault = do
-  upstream <- getBranchUpstream
-  upstreamRef <- readProcessString "git" ["rev-parse", "--symbolic-full-name", "@{u}"] mempty
-  upstreamDefaultRef <- readProcessString "git" ["rev-parse", "--symbolic-full-name", toS upstream <> "/HEAD"] mempty
-  pure (upstreamRef == upstreamDefaultRef)
+  try getUpstreamRef >>= \case
+    Right _upstreamRef ->
+      do
+        upstream <- getBranchUpstream
+        upstreamRef <- readProcessString "git" ["rev-parse", "--symbolic-full-name", "@{u}"] mempty
+        upstreamDefaultRef <- readProcessString "git" ["rev-parse", "--symbolic-full-name", toS upstream <> "/HEAD"] mempty
+        pure (upstreamRef == upstreamDefaultRef)
+        `onException` putErrText "hci: could not determine whether branch matches default branch"
+    Left (_ :: SomeException) -> do
+      getCurrentBranchMaybe >>= \case
+        Nothing ->
+          exitMsg "hci: Can't infer the context of your effect when you're on a git detached head."
+        Just x -> do
+          remotes <- getRemotes
+          case remotes of
+            [upstream] -> do
+              putErrText "hci: Your branch does not seem to have an upstream. Assuming the local branch name and the single remote."
+              upstreamDefaultRef <- readProcessString "git" ["rev-parse", "--symbolic-full-name", toS upstream <> "/HEAD"] mempty
+              pure $ upstreamDefaultRef == "refs/heads/" ++ toS x
+            [] ->
+              exitMsg "hci: Can't infer whether you're on the default branch, because the repository does not have a remote."
+            _multiple ->
+              exitMsg "hci: Can't infer whether you're on the default branch, because the current branch does not have an upstream, and multiple remotes exist. Please set the upstream for the current branch."
 
 getRemoteURL :: Text -> IO Text
 getRemoteURL remoteName =
