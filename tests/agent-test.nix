@@ -28,7 +28,7 @@ in
         # Keep build dependencies around, because we'll be offline
         environment.etc."reference-stdenv".text = builtins.toJSON (pkgs.runCommand "foo" { } "").drvAttrs;
         # It's an offline test, so no caches are available
-        nix.binaryCaches = lib.mkForce [ ];
+        nix.settings.substituters = lib.mkForce [ ];
         nix.package = lib.mkIf daemonIsNixUnstable pkgs.nixUnstable;
         services.hercules-ci-agent.enable = true;
         # Instead of the default, we want the nix library version from the build matrix (which should include at least the default)

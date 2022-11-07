@@ -117,7 +117,7 @@ let
 
             # Trusted user allows simplified configuration and better performance
             # when operating in a cluster.
-            nix.trustedUsers = [ config.systemd.services."hercules-ci-agent${suffix}".serviceConfig.User ];
+            nix.settings.trusted-users = [ config.systemd.services."hercules-ci-agent${suffix}".serviceConfig.User ];
 
             users.users.${user} = {
               home = cfg.settings.baseDirectory;
