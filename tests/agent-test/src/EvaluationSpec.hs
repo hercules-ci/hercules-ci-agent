@@ -11,6 +11,7 @@ import Hercules.API.Agent.Evaluate.EvaluateEvent
   ( EvaluateEvent,
   )
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent as AttributeEffectEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent as AttributeErrorEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as BuildRequired
@@ -46,6 +47,7 @@ attrLike = filter isAttrLike
 
 isAttrLike :: EvaluateEvent -> Bool
 isAttrLike EvaluateEvent.Attribute {} = True
+isAttrLike EvaluateEvent.AttributeEffect {} = True
 isAttrLike EvaluateEvent.AttributeError {} = True
 isAttrLike EvaluateEvent.Message {} = True -- this is a bit of a stretch but hey
 isAttrLike _ = False
@@ -378,25 +380,24 @@ spec = describe "Evaluation" $ do
         s `shouldBe` TaskStatus.Successful ()
         case attrLike r of
           [ EvaluateEvent.Attribute depsOnly,
-            EvaluateEvent.Attribute effect,
+            EvaluateEvent.AttributeEffect effect,
             EvaluateEvent.Attribute ignoreFail,
             EvaluateEvent.Attribute regular,
             EvaluateEvent.Attribute requireFail,
             EvaluateEvent.Attribute shell
             ] -> do
               AttributeEvent.expressionPath depsOnly `shouldBe` ["deps-only"]
-              AttributeEvent.expressionPath effect `shouldBe` ["effect"]
+              AttributeEffectEvent.expressionPath effect `shouldBe` ["effect"]
               AttributeEvent.expressionPath ignoreFail `shouldBe` ["ignore-fail"]
               AttributeEvent.expressionPath regular `shouldBe` ["regular"]
               AttributeEvent.expressionPath requireFail `shouldBe` ["require-fail"]
               AttributeEvent.expressionPath shell `shouldBe` ["shell"]
               AttributeEvent.typ depsOnly `shouldBe` AttributeEvent.DependenciesOnly
-              AttributeEvent.typ effect `shouldBe` AttributeEvent.Effect
               AttributeEvent.typ ignoreFail `shouldBe` AttributeEvent.MayFail
               AttributeEvent.typ regular `shouldBe` AttributeEvent.Regular
               AttributeEvent.typ requireFail `shouldBe` AttributeEvent.MustFail
               AttributeEvent.typ shell `shouldBe` AttributeEvent.DependenciesOnly
-          _ -> failWith $ "Events should be six attributes, not: " <> show r
+          _ -> failWith $ "Attribute events should be six attributes, not: " <> show (attrLike r)
   context "when the nix expression is a naked derivation" $
     it "returns that attribute" $
       \srv -> do
@@ -829,12 +830,12 @@ spec = describe "Evaluation" $ do
           )
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
-        [ EvaluateEvent.Attribute a1,
+        [ EvaluateEvent.AttributeEffect a1,
           EvaluateEvent.AttributeError ae1
           ] -> do
-            AttributeEvent.expressionPath a1 `shouldBe` ["effects", "ok"]
-            toS (AttributeEvent.derivationPath a1) `shouldContain` "/nix/store"
-            toS (AttributeEvent.derivationPath a1) `shouldContain` "-effect-2"
+            AttributeEffectEvent.expressionPath a1 `shouldBe` ["effects", "ok"]
+            toS (AttributeEffectEvent.derivationPath a1) `shouldContain` "/nix/store"
+            toS (AttributeEffectEvent.derivationPath a1) `shouldContain` "-effect-2"
 
             AttributeErrorEvent.expressionPath ae1 `shouldBe` ["illegal"]
             toS (AttributeErrorEvent.errorMessage ae1)

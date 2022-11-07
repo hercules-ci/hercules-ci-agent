@@ -31,6 +31,7 @@ library
       Hercules.API.Agent.Evaluate.EvaluateEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent
+      Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeIFDEvent
       Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest
       Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired
@@ -105,8 +106,10 @@ test-suite hercules-api-agent-unit-tests
   other-modules:
       Spec
       AesonSupport
-      Hercules.API.Agent.LifeCycle.AgentInfoSpec
+      Hercules.API.Agent.Effect.EffectTaskSpec
+      Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEventSpec
       Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfoSpec
+      Hercules.API.Agent.LifeCycle.AgentInfoSpec
       Hercules.Formats.CachixCacheSpec
       Hercules.Formats.SecretSpec
   hs-source-dirs:
@@ -122,6 +125,7 @@ test-suite hercules-api-agent-unit-tests
     , exceptions
     , hashable
     , hercules-ci-api-agent
+    , hercules-ci-api-core
     , hspec
     , http-api-data
     , http-media

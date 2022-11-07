@@ -11,6 +11,7 @@ import Conduit
 import qualified Control.Concurrent.Async.Lifted as Async.Lifted
 import Control.Concurrent.Chan.Lifted
 import Control.Exception.Lifted (finally)
+import qualified Control.Exception.Safe as Safe
 import Control.Lens (at, (^?))
 import Control.Monad.IO.Unlift (askUnliftIO, unliftIO)
 import qualified Data.Aeson as A
@@ -34,6 +35,7 @@ import Hercules.API.Agent.Evaluate
   )
 import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatus
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent as AttributeEffectEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent as AttributeErrorEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeIFDEvent as AttributeIFDEvent
@@ -50,7 +52,6 @@ import qualified Hercules.API.Agent.Evaluate.ImmutableInput as ImmutableInput
 import Hercules.API.Servant (noContent)
 import Hercules.API.Task (Task)
 import qualified Hercules.Agent.Cache as Agent.Cache
-import qualified Hercules.Agent.Cachix.Env as Cachix.Env
 import qualified Hercules.Agent.Client
 import qualified Hercules.Agent.Config as Config
 import Hercules.Agent.Env
@@ -83,8 +84,10 @@ import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as WorkerAttribut
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as WorkerAttributeError
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeIFD as AttributeIFD
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
-import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON))
+import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON), fromViaJSON)
 import Hercules.CNix.Store (Store, StorePath, parseStorePath)
+import qualified Hercules.CNix.Store as CNix
+import Hercules.Effect (parseDrvSecretsMap)
 import Hercules.Error (defaultRetry, quickRetry)
 import qualified Network.HTTP.Client.Conduit as HTTP.Conduit
 import qualified Network.HTTP.Simple as HTTP.Simple
@@ -140,6 +143,7 @@ makeEventEmitter writeToBatch = do
       isLimited :: EvaluateEvent.EvaluateEvent -> Bool
       isLimited = \case
         EvaluateEvent.Attribute {} -> True
+        EvaluateEvent.AttributeEffect {} -> True
         EvaluateEvent.AttributeError {} -> True
         EvaluateEvent.Message {} ->
           -- a simplistic solution against unexpected runaway Messages.
@@ -197,6 +201,7 @@ produceEvaluationTaskEvents store task writeToBatch | EvaluateTask.isFlakeJob ta
         evaluation = do
           let evalProc =
                 do runEvalProcess
+                  store
                   tmpdir -- unused
                   ""
                   mempty
@@ -221,6 +226,9 @@ produceEvaluationTaskEvents store task writeToBatch | EvaluateTask.isFlakeJob ta
           case msg of
             EvaluateEvent.Attribute ae -> do
               storePath <- liftIO $ parseStorePath store (encodeUtf8 $ AttributeEvent.derivationPath ae)
+              addTopDerivation storePath
+            EvaluateEvent.AttributeEffect ae -> do
+              storePath <- liftIO $ parseStorePath store (encodeUtf8 $ AttributeEffectEvent.derivationPath ae)
               addTopDerivation storePath
             _ -> pass
           emit msg
@@ -337,6 +345,7 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
             Nix.withExtraOptions [("system", T.strip s) | Just s <- [adHocSystem]] do
               let evalProc =
                     do runEvalProcess
+                      store
                       projectDir
                       file
                       autoArguments
@@ -362,6 +371,9 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
               EvaluateEvent.Attribute ae -> do
                 storePath <- liftIO $ parseStorePath store (encodeUtf8 $ AttributeEvent.derivationPath ae)
                 addTopDerivation storePath
+              EvaluateEvent.AttributeEffect ae -> do
+                storePath <- liftIO $ parseStorePath store (encodeUtf8 $ AttributeEffectEvent.derivationPath ae)
+                addTopDerivation storePath
               _ -> pass
             emit msg
           emitDrvs =
@@ -384,6 +396,7 @@ isValidName cs@(c0 : _) = all isValidNameChar cs && c0 /= '.'
         || c `elem` ("+-._?=" :: [Char])
 
 runEvalProcess ::
+  CNix.Store ->
   FilePath ->
   FilePath ->
   Map Text Eval.Arg ->
@@ -397,7 +410,7 @@ runEvalProcess ::
   EvaluateTask.EvaluateTask ->
   [ByteString] ->
   App ()
-runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos flush task allowedPaths = do
+runEvalProcess store projectDir file autoArguments nixPath emit uploadDerivationInfos flush task allowedPaths = do
   extraOpts <- Nix.askExtraOptions
   bulkBaseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   apiBaseUrl <- asks (toS . showBaseUrl . Env.herculesBaseUrl)
@@ -478,6 +491,40 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
         listen
           workerEventsP
           ( \case
+              Event.Attribute a | WorkerAttribute.typ a == WorkerAttribute.Effect -> do
+                let drvPath = WorkerAttribute.drv a
+                secretsMay <- liftIO $ Safe.try do
+                  drvStorePath <- CNix.parseStorePath store drvPath
+                  derivation <- CNix.getDerivation store drvStorePath
+                  drvEnv <- CNix.getDerivationEnv derivation
+                  pure $ parseDrvSecretsMap drvEnv
+
+                let emitError msg =
+                      emit $
+                        EvaluateEvent.AttributeError $
+                          AttributeErrorEvent.AttributeErrorEvent
+                            { AttributeErrorEvent.expressionPath = decode <$> WorkerAttribute.path a,
+                              AttributeErrorEvent.errorMessage = msg,
+                              AttributeErrorEvent.errorType = Nothing,
+                              AttributeErrorEvent.errorDerivation = Just $ decodeUtf8With lenientDecode (WorkerAttribute.drv a),
+                              AttributeErrorEvent.trace = Nothing
+                            }
+                case secretsMay of
+                  Right (Right secrets) -> do
+                    emit $
+                      EvaluateEvent.AttributeEffect $
+                        AttributeEffectEvent.AttributeEffectEvent
+                          { expressionPath = decode <$> WorkerAttribute.path a,
+                            derivationPath = decode $ WorkerAttribute.drv a,
+                            secretsToUse = secrets
+                          }
+                  Right (Left userError) -> do
+                    emitError userError
+                  Left technicalError -> do
+                    katipAddContext (sl "message" (displayException (technicalError :: SomeException))) do
+                      logLocM ErrorS "An unexpected exception occurred while reading an effect."
+                    emitError "An unexpected exception occurred while reading the effect. The error message has been logged locally on the agent."
+                continue
               Event.Attribute a -> do
                 emit $
                   EvaluateEvent.Attribute $
@@ -527,7 +574,6 @@ runEvalProcess projectDir file autoArguments nixPath emit uploadDerivationInfos 
                       }
                 continue
               Event.Build drv outputName notAttempt waitForStatus -> do
-                store <- asks (Cachix.Env.nixStore . Env.cachixEnv)
                 storePath <- liftIO (parseStorePath store drv)
                 let drvText = decode drv
                 withNamedContext "derivation" (decode drv) $ do

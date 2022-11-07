@@ -51,6 +51,8 @@ The xref:agent-config.adoc#apiBaseUrl[apiBaseUrl] configuration value.
 
 A file path pointing to a file with secrets data.
 
+The contents of the file form a dictionary of names (mostly from `secretsMap`) to secrets, each with a `data` object.
+
 See <<Secrets>>.
 
 [[HERCULES_CI_PROJECT_ID]]
@@ -67,24 +69,51 @@ Example: `github/hercules-ci/hercules-ci-agent`
 
 == Secrets
 
-The contents of `$HERCULES_CI_SECRETS_JSON` are computed by looking up the `secretsMap` values in the agent's xref:secrets-json.adoc[`secrets.json`], and filtering using the xref:secrets-json.adoc#condition[`condition`] field. Its contents arise from roughly the following pseudocode:
+The `secretsMap` declares what secrets should be provided to the effect.
 
-[source,nix,subs="+macros"]
-----
-agentSecrets = fromJSON (readFile xref:secrets-json.adoc[secrets.json]);
-HERCULES_CI_SECRETS_JSON = writeSecureFile
-  (
-    (filterAttrs (k: secret: xref:secrets-json.adoc#condition[conditionHolds] secret.condition)
-      (mapAttrs (k: agentSecretName: agentSecrets.${agentSecretName})
-        drv.secretsMap
-      )
-    ) // {
-      hercules-ci = {
-        data.<<api-token,token>> = <<api-token,…>>;
-      };
+The keys of this attribute set correspond to the keys of the file `$HERCULES_CI_SECRETS_JSON` inside the effect sandbox.
+
+The values of the attribute specify where the secret may be retrieved. Each value can be:
+
+* A string, indicating a secret to be read from the agent's xref:secrets-json.adoc[`secrets.json`]
++
+Local secrets are only granted based on the xref:secrets-json.adoc#condition[`condition`].
+
+* or an attribute set with a `type` attribute containing:
++
+`"GitToken"`:: Retrieve a short-lived token that gives write access to the repository that contains the effect.
++
+_Available since hercules-ci-agent 0.9.8_
++
+The `data` of this secret contains a string field called `token`, which can be used for authentication.
++
+Example `secretsMap` value:
++
+```nix
+secretsMap = {
+  git = { type = "GitToken"; };
+};
+```
++
+Example <<HERCULES_CI_SECRETS_JSON>> contents in sandbox:
++
+```json
+{
+  "git": {
+    "data": {
+      "token": "osvh58kfy..."
     }
-  );
-----
+  }
+}
+```
++
+Example `hercules-ci-effects` xref:hercules-ci-effects:ROOT:reference/bash-functions/readSecretString.adoc[`readSecretString`] call:
++
+```bash
+readSecretString "git" ".token"
+```
+
+Additionally, an API token is provided in the `hercules-ci` field of `$HERCULES_CI_SECRETS_JSON`.
 
 [[api-token]]
 === API token

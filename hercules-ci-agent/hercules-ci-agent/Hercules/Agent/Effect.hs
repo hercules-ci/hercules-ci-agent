@@ -73,6 +73,7 @@ performEffect effectTask = withWorkDir "effect" $ \workDir -> do
                   },
               materializeDerivation = materialize,
               secretsPath = toS $ Config.secretsJsonPath config,
+              serverSecrets = Sensitive $ ViaJSON (EffectTask.serverSecrets effectTask),
               token = Sensitive (EffectTask.token effectTask),
               apiBaseURL = Config.herculesApiBaseURL config,
               projectId = EffectTask.projectId effectTask,
