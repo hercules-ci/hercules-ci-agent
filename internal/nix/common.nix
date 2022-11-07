@@ -10,17 +10,17 @@
 let
   inherit (lib)
     filterAttrs
+    literalExpression
     mkIf
     mkOption
     mkRemovedOptionModule
     mkRenamedOptionModule
     types
     ;
-  literalDocBook = lib.literalDocBook or lib.literalExample;
-  literalExpression = lib.literalExpression or lib.literalExample;
+  literalMD = lib.literalMD or (x: lib.literalDocBook "Documentation not rendered. Please upgrade to a newer NixOS with markdown support.");
+  mdDoc = lib.mdDoc or (x: "Documentation not rendered. Please upgrade to a newer NixOS with markdown support.");
 
-  cfg =
-    config.services.hercules-ci-agent;
+  cfg = config.services.hercules-ci-agent;
 
   inherit (import ./settings.nix { inherit pkgs lib; }) format settingsModule;
 
@@ -63,26 +63,26 @@ in
     enable = mkOption {
       type = types.bool;
       default = false;
-      description = ''
+      description = mdDoc ''
         Enable to run Hercules CI Agent as a system service.
 
-        <link xlink:href="https://hercules-ci.com">Hercules CI</link> is a
+        [Hercules CI](https://hercules-ci.com) is a
         continuous integation service that is centered around Nix.
 
-        Support is available at <link xlink:href="mailto:help@hercules-ci.com">help@hercules-ci.com</link>.
+        Support is available at [help@hercules-ci.com](mailto:help@hercules-ci.com).
       '';
     };
     checkNix = mkOption {
       type = types.bool;
       default = true;
-      description = ''
+      description = mdDoc ''
         Whether to make sure that the system's Nix (nix-daemon) is compatible.
 
         If you set this to false, please keep up with the change log.
       '';
     };
     package = mkOption {
-      description = ''
+      description = mdDoc ''
         Package containing the bin/hercules-ci-agent executable.
       '';
       type = types.package;
@@ -90,12 +90,12 @@ in
       defaultText = literalExpression "pkgs.hercules-ci-agent";
     };
     settings = mkOption {
-      description = ''
-        These settings are written to the <literal>agent.toml</literal> file.
+      description = mdDoc ''
+        These settings are written to the `agent.toml` file.
 
         Not all settings are listed as options, can be set nonetheless.
 
-        For the exhaustive list of settings, see <link xlink:href="https://docs.hercules-ci.com/hercules-ci/reference/agent-config/"/>.
+        For the exhaustive list of settings, see <https://docs.hercules-ci.com/hercules-ci/reference/agent-config/>.
       '';
       type = types.submoduleWith { modules = [ settingsModule ]; };
     };
@@ -109,8 +109,8 @@ in
     tomlFile = mkOption {
       type = types.path;
       internal = true;
-      defaultText = literalDocBook "generated <literal>hercules-ci-agent.toml</literal>";
-      description = ''
+      defaultText = literalMD "generated `hercules-ci-agent.toml`";
+      description = mdDoc ''
         The fully assembled config file.
       '';
     };

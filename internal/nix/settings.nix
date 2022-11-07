@@ -3,10 +3,11 @@
 let
   inherit (lib)
     types
+    literalExpression
     mkOption
     ;
-  literalDocBook = lib.literalDocBook or lib.literalExample;
-  literalExpression = lib.literalExpression or lib.literalExample;
+  literalMD = lib.literalMD or (x: lib.literalDocBook "Documentation not rendered. Please upgrade to a newer NixOS with markdown support.");
+  mdDoc = lib.mdDoc or (x: "Documentation not rendered. Please upgrade to a newer NixOS with markdown support.");
 
   format = pkgs.formats.toml { };
 
@@ -14,7 +15,7 @@ let
     freeformType = format.type;
     options = {
       apiBaseUrl = mkOption {
-        description = ''
+        description = mdDoc ''
           API base URL that the agent will connect to.
 
           When using Hercules CI Enterprise, set this to the URL where your
@@ -26,19 +27,19 @@ let
       baseDirectory = mkOption {
         type = types.path;
         default = "/var/lib/hercules-ci-agent";
-        description = ''
+        description = mdDoc ''
           State directory (secrets, work directory, etc) for agent
         '';
       };
       concurrentTasks = mkOption {
-        description = ''
+        description = mdDoc ''
           Number of tasks to perform simultaneously.
 
           A task is a single derivation build, an evaluation or an effect run.
-          At minimum, you need 2 concurrent tasks for <literal>x86_64-linux</literal>
+          At minimum, you need 2 concurrent tasks for `x86_64-linux`
           in your cluster, to allow for import from derivation.
 
-          <literal>concurrentTasks</literal> can be around the CPU core count or lower if memory is
+          `concurrentTasks` can be around the CPU core count or lower if memory is
           the bottleneck.
 
           The optimal value depends on the resource consumption characteristics of your workload,
@@ -52,7 +53,7 @@ let
         default = "auto";
       };
       labels = mkOption {
-        description = ''
+        description = mdDoc ''
           A key-value map of user data.
 
           This data will be available to organization members in the dashboard and API.
@@ -71,7 +72,7 @@ let
         '';
       };
       workDirectory = mkOption {
-        description = ''
+        description = mdDoc ''
           The directory in which temporary subdirectories are created for task state. This includes sources for Nix evaluation.
         '';
         type = types.path;
@@ -79,25 +80,25 @@ let
         defaultText = literalExpression ''baseDirectory + "/work"'';
       };
       staticSecretsDirectory = mkOption {
-        description = ''
-          This is the default directory to look for statically configured secrets like <literal>cluster-join-token.key</literal>.
+        description = mdDoc ''
+          This is the default directory to look for statically configured secrets like `cluster-join-token.key`.
 
-          See also <literal>clusterJoinTokenPath</literal> and <literal>binaryCachesPath</literal> for fine-grained configuration.
+          See also `clusterJoinTokenPath` and `binaryCachesPath` for fine-grained configuration.
         '';
         type = types.path;
         default = config.baseDirectory + "/secrets";
         defaultText = literalExpression ''baseDirectory + "/secrets"'';
       };
       clusterJoinTokenPath = mkOption {
-        description = ''
+        description = mdDoc ''
           Location of the cluster-join-token.key file.
 
           You can retrieve the contents of the file when creating a new agent via
-          <link xlink:href="https://hercules-ci.com/dashboard">https://hercules-ci.com/dashboard</link>.
+          <https://hercules-ci.com/dashboard>.
 
           As this value is confidential, it should not be in the store, but
           installed using other means, such as agenix, NixOps
-          <literal>deployment.keys</literal>, or manual installation.
+          `deployment.keys`, or manual installation.
 
           The contents of the file are used for authentication between the agent and the API.
         '';
@@ -106,29 +107,28 @@ let
         defaultText = literalExpression ''staticSecretsDirectory + "/cluster-join-token.key"'';
       };
       binaryCachesPath = mkOption {
-        description = ''
+        description = mdDoc ''
           Path to a JSON file containing binary cache secret keys.
 
           As these values are confidential, they should not be in the store, but
           copied over using other means, such as agenix, NixOps
-          <literal>deployment.keys</literal>, or manual installation.
+          `deployment.keys`, or manual installation.
 
-          The format is described on <link xlink:href="https://docs.hercules-ci.com/hercules-ci-agent/binary-caches-json/">https://docs.hercules-ci.com/hercules-ci-agent/binary-caches-json/</link>.
+          The format is described on <https://docs.hercules-ci.com/hercules-ci-agent/binary-caches-json/>.
         '';
         type = types.path;
         default = config.staticSecretsDirectory + "/binary-caches.json";
         defaultText = literalExpression ''staticSecretsDirectory + "/binary-caches.json"'';
       };
       secretsJsonPath = mkOption {
-        description = ''
+        description = mdDoc ''
           Path to a JSON file containing secrets for effects.
 
           As these values are confidential, they should not be in the store, but
           copied over using other means, such as agenix, NixOps
-          <literal>deployment.keys</literal>, or manual installation.
+          `deployment.keys`, or manual installation.
 
-          The format is described on <link xlink:href="https://docs.hercules-ci.com/hercules-ci-agent/secrets-json/">https://docs.hercules-ci.com/hercules-ci-agent/secrets-json/</link>.
-
+          The format is described on <https://docs.hercules-ci.com/hercules-ci-agent/secrets-json/>.
         '';
         type = types.path;
         default = config.staticSecretsDirectory + "/secrets.json";

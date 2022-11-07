@@ -111,7 +111,11 @@ let
                     (
                       addBuildDepends
                         (enableDWARFDebugging
-                          (addCompactUnwind (addBuildTool basePkg pkgs.makeBinaryWrapper))
+                          (addCompactUnwind
+                            (addBuildTool (justStaticExecutables basePkg)
+                              pkgs.makeBinaryWrapper
+                            )
+                          )
                         )
                         [ pkgs.boost ]
                     )
@@ -123,34 +127,17 @@ let
                           ./Setup --version
                         '';
 
-                        postInstall =
-                          o.postInstall or ""
-                          + ''
-                            wrapProgram $out/bin/hercules-ci-agent --prefix PATH : ${makeBinPath bundledBins}
-                          ''
-                        ;
+                        postInstall = ''
+                          ${o.postInstall or ""}
+                          mkdir -p $out/libexec
+                          mv $out/bin/hercules-ci-agent $out/libexec
+                          makeWrapper $out/libexec/hercules-ci-agent $out/bin/hercules-ci-agent --prefix PATH : ${makeBinPath bundledBins}
+                        '';
                         passthru =
                           (o.passthru or { })
                           // {
                             inherit nix;
-                          }
-                        ;
-
-                        # TODO: We had an issue where any overrideCabal would have
-                        #       no effect on the package, so we inline the
-                        #       definition of justStaticExecutables here.
-                        #       Ideally, we'd go back to a call to
-                        #       justStaticExecutables, or even better,
-                        #       a separate bin output.
-                        #
-                        # begin justStaticExecutables
-                        enableSharedExecutables = false;
-                        enableLibraryProfiling = false;
-                        isLibrary = false;
-                        doHaddock = false;
-                        postFixup =
-                          "rm -rf $out/lib $out/nix-support $out/share/doc";
-                        # end justStaticExecutables
+                          };
                       }
                     )
                 );
