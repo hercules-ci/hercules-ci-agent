@@ -78,12 +78,12 @@ import qualified Hercules.Agent.WorkerProcess as WorkerProcess
 import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
-import Hercules.Agent.WorkerProtocol.Event (ViaJSON (ViaJSON))
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as WorkerAttribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as WorkerAttributeError
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeIFD as AttributeIFD
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
+import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON))
 import Hercules.CNix.Store (Store, StorePath, parseStorePath)
 import Hercules.Error (defaultRetry, quickRetry)
 import qualified Network.HTTP.Client.Conduit as HTTP.Conduit
@@ -625,7 +625,7 @@ produceWorkerEvents taskId eval envSettings commandChan writeEvent = do
         stderrLineHandler
           ( M.fromList
               [ ("taskId", A.toJSON taskId),
-                ("evalRev", A.toJSON (eval & Eval.gitSource & Event.fromViaJSON & GitSource.rev))
+                ("evalRev", A.toJSON (eval & Eval.gitSource & fromViaJSON & GitSource.rev))
               ]
           )
           "Effect worker"

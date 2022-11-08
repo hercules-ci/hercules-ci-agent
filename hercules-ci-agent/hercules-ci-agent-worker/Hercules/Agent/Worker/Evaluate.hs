@@ -44,14 +44,12 @@ import Hercules.Agent.WorkerProtocol.Command.Eval
   ( Eval,
   )
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
-import Hercules.Agent.WorkerProtocol.Event
-  ( Event,
-    ViaJSON (ViaJSON),
-  )
+import Hercules.Agent.WorkerProtocol.Event (Event)
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeIFD as Event.AttributeIFD
+import qualified Hercules.Agent.WorkerProtocol.ViaJSON as ViaJSON
 import Hercules.CNix as CNix
 import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, toValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
@@ -290,7 +288,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
             -- legacy
             walk evalEnv args (homeExprRawValue homeExpr)
           Just herculesCI -> do
-            case Event.fromViaJSON (Eval.selector eval) of
+            case ViaJSON.fromViaJSON (Eval.selector eval) of
               EvaluateTask.ConfigOrLegacy -> do
                 yield Event.JobConfig
                 sendConfig evalState isFlake herculesCI
@@ -310,7 +308,7 @@ getHomeExpr evalState eval =
         srcInput <- case Eval.srcInput eval of
           Just x -> pure x
           Nothing -> panic "srcInput is required for flake job"
-        raw <- mkImmutableGitInputFlakeThunk evalState (Event.fromViaJSON srcInput)
+        raw <- mkImmutableGitInputFlakeThunk evalState (ViaJSON.fromViaJSON srcInput)
         let pso :: PSObject (Schema.Attrs '[])
             pso = Schema.PSObject {value = raw, provenance = Schema.Other "flake.nix"}
         toValue evalState pso
@@ -366,7 +364,7 @@ sendConfig evalState isFlake herculesCI = flip runReaderT evalState $ do
     for_ (M.mapWithKey (,) attrs) \(name, onPush) -> do
       ei <- onPush #? #extraInputs >>= traverse parseExtraInputs
       enable <- onPush #? #enable >>= traverse fromPSObject <&> fromMaybe True
-      when enable . lift . yield . Event.OnPushHandler . ViaJSON $
+      when enable . lift . yield . Event.OnPushHandler . ViaJSON.ViaJSON $
         OnPushHandlerEvent
           { handlerName = decodeUtf8 name,
             handlerExtraInputs = M.mapKeys decodeUtf8 (fromMaybe mempty ei),
@@ -378,7 +376,7 @@ sendConfig evalState isFlake herculesCI = flip runReaderT evalState $ do
       ei <- onSchedule #? #extraInputs >>= traverse parseExtraInputs
       enable <- onSchedule #? #enable >>= traverse fromPSObject <&> fromMaybe True
       when_ <- onSchedule #?? #when >>= maybe (pure defaultConstraints) parseWhen
-      when enable . lift . yield . Event.OnScheduleHandler . ViaJSON $
+      when enable . lift . yield . Event.OnScheduleHandler . ViaJSON.ViaJSON $
         OnScheduleHandlerEvent
           { handlerName = decodeUtf8 name,
             handlerExtraInputs = M.mapKeys decodeUtf8 (fromMaybe mempty ei),

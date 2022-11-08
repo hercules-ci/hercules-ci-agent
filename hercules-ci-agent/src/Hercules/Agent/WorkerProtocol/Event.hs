@@ -13,6 +13,7 @@ import Hercules.Agent.WorkerProtocol.Event.Attribute
 import Hercules.Agent.WorkerProtocol.Event.AttributeError
 import Hercules.Agent.WorkerProtocol.Event.AttributeIFD (AttributeIFD)
 import Hercules.Agent.WorkerProtocol.Event.BuildResult
+import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON)
 import Protolude hiding (get, put)
 import Prelude ()
 
@@ -30,15 +31,3 @@ data Event
   | OnScheduleHandler (ViaJSON OnScheduleHandlerEvent)
   | Exception Text
   deriving (Generic, Binary, Show, Eq)
-
-newtype ViaJSON a = ViaJSON {fromViaJSON :: a}
-  deriving (Eq, Ord, Show, Read)
-
--- | Orphan
-instance (A.ToJSON a, A.FromJSON a) => Binary (ViaJSON a) where
-  put (ViaJSON a) = put (A.encode a)
-  get = do
-    bs <- get
-    case A.eitherDecode bs of
-      Left s -> fail s
-      Right r -> pure (ViaJSON r)

@@ -7,6 +7,7 @@ import Control.Monad.Catch (MonadThrow)
 import Hercules.Agent.Worker.Build.Prefetched (buildDerivation)
 import qualified Hercules.Agent.Worker.Build.Prefetched as Build
 import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Command.Effect
+import Hercules.Agent.WorkerProtocol.ViaJSON (fromViaJSON)
 import Hercules.CNix (Store)
 import qualified Hercules.CNix as CNix
 import Hercules.CNix.Store (Derivation)
