@@ -135,10 +135,7 @@ loadGitToken name _noDetail = do
   token <- liftIO $ askPasswordWithKey (Just name) "token"
   purer $
     M.fromList
-      [ token <&> A.String,
-        -- FIXME: unhardcode for GitHub Enterprise, GitLab, etc
-        ("urls", A.toJSON ["https://github.com", "https://api.github.com" :: Text])
-      ]
+      [token <&> A.String]
 
 getEffectDrv :: Store -> Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO (HerculesClientToken, HerculesClientEnv) Derivation
 getEffectDrv store evalState projectOptionMaybe ref attr = do
