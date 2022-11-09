@@ -1,11 +1,11 @@
 diff --git a/src/HIE/Bios/Cradle.hs b/src/HIE/Bios/Cradle.hs
-index a98e6f2..dd8f92e 100644
+index b2d974d..9ad7f31 100644
 --- a/src/HIE/Bios/Cradle.hs
 +++ b/src/HIE/Bios/Cradle.hs
-@@ -1015,7 +1015,11 @@ readProcessWithOutputs outputNames l workDir cp = flip runContT return $ do
+@@ -1042,7 +1042,11 @@ readProcessWithOutputs outputNames l workDir cp = flip runContT return $ do
      -- Windows line endings are not converted so you have to filter out `'r` characters
    let loggingConduit = C.decodeUtf8  C..| C.lines C..| C.filterE (/= '\r')
-         C..| C.map T.unpack C..| C.iterM l C..| C.sinkList
+         C..| C.map T.unpack C..| C.iterM (\msg -> l <& LogProcessOutput msg `WithSeverity` Debug) C..| C.sinkList
 -  (ex, stdo, stde) <- liftIO $ sourceProcessWithStreams process mempty loggingConduit loggingConduit
 +      -- stack repl will ask for an optional selection of main module when
 +      -- multiple main modules exist in the project. Pressing enter will make
