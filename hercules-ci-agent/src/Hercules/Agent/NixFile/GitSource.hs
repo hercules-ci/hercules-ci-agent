@@ -14,18 +14,22 @@ data GitSource = GitSource
     rev :: Text,
     shortRev :: Text,
     branch :: Maybe Text,
-    tag :: Maybe Text
+    tag :: Maybe Text,
+    remoteHttpUrl :: Maybe Text,
+    remoteSshUrl :: Maybe Text,
+    webUrl :: Maybe Text,
+    forgeType :: Maybe Text,
+    owner :: Maybe Text,
+    name :: Maybe Text
   }
   deriving (Generic, ToJSON, FromJSON, Show, Eq)
   deriving (ToRawValue) via (ViaJSON GitSource)
 
-fromRefRevPath :: Text -> Text -> Text -> GitSource
-fromRefRevPath aRef aRev path =
-  GitSource
-    { outPath = path,
-      ref = aRef,
-      rev = aRev,
-      shortRev = T.take 7 aRev,
-      branch = T.stripPrefix "refs/heads/" aRef,
-      tag = T.stripPrefix "refs/tags/" aRef
-    }
+shortRevFromRev :: Text -> Text
+shortRevFromRev = T.take 7
+
+branchFromRef :: Text -> Maybe Text
+branchFromRef = T.stripPrefix "refs/heads/"
+
+tagFromRef :: Text -> Maybe Text
+tagFromRef = T.stripPrefix "refs/tags/"

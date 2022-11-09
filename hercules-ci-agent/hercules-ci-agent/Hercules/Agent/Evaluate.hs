@@ -66,7 +66,6 @@ import Hercules.Agent.Nix.RetrieveDerivationInfo
   ( retrieveDerivationInfo,
   )
 import Hercules.Agent.NixFile (findNixFile)
-import Hercules.Agent.NixFile.GitSource (fromRefRevPath)
 import qualified Hercules.Agent.NixFile.GitSource as GitSource
 import Hercules.Agent.NixPath
   ( renderSubPath,
@@ -395,6 +394,10 @@ isValidName cs@(c0 : _) = all isValidNameChar cs && c0 /= '.'
         || isDigit c
         || c `elem` ("+-._?=" :: [Char])
 
+checkNonEmptyText :: Text -> Maybe Text
+checkNonEmptyText "" = Nothing
+checkNonEmptyText t = Just t
+
 runEvalProcess ::
   CNix.Store ->
   FilePath ->
@@ -418,7 +421,22 @@ runEvalProcess store projectDir file autoArguments nixPath emit uploadDerivation
   srcInput <- getSrcInput task
   gitSource <-
     case srcInput of
-      Just git -> pure $ fromRefRevPath (ImmutableGitInput.ref git) (ImmutableGitInput.rev git) (toS projectDir)
+      Just git ->
+        pure $
+          GitSource.GitSource
+            { outPath = toS projectDir,
+              ref = ImmutableGitInput.ref git,
+              rev = ImmutableGitInput.rev git,
+              shortRev = GitSource.shortRevFromRev (ImmutableGitInput.rev git),
+              branch = GitSource.branchFromRef (ImmutableGitInput.ref git),
+              tag = GitSource.tagFromRef (ImmutableGitInput.ref git),
+              remoteHttpUrl = ImmutableGitInput.httpURL git & checkNonEmptyText,
+              remoteSshUrl = ImmutableGitInput.sshURL git & checkNonEmptyText,
+              webUrl = ImmutableGitInput.webURL git,
+              forgeType = ImmutableGitInput.forgeType git,
+              owner = ImmutableGitInput.owner git,
+              name = ImmutableGitInput.name git
+            }
       Nothing -> do
         (ref, rev) <- case M.lookup "src" (EvaluateTask.inputMetadata task) of
           Nothing -> do
@@ -426,7 +444,21 @@ runEvalProcess store projectDir file autoArguments nixPath emit uploadDerivation
           Just meta -> pure $ fromMaybe (panic "no ref/rev in primary source metadata") do
             (,) <$> (meta ^? at "ref" . traverse . _String)
               <*> (meta ^? at "rev" . traverse . _String)
-        pure $ fromRefRevPath ref rev (toS projectDir)
+        pure $
+          GitSource.GitSource
+            { outPath = toS projectDir,
+              ref = ref,
+              rev = rev,
+              shortRev = GitSource.shortRevFromRev rev,
+              branch = GitSource.branchFromRef ref,
+              tag = GitSource.tagFromRef ref,
+              remoteHttpUrl = Nothing,
+              remoteSshUrl = Nothing,
+              webUrl = Nothing,
+              forgeType = Nothing,
+              owner = Nothing,
+              name = Nothing
+            }
   let eval =
         Eval.Eval
           { Eval.cwd = projectDir,

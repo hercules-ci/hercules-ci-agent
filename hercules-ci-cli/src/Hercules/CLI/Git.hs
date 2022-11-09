@@ -6,6 +6,7 @@ module Hercules.CLI.Git where
 import Data.List (dropWhileEnd)
 import qualified Data.Text as T
 import Hercules.CLI.Exception (exitMsg)
+import Network.URI (URI (uriAuthority), URIAuth (uriRegName), parseURI)
 import Protolude
 import System.Directory (doesDirectoryExist)
 import System.Process (readProcess)
@@ -127,3 +128,16 @@ getIsDefault = do
 getRemoteURL :: Text -> IO Text
 getRemoteURL remoteName =
   readProcessItem "git" ["remote", "get-url", toS remoteName] mempty
+
+-- TODO: store forge type in credentials.json
+guessForgeTypeFromURL :: Text -> Maybe Text
+guessForgeTypeFromURL urlString = do
+  uri <- parseURI (toS urlString)
+  autho <- uriAuthority uri
+  let host = uriRegName autho
+  if "github" `isInfixOf` host
+    then Just "github"
+    else
+      if "gitlab" `isInfixOf` host
+        then Just "gitlab"
+        else Nothing

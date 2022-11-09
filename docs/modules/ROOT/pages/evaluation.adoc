@@ -54,6 +54,26 @@ A path containing the files of the checked out revision.
 
 Same as top-level <<params-herculesCI-commit>>.
 
+[[params-herculesCI-primaryRepo-webUrl]]
+=== `primaryRepo.webURL`
+
+Web link to the repository for use in the browser.
+
+[[params-herculesCI-primaryRepo-forgeType]]
+=== `primaryRepo.forgeType`
+
+Type of forge the repo is on, e.g. `"github"`.
+
+[[params-herculesCI-primaryRepo-owner]]
+=== `primaryRepo.owner`
+
+The name of the owner of the repository.
+
+[[params-herculesCI-primaryRepo-name]]
+=== `primaryRepo.name`
+
+The name of the repository.
+
 // hercules-ci-agent/src/Hercules/Agent/NixFile/HerculesCIArgs.hs
 [[param-herculesCI-herculesCI]]
 === `herculesCI`
