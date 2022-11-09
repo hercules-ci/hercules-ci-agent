@@ -55,7 +55,21 @@ let
 
               # Must match hercules-ci-cnix-store, which uses `pkgs.nix`.
               # Nixpkgs may override to a specific series.
-              cachix = super.cachix.override (o: { nix = pkgs.nix; });
+              cachix = (super.cachix.override (o: {
+                nix = pkgs.nix;
+              })).overrideAttrs (o: {
+                postPatch = ''
+                  ${o.postPatch or ""}
+                  # jailbreak pkgconfig deps
+                  cp cachix.cabal cachix.cabal.backup
+                  sed -i cachix.cabal -e 's/\(nix-[a-z]*\) *(==[0-9.]* *|| *>[0-9.]*) *&& *<[0-9.]*/\1/g'
+                  echo
+                  echo Applied:
+                  diff -U5 cachix.cabal.backup cachix.cabal ||:
+                  echo
+                  rm cachix.cabal.backup
+                '';
+              });
 
               hercules-ci-optparse-applicative =
                 super.callPackage ./hercules-ci-optparse-applicative.nix { };
