@@ -58,7 +58,7 @@ import Hercules.CNix.Expr
     valueFromExpressionString,
   )
 import Hercules.CNix.Expr.Raw (RawValue)
-import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), Provenance (Other), StringWithoutContext, basicAttrsWithProvenance, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (.$), (>>$.), type (->.), type (->?), type (.), type (::.), type (::?), type (?), type (|.))
+import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), Provenance (Other), StringWithoutContext, basicAttrsWithProvenance, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (.$), (>>$.), type (->.), type (->?), type (.), type (::.), type (::?), type (::??), type (?), type (|.))
 import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.Error (escalateAs)
 import Paths_hercules_ci_agent (getDataFileName)
@@ -161,15 +161,15 @@ type OnScheduleSchema =
     '[ "extraInputs" ::? ExtraInputsSchema,
        "outputs" ::. OutputsFunction,
        "enable" ::? Bool,
-       "when" ::. TimeConstraintsSchema
+       "when" ::?? TimeConstraintsSchema
      ]
 
 type TimeConstraintsSchema =
   Attrs
-    '[ "hour" ::? HoursSchema,
-       "minute" ::? MinuteSchema,
-       "dayOfWeek" ::? DaysOfWeekSchema,
-       "dayOfMonth" ::? DaysOfMonthSchema
+    '[ "hour" ::?? HoursSchema,
+       "minute" ::?? MinuteSchema,
+       "dayOfWeek" ::?? DaysOfWeekSchema,
+       "dayOfMonth" ::?? DaysOfMonthSchema
      ]
 
 type HoursSchema = Int64 |. [Int64]

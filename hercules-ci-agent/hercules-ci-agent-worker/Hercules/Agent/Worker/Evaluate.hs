@@ -56,7 +56,7 @@ import Hercules.CNix as CNix
 import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, toValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
 import qualified Hercules.CNix.Expr.Raw
-import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, provenance, requireDict, traverseArray, (#.), (#?), (#?!), ($?), (|!), type (->?), type (.))
+import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, provenance, requireDict, traverseArray, (#.), (#?), (#?!), (#??), ($?), (|!), type (->?), type (.))
 import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.CNix.Expr.Typed (Value)
 import Hercules.CNix.Std.Vector (StdVector)
@@ -377,7 +377,7 @@ sendConfig evalState isFlake herculesCI = flip runReaderT evalState $ do
     for_ (M.mapWithKey (,) attrs) \(name, onSchedule) -> do
       ei <- onSchedule #? #extraInputs >>= traverse parseExtraInputs
       enable <- onSchedule #? #enable >>= traverse fromPSObject <&> fromMaybe True
-      when_ <- onSchedule #. #when >>= parseWhen
+      when_ <- onSchedule #?? #when >>= maybe (pure defaultConstraints) parseWhen
       when enable . lift . yield . Event.OnScheduleHandler . ViaJSON $
         OnScheduleHandlerEvent
           { handlerName = decodeUtf8 name,
@@ -386,10 +386,16 @@ sendConfig evalState isFlake herculesCI = flip runReaderT evalState $ do
             when = when_
           }
 
+defaultConstraints :: TimeConstraints
+defaultConstraints = noConstraints
+
+noConstraints :: TimeConstraints
+noConstraints = TimeConstraints Nothing Nothing Nothing Nothing
+
 parseWhen :: MonadEval m => PSObject NixFile.TimeConstraintsSchema -> m Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent.TimeConstraints
 parseWhen w = do
   minute_ <-
-    w #? #minute >>= traverse \obj -> do
+    w #?? #minute >>= traverse \obj -> do
       v <- fromPSObject obj
       if v >= 0 && v < 60
         then pure v
@@ -402,7 +408,7 @@ parseWhen w = do
           else throwIO $ Schema.InvalidValue (provenance obj) $ "hour value " <> show v <> " is out of range [0..23]."
 
   hour_ <-
-    w #? #hour
+    w #?? #hour
       >>= traverse
         ( (\oneInt -> validateHour oneInt <&> \x -> [x])
             |! ( \hours -> do
@@ -413,7 +419,7 @@ parseWhen w = do
                )
         )
   dayOfWeek <-
-    w #? #dayOfWeek
+    w #?? #dayOfWeek
       >>= traverse
         ( \dayStringsObject -> do
             days <- traverseArray parseDayOfWeek dayStringsObject
@@ -422,7 +428,7 @@ parseWhen w = do
             pure days
         )
   dayOfMonth <-
-    w #? #dayOfMonth
+    w #?? #dayOfMonth
       >>= traverse \daysOfMonth -> do
         v <-
           daysOfMonth & traverseArray \obj -> do
