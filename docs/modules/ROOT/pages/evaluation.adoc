@@ -206,9 +206,9 @@ Examples:
 
  - `hour`: An optional integer or list of integers representing the hours at which a jobs should be created. Inclusive range: `[0 .. 23]`. Default: a single arbitrary hour.
 
- - `dayOfWeek`: An option list of strings representing the days during which jobs should be created. Valid items are `"Mon"`, `"Tue"`, `"Wed"`, `"Thu"`, `"Fri"`, `"Sat"`, `"Sun"`. Default: all days of the week.
+ - `dayOfWeek`: An optional list of strings representing the days during which jobs should be created. Valid items are `"Mon"`, `"Tue"`, `"Wed"`, `"Thu"`, `"Fri"`, `"Sat"`, `"Sun"`. Default: all days of the week.
 
- - `dayOfMonth`: A list of integers representing the days of the month during which jobs should be created. Inclusive range: `[1 .. 31]`. Default: all days of the month.
+ - `dayOfMonth`: A list of integers representing the days of the month during which jobs should be created. Inclusive range: `[1 .. 31]`. Default: all days of the month. Combining with `dayOfWeek` further reduces the number of jobs.
 
 == Default `onPush` job
 
