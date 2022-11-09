@@ -180,6 +180,8 @@ _Since hercules-ci-agent 0.9.8_
 Behaves similar to <<attributes-herculesCI.onPush>>, but is responsible for jobs
 that respond to the passing of time rather than to a `git push` or equivalent.
 
+`onSchedule` is like `cron` for your projects.
+
 [[attributes-herculesCI.onSchedule-outputs]]
 === `onSchedule.<name>.outputs` Attributes
 
