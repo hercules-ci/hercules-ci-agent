@@ -6,9 +6,9 @@ import Data.Binary
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import Hercules.API.Agent.Evaluate.ImmutableGitInput (ImmutableGitInput)
 import Hercules.Agent.NixFile.GitSource (GitSource)
-import Hercules.Agent.WorkerProtocol.Event (ViaJSON)
 import Hercules.Agent.WorkerProtocol.LogSettings
 import Hercules.Agent.WorkerProtocol.Orphans ()
+import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON)
 import Protolude
 
 data Eval = Eval

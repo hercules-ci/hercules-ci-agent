@@ -2,6 +2,7 @@
 
 module Hercules.API.Agent.Evaluate.EvaluateEvent where
 
+import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent (AttributeEffectEvent)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent (AttributeErrorEvent)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent (AttributeEvent)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeIFDEvent (AttributeIFDEvent)
@@ -17,6 +18,7 @@ import Hercules.API.Prelude
 
 data EvaluateEvent
   = Attribute AttributeEvent
+  | AttributeEffect AttributeEffectEvent
   | AttributeError AttributeErrorEvent
   | AttributeIFD AttributeIFDEvent
   | Message Message

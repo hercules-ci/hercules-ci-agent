@@ -20,6 +20,7 @@ import qualified Hercules.Agent.WorkerProtocol.Command as Command
 import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Command.Effect
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
+import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON))
 import qualified Hercules.Secrets as Secrets
 import qualified Network.URI
 import Protolude
@@ -72,6 +73,7 @@ performEffect effectTask = withWorkDir "effect" $ \workDir -> do
                   },
               materializeDerivation = materialize,
               secretsPath = toS $ Config.secretsJsonPath config,
+              serverSecrets = Sensitive $ ViaJSON (EffectTask.serverSecrets effectTask),
               token = Sensitive (EffectTask.token effectTask),
               apiBaseURL = Config.herculesApiBaseURL config,
               projectId = EffectTask.projectId effectTask,
