@@ -52,6 +52,7 @@ module Hercules.CNix.Expr.Schema
     (#.),
     (>>.),
     type (::?),
+    type (::??),
     type (?),
     (#?),
     (>>?),
@@ -80,6 +81,7 @@ module Hercules.CNix.Expr.Schema
     uncheckedCast,
     englishOr,
     traverseArray,
+    (#??),
   )
 where
 
@@ -143,6 +145,9 @@ type a ->? b = (a ->. b) |. b
 
 infixr 1 ->?
 
+-- | A Nix @null@ value has 1 possible value, like Haskell's @()@.
+type Null = ()
+
 -- | Attribute set schema with known attributes and wildcard type for remaining attributes.
 data Attrs' (as :: [Attr]) w
 
@@ -174,6 +179,12 @@ infix 0 ::?
 -- This indicates that the attribute may be omitted in its entirety, which is
 -- distinct from an attribute that may be @null@.
 type a ::? b = a ':? b
+
+-- | Optional (@_?@) attribute name and type (@::_@)
+--
+-- This indicates that the attribute may be omitted in its entirety, which is
+-- distinct from an attribute that may be @null@.
+type a ::?? b = a ':? Null |. b
 
 -- | Required (@_.@) attribute name and type (@::_@)
 --
@@ -285,6 +296,12 @@ as #? p = do
   liftIO (getAttr evalState v (encodeUtf8 name))
     <&> fmap (\b -> PSObject {value = b, provenance = Attribute (provenance as) name})
 
+-- | Attribute selector. @a #? #b@ is @a.b@ in Nix, but handles the missing case and the null case without exception. Operates on attributes that are optional (@_?@) and nullable (@Null |.@, @() |.@) in the schema.
+(#??) :: (KnownSymbol s, as ? s ~ (Null |. b), PossibleTypesForSchema b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (Maybe (PSObject b))
+as #?? p = do
+  mv <- as #? p
+  join <$> for mv (const (pure Nothing) |! (pure . Just))
+
 -- | Retrieve an optional attribute but throw if it's missing.
 --
 -- It provides a decent error message with attrset provenance, but can't provide
@@ -341,6 +358,7 @@ type family NixTypeForSchema s where
   NixTypeForSchema Bool = Bool
   NixTypeForSchema Int64 = Int64
   NixTypeForSchema [a] = NixList
+  NixTypeForSchema () = ()
 
 class PossibleTypesForSchema s where
   typesForSchema :: Proxy s -> [RawValueType]
@@ -358,6 +376,8 @@ instance PossibleTypesForSchema NixPath
 instance PossibleTypesForSchema Bool
 
 instance PossibleTypesForSchema Int64
+
+instance PossibleTypesForSchema ()
 
 instance PossibleTypesForSchema [a] where
   typesForSchema _ = [getRawValueType (Proxy @NixList)]

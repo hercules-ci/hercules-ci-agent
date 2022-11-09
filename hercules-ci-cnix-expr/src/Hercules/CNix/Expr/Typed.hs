@@ -235,3 +235,6 @@ instance HasRawValueType NixFunction where
 
 instance HasRawValueType NixList where
   getRawValueType _ = List
+
+instance HasRawValueType () where
+  getRawValueType _ = Null
