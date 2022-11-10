@@ -8,6 +8,7 @@ import Hercules.CNix.Expr (EvalState, NixPath, NixString)
 import qualified Hercules.CNix.Expr as Expr
 import Hercules.CNix.Expr.Raw (RawValueType (Attrs, Bool, Lambda, Null, String))
 import Hercules.CNix.Expr.Schema
+import Hercules.CNix.Expr.Schema (FromPSObject (fromPSObject))
 import Protolude hiding (TypeError, check, evalState)
 import SingleState (evalState)
 import Test.Hspec
@@ -112,7 +113,8 @@ spec = do
         Proxy
           @( Attrs
                '[ "optionallyFunction" ::. (NixString ->? NixString),
-                  "optionalAttr" ::? NixString
+                  "optionalAttr" ::? NixString,
+                  "nullableAttr" ::?? [StringWithoutContext]
                 ]
            )
 
@@ -169,6 +171,37 @@ spec = do
             schema
         e #? #optionalAttr >>= traverse getByteString_
       r `shouldBe` Just "nice"
+
+  describe ".#??" do
+    it "can return Nothing for unset" \_ -> do
+      r <- runES do
+        e <-
+          exprWithBasePath
+            "{ }"
+            "/"
+            schema
+        e #?? #nullableAttr >>= traverse fromPSObject
+      r `shouldBe` (Nothing :: Maybe [ByteString])
+
+    it "can return Nothing for null" \_ -> do
+      r <- runES do
+        e <-
+          exprWithBasePath
+            "{ nullableAttr = null; }"
+            "/"
+            schema
+        e #?? #nullableAttr >>= traverse fromPSObject
+      r `shouldBe` (Nothing :: Maybe [ByteString])
+
+    it "can return Just" \_ -> do
+      r <- runES do
+        e <-
+          exprWithBasePath
+            "{ nullableAttr = [''nice'']; }"
+            "/"
+            schema
+        e #?? #nullableAttr >>= traverse fromPSObject
+      r `shouldBe` Just ["nice" :: ByteString]
 
   describe "fromPSObject" do
     describe "@Bool" do
