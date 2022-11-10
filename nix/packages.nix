@@ -28,40 +28,6 @@ let
     overrideSrc
     ;
 
-  # https://github.com/NixOS/nixpkgs/pull/174176
-  buildFromCabalSdist = pkg:
-    haskell.lib.overrideSrc
-      pkg
-      {
-        src = cabalSdist {
-          inherit (pkg) src;
-          name = "${pkg.name}.tar.gz";
-        };
-        version = pkg.version;
-      }
-  ;
-
-  cabalSdist =
-    { src
-    , name ? "${src.name or "source"}.tar.gz"
-    }:
-    pkgs.runCommandNoCCLocal name
-      {
-        inherit src;
-        nativeBuildInputs = [ haskellPackages.cabal-install ];
-        dontUnpack = false;
-      } ''
-      unpackPhase
-      cd "''${sourceRoot:-.}"
-      patchPhase
-      mkdir out
-      HOME=$PWD cabal sdist --output-directory out
-      mv out/*.tar.gz $out
-    '';
-
-  callPkg = super: name: srcPath: args: buildFromCabalSdist (super.callCabal2nix name srcPath args);
-  callPkgOpts = opts: super: name: srcPath: args: buildFromCabalSdist (super.callCabal2nixWithOptions name srcPath opts args);
-
   updateTo = v: stdPkg: altPkg:
     if lib.versionAtLeast stdPkg.version v
     then stdPkg
@@ -76,6 +42,9 @@ let
     rec {
       inherit pkgs;
 
+      callPkg = super: name: srcPath: args: haskellPackages.buildFromCabalSdist (super.callCabal2nix name srcPath args);
+      callPkgOpts = opts: super: name: srcPath: args: haskellPackages.buildFromCabalSdist (super.callCabal2nixWithOptions name srcPath opts args);
+
       # TODO: upstream the overrides
       haskellPackages =
         haskellPackages_.extend (
@@ -86,7 +55,21 @@ let
 
               # Must match hercules-ci-cnix-store, which uses `pkgs.nix`.
               # Nixpkgs may override to a specific series.
-              cachix = super.cachix.override (o: { nix = pkgs.nix; });
+              cachix = (super.cachix.override (o: {
+                nix = pkgs.nix;
+              })).overrideAttrs (o: {
+                postPatch = ''
+                  ${o.postPatch or ""}
+                  # jailbreak pkgconfig deps
+                  cp cachix.cabal cachix.cabal.backup
+                  sed -i cachix.cabal -e 's/\(nix-[a-z]*\) *(==[0-9.]* *|| *>[0-9.]*) *&& *<[0-9.]*/\1/g'
+                  echo
+                  echo Applied:
+                  diff -U5 cachix.cabal.backup cachix.cabal ||:
+                  echo
+                  rm cachix.cabal.backup
+                '';
+              });
 
               hercules-ci-optparse-applicative =
                 super.callPackage ./hercules-ci-optparse-applicative.nix { };
