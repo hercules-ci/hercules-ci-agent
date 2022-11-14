@@ -8,6 +8,10 @@ data ImmutableGitInput = ImmutableGitInput
   { rev :: Text,
     ref :: Text,
     sshURL :: Text,
-    httpURL :: Text
+    httpURL :: Text,
+    webURL :: Maybe Text,
+    forgeType :: Maybe Text,
+    owner :: Maybe Text,
+    name :: Maybe Text
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

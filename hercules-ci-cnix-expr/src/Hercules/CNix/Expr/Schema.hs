@@ -48,9 +48,12 @@ module Hercules.CNix.Expr.Schema
     -- * Attribute sets as records
     type Attrs,
     type (::.),
+    type (.),
     (#.),
     (>>.),
     type (::?),
+    type (::??),
+    type (?),
     (#?),
     (>>?),
     (#?!),
@@ -77,6 +80,8 @@ module Hercules.CNix.Expr.Schema
     -- * Utilities
     uncheckedCast,
     englishOr,
+    traverseArray,
+    (#??),
   )
 where
 
@@ -84,7 +89,7 @@ import Data.Coerce (coerce)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified GHC.TypeLits as TL
-import Hercules.CNix.Expr (CheckType, EvalState, HasRawValueType, NixAttrs, NixFunction, NixPath, NixString, RawValue, ToRawValue (..), ToValue (..), Value (rtValue), apply, checkType, getAttr, getRawValueType, getStringIgnoreContext, hasContext, rawValueType, toRawValue, valueFromExpressionString)
+import Hercules.CNix.Expr (CheckType, EvalState, HasRawValueType, NixAttrs, NixFunction, NixList, NixPath, NixString, RawValue, ToRawValue (..), ToValue (..), Value (rtValue), apply, checkType, getAttr, getRawValueType, getStringIgnoreContext, hasContext, rawValueType, toRawValue, valueFromExpressionString)
 import qualified Hercules.CNix.Expr as Expr
 import Hercules.CNix.Expr.Raw (RawValueType, canonicalRawType)
 import Protolude hiding (TypeError, check, evalState)
@@ -95,6 +100,7 @@ data Provenance
   | Other Text
   | Data
   | Attribute Provenance Text
+  | ListItem Provenance Int
   | Application Provenance Provenance
   deriving (Show, Eq, Ord)
 
@@ -108,6 +114,7 @@ data NixException
       -- ^ expected
   | InvalidText Provenance UnicodeException
   | StringContextNotAllowed Provenance
+  | InvalidValue Provenance Text
   deriving (Show, Eq)
 
 instance Exception NixException where
@@ -115,9 +122,11 @@ instance Exception NixException where
   displayException (TypeError p actual expected) = "Expecting a value of type " <> toS (englishOr (map show expected)) <> ", but got type " <> show actual <> "." <> appendProvenance p
   displayException (InvalidText p ue) = displayException ue <> appendProvenance p
   displayException (StringContextNotAllowed p) = "This string must not have a context. It must be usable without building store paths." <> appendProvenance p
+  displayException (InvalidValue p msg) = "Invalid value. " <> toS msg <> appendProvenance p
 
 appendProvenance :: Provenance -> [Char]
 appendProvenance (Attribute p name) = "\n  in attribute " <> show name <> appendProvenance p
+appendProvenance (ListItem p index) = "\n  in list item " <> show index <> appendProvenance p
 appendProvenance (Other x) = "\n  in " <> toS x
 appendProvenance Data = ""
 appendProvenance (Application p _p) = "\n  in function result" <> appendProvenance p
@@ -135,6 +144,9 @@ infixr 1 ->.
 type a ->? b = (a ->. b) |. b
 
 infixr 1 ->?
+
+-- | A Nix @null@ value has 1 possible value, like Haskell's @()@.
+type Null = ()
 
 -- | Attribute set schema with known attributes and wildcard type for remaining attributes.
 data Attrs' (as :: [Attr]) w
@@ -167,6 +179,12 @@ infix 0 ::?
 -- This indicates that the attribute may be omitted in its entirety, which is
 -- distinct from an attribute that may be @null@.
 type a ::? b = a ':? b
+
+-- | Optional (@_?@) attribute name and type (@::_@)
+--
+-- This indicates that the attribute may be omitted in its entirety, which is
+-- distinct from an attribute that may be @null@.
+type a ::?? b = a ':? Null |. b
 
 -- | Required (@_.@) attribute name and type (@::_@)
 --
@@ -207,7 +225,7 @@ f .$ a = do
         value = v
       }
 
-type AttrType as s = AttrType' as as s
+type as . s = AttrType' as as s
 
 type family AttrType' all as s where
   AttrType' all ((s ':. t) ': as) s = t
@@ -223,7 +241,7 @@ type family AttrType' all as s where
           'TL.:$$: 'TL.Text "  Known attributes are " 'TL.:<>: 'TL.ShowType all
       )
 
-type OptionalAttrType as s = OptionalAttrType' as as s
+type as ? s = OptionalAttrType' as as s
 
 type family OptionalAttrType' all as s where
   OptionalAttrType' all ((s ':? t) ': as) s = t
@@ -252,11 +270,11 @@ infixl 9 >>.
 type MonadEval m = (MonadIO m, MonadReader (Ptr EvalState) m)
 
 -- | A combination of '>>=' and '#.'.
-(>>.) :: (KnownSymbol s, AttrType as s ~ b, MonadEval m) => m (PSObject (Attrs' as w)) -> AttrLabel s -> m (PSObject b)
+(>>.) :: (KnownSymbol s, as . s ~ b, MonadEval m) => m (PSObject (Attrs' as w)) -> AttrLabel s -> m (PSObject b)
 mas >>. p = mas >>= \as -> as #. p
 
 -- | Attribute selector. @a #. #b@ is @a.b@ in Nix. Operates on attributes that are required (@_.@) in the schema, throwing an error if necessary.
-(#.) :: (KnownSymbol s, AttrType as s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (PSObject b)
+(#.) :: (KnownSymbol s, as . s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (PSObject b)
 as #. p = do
   evalState <- ask
   let name = T.pack (symbolVal p)
@@ -266,11 +284,11 @@ as #. p = do
     Just b -> pure PSObject {value = b, provenance = Attribute (provenance as) name}
 
 -- | A combination of '>>=' and '#?'.
-(>>?) :: (KnownSymbol s, OptionalAttrType as s ~ b, MonadEval m) => m (PSObject (Attrs' as w)) -> AttrLabel s -> m (Maybe (PSObject b))
+(>>?) :: (KnownSymbol s, as ? s ~ b, MonadEval m) => m (PSObject (Attrs' as w)) -> AttrLabel s -> m (Maybe (PSObject b))
 mas >>? p = mas >>= \as -> as #? p
 
 -- | Attribute selector. @a #? #b@ is @a.b@ in Nix, but handles the missing case without exception. Operates on attributes that are optional (@_?@) in the schema, throwing an error if necessary.
-(#?) :: (KnownSymbol s, OptionalAttrType as s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (Maybe (PSObject b))
+(#?) :: (KnownSymbol s, as ? s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (Maybe (PSObject b))
 as #? p = do
   evalState <- ask
   let name = T.pack (symbolVal p)
@@ -278,11 +296,17 @@ as #? p = do
   liftIO (getAttr evalState v (encodeUtf8 name))
     <&> fmap (\b -> PSObject {value = b, provenance = Attribute (provenance as) name})
 
+-- | Attribute selector. @a #? #b@ is @a.b@ in Nix, but handles the missing case and the null case without exception. Operates on attributes that are optional (@_?@) and nullable (@Null |.@, @() |.@) in the schema.
+(#??) :: (KnownSymbol s, as ? s ~ (Null |. b), PossibleTypesForSchema b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (Maybe (PSObject b))
+as #?? p = do
+  mv <- as #? p
+  join <$> for mv (const (pure Nothing) |! (pure . Just))
+
 -- | Retrieve an optional attribute but throw if it's missing.
 --
 -- It provides a decent error message with attrset provenance, but can't provide
 -- extra context like you can when manually handling the @a '#?' b@ 'Nothing' case.
-(#?!) :: (KnownSymbol s, OptionalAttrType as s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (PSObject b)
+(#?!) :: (KnownSymbol s, as ? s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (PSObject b)
 as #?! p = do
   as #? p >>= \case
     Nothing -> throwIO $ MissingAttribute (provenance as) (T.pack (symbolVal p))
@@ -333,6 +357,8 @@ type family NixTypeForSchema s where
   NixTypeForSchema NixPath = NixPath
   NixTypeForSchema Bool = Bool
   NixTypeForSchema Int64 = Int64
+  NixTypeForSchema [a] = NixList
+  NixTypeForSchema () = ()
 
 class PossibleTypesForSchema s where
   typesForSchema :: Proxy s -> [RawValueType]
@@ -350,6 +376,11 @@ instance PossibleTypesForSchema NixPath
 instance PossibleTypesForSchema Bool
 
 instance PossibleTypesForSchema Int64
+
+instance PossibleTypesForSchema ()
+
+instance PossibleTypesForSchema [a] where
+  typesForSchema _ = [getRawValueType (Proxy @NixList)]
 
 instance
   (PossibleTypesForSchema a, PossibleTypesForSchema b) =>
@@ -524,3 +555,19 @@ instance FromPSObject Bool Bool where
 
 basicAttrsWithProvenance :: Value NixAttrs -> Provenance -> PSObject (Attrs '[])
 basicAttrsWithProvenance attrs p = PSObject {value = rtValue attrs, provenance = p}
+
+instance FromPSObject Int64 Int64 where
+  fromPSObject o = do
+    v <- check o
+    liftIO (Expr.fromValue v)
+
+instance forall a b. FromPSObject a b => FromPSObject [a] [b] where
+  fromPSObject o = do
+    traverseArray fromPSObject o
+
+traverseArray :: (MonadEval m) => (PSObject a -> m b) -> PSObject [a] -> m [b]
+traverseArray f o = do
+  ov <- check o
+  l <- liftIO (Expr.fromValue ov)
+  l & zip [0 ..] & traverse \(i, a) ->
+    f (PSObject (ListItem (provenance o) i) a :: PSObject a)

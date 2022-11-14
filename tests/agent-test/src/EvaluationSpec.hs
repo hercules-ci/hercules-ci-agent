@@ -11,17 +11,20 @@ import Hercules.API.Agent.Evaluate.EvaluateEvent
   ( EvaluateEvent,
   )
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent as AttributeEffectEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent as AttributeErrorEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as BuildRequired
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent as OnPushHandlerEvent
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent as OnScheduleHandlerEvent
 import Hercules.API.Agent.Evaluate.EvaluateTask (Identifier, Selector (ConfigOrLegacy))
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnPush as EvaluateTask.OnPush
 import Hercules.API.Agent.Evaluate.ImmutableInput (ImmutableInput (ArchiveUrl))
 import qualified Hercules.API.Agent.Evaluate.ImmutableInput as API.ImmutableInput
+import Hercules.API.DayOfWeek (DayOfWeek (..))
 import Hercules.API.Id (Id (Id))
 import qualified Hercules.API.TaskStatus as TaskStatus
 import MockTasksApi
@@ -44,6 +47,7 @@ attrLike = filter isAttrLike
 
 isAttrLike :: EvaluateEvent -> Bool
 isAttrLike EvaluateEvent.Attribute {} = True
+isAttrLike EvaluateEvent.AttributeEffect {} = True
 isAttrLike EvaluateEvent.AttributeError {} = True
 isAttrLike EvaluateEvent.Message {} = True -- this is a bit of a stretch but hey
 isAttrLike _ = False
@@ -233,6 +237,35 @@ spec = describe "Evaluation" $ do
           toS (AttributeEvent.derivationPath ae) `shouldContain` "-default-package"
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
 
+  context "when a flake with onSchedule is provided" $
+    it "reports the onSchedule handler" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/flake-onSchedule",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
+        s `shouldBe` TaskStatus.Successful ()
+        case r of
+          [EvaluateEvent.JobConfig _jc, EvaluateEvent.OnPushHandlerEvent _default, EvaluateEvent.OnScheduleHandlerEvent op] -> do
+            OnScheduleHandlerEvent.handlerName op `shouldBe` "update"
+            OnScheduleHandlerEvent.handlerExtraInputs op `shouldBe` mempty
+            OnScheduleHandlerEvent.when op
+              `shouldBe` OnScheduleHandlerEvent.TimeConstraints
+                { minute = Just 37,
+                  hour = Just [12],
+                  dayOfWeek = Just [Mon, Tue, Wed, Thu, Fri, Sat, Sun],
+                  dayOfMonth = Just [1, 2, 3, 4, 5, 6, 7]
+                }
+          _ ->
+            failWith $ "Events should be a [JobConfig, EvaluateEvent.OnPushHandlerEvent, OnScheduleHandlerEvent], not " <> show r
+
   context "when a flake with onPush is provided" $
     it "reports the onPush handler" $
       \srv -> do
@@ -347,25 +380,24 @@ spec = describe "Evaluation" $ do
         s `shouldBe` TaskStatus.Successful ()
         case attrLike r of
           [ EvaluateEvent.Attribute depsOnly,
-            EvaluateEvent.Attribute effect,
+            EvaluateEvent.AttributeEffect effect,
             EvaluateEvent.Attribute ignoreFail,
             EvaluateEvent.Attribute regular,
             EvaluateEvent.Attribute requireFail,
             EvaluateEvent.Attribute shell
             ] -> do
               AttributeEvent.expressionPath depsOnly `shouldBe` ["deps-only"]
-              AttributeEvent.expressionPath effect `shouldBe` ["effect"]
+              AttributeEffectEvent.expressionPath effect `shouldBe` ["effect"]
               AttributeEvent.expressionPath ignoreFail `shouldBe` ["ignore-fail"]
               AttributeEvent.expressionPath regular `shouldBe` ["regular"]
               AttributeEvent.expressionPath requireFail `shouldBe` ["require-fail"]
               AttributeEvent.expressionPath shell `shouldBe` ["shell"]
               AttributeEvent.typ depsOnly `shouldBe` AttributeEvent.DependenciesOnly
-              AttributeEvent.typ effect `shouldBe` AttributeEvent.Effect
               AttributeEvent.typ ignoreFail `shouldBe` AttributeEvent.MayFail
               AttributeEvent.typ regular `shouldBe` AttributeEvent.Regular
               AttributeEvent.typ requireFail `shouldBe` AttributeEvent.MustFail
               AttributeEvent.typ shell `shouldBe` AttributeEvent.DependenciesOnly
-          _ -> failWith $ "Events should be six attributes, not: " <> show r
+          _ -> failWith $ "Attribute events should be six attributes, not: " <> show (attrLike r)
   context "when the nix expression is a naked derivation" $
     it "returns that attribute" $
       \srv -> do
@@ -798,12 +830,12 @@ spec = describe "Evaluation" $ do
           )
       s `shouldBe` TaskStatus.Successful ()
       case attrLike r of
-        [ EvaluateEvent.Attribute a1,
+        [ EvaluateEvent.AttributeEffect a1,
           EvaluateEvent.AttributeError ae1
           ] -> do
-            AttributeEvent.expressionPath a1 `shouldBe` ["effects", "ok"]
-            toS (AttributeEvent.derivationPath a1) `shouldContain` "/nix/store"
-            toS (AttributeEvent.derivationPath a1) `shouldContain` "-effect-2"
+            AttributeEffectEvent.expressionPath a1 `shouldBe` ["effects", "ok"]
+            toS (AttributeEffectEvent.derivationPath a1) `shouldContain` "/nix/store"
+            toS (AttributeEffectEvent.derivationPath a1) `shouldContain` "-effect-2"
 
             AttributeErrorEvent.expressionPath ae1 `shouldBe` ["illegal"]
             toS (AttributeErrorEvent.errorMessage ae1)

@@ -2,9 +2,9 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
 {-# HLINT ignore "Use const" #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 module Hercules.Agent.Worker.Evaluate where
 
@@ -20,13 +20,18 @@ import Data.Conduit.Katip.Orphans ()
 import Data.IORef
 import qualified Data.Map as M
 import qualified Data.Set as S
+import qualified Data.Text as T
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent (OnPushHandlerEvent))
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent (OnScheduleHandlerEvent (OnScheduleHandlerEvent), TimeConstraints (TimeConstraints))
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
 import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnPush as OnPush
+import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnSchedule as OnSchedule
 import qualified Hercules.API.Agent.Evaluate.ImmutableGitInput as API.ImmutableGitInput
 import qualified Hercules.API.Agent.Evaluate.ImmutableInput as API.ImmutableInput
-import Hercules.Agent.NixFile (HerculesCISchema, getHerculesCI, homeExprRawValue, loadNixFile, parseExtraInputs)
+import Hercules.API.DayOfWeek (DayOfWeek (..))
+import Hercules.Agent.NixFile (HerculesCISchema, InputsSchema, OutputsSchema, getHerculesCI, homeExprRawValue, loadNixFile, parseExtraInputs)
 import qualified Hercules.Agent.NixFile as NixFile
 import Hercules.Agent.NixFile.HerculesCIArgs (CISystems (CISystems), HerculesCIMeta (HerculesCIMeta), fromGitSource)
 import qualified Hercules.Agent.NixFile.HerculesCIArgs
@@ -39,19 +44,17 @@ import Hercules.Agent.WorkerProtocol.Command.Eval
   ( Eval,
   )
 import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
-import Hercules.Agent.WorkerProtocol.Event
-  ( Event,
-    ViaJSON (ViaJSON),
-  )
+import Hercules.Agent.WorkerProtocol.Event (Event)
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
 import qualified Hercules.Agent.WorkerProtocol.Event.AttributeIFD as Event.AttributeIFD
+import qualified Hercules.Agent.WorkerProtocol.ViaJSON as ViaJSON
 import Hercules.CNix as CNix
 import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, toValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
 import qualified Hercules.CNix.Expr.Raw
-import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, requireDict, (#.), (#?), (#?!), ($?))
+import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, provenance, requireDict, traverseArray, (#.), (#?), (#?!), (#??), ($?), (|!), type (->?), type (.))
 import qualified Hercules.CNix.Expr.Schema as Schema
 import Hercules.CNix.Expr.Typed (Value)
 import Hercules.CNix.Std.Vector (StdVector)
@@ -285,13 +288,16 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
             -- legacy
             walk evalEnv args (homeExprRawValue homeExpr)
           Just herculesCI -> do
-            case Event.fromViaJSON (Eval.selector eval) of
+            case ViaJSON.fromViaJSON (Eval.selector eval) of
               EvaluateTask.ConfigOrLegacy -> do
                 yield Event.JobConfig
                 sendConfig evalState isFlake herculesCI
               EvaluateTask.OnPush onPush ->
                 transPipe (`runReaderT` evalState) do
                   walkOnPush evalEnv onPush herculesCI
+              EvaluateTask.OnSchedule onSchedule ->
+                transPipe (`runReaderT` evalState) do
+                  walkOnSchedule evalEnv onSchedule herculesCI
     yield Event.EvaluationDone
 
 getHomeExpr :: (MonadThrow m, MonadIO m) => Ptr EvalState -> Eval -> m NixFile.HomeExpr
@@ -302,7 +308,7 @@ getHomeExpr evalState eval =
         srcInput <- case Eval.srcInput eval of
           Just x -> pure x
           Nothing -> panic "srcInput is required for flake job"
-        raw <- mkImmutableGitInputFlakeThunk evalState (Event.fromViaJSON srcInput)
+        raw <- mkImmutableGitInputFlakeThunk evalState (ViaJSON.fromViaJSON srcInput)
         let pso :: PSObject (Schema.Attrs '[])
             pso = Schema.PSObject {value = raw, provenance = Schema.Other "flake.nix"}
         toValue evalState pso
@@ -310,14 +316,32 @@ getHomeExpr evalState eval =
 
 walkOnPush :: (MonadEval m, MonadUnliftIO m, KatipContext m, MonadThrow m) => EvalEnv -> OnPush.OnPush -> PSObject HerculesCISchema -> ConduitT i Event m ()
 walkOnPush evalEnv onPushParams herculesCI = do
+  handler <- herculesCI #?! #onPush >>= requireDict (OnPush.name onPushParams)
+  walkHandler evalEnv (OnPush.inputs onPushParams) handler
+
+walkOnSchedule :: (MonadEval m, MonadUnliftIO m, KatipContext m, MonadThrow m) => EvalEnv -> OnSchedule.OnSchedule -> PSObject HerculesCISchema -> ConduitT i Event m ()
+walkOnSchedule evalEnv onScheduleParams herculesCI = do
+  handler <- herculesCI #?! #onSchedule >>= requireDict (OnSchedule.name onScheduleParams)
+  walkHandler evalEnv (OnSchedule.extraInputs onScheduleParams) handler
+
+walkHandler ::
+  ( MonadEval m,
+    MonadUnliftIO m,
+    KatipContext m,
+    handlerAttrs . "outputs" ~ (InputsSchema ->? OutputsSchema)
+  ) =>
+  EvalEnv ->
+  Map Text API.ImmutableInput.ImmutableInput ->
+  PSObject (Schema.Attrs' handlerAttrs w) ->
+  ConduitT i Event m ()
+walkHandler evalEnv inputs handler = do
   let evalState = evalEnvState evalEnv
-  onPushHandler <- herculesCI #?! #onPush >>= requireDict (OnPush.name onPushParams)
-  inputs <- liftIO $ do
-    inputs <- for (OnPush.inputs onPushParams) \input -> do
+  inputs' <- liftIO $ do
+    inputs' <- for inputs \input -> do
       inputToValue evalState input
-    toRawValue evalState inputs
-  outputsFun <- onPushHandler #. #outputs
-  outputs <- outputsFun $? (Schema.PSObject {value = inputs, provenance = Schema.Data})
+    toRawValue evalState inputs'
+  outputsFun <- handler #. #outputs
+  outputs <- outputsFun $? (Schema.PSObject {value = inputs', provenance = Schema.Data})
   simpleWalk evalEnv (Schema.value outputs)
 
 inputToValue :: Ptr EvalState -> API.ImmutableInput.ImmutableInput -> IO RawValue
@@ -340,12 +364,105 @@ sendConfig evalState isFlake herculesCI = flip runReaderT evalState $ do
     for_ (M.mapWithKey (,) attrs) \(name, onPush) -> do
       ei <- onPush #? #extraInputs >>= traverse parseExtraInputs
       enable <- onPush #? #enable >>= traverse fromPSObject <&> fromMaybe True
-      when enable . lift . yield . Event.OnPushHandler . ViaJSON $
+      when enable . lift . yield . Event.OnPushHandler . ViaJSON.ViaJSON $
         OnPushHandlerEvent
           { handlerName = decodeUtf8 name,
             handlerExtraInputs = M.mapKeys decodeUtf8 (fromMaybe mempty ei),
             isFlake = isFlake
           }
+  herculesCI #? #onSchedule >>= traverse_ \onSchedules -> do
+    attrs <- dictionaryToMap onSchedules
+    for_ (M.mapWithKey (,) attrs) \(name, onSchedule) -> do
+      ei <- onSchedule #? #extraInputs >>= traverse parseExtraInputs
+      enable <- onSchedule #? #enable >>= traverse fromPSObject <&> fromMaybe True
+      when_ <- onSchedule #?? #when >>= maybe (pure defaultConstraints) parseWhen
+      when enable . lift . yield . Event.OnScheduleHandler . ViaJSON.ViaJSON $
+        OnScheduleHandlerEvent
+          { handlerName = decodeUtf8 name,
+            handlerExtraInputs = M.mapKeys decodeUtf8 (fromMaybe mempty ei),
+            isFlake = isFlake,
+            when = when_
+          }
+
+defaultConstraints :: TimeConstraints
+defaultConstraints = noConstraints
+
+noConstraints :: TimeConstraints
+noConstraints = TimeConstraints Nothing Nothing Nothing Nothing
+
+parseWhen :: MonadEval m => PSObject NixFile.TimeConstraintsSchema -> m Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent.TimeConstraints
+parseWhen w = do
+  minute_ <-
+    w #?? #minute >>= traverse \obj -> do
+      v <- fromPSObject obj
+      if v >= 0 && v < 60
+        then pure v
+        else throwIO $ Schema.InvalidValue (provenance obj) $ "minute value " <> show v <> " is out of range [0..59]."
+
+  let validateHour obj = do
+        v <- fromPSObject obj
+        if v >= 0 && v < 24
+          then pure v
+          else throwIO $ Schema.InvalidValue (provenance obj) $ "hour value " <> show v <> " is out of range [0..23]."
+
+  hour_ <-
+    w #?? #hour
+      >>= traverse
+        ( (\oneInt -> validateHour oneInt <&> \x -> [x])
+            |! ( \hours -> do
+                   v <- traverseArray validateHour hours
+                   when (null v) do
+                     throwIO $ Schema.InvalidValue (provenance hours) $ "hour must not be an empty list."
+                   pure v
+               )
+        )
+  dayOfWeek <-
+    w #?? #dayOfWeek
+      >>= traverse
+        ( \dayStringsObject -> do
+            days <- traverseArray parseDayOfWeek dayStringsObject
+            when (null days) do
+              throwIO $ Schema.InvalidValue (provenance dayStringsObject) $ "dayOfWeek must not be an empty list."
+            pure days
+        )
+  dayOfMonth <-
+    w #?? #dayOfMonth
+      >>= traverse \daysOfMonth -> do
+        v <-
+          daysOfMonth & traverseArray \obj -> do
+            v <- fromPSObject obj
+            if v >= 0 && v <= 31
+              then pure v
+              else throwIO $ Schema.InvalidValue (provenance obj) $ "month value " <> show v <> " is out of range [0..31]."
+        when (null v) do
+          throwIO $ Schema.InvalidValue (provenance daysOfMonth) $ "dayOfMonth must not be an empty list."
+        pure v
+
+  pure $
+    TimeConstraints
+      { minute = (minute_ :: Maybe Int64) <&> fromIntegral,
+        hour = (hour_ :: Maybe [Int64]) <&> fmap fromIntegral,
+        dayOfWeek = dayOfWeek,
+        dayOfMonth = (dayOfMonth :: Maybe [Int64]) <&> fmap fromIntegral
+      }
+
+parseDayOfWeek :: (Schema.FromPSObject a Text, MonadEval m) => PSObject a -> m DayOfWeek
+parseDayOfWeek dayString = do
+  s <- fromPSObject @_ @Text dayString
+  case T.toLower s of
+    "mon" -> pure Mon
+    "tue" -> pure Tue
+    "wed" -> pure Wed
+    "thu" -> pure Thu
+    "fri" -> pure Fri
+    "sat" -> pure Sat
+    "sun" -> pure Sun
+    other ->
+      throwIO
+        ( Schema.InvalidValue
+            (provenance dayString)
+            ("Expected an abbreviated day of week: \"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\", \"Sat\" or \"Sun\". Actual: " <> show other)
+        )
 
 data TreeWork = TreeWork
   { treeWorkAttrPath :: [ByteString],

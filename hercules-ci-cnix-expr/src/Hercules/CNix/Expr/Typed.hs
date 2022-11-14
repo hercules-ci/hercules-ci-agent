@@ -19,6 +19,7 @@ module Hercules.CNix.Expr.Typed
     match,
     match',
     getBool,
+    getInt,
     getStringIgnoreContext,
     hasContext,
     CheckType (..),
@@ -152,6 +153,10 @@ getBool (Value (RawValue v)) =
   (0 /=)
     <$> [C.exp| int { $(Value *v)->boolean ? 1 : 0 }|]
 
+getInt :: Value NixInt -> IO Int64
+getInt (Value (RawValue v)) =
+  [C.exp| int64_t { $(Value *v)->integer }|]
+
 -- NOT coerceToString
 getStringIgnoreContext :: Value NixString -> IO ByteString
 getStringIgnoreContext (Value (RawValue v)) =
@@ -230,3 +235,6 @@ instance HasRawValueType NixFunction where
 
 instance HasRawValueType NixList where
   getRawValueType _ = List
+
+instance HasRawValueType () where
+  getRawValueType _ = Null

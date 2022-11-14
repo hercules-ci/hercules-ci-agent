@@ -86,6 +86,7 @@ library
       Hercules.Agent.Socket
       Hercules.Agent.STM
       Hercules.Agent.WorkerProcess
+      Hercules.Agent.WorkerProtocol.ViaJSON
       Hercules.Agent.WorkerProtocol.Command
       Hercules.Agent.WorkerProtocol.Command.Build
       Hercules.Agent.WorkerProtocol.Command.BuildResult

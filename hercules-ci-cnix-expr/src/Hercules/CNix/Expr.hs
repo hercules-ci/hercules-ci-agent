@@ -568,6 +568,12 @@ class FromValue n a | a -> n where
 instance FromValue Bool Bool where
   fromValue = getBool
 
+instance FromValue NixList [RawValue] where
+  fromValue = getList
+
+instance FromValue NixInt Int64 where
+  fromValue = getInt
+
 -- | Identity
 instance ToRawValue RawValue where
   toRawValue _ = pure

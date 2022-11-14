@@ -12,13 +12,13 @@ import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration (InputDeclarat
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration as InputDeclaration
 import qualified Hercules.API.Inputs.ImmutableGitInput as API.ImmutableGitInput
 import Hercules.API.Projects (getJobSource)
-import Hercules.Agent.NixFile (getOnPushOutputValueByPath)
+import Hercules.Agent.NixFile (getVirtualValueByPath)
 import qualified Hercules.Agent.NixFile.GitSource as GitSource
 import Hercules.Agent.NixFile.HerculesCIArgs (CISystems (CISystems), HerculesCIArgs)
 import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
 import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDefaultApiBaseUrl, runHerculesClient)
 import Hercules.CLI.Common (runAuthenticated)
-import Hercules.CLI.Git (getGitRoot, getRef, getRev)
+import Hercules.CLI.Git (getGitRoot, getRef, getRev, getUpstreamURL, guessForgeTypeFromURL)
 import Hercules.CLI.Options (scanOption)
 import Hercules.CLI.Project (ProjectPath (projectPathProject), getProjectPath, projectPathReadM, projectResourceClientByPath)
 import Hercules.CNix (Store)
@@ -36,7 +36,25 @@ createHerculesCIArgs passedRef = do
   gitRoot <- getGitRoot
   gitRev <- getRev
   ref <- computeRef passedRef
-  let gitSource = GitSource.fromRefRevPath ref gitRev (toS gitRoot)
+  upstreamURL <- getUpstreamURL
+  let remoteHttpUrl = upstreamURL <$ guard ("http" `T.isPrefixOf` upstreamURL)
+      remoteSshUrl = upstreamURL <$ guard (not ("http" `T.isPrefixOf` upstreamURL))
+      guessWebUrlFromHttpUrl url = T.stripSuffix ".git" url & fromMaybe url
+  let gitSource =
+        GitSource.GitSource
+          { outPath = toS gitRoot,
+            ref = ref,
+            rev = gitRev,
+            shortRev = GitSource.shortRevFromRev gitRev,
+            branch = GitSource.branchFromRef ref,
+            tag = GitSource.tagFromRef ref,
+            remoteHttpUrl = remoteHttpUrl,
+            remoteSshUrl = remoteSshUrl,
+            webUrl = guessWebUrlFromHttpUrl <$> remoteHttpUrl,
+            forgeType = guessForgeTypeFromURL upstreamURL,
+            owner = Nothing {- TODO; agent only for now -},
+            name = Nothing {- TODO; agent only for now -}
+          }
   url <- determineDefaultApiBaseUrl
   pure $ HerculesCIArgs.fromGitSource gitSource HerculesCIArgs.HerculesCIMeta {apiBaseUrl = url, ciSystems = CISystems Nothing}
 
@@ -97,7 +115,7 @@ ciNixAttributeCompleter = mkTextCompleter \partial -> do
     runAuthenticated do
       uio <- askUnliftIO
       liftIO $
-        getOnPushOutputValueByPath evalState (toS $ GitSource.outPath $ HerculesCIArgs.primaryRepo args) args (resolveInputs uio evalState projectMaybe) (encodeUtf8 <$> prefix) >>= \case
+        getVirtualValueByPath evalState (toS $ GitSource.outPath $ HerculesCIArgs.primaryRepo args) args (resolveInputs uio evalState projectMaybe) (encodeUtf8 <$> prefix) >>= \case
           Nothing -> pure []
           Just focusValue -> do
             match' evalState focusValue >>= \case

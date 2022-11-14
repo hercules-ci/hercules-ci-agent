@@ -54,6 +54,26 @@ A path containing the files of the checked out revision.
 
 Same as top-level <<params-herculesCI-commit>>.
 
+[[params-herculesCI-primaryRepo-webUrl]]
+=== `primaryRepo.webURL`
+
+Web link to the repository for use in the browser.
+
+[[params-herculesCI-primaryRepo-forgeType]]
+=== `primaryRepo.forgeType`
+
+Type of forge the repo is on, e.g. `"github"`.
+
+[[params-herculesCI-primaryRepo-owner]]
+=== `primaryRepo.owner`
+
+The name of the owner of the repository.
+
+[[params-herculesCI-primaryRepo-name]]
+=== `primaryRepo.name`
+
+The name of the repository.
+
 // hercules-ci-agent/src/Hercules/Agent/NixFile/HerculesCIArgs.hs
 [[param-herculesCI-herculesCI]]
 === `herculesCI`
@@ -127,11 +147,6 @@ These "output" attributes can be
 
 During the execution of the job, first, all derivations will be built. If the build went well, all effects will run, concurrently with effects in the same job, but only after preceding jobs have either completed or failed to build.
 
-[[attributes-herculesCI.onPush-outputs.effects]]
-=== `onPush.<name>.outputs.effects` Attributes
-
-This is this the only location in `outputs` where effects are allowed.
-
 ==== Derivations, shells and effects
 
 All three are defined through derivations.
@@ -151,6 +166,71 @@ All three are defined through derivations.
 Unlike the legacy format and `nix-build`, nested attribute sets _are_ traversed by default.
 
 You can mark attribute sets not to be traversed by adding an attribute `recurseForDerivations = false` inside them, as is done by the function `lib.dontRecurseIntoAttrs` of type `attrs -> attrs`.
+
+[[attributes-herculesCI.onPush-outputs.effects]]
+=== `onPush.<name>.outputs.effects` Attributes
+
+This is this the only location in `outputs` where effects are allowed.
+
+[[attributes-onSchedule]]
+=== `onSchedule` Attributes
+
+_Since hercules-ci-agent 0.9.8_
+
+Behaves similar to <<attributes-herculesCI.onPush>>, but is responsible for jobs
+that respond to the passing of time rather than to a `git push` or equivalent.
+
+`onSchedule` is like `cron` for your projects.
+
+[[attributes-herculesCI.onSchedule-outputs]]
+=== `onSchedule.<name>.outputs` Attributes
+
+_Since hercules-ci-agent 0.9.8_
+
+Behaves the same as <<attributes-herculesCI.onPush-outputs>>, but for jobs that
+respond to the passing of time rather than to a `git push` or equivalent.
+
+[[attributes-herculesCI.onSchedule-when]]
+=== `onSchedule.<name>.when` Attributes
+
+_Since hercules-ci-agent 0.9.8_
+
+This attribute set defines at which times a job will be created.
+Each subattribute represents an equality, all of which will hold at the next planned time.
+The time zone is UTC.
+
+The `minute` or `hour` attributes can be omitted, in which case Hercules CI will pick an arbitrary time for you.
+
+Examples:
+
+```nix
+  # an arbitrary time of day, once a each day
+  when = { };
+```
+
+```nix
+  # 1 or 2 in the morning before Central European work days
+  when = {
+    hour = [ 0 ];
+    dayOfWeek = [ "Mon" "Tue" "Wed" "Thu" "Fri" ];
+  }
+```
+
+```nix
+  # First Tuesday of the month, arbitrary time of day
+  when = {
+    dayOfWeek = [ "Tue" ];
+    dayOfMonth = [ 1 2 3 4 5 6 7 ];
+  }
+```
+
+ - `minute`: An optional integer representing the minute mark at which a job should be created. Inclusive range: `[0 .. 59]`. Default: an arbitrary minute.
+
+ - `hour`: An optional integer or list of integers representing the hours at which a jobs should be created. Inclusive range: `[0 .. 23]`. Default: a single arbitrary hour.
+
+ - `dayOfWeek`: An optional list of strings representing the days during which jobs should be created. Valid items are `"Mon"`, `"Tue"`, `"Wed"`, `"Thu"`, `"Fri"`, `"Sat"`, `"Sun"`. Default: all days of the week.
+
+ - `dayOfMonth`: A list of integers representing the days of the month during which jobs should be created. Inclusive range: `[1 .. 31]`. Default: all days of the month. Combining with `dayOfWeek` further reduces the number of jobs.
 
 == Default `onPush` job
 

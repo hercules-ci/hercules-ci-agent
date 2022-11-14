@@ -5,13 +5,16 @@
 
 module Hercules.CLI.Effect where
 
+import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
 import Data.Has (Has)
+import qualified Data.Map as M
 import qualified Data.Text as T
+import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent as AttributeEffectEvent
 import Hercules.API.Id (Id (Id, idUUID))
 import qualified Hercules.API.Projects as Projects
 import qualified Hercules.API.Projects.CreateUserEffectTokenResponse as CreateUserEffectTokenResponse
-import Hercules.Agent.NixFile (getOnPushOutputValueByPath)
+import Hercules.Agent.NixFile (getVirtualValueByPath)
 import qualified Hercules.Agent.NixFile.GitSource as GitSource
 import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
@@ -20,6 +23,7 @@ import Hercules.CLI.Common (runAuthenticatedOrDummy)
 import Hercules.CLI.Exception (exitMsg)
 import Hercules.CLI.Git (getAllBranches, getHypotheticalRefs)
 import qualified Hercules.CLI.Git as Git
+import Hercules.CLI.JSON (askPasswordWithKey)
 import Hercules.CLI.Nix (ciNixAttributeCompleter, computeRef, createHerculesCIArgs, resolveInputs, withNix)
 import Hercules.CLI.Options (flatCompleter, mkCommand, subparser)
 import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption, projectPathOwner, projectPathProject, projectPathText)
@@ -29,7 +33,7 @@ import Hercules.CNix.Expr (EvalState, Match (IsAttrs), Value (rtValue), getAttrB
 import qualified Hercules.CNix.Std.Vector as Std.Vector
 import Hercules.CNix.Store (Derivation, buildPaths, getDerivationInputs, newStorePathWithOutputs)
 import qualified Hercules.CNix.Store as CNix
-import Hercules.Effect (RunEffectParams (..), runEffect)
+import Hercules.Effect (RunEffectParams (..), parseDrvSecretsMap, runEffect)
 import Hercules.Error (escalate)
 import qualified Hercules.Secrets as Secret
 import Katip (initLogEnv, runKatipContextT)
@@ -75,6 +79,12 @@ runParser = do
             then liftIO Git.getIsDefault
             else pure True
 
+        drvEnv <- liftIO $ CNix.getDerivationEnv derivation
+        secretsMap <- case parseDrvSecretsMap drvEnv of
+          Left e -> exitMsg e
+          Right r -> pure r
+        serverSecrets <- loadServerSecrets secretsMap
+
         apiBaseURL <- liftIO determineDefaultApiBaseUrl
         ProjectData {pdProjectPath = projectPath, pdProjectId = projectId, pdToken = token} <- wait projectPathAsync
         secretsJson <- liftIO $ traverse getSecretsFilePath projectPath
@@ -99,6 +109,7 @@ runParser = do
                 { runEffectDerivation = derivation,
                   runEffectToken = token,
                   runEffectSecretsConfigPath = secretsJson,
+                  runEffectServerSecrets = serverSecrets,
                   runEffectApiBaseURL = apiBaseURL,
                   runEffectDir = workDir,
                   runEffectProjectId = projectId,
@@ -109,6 +120,22 @@ runParser = do
                   runEffectFriendly = True
                 }
         throwIO exitCode
+
+loadServerSecrets :: Map Text AttributeEffectEvent.SecretRef -> RIO r (Sensitive (Map Text (Map Text A.Value)))
+loadServerSecrets secrets = secrets & M.traverseMaybeWithKey loadServerSecret <&> Sensitive
+
+loadServerSecret :: Text -> AttributeEffectEvent.SecretRef -> RIO r (Maybe (Map Text A.Value))
+loadServerSecret name sr = case sr of
+  AttributeEffectEvent.SimpleSecret _ -> pure Nothing
+  AttributeEffectEvent.GitToken gitToken -> loadGitToken name gitToken
+
+loadGitToken :: Text -> AttributeEffectEvent.GitToken -> RIO r (Maybe (Map Text A.Value))
+loadGitToken name _noDetail = do
+  -- TODO: read gh hosts.yaml file?
+  token <- liftIO $ askPasswordWithKey (Just name) "token"
+  purer $
+    M.fromList
+      [token <&> A.String]
 
 getEffectDrv :: Store -> Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO (HerculesClientToken, HerculesClientEnv) Derivation
 getEffectDrv store evalState projectOptionMaybe ref attr = do
@@ -132,7 +159,7 @@ evaluateEffectDerivation evalState store projectOptionMaybe ref attr = do
   let attrPath = T.split (== '.') attr
       nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
   uio <- askUnliftIO
-  valMaybe <- liftIO $ getOnPushOutputValueByPath evalState (toS nixFile) args (resolveInputs uio evalState projectOptionMaybe) (map encodeUtf8 attrPath)
+  valMaybe <- liftIO $ getVirtualValueByPath evalState (toS nixFile) args (resolveInputs uio evalState projectOptionMaybe) (map encodeUtf8 attrPath)
   -- valMaybe <- liftIO $ attrByPath evalState rootValue
   attrValue <- case valMaybe of
     Nothing -> do

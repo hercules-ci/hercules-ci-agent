@@ -10,7 +10,7 @@ import Text.Show
 -- | newtype wrapper to avoid leaking sensitive data through Show
 newtype Sensitive a = Sensitive {reveal :: a}
   deriving (Generic)
-  deriving newtype (Binary, Eq, Ord)
+  deriving newtype (Binary, Eq, Ord, Monoid, Semigroup)
   deriving (Functor, Applicative, Monad) via Identity
 
 -- | @const "<sensitive>"@
