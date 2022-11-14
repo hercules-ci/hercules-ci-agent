@@ -122,8 +122,6 @@ let
       forSystems = f: args: attrs: mapAttrs f (filterSystems args.ciSystems attrs);
     in
     rec {
-      # TODO validate
-
       # buildable
       packages = forSystems (sys: pkgs: pkgs);
       checks = forSystems (sys: checks: checks);
@@ -132,6 +130,19 @@ let
       apps = forSystems (sys: mapAttrs (k: checkApp));
       nixosConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs args.ciSystems attrs);
       darwinConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs args.ciSystems attrs);
+      formatter = forSystems (sys: formatter: formatter);
+      templates = args: attrs: mapAttrs
+        (name: template:
+          if builtins.typeOf (template.description or null) != "string"
+          then throw "Template `templates.${name}` does not have a `description` string attribute."
+          else if builtins.typeOf template.path != "path"
+          then throw "Template `templates.${name}` does not have a `path` attribute, containing a path value."
+          else if !(builtins.pathExists template.path)
+          then throw "Template path `templates.${name}.path` points to a directory that does not exist."
+          else template
+        )
+        attrs;
+
       effects = args: effects:
         if builtins.isAttrs effects
         then effects
