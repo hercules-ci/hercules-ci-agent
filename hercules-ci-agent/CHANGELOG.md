@@ -13,11 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    to automate work that doesn't start with a code change, such as automatic
    updates or impure periodic deployments.
 
+ - Secret types and the `GitToken` type, to be provided by the Hercules CI GitHub
+   App. As of writing this requires a permission approval in the GitHub UI. This
+   has to be initiated on the Hercules CI side. More on that very soon.
+
+ - More repository metadata in the `herculesCI` attribute; see [evaluation docs](https://docs.hercules-ci.com/hercules-ci-agent/evaluation/#param-herculesCI-primaryRepo).
+
 ### Fixed
 
  - Work around excessive stack use by libstdc++ regex [issue](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86164)
    The new limit of 256 MiB stack allows larger string inputs to be used.
    This bug was triggered by purs-nix and possibly other Nix expression libraries that parse substantial files.
+
+ - Lift the agent-side restriction on the number of derivations in a job.
 
 ## [0.9.7] - 2022-07-21
 
@@ -624,6 +632,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Initial release
 
+[0.9.8]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.7...hercules-ci-agent-0.9.8
 [0.9.7]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.6...hercules-ci-agent-0.9.7
 [0.9.6]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.5...hercules-ci-agent-0.9.6
 [0.9.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.3...hercules-ci-agent-0.9.5
