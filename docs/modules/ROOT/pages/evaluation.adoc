@@ -55,9 +55,29 @@ A path containing the files of the checked out revision.
 Same as top-level <<params-herculesCI-commit>>.
 
 [[params-herculesCI-primaryRepo-webUrl]]
-=== `primaryRepo.webURL`
+=== `primaryRepo.webUrl`
 
 Web link to the repository for use in the browser.
+
+[[params-herculesCI-primaryRepo-remoteHttpUrl]]
+=== `primaryRepo.remoteHttpUrl`
+
+Git remote URL for cloning, etc via the HTTP(S) protocol.
+
+May be `null` for (private) forges that are not configured to offer this protocol.
+
+The HTTP protocol is recommended because it
+ - is more often allowed on firewalled networks
+ - lets Hercules CI distribute short-lived tokens to Effects; a secure and convenient alternative to personal access tokens or permanent SSH deploy keys.
+
+This will be an `https` URL on most forges, except private forges that don't have TLS enabled.
+
+[[params-herculesCI-primaryRepo-remoteSshUrl]]
+=== `primaryRepo.remoteSshUrl`
+
+Git remote URL for cloning, etc via the SSH protocol.
+
+May be `null` for (private) forges that are not configured to offer this protocol.
 
 [[params-herculesCI-primaryRepo-forgeType]]
 === `primaryRepo.forgeType`
