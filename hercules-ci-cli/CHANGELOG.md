@@ -5,9 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.3.3 - 2022-11-15
+
+### Added
 
  - `hci effect run` can now run `onSchedule.<name>.*` effect attributes.
+
+ - Basic support for the `GitToken` secret type. You may enter a personal access token
+   by hand.
+
+### Fixed
+
+ - Fix a common error when an explicit upstream is missing but only one remote exists.
+   This was sufficient data to determine the project context, and now it works.
 
 ## 0.3.2 - 2022-06-21
 
