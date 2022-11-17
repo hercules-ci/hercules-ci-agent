@@ -11,6 +11,7 @@ let
     intersectAttrs
     listToAttrs
     mapAttrs
+    typeOf
     ;
 
   # lib
@@ -115,6 +116,41 @@ let
     then throw "Attribute is not a shell derivation"
     else drv // { buildDependenciesOnly = true; };
 
+  hasPrefix = pre: s: builtins.substring 0 (builtins.stringLength pre) s == pre;
+
+  stringIsStorePath = s: hasPrefix builtins.storeDir (dirOf s);
+
+  isPathLike =
+    v: (builtins.typeOf v == "path" && stringIsStorePath (toString v))
+      || (builtins.typeOf v == "string" && stringIsStorePath v)
+      || (v?__toString && isPathLike (v.__toString v))
+      || (v?outPath && isPathLike v.outPath);
+
+  checkTemplate = name: template:
+    if !builtins.isAttrs template
+    then throw "Template `templates.${name}` is not an attribute set."
+
+    else if !template?description
+    then throw "Template `templates.${name}` does not have a `description` string attribute."
+
+    else if typeOf template.description != "string"
+    then throw "`templates.${name}.description` must be a string, but its type is ${typeOf template.description}."
+
+    else if !template?path
+    then throw "Template `templates.${name}` does not have a `path` attribute."
+
+    else if !isPathLike template.path
+    then
+      if builtins.typeOf template.path == "string" ||
+        builtins.typeOf template.path == "path"
+      then throw "`templates.${name}.path` must be a path value in the store, or a string representing a store path, or an attribute set coercible to such values (e.g. cleanSource return value). However, the value is ${toString template.path}"
+      else throw "`templates.${name}.path` must be a path value in the store, or a string representing a store path, or an attribute set coercible to such values (e.g. cleanSource return value). However, the type is ${builtins.typeOf template.path}"
+
+    else if !(builtins.pathExists template.path)
+    then throw "Template path `templates.${name}.path` points to a location that does not exist."
+
+    else template;
+
   translations =
     let
       ignore = args: x: null;
@@ -131,17 +167,7 @@ let
       nixosConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs args.ciSystems attrs);
       darwinConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs args.ciSystems attrs);
       formatter = forSystems (sys: formatter: formatter);
-      templates = args: attrs: mapAttrs
-        (name: template:
-          if builtins.typeOf (template.description or null) != "string"
-          then throw "Template `templates.${name}` does not have a `description` string attribute."
-          else if builtins.typeOf template.path != "path"
-          then throw "Template `templates.${name}` does not have a `path` attribute, containing a path value."
-          else if !(builtins.pathExists template.path)
-          then throw "Template path `templates.${name}.path` points to a directory that does not exist."
-          else template
-        )
-        attrs;
+      templates = args: attrs: mapAttrs checkTemplate attrs;
 
       effects = args: effects:
         if builtins.isAttrs effects
