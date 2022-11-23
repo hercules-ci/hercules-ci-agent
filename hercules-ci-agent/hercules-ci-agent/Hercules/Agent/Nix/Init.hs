@@ -7,7 +7,6 @@ import Protolude
 newEnv :: IO Env
 newEnv = do
   nixInfo <- EnvironmentInfo.getNixInfo
-  print nixInfo
   when (EnvironmentInfo.nixNarinfoCacheNegativeTTL nixInfo /= 0) $ do
     putErrText
       "\n\
