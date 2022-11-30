@@ -100,7 +100,7 @@ configChecks :: App ()
 configChecks = do
   trusted <- asks (Config.nixUserIsTrusted . Env.config)
   when (not trusted) do
-    logLocM WarningS "Your config does not indicate you have set up your user as a trusted user on the system. Running the agent as a trusted user ensures that your cache configuration is compatible with the system and improves performance if you have more than one agent. The NixOS and nix-darwin modules should configure this automatically. If this agent was set up with a manually written config file, see https://docs.hercules-ci.com/hercules-ci/reference/agent-config/"
+    logLocM WarningS "Your config does not indicate you have set up the user that runs the agent as a trusted-user on the system. Running the agent as a trusted-user ensures that your cache configuration is compatible with the system and it improves performance. The NixOS and nix-darwin modules configure this automatically. If this agent was set up with a manually written config file, add the user that runs the agent to nix.settings.trusted-users in your system configuration, or add it to the trusted-users line in your system nix.conf."
 
 run :: Env.Env -> Config.FinalConfig -> IO ()
 run env _cfg = do
