@@ -12,7 +12,7 @@ import Hercules.CLI.Client
 import Hercules.CLI.Common (runAuthenticated)
 import Hercules.CLI.Options (mkCommand, subparser)
 import Hercules.CLI.Project (ProjectPath (projectPathOwner, projectPathProject, projectPathSite), findProjectContextually, projectOption)
-import Options.Applicative (bashCompleter, completer, help, long, metavar, strOption)
+import Options.Applicative (auto, bashCompleter, completer, help, long, metavar, option, strOption)
 import qualified Options.Applicative as Optparse
 import Protolude hiding (option)
 import RIO (RIO, runRIO, withBinaryFile)
@@ -37,11 +37,12 @@ getCommandParser = do
   projectMaybe <- optional projectOption
   name <- nameOption
   file <- fileOption
+  versionMaybe <- optional versionOption
   pure do
     runAuthenticated do
       projectStateClient <- getProjectAndClient projectMaybe
       -- TODO: version
-      runHerculesClientStream (getStateData projectStateClient name Nothing) \case
+      runHerculesClientStream (getStateData projectStateClient name versionMaybe) \case
         Left e -> dieWithHttpError e
         Right (Headers r _) -> do
           runConduitRes $
@@ -72,6 +73,9 @@ nameOption = strOption $ long "name" <> metavar "NAME" <> help "Name of the stat
 
 fileOption :: Optparse.Parser FilePath
 fileOption = strOption $ long "file" <> metavar "FILE" <> help "Local path of the state file or - for stdio" <> completer (bashCompleter "file")
+
+versionOption :: Optparse.Parser Int
+versionOption = option auto $ long "version" <> metavar "INT" <> help "Version of the state file to retrieve"
 
 getProjectAndClient :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Maybe ProjectPath -> RIO r (ProjectStateResourceGroup ClientAuth (AsClientT ClientM))
 getProjectAndClient projectMaybe =
