@@ -8,7 +8,7 @@ import Control.Lens ((^?))
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT, runMaybeT))
 import Data.Aeson (FromJSON, ToJSON, eitherDecode)
 import qualified Data.Aeson as A
-import Data.Aeson.Lens (AsPrimitive (_String), key)
+import Data.Aeson.Lens (key, _String)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Map as M
