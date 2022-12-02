@@ -5,7 +5,7 @@ packages:
 source-repository-package
     type: git
     location: https://github.com/hercules-ci/optparse-applicative.git
-    tag: 9e2968c09a7c5b29d04578dc68d81ce5aec0591e
+    tag: 3d20deefbef2e66d3c075facc5d01c1aede34f3c
 
 constraints:
   hercules-ci-cnix-store +nix-2_4,
