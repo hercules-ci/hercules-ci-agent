@@ -1,7 +1,7 @@
 cabal-version: 1.12
 
 name:           hercules-ci-cli
-version:        0.3.3
+version:        0.3.4
 synopsis:       The hci command for working with Hercules CI
 homepage:       https://docs.hercules-ci.com
 bug-reports:    https://github.com/hercules-ci/hercules-ci-agent/issues
