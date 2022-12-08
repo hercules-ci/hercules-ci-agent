@@ -81,7 +81,6 @@ import qualified Network.WebSockets.Connection
 import Orphans ()
 import Protolude hiding (Handler)
 import Servant.API
-import Servant.API.Generic
 import Servant.API.WebSocket
 import Servant.Auth.Server
 import Servant.Conduit ()

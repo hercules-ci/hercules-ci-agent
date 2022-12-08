@@ -93,5 +93,5 @@ traversePartWithKey f =
 --
 -- It uses 'WithKey' to maintain the invariant that all keys and values are
 -- preserved when returning @Just@ from 'partWithKey'.
-partitionMap :: Ord k => Partitioner (WithKey k a) b -> M.Map k a -> b
+partitionMap :: Partitioner (WithKey k a) b -> M.Map k a -> b
 partitionMap p = partitionList p . coerce . M.toAscList

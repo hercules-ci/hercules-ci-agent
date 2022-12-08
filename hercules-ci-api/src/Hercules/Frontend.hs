@@ -11,7 +11,6 @@ import Hercules.API.SourceHostingSite.SourceHostingSite
   )
 import Network.URI
 import Servant.API
-import Servant.API.Generic
 import Servant.Links
 
 -- | URL routes for the web interface.

@@ -8,7 +8,6 @@ import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
 import Hercules.API.Prelude
 import qualified Hercules.API.Task as Task
 import Servant.API
-import Servant.API.Generic
 
 data BuildAPI auth f = BuildAPI
   { getBuild ::

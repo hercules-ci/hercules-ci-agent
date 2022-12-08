@@ -13,7 +13,6 @@ import Hercules.API.Agent.Evaluate.EvaluateTask
 import Hercules.API.Prelude
 import Hercules.API.Task (Task)
 import Servant.API
-import Servant.API.Generic
 
 data EvalAPI auth f = EvalAPI
   { tasksGetEvaluation ::

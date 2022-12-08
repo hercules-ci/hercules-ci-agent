@@ -9,7 +9,6 @@ where
 import Data.ByteString (ByteString)
 import Hercules.API.Prelude
 import Servant.API
-import Servant.API.Generic
 import Servant.Auth
 
 data LogsAPI logJWT f = LogsAPI

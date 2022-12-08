@@ -20,7 +20,6 @@ import Hercules.API.Agent.Tasks
   )
 import Hercules.API.Prelude
 import Servant.API
-import Servant.API.Generic
 import Servant.Auth
 
 data AgentAPI auth f = AgentAPI

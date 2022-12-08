@@ -13,7 +13,6 @@ import Hercules.API.Agent.LifeCycle.StartInfo
   )
 import Hercules.API.Prelude
 import Servant.API
-import Servant.API.Generic
 
 -- | Agent session and "connection" endpoints
 data LifeCycleAPI auth f = LifeCycleAPI

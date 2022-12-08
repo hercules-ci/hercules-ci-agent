@@ -20,7 +20,6 @@ import Hercules.API.SourceHostingSite.SourceHostingSite
   ( SourceHostingSite,
   )
 import Servant.API
-import Servant.API.Generic
 import Servant.Auth ()
 
 data AccountResourceGroup auth f = AccountResourceGroup

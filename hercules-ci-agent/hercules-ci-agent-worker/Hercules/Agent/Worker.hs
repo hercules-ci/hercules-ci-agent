@@ -14,7 +14,6 @@ import Control.Concurrent.STM hiding (check)
 import qualified Control.Exception.Lifted as EL
 import Control.Monad.Except
 import Control.Monad.IO.Unlift
-import Control.Monad.Trans.Control
 import qualified Data.Conduit
 import Data.Conduit.Extras (sinkChan, sinkChanTerminate, sourceChan)
 import Data.Conduit.Katip.Orphans ()
@@ -60,7 +59,7 @@ import Hercules.Agent.WorkerProtocol.Event
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.CNix as CNix
-import Hercules.CNix.Expr (init)
+import Hercules.CNix.Expr (init, setExtraStackOverflowHandlerToSleep)
 import Hercules.CNix.Util (installDefaultSigINTHandler)
 import Hercules.CNix.Verbosity (setShowTrace)
 import Hercules.Error
@@ -83,6 +82,7 @@ main = do
   _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
   installDefaultSigINTHandler
   Logger.initLogger
+  setExtraStackOverflowHandlerToSleep
   args <- Environment.getArgs
   case args of
     [options] -> taskWorker options
@@ -190,7 +190,7 @@ connectCommand ch conduit =
         .| sinkChan ch
     )
 
-runCommand :: (MonadUnliftIO m, MonadBaseControl IO m, KatipContext m, MonadThrow m) => HerculesState -> Chan (Maybe Event) -> Command -> m ()
+runCommand :: (MonadUnliftIO m, KatipContext m, MonadThrow m) => HerculesState -> Chan (Maybe Event) -> Command -> m ()
 -- runCommand' :: HerculesState -> Command -> ConduitM Command Event (ResourceT IO) ()
 runCommand herculesState ch command = do
   -- TODO don't do this

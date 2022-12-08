@@ -1,7 +1,9 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE NumericUnderscores #-}
 
 module EvaluationSpec where
 
+import Control.Concurrent.STM (readTVar)
 import qualified Data.Aeson as A
 import Data.List (last)
 import qualified Data.Map as M
@@ -26,9 +28,11 @@ import Hercules.API.Agent.Evaluate.ImmutableInput (ImmutableInput (ArchiveUrl))
 import qualified Hercules.API.Agent.Evaluate.ImmutableInput as API.ImmutableInput
 import Hercules.API.DayOfWeek (DayOfWeek (..))
 import Hercules.API.Id (Id (Id))
+import qualified Hercules.API.Logs.LogEntry as LogEntry
 import qualified Hercules.API.TaskStatus as TaskStatus
 import MockTasksApi
 import Protolude
+import System.Timeout (timeout)
 import Test.Hspec
 import TestSupport (apiBaseUrl)
 import Prelude
@@ -82,6 +86,35 @@ defaultMeta =
 
 spec :: SpecWith ServerHandle
 spec = describe "Evaluation" $ do
+  context "when one of the attributes causes a stack overflow" $
+    it "returns the message as an error alongside the successful derivations" $
+      \srv -> do
+        id <- randomId
+        (s, r) <-
+          runEval
+            srv
+            ( fixupInputs
+                defaultTask
+                  { EvaluateTask.id = id,
+                    EvaluateTask.otherInputs = "src" =: "/tarball/stack-overflow",
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                  }
+            )
+        x <- timeout 30_000_000 do
+          atomically do
+            entries <- readTVar (logEntries $ serverState srv)
+            guard $
+              isJust $
+                entries & find
+                  \case LogEntry.Msg {msg = msg} | "stack overflow" `T.isInfixOf` msg -> True; _ -> False
+          pass
+        case x of
+          Nothing -> failWith "Did not receive log in time."
+          Just _ -> pass
+        print r
+        print s
+        s `shouldBe` TaskStatus.Exceptional "Worker failed with exit status: 1"
+
   context "when the source tarball cannot be fetched" $
     it "crashes with an error message" $
       \srv -> do
@@ -575,7 +608,7 @@ spec = describe "Evaluation" $ do
             )
         s
           `shouldBe` TaskStatus.Exceptional
-            "FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}"
+            "Evaluation limit reached."
         last r
           `shouldBe` EvaluateEvent.Message
             ( Message.Message

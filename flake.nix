@@ -1,7 +1,7 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/master";
   inputs.nix-darwin.url = "github:LnL7/nix-darwin"; # test only
   inputs.nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
   inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
