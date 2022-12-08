@@ -27,7 +27,7 @@ main =
         join $ execParser opts
 
 prettyPrintErrors :: IO a -> IO a
-prettyPrintErrors = handleFinal . handleRemainingCpp . Hercules.CNix.Exception.handleExceptions
+prettyPrintErrors = handleFinal . handleFatal . handleRemainingCpp . Hercules.CNix.Exception.handleExceptions
   where
     handleFinal = handle \e ->
       case fromException e :: Maybe ExitCode of
@@ -35,6 +35,9 @@ prettyPrintErrors = handleFinal . handleRemainingCpp . Hercules.CNix.Exception.h
         Nothing -> do
           putErrLn $ "hci: " <> displayException e
           exitFailure
+    handleFatal = handle \e -> do
+      putErrLn $ "hci: Unexpected exception: " <> fatalErrorMessage e
+      exitFailure
     handleRemainingCpp = handle \case
       C.CppStdException _ptr msg mt -> do
         putErrLn $ "hci: Unexpected C++ exception: " <> msg <> foldMap (" of type" <>) mt
