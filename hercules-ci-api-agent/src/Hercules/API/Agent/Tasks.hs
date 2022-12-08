@@ -7,7 +7,6 @@ import Hercules.API.Prelude
 import qualified Hercules.API.Task as Task
 import Hercules.API.TaskStatus
 import Servant.API
-import Servant.API.Generic
 
 data TasksAPI auth f = TasksAPI
   { tasksReady ::

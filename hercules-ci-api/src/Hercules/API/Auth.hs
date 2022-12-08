@@ -5,7 +5,6 @@ module Hercules.API.Auth where
 import Hercules.API.Prelude
 import Hercules.API.Servant.Status
 import Servant.API
-import Servant.API.Generic
 import Web.Cookie (SetCookie)
 
 -- | Endpoints for authentication

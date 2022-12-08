@@ -28,7 +28,6 @@ import Hercules.API.SourceHostingSite.SourceHostingSite
   ( SourceHostingSite,
   )
 import Servant.API
-import Servant.API.Generic
 
 data ProjectResourceGroup auth f = ProjectResourceGroup
   { getJobs ::

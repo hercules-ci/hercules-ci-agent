@@ -7,8 +7,7 @@ import Hercules.API.Build.Log (Log)
 import Hercules.API.Effects.EffectInfo
 import Hercules.API.Prelude
 import Hercules.API.Projects.Job (Job)
-import Servant.API (Capture, Get, JSON, NoContent, Optional, Post, QueryParam', Required, Summary, (:>))
-import Servant.API.Generic (GenericMode ((:-)))
+import Servant.API (Capture, Get, JSON, NoContent, Optional, Post, QueryParam', Required, Summary, (:-), (:>))
 
 data EffectsAPI auth f = EffectsAPI
   { getEffect ::

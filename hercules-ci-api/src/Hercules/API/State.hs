@@ -16,7 +16,6 @@ import Hercules.API.State.StateLockAcquireRequest (StateLockAcquireRequest)
 import Hercules.API.State.StateLockAcquireResponse (StateLockAcquireResponse, StateLockAcquiredResponse)
 import Hercules.API.State.StateLockUpdateRequest (StateLockUpdateRequest)
 import Servant.API
-import Servant.API.Generic
 
 -- | A newtype wrapper for servant-swagger
 newtype RawBytes = RawBytes {fromRawBytes :: ByteString}

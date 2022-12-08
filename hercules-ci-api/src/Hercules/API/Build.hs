@@ -8,7 +8,6 @@ import Hercules.API.Build.Log (Log)
 import Hercules.API.Prelude
 import Hercules.API.Projects.Job (Job)
 import Servant.API
-import Servant.API.Generic
 
 data BuildAPI auth f = BuildAPI
   { restartDerivation ::

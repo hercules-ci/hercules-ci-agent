@@ -47,7 +47,6 @@ import Hercules.API.Result (Result (..))
 import Hercules.API.Servant (useApi)
 import Hercules.API.State (StateAPI)
 import Servant.API
-import Servant.API.Generic
 import Servant.Auth
 import Servant.Auth.Swagger ()
 import Servant.Swagger

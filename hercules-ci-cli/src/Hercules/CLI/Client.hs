@@ -20,7 +20,6 @@ import Network.HTTP.Types.Status
 import Protolude
 import RIO (RIO)
 import Servant.API
-import Servant.API.Generic
 import Servant.Auth.Client (Token)
 import qualified Servant.Client
 import Servant.Client.Core (ClientError, ResponseF)

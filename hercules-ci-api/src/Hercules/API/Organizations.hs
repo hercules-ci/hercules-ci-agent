@@ -13,7 +13,6 @@ import Hercules.API.Organizations.Organization (Organization)
 import Hercules.API.Organizations.PaymentLink (PaymentLink)
 import Hercules.API.Prelude
 import Servant.API
-import Servant.API.Generic
 
 data OrganizationsAPI auth f = OrganizationsAPI
   { findOrganizations ::

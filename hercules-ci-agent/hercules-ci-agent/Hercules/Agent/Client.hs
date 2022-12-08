@@ -26,7 +26,6 @@ import Hercules.API.Logs (LogsAPI)
 import Hercules.API.Servant (useApi)
 import Protolude
 import Servant.API
-import Servant.API.Generic
 import Servant.Auth.Client ()
 import Servant.Client.Generic (AsClientT)
 import Servant.Client.Streaming (ClientM)

@@ -18,7 +18,6 @@ import Hercules.API.Agents.FullClusterJoinToken
   )
 import Hercules.API.Prelude
 import Servant.API
-import Servant.API.Generic
 
 data AgentsAPI auth f = AgentsAPI
   { clusterJoinTokensByAccount ::
