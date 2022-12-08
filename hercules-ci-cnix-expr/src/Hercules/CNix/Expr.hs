@@ -18,6 +18,7 @@ module Hercules.CNix.Expr
     setDebug,
     setGlobalOption,
     setOption,
+    setExtraStackOverflowHandlerToSleep,
     initThread,
     logInfo,
     withEvalState,
@@ -152,6 +153,32 @@ initThread =
     [C.throwBlock| void {
       nix::detectStackOverflow();
     }|]
+
+{- | Configure the stack overflow handler to sleep before returning, allowing
+  other threads to continue for a bit.
+
+  No-op before Nix 2.12
+-}
+setExtraStackOverflowHandlerToSleep :: IO ()
+setExtraStackOverflowHandlerToSleep =
+#if NIX_IS_AT_LEAST(2,12,0)
+  void
+    [C.throwBlock| void {
+      nix::stackOverflowHandler = [](siginfo_t *info, void *ctx) {
+        Error error("stack overflow");
+        logError(error.info());
+
+        // This is risky for a signal handler.
+        // Note that the original thread is now in a permanently blocked state
+        // so we can easily create a deadlock.
+        // Allow the rest of the process to continue for a bit.
+        sleep(1);
+        _exit(1);
+        };
+    }|]
+#else
+  pass
+#endif
 
 setTalkative :: IO ()
 setTalkative =

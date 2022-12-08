@@ -59,7 +59,7 @@ import Hercules.Agent.WorkerProtocol.Event
 import qualified Hercules.Agent.WorkerProtocol.Event as Event
 import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
 import Hercules.CNix as CNix
-import Hercules.CNix.Expr (init)
+import Hercules.CNix.Expr (init, setExtraStackOverflowHandlerToSleep)
 import Hercules.CNix.Util (installDefaultSigINTHandler)
 import Hercules.CNix.Verbosity (setShowTrace)
 import Hercules.Error
@@ -82,6 +82,7 @@ main = do
   _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
   installDefaultSigINTHandler
   Logger.initLogger
+  setExtraStackOverflowHandlerToSleep
   args <- Environment.getArgs
   case args of
     [options] -> taskWorker options
