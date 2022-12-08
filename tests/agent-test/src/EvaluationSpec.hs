@@ -575,7 +575,7 @@ spec = describe "Evaluation" $ do
             )
         s
           `shouldBe` TaskStatus.Exceptional
-            "FatalError {fatalErrorMessage = \"Evaluation limit reached.\"}"
+            "Evaluation limit reached."
         last r
           `shouldBe` EvaluateEvent.Message
             ( Message.Message
