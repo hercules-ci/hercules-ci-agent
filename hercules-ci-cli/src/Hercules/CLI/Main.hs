@@ -15,6 +15,7 @@ import qualified Hercules.CLI.Secret as Secret
 import qualified Hercules.CLI.State as State
 import qualified Hercules.CNix.Exception
 import Hercules.CNix.Verbosity (setShowTrace)
+import qualified Language.C.Inline.Cpp.Exception as C
 import qualified Options.Applicative as Optparse
 import Protolude
 
@@ -26,14 +27,26 @@ main =
         join $ execParser opts
 
 prettyPrintErrors :: IO a -> IO a
-prettyPrintErrors = handleHaskell . Hercules.CNix.Exception.handleExceptions
+prettyPrintErrors = handleFinal . handleFatal . handleRemainingCpp . Hercules.CNix.Exception.handleExceptions
   where
-    handleHaskell = handle \e ->
+    handleFinal = handle \e ->
       case fromException e :: Maybe ExitCode of
         Just _ -> throwIO e
         Nothing -> do
           putErrLn $ "hci: " <> displayException e
           exitFailure
+    handleFatal = handle \e -> do
+      putErrLn $ "hci: Unexpected exception: " <> fatalErrorMessage e
+      exitFailure
+    handleRemainingCpp = handle \case
+      C.CppStdException _ptr msg mt -> do
+        putErrLn $ "hci: Unexpected C++ exception: " <> msg <> foldMap (" of type" <>) mt
+        exitFailure
+      C.CppHaskellException actual -> do
+        prettyPrintErrors (throwIO actual)
+      C.CppNonStdException _ptr t -> do
+        putErrText $ "hci: Unexpected C++ exception of type " <> show t
+        exitFailure
 
 opts :: Optparse.ParserInfo (IO ())
 opts =
