@@ -67,7 +67,7 @@ Optional. Defaults to `"auto"`. Must be an integer or `"auto"`.
 Number of tasks to perform simultaneously.
 
 A task is a single derivation build, an evaluation or an effect run.
-At minimum, you need `2` concurrent tasks for <literal>x86_64-linux</literal>
+At minimum, you need `2` concurrent tasks for `x86_64-linux`
 in your cluster, to allow for import from derivation.
 
 When the value is `"auto"`, the number becomes the number of CPU cores, but with
