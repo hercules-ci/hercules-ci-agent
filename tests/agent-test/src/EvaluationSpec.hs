@@ -91,6 +91,7 @@ spec = describe "Evaluation" $ do
   context "when one of the attributes causes a stack overflow" $
     it "returns the message as an error alongside the successful derivations" $
       \srv -> do
+        pendingWith "flaky test" -- "Did not receive log in time.", see below
         id <- randomId
         (s, r) <-
           runEval
