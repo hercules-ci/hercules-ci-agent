@@ -86,7 +86,7 @@ let
                 let
                   basePkg =
                     callPkg super "hercules-ci-agent" ../hercules-ci-agent { };
-                  bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
+                  bundledBins = [ pkgs.gnutar pkgs.gzip pkgs.git pkgs.openssh ] ++ lib.optional pkgs.stdenv.isLinux pkgs.runc;
 
                 in
                 generateOptparseApplicativeCompletion "hercules-ci-agent" (
