@@ -7,7 +7,7 @@
   inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
   inputs.pre-commit-hooks-nix.inputs.nixpkgs.follows = "nixpkgs";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
-  inputs.flake-parts.inputs.nixpkgs.follows = "nixpkgs";
+  inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
 
   outputs = inputs@{ self, nixpkgs, flake-parts, ... }:
     let
