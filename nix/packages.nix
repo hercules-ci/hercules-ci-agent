@@ -63,6 +63,7 @@ let
                   # jailbreak pkgconfig deps
                   cp cachix.cabal cachix.cabal.backup
                   sed -i cachix.cabal -e 's/\(nix-[a-z]*\) *(==[0-9.]* *|| *>[0-9.]*) *&& *<[0-9.]*/\1/g'
+                  sed -i cachix.cabal -e 's/pkgconfig-depends:.*/pkgconfig-depends: nix-main, nix-store/'
                   echo
                   echo Applied:
                   diff -U5 cachix.cabal.backup cachix.cabal ||:

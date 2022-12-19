@@ -280,6 +280,7 @@
                   ormolu.enable = true;
                   ormolu.excludes = [
                     # CPP
+                    "Hercules/Agent/Cachix.hs"
                     "Hercules/Agent/Compat.hs"
                     "Hercules/Agent/StoreFFI.hs"
                     "Hercules/CNix/Expr.hs" # parse error in quasiquotation
