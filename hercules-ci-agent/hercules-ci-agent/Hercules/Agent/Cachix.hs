@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Hercules.Agent.Cachix
   ( module Hercules.Agent.Cachix,
     activePushCaches,
@@ -5,6 +6,7 @@ module Hercules.Agent.Cachix
 where
 
 import qualified Cachix.Client.Push as Cachix.Push
+import Cachix.Types.BinaryCache (CompressionMethod(XZ))
 import Control.Monad.IO.Unlift
 import qualified Data.Map as M
 import qualified Hercules.Agent.Cachix.Env as Agent.Cachix
@@ -48,7 +50,12 @@ push cache paths workers = withNamedContext "cache" cache $ do
                       on401 = throwIO $ FatalError "Cachix push is unauthorized",
                       onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
                       onDone = ctx $ logLocM DebugS "push done",
+#if MIN_VERSION_cachix(1,1,0)
+                      compressionMethod = XZ,
+                      compressionLevel = 2,
+#else
                       withXzipCompressor = Cachix.Push.defaultWithXzipCompressor,
+#endif
                       omitDeriver = False
                     }
           }
