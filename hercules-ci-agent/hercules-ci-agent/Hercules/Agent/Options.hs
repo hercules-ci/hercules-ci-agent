@@ -17,7 +17,8 @@ data Options = Options
 
 parseOptions :: Parser Options
 parseOptions =
-  Options <$> parseConfigPath
+  Options
+    <$> parseConfigPath
     <*> parseMode
 
 data Mode = Test | Run
@@ -32,7 +33,8 @@ parseConfigPath :: Parser ConfigPath
 parseConfigPath =
   TomlPath
     <$> strOption
-      ( long "config" <> metavar "FILE"
+      ( long "config"
+          <> metavar "FILE"
           <> help
             "File path to the configuration file (TOML)"
       )
@@ -41,7 +43,8 @@ parserInfo :: ParserInfo Options
 parserInfo =
   info
     (parseOptions <**> helper)
-    ( fullDesc <> progDesc "Accepts tasks from Hercules CI and runs them."
+    ( fullDesc
+        <> progDesc "Accepts tasks from Hercules CI and runs them."
         <> header
           ("hercules-ci-agent " <> toS herculesAgentVersion)
     )

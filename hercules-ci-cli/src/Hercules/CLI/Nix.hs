@@ -135,7 +135,8 @@ ciNixAttributeCompleter = mkTextCompleter \partial -> do
                           [singleMatch] -> do
                             ma <- getAttr evalState attrset (encodeUtf8 singleMatch)
                             matchIsDeriv <-
-                              ma & traverse (isDerivation evalState)
+                              ma
+                                & traverse (isDerivation evalState)
                                 <&> fromMaybe False
                             if matchIsDeriv
                               then

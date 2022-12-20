@@ -56,8 +56,10 @@ defaultEvalTask =
 
 defaultMeta :: Map Text A.Value
 defaultMeta =
-  "rev" =: A.String "eefe2e4df3a0f147cf0f59438010b63fd857291b"
-    <> "ref" =: "refs/heads/main"
+  "rev"
+    =: A.String "eefe2e4df3a0f147cf0f59438010b63fd857291b"
+    <> "ref"
+    =: "refs/heads/main"
 
 attrLike :: [EvaluateEvent] -> [EvaluateEvent]
 attrLike = filter isAttrLike
@@ -102,7 +104,7 @@ spec = describe "Build" $
           pure drvPath
         _ -> failWith $ "Events should be a single attribute, not: " <> show r
     -- Test: build it
-    --runBuild _ (BuildTask.BuildTask {})
+    -- runBuild _ (BuildTask.BuildTask {})
     id2 <- randomId
     (s2, be) <-
       runBuild
