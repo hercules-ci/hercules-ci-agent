@@ -39,7 +39,8 @@ getRevsAndRefs :: IO [(Text, Text)]
 getRevsAndRefs =
   -- restrict to heads and tags, because other ones aren't relevant on CI, probably
   readProcess "git" ["show-ref"] mempty <&> \x ->
-    x & toS
+    x
+      & toS
       & T.lines
       & map \ln ->
         ln

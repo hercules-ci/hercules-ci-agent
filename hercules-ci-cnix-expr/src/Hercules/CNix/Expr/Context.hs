@@ -31,7 +31,8 @@ data BindingsBuilder'
 
 context :: C.Context
 context =
-  C.cppCtx <> C.fptrCtx
+  C.cppCtx
+    <> C.fptrCtx
     <> C.bsCtx
     <> evalContext
 

@@ -140,7 +140,9 @@ reportOutputInfos buildTask outs =
 
 emitEvents :: BuildTask -> [BuildEvent.BuildEvent] -> App ()
 emitEvents buildTask =
-  noContent . defaultRetry . runHerculesClient
+  noContent
+    . defaultRetry
+    . runHerculesClient
     . API.Build.updateBuild
       Hercules.Agent.Client.buildClient
       (BuildTask.id buildTask)

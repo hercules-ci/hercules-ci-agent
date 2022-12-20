@@ -81,8 +81,10 @@ srcInput url = M.singleton "src" (ArchiveUrl url)
 
 defaultMeta :: Map Text A.Value
 defaultMeta =
-  "rev" =: A.String "eefe2e4df3a0f147cf0f59438010b63fd857291b"
-    <> "ref" =: "refs/heads/main"
+  "rev"
+    =: A.String "eefe2e4df3a0f147cf0f59438010b63fd857291b"
+    <> "ref"
+    =: "refs/heads/main"
 
 spec :: SpecWith ServerHandle
 spec = describe "Evaluation" $ do
@@ -493,29 +495,29 @@ spec = describe "Evaluation" $ do
           _ -> failWith $ "Events should be empty, not: " <> show r
   context
     "when the nix expression is a naked derivation behind default arguments"
-    $ it "returns that attribute" $
-      \srv -> do
-        id <- randomId
-        (s, r) <-
-          runEval
-            srv
-            ( fixupInputs
-                defaultTask
-                  { EvaluateTask.id = id,
-                    EvaluateTask.otherInputs = "src" =: "/tarball/naked-derivation-default-args",
-                    EvaluateTask.inputMetadata = "src" =: defaultMeta
-                  }
-            )
-        s `shouldBe` TaskStatus.Successful ()
-        case attrLike r of
-          [EvaluateEvent.Attribute ae] -> do
-            AttributeEvent.expressionPath ae `shouldBe` []
-            toS (AttributeEvent.derivationPath ae)
-              `shouldContain` "/nix/store"
-            toS (AttributeEvent.derivationPath ae)
-              `shouldContain` "-myPackage.drv"
-          _ ->
-            failWith $ "Events should be a single attribute, not: " <> show r
+    $ it "returns that attribute"
+    $ \srv -> do
+      id <- randomId
+      (s, r) <-
+        runEval
+          srv
+          ( fixupInputs
+              defaultTask
+                { EvaluateTask.id = id,
+                  EvaluateTask.otherInputs = "src" =: "/tarball/naked-derivation-default-args",
+                  EvaluateTask.inputMetadata = "src" =: defaultMeta
+                }
+          )
+      s `shouldBe` TaskStatus.Successful ()
+      case attrLike r of
+        [EvaluateEvent.Attribute ae] -> do
+          AttributeEvent.expressionPath ae `shouldBe` []
+          toS (AttributeEvent.derivationPath ae)
+            `shouldContain` "/nix/store"
+          toS (AttributeEvent.derivationPath ae)
+            `shouldContain` "-myPackage.drv"
+        _ ->
+          failWith $ "Events should be a single attribute, not: " <> show r
   context "when the nix expression is an attribute set with further functions" $
     it "ignores the functions and return the derivations" $
       \srv -> do
@@ -659,8 +661,10 @@ spec = describe "Evaluation" $ do
               defaultTask
                 { EvaluateTask.id = id,
                   EvaluateTask.otherInputs =
-                    "src" =: "/tarball/nix-path-simple"
-                      <> "oi1" =: "/tarball/simple",
+                    "src"
+                      =: "/tarball/nix-path-simple"
+                      <> "oi1"
+                      =: "/tarball/simple",
                   EvaluateTask.nixPath =
                     [ EvaluateTask.NixPathElement
                         (Just "simple")

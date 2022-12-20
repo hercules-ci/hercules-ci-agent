@@ -21,25 +21,31 @@ data FrontendRoutes view f = FrontendRoutes
       f
         :- view,
     account ::
-      f :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
-        :> Capture' [Required, Strict] "account" (Name Account)
-        :> view,
+      f
+        :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
+          :> Capture' [Required, Strict] "account" (Name Account)
+          :> view,
     cliAuthorize ::
-      f :- "settings" :> "cli" :> "authorize"
-        :> QueryParam' [Required, Strict] "token" Text
-        :> view,
+      f
+        :- "settings"
+          :> "cli"
+          :> "authorize"
+          :> QueryParam' [Required, Strict] "token" Text
+          :> view,
     project ::
-      f :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
-        :> Capture' [Required, Strict] "account" (Name Account)
-        :> Capture' [Required, Strict] "project" (Name Project)
-        :> view,
+      f
+        :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
+          :> Capture' [Required, Strict] "account" (Name Account)
+          :> Capture' [Required, Strict] "project" (Name Project)
+          :> view,
     job ::
-      f :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
-        :> Capture' [Required, Strict] "account" (Name Account)
-        :> Capture' [Required, Strict] "project" (Name Project)
-        :> "jobs"
-        :> Capture' [Required, Strict] "jobIndex" Int
-        :> view,
+      f
+        :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
+          :> Capture' [Required, Strict] "account" (Name Account)
+          :> Capture' [Required, Strict] "project" (Name Project)
+          :> "jobs"
+          :> Capture' [Required, Strict] "jobIndex" Int
+          :> view,
     notificationSettings ::
       f
         :- "settings" :> "notifications" :> view

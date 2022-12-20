@@ -20,44 +20,44 @@ data LifeCycleAPI auth f = LifeCycleAPI
     agentSessionCreate ::
       f
         :- Summary "Create a new agent session."
-        :> Description "Authenticated using the cluster join token acquired through POST /accounts/:accountId/clusterJoinTokens"
-        :> "agent"
-        :> "session"
-        :> ReqBody '[JSON] CreateAgentSession_V2.CreateAgentSession
-        :> auth
-        :> Post '[JSON] Text,
+          :> Description "Authenticated using the cluster join token acquired through POST /accounts/:accountId/clusterJoinTokens"
+          :> "agent"
+          :> "session"
+          :> ReqBody '[JSON] CreateAgentSession_V2.CreateAgentSession
+          :> auth
+          :> Post '[JSON] Text,
     hello ::
       f
         :- Summary "Update an agent session wrt features, versions, capabilities etc."
-        :> Description "Authenticated using the agent session token acquired through agentSessionCreate."
-        :> "agent"
-        :> "hello"
-        :> ReqBody '[JSON] Hello
-        :> auth
-        :> Post '[JSON] NoContent,
+          :> Description "Authenticated using the agent session token acquired through agentSessionCreate."
+          :> "agent"
+          :> "hello"
+          :> ReqBody '[JSON] Hello
+          :> auth
+          :> Post '[JSON] NoContent,
     heartbeat ::
       f
         :- Summary "Update an agent session to indicate liveness."
-        :> Description "Authenticated using the agent session token acquired through agentSessionCreate."
-        :> "agent"
-        :> "heartbeat"
-        :> ReqBody '[JSON] StartInfo
-        :> auth
-        :> Post '[JSON] NoContent,
+          :> Description "Authenticated using the agent session token acquired through agentSessionCreate."
+          :> "agent"
+          :> "heartbeat"
+          :> ReqBody '[JSON] StartInfo
+          :> auth
+          :> Post '[JSON] NoContent,
     goodbye ::
       f
         :- Summary "Report that an agent has stopped."
-        :> Description "Authenticated using the agent session token acquired through agentSessionCreate."
-        :> "agent"
-        :> "goodbye"
-        :> ReqBody '[JSON] StartInfo
-        :> auth
-        :> Post '[JSON] NoContent,
+          :> Description "Authenticated using the agent session token acquired through agentSessionCreate."
+          :> "agent"
+          :> "goodbye"
+          :> ReqBody '[JSON] StartInfo
+          :> auth
+          :> Post '[JSON] NoContent,
     getServiceInfo ::
       f
         :- Summary "Service version and configuration."
-        :> "agent"
-        :> "service-info"
-        :> Get '[JSON] ServiceInfo
+          :> "agent"
+          :> "service-info"
+          :> Get '[JSON] ServiceInfo
   }
   deriving (Generic)
