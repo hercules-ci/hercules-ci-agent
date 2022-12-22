@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### BREAKING
+
+ -  The `nix-darwin` module uses new user id and group id numbers, to match the upstream `nix-darwin` module.
+    The main benefit of the upstream change is that the agent user will not appear as a normal (human) user on the system.
+
+    To migrate, run:
+
+    ```shell
+    # if you have deployed an older version of the nix-darwin PR before,
+    # the following delete commands will prevents this error:
+    #     creating group _hercules-ci-agent...
+    #     <main> attribute status: eDSRecordAlreadyExists
+    #     <dscl_cmd> DS Error: -14135 (eDSRecordAlreadyExists)
+    sudo dscl . -delete '/Groups/_hercules-ci-agent'
+    sudo dscl . -delete '/Users/_hercules-ci-agent'
+
+    # update the flake inputs / expressions / channels
+    # and deploy the new version, e.g:
+    sudo darwin-rebuild switch
+
+    sudo chown -R _hercules-ci-agent:_hercules-ci-agent /var/lib/hercules-ci-agent
+    ```
+
 ### Fixed
 
  - Detect stack overflows correctly in Nix evaluation
