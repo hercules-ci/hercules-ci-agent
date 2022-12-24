@@ -16,6 +16,7 @@ import Hercules.CNix.Std.Set (StdSet, toListFP)
 import qualified Hercules.CNix.Std.Set as Std.Set
 import Hercules.CNix.Store (StorePath)
 import qualified Hercules.CNix.Store as Store
+import Hercules.Error (defaultRetry)
 import qualified Hercules.Formats.NixCache as NixCache
 import Katip
 import Protolude
@@ -68,7 +69,7 @@ nixPush cacheConf paths _concurrency = do
     katipAddContext (sl "num-signatures" signed <> sl "num-paths" total) $
       logLocM DebugS "Signed"
     liftIO $ CNix.clearPathInfoCache store
-    CNix.withStoreFromURI (NixCache.storeURI cacheConf) $ \cache -> do
+    defaultRetry . CNix.withStoreFromURI (NixCache.storeURI cacheConf) $ \cache -> do
       liftIO (CNix.copyClosure store cache paths)
 
 signClosure :: CNix.Store -> ForeignPtr CNix.SecretKey -> StdSet Store.NixStorePath -> IO (Sum Int, Sum Int)
