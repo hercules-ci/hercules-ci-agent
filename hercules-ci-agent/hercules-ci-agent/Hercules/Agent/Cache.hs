@@ -45,7 +45,7 @@ push ::
   -- | Number of concurrent upload threads
   Int ->
   App ()
-push cacheName paths concurrency = katipAddContext (sl "cacheName" cacheName) do
+push cacheName paths concurrency = katipAddNamespace "Push" $ katipAddContext (sl "cacheName" cacheName) do
   caches <- asks Env.binaryCaches
   let maybeNix =
         Config.nixCaches caches & M.lookup cacheName & fmap \cache ->
