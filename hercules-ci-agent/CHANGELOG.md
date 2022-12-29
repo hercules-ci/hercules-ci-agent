@@ -5,13 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.9.10] - 2022-12-29
 
 ### Fixed
 
  - Detect stack overflows correctly in Nix evaluation
 
+ - Retry errors from Nix-native (non-cachix) caches
 
+### Added
+
+ - Cachix 1.1 compatibility
+
+### Changed
+
+ - Unwrap some error messages for readability
 
 ## [0.9.9] - 2022-12-02
 
@@ -648,6 +656,8 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Initial release
 
+[0.9.10]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.9...hercules-ci-agent-0.9.10
+[0.9.9]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.8...hercules-ci-agent-0.9.9
 [0.9.8]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.7...hercules-ci-agent-0.9.8
 [0.9.7]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.6...hercules-ci-agent-0.9.7
 [0.9.6]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.5...hercules-ci-agent-0.9.6
