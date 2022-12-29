@@ -106,7 +106,13 @@ getIsDefault = do
       do
         upstream <- getBranchUpstream
         upstreamRef <- readProcessString "git" ["rev-parse", "--symbolic-full-name", "@{u}"] mempty
-        upstreamDefaultRef <- readProcessString "git" ["rev-parse", "--symbolic-full-name", toS upstream <> "/HEAD"] mempty
+        upstreamDefaultRef <-
+          readProcessString "git" ["rev-parse", "--symbolic-full-name", toS upstream <> "/HEAD"] mempty
+            `onException` do
+              putErrText "hci: Could not determine remote default branch"
+              putErrText "     This may happen when the repository was initialized with git init instead of git clone"
+              putErrText "     It can usually be fixed by running:"
+              putErrText "         git remote set-head origin -a"
         pure (upstreamRef == upstreamDefaultRef)
         `onException` putErrText "hci: could not determine whether branch matches default branch"
     Left (_ :: SomeException) -> do
