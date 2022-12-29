@@ -1,13 +1,13 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/master";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.nix-darwin.url = "github:LnL7/nix-darwin"; # test only
   inputs.nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
   inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
   inputs.pre-commit-hooks-nix.inputs.nixpkgs.follows = "nixpkgs";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
-  inputs.flake-parts.inputs.nixpkgs.follows = "nixpkgs";
+  inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
 
   outputs = inputs@{ self, nixpkgs, flake-parts, ... }:
     let
@@ -280,6 +280,7 @@
                   ormolu.enable = true;
                   ormolu.excludes = [
                     # CPP
+                    "Hercules/Agent/Cachix.hs"
                     "Hercules/Agent/Compat.hs"
                     "Hercules/Agent/StoreFFI.hs"
                     "Hercules/CNix/Expr.hs" # parse error in quasiquotation

@@ -442,7 +442,8 @@ runEvalProcess store projectDir file autoArguments nixPath emit uploadDerivation
           Nothing -> do
             panic $ "No primary source metadata provided" <> show task
           Just meta -> pure $ fromMaybe (panic "no ref/rev in primary source metadata") do
-            (,) <$> (meta ^? at "ref" . traverse . _String)
+            (,)
+              <$> (meta ^? at "ref" . traverse . _String)
               <*> (meta ^? at "rev" . traverse . _String)
         pure $
           GitSource.GitSource
@@ -490,14 +491,14 @@ runEvalProcess store projectDir file autoArguments nixPath emit uploadDerivation
   let decode = decodeUtf8With lenientDecode
       toGitConfigEnv items =
         M.fromList $
-          ("GIT_CONFIG_COUNT", show (length items)) :
-          concatMap
-            ( \(i, (k, v)) ->
-                [ ("GIT_CONFIG_KEY_" <> show i, k),
-                  ("GIT_CONFIG_VALUE_" <> show i, v)
-                ]
-            )
-            (zip [0 :: Int ..] items)
+          ("GIT_CONFIG_COUNT", show (length items))
+            : concatMap
+              ( \(i, (k, v)) ->
+                  [ ("GIT_CONFIG_KEY_" <> show i, k),
+                    ("GIT_CONFIG_VALUE_" <> show i, v)
+                  ]
+              )
+              (zip [0 :: Int ..] items)
       envSettings =
         WorkerProcess.WorkerEnvSettings
           { nixPath = nixPath,

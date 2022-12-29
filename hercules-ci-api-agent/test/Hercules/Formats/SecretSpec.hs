@@ -62,7 +62,8 @@ genSecret :: Gen Secret
 genSecret =
   resize
     6
-    ( Secret <$> liftArbitraryMap text (resize 100 genValue)
+    ( Secret
+        <$> liftArbitraryMap text (resize 100 genValue)
         <*> frequency [(1, pure Nothing), (19, Just <$> genCondition)]
     )
 

@@ -51,7 +51,7 @@ renderException :: SomeException -> IO ExceptionText
 renderException e | Just (C.CppStdException ex _msg _ty) <- fromException e = renderStdException ex
 renderException e
   | Just (C.CppNonStdException _ex maybeType) <- fromException e =
-    pure $ basicExceptionText $ "Unexpected C++ exception" <> foldMap (\t -> " of type " <> decodeUtf8With lenientDecode t) maybeType
+      pure $ basicExceptionText $ "Unexpected C++ exception" <> foldMap (\t -> " of type " <> decodeUtf8With lenientDecode t) maybeType
 renderException e | Just (FatalError msg) <- fromException e = pure $ basicExceptionText msg
 renderException e = pure $ basicExceptionText $ toS $ displayException e
 

@@ -13,7 +13,9 @@ import qualified Hercules.CLI.Login as Login
 import Hercules.CLI.Options (execParser, helper, mkCommand, subparser)
 import qualified Hercules.CLI.Secret as Secret
 import qualified Hercules.CLI.State as State
+import qualified Hercules.CNix
 import qualified Hercules.CNix.Exception
+import qualified Hercules.CNix.Util
 import Hercules.CNix.Verbosity (setShowTrace)
 import qualified Language.C.Inline.Cpp.Exception as C
 import qualified Options.Applicative as Optparse
@@ -25,6 +27,14 @@ main =
     Exception.handleUserException $
       prettyPrintHttpErrors $ do
         join $ execParser opts
+
+initNix :: IO ()
+initNix = do
+  Hercules.CNix.init
+  Hercules.CNix.Util.installDefaultSigINTHandler
+
+addNix :: Functor f => f (IO a) -> f (IO a)
+addNix = fmap (initNix *>)
 
 prettyPrintErrors :: IO a -> IO a
 prettyPrintErrors = handleFinal . handleFatal . handleRemainingCpp . Hercules.CNix.Exception.handleExceptions
@@ -74,7 +84,7 @@ commands =
           <> mkCommand
             "effect"
             (Optparse.progDesc "Run effects locally")
-            Effect.commandParser
+            (addNix Effect.commandParser)
           <> mkCommand
             "secret"
             (Optparse.progDesc "Manipulate locally stored secrets")

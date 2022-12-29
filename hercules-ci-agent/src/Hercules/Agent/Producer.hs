@@ -108,7 +108,7 @@ withSync t f = do
 
 --  where trav =
 --  deriving (Functor)
---instance Applicative Syncing where
+-- instance Applicative Syncing where
 --  pure = Synced Nothing
 --  Synced sf f <*> Synced af a = Synced (sf <> af) (f a)
 
@@ -138,38 +138,38 @@ withBoundedDelayBatchProducer maxDelay maxItems sourceP f = do
             doPerformBatch [] = pure ()
             doPerformBatch buf = writeBatch (reverse buf)
             readItems 0 buf = do
-              --logLocM DebugS "batch on full"
+              -- logLocM DebugS "batch on full"
               doPerformBatch buf
               beginReading
             readItems bufferRemaining buf =
               joinSTM
                 ( onQueueRead <$> producerQueueRead sourceP
                     <|> onFlush
-                    <$ readTQueue flushes
+                      <$ readTQueue flushes
                 )
               where
                 onQueueRead (Payload a) =
                   readItems (bufferRemaining - 1) (a : buf)
                 onQueueRead (Close r) = do
-                  --logLocM DebugS $ "batch on close: " <> logStr (show (length buf))
+                  -- logLocM DebugS $ "batch on close: " <> logStr (show (length buf))
                   doPerformBatch buf
                   pure r
                 onQueueRead (Exception e) = do
-                  --logLocM DebugS $ "batch on exception: " <> logStr (show (length buf))
+                  -- logLocM DebugS $ "batch on exception: " <> logStr (show (length buf))
                   doPerformBatch buf
                   liftIO $ throwIO e
                 onFlush = do
-                  --logLocM DebugS $ "batch on flush: " <> logStr (show (length buf))
+                  -- logLocM DebugS $ "batch on flush: " <> logStr (show (length buf))
                   doPerformBatch buf
                   beginReading
          in beginReading
-  liftIO $
-    withAsync
+  liftIO
+    $ withAsync
       ( forever $ do
           threadDelay maxDelay
           atomically $ writeTQueue flushes ()
       )
-      $ \_flusher -> unlift $ withProducer producer f
+    $ \_flusher -> unlift $ withProducer producer f
 
 syncer :: MonadIO m => (Syncing a -> m ()) -> m ()
 syncer writer = do
