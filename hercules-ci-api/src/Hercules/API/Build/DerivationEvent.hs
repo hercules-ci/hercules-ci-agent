@@ -5,6 +5,7 @@
 module Hercules.API.Build.DerivationEvent where
 
 import Data.Aeson.Types (FromJSON (..), ToJSON (..), genericParseJSON, genericToEncoding, genericToJSON)
+import Hercules.API.Accounts.SimpleAccount (SimpleAccount)
 import Hercules.API.Build.DerivationEvent.BuiltOutput
 import Hercules.API.Prelude
 import Hercules.API.Projects.SimpleJob (SimpleJob)
@@ -17,6 +18,7 @@ data DerivationEvent
   | Failed DerivationEventFailed
   | Succeeded DerivationEventSucceeded
   | Cancelled DerivationEventCancelled
+  | ForceCancelled DerivationEventForceCancelled
   | Built DerivationEventBuilt
   | HasCancelled DerivationEventHasCancelled
   | HasCancelledForReset DerivationEventHasCancelledForReset
@@ -31,16 +33,17 @@ instance ToJSON DerivationEvent where
   toEncoding = genericToEncoding schemaCompatibleOptions
 
 eventTime :: DerivationEvent -> UTCTime
-eventTime (Queued DerivationEventQueued {time = t}) = t
-eventTime (DependencyFailed DerivationEventDependencyFailed {time = t}) = t
-eventTime (Started DerivationEventStarted {time = t}) = t
-eventTime (Reset DerivationEventReset {time = t}) = t
-eventTime (Failed DerivationEventFailed {time = t}) = t
-eventTime (Succeeded DerivationEventSucceeded {time = t}) = t
-eventTime (Cancelled DerivationEventCancelled {time = t}) = t
-eventTime (Built DerivationEventBuilt {time = t}) = t
-eventTime (HasCancelled DerivationEventHasCancelled {time = t}) = t
-eventTime (HasCancelledForReset DerivationEventHasCancelledForReset {time = t}) = t
+eventTime (Queued (DerivationEventQueued {time = t})) = t
+eventTime (DependencyFailed (DerivationEventDependencyFailed {time = t})) = t
+eventTime (Started (DerivationEventStarted {time = t})) = t
+eventTime (Reset (DerivationEventReset {time = t})) = t
+eventTime (Failed (DerivationEventFailed {time = t})) = t
+eventTime (Succeeded (DerivationEventSucceeded {time = t})) = t
+eventTime (Cancelled (DerivationEventCancelled {time = t})) = t
+eventTime (ForceCancelled (DerivationEventForceCancelled {time = t})) = t
+eventTime (Built (DerivationEventBuilt {time = t})) = t
+eventTime (HasCancelled (DerivationEventHasCancelled {time = t})) = t
+eventTime (HasCancelledForReset (DerivationEventHasCancelledForReset {time = t})) = t
 
 data DerivationEventQueued = DerivationEventQueued
   { time :: UTCTime,
@@ -80,6 +83,12 @@ data DerivationEventSucceeded = DerivationEventSucceeded
 
 data DerivationEventCancelled = DerivationEventCancelled
   { time :: UTCTime
+  }
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+
+data DerivationEventForceCancelled = DerivationEventForceCancelled
+  { time :: UTCTime,
+    byUser :: Maybe SimpleAccount
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 

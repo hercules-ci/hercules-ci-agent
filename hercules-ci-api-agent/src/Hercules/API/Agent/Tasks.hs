@@ -12,21 +12,21 @@ data TasksAPI auth f = TasksAPI
   { tasksReady ::
       f
         :- "tasks"
-          :> auth
-          :> Post '[JSON] (Maybe (Task.Task Task.Any)),
+        :> auth
+        :> Post '[JSON] (Maybe (Task.Task Task.Any)),
     tasksSetStatus ::
       f
         :- "tasks"
-          :> Capture "taskId" (Id (Task.Task Task.Any))
-          :> ReqBody '[JSON] TaskStatus
-          :> auth
-          :> Post '[JSON] NoContent,
+        :> Capture "taskId" (Id (Task.Task Task.Any))
+        :> ReqBody '[JSON] TaskStatus
+        :> auth
+        :> Post '[JSON] NoContent,
     postLog ::
       f
         :- "tasks"
-          :> "log"
-          :> ReqBody '[JSON] [Object]
-          :> auth
-          :> Post '[JSON] NoContent
+        :> "log"
+        :> ReqBody '[JSON] [Object]
+        :> auth
+        :> Post '[JSON] NoContent
   }
   deriving (Generic)

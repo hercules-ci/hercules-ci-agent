@@ -63,12 +63,12 @@ runParser = do
           case projectOptionMaybe of
             Just x
               | not requireToken ->
-                  pure
-                    ProjectData
-                      { pdProjectPath = Just x,
-                        pdProjectId = Nothing,
-                        pdToken = Nothing
-                      }
+                pure
+                  ProjectData
+                    { pdProjectPath = Just x,
+                      pdProjectId = Nothing,
+                      pdToken = Nothing
+                    }
             _ -> getProjectEffectData projectOptionMaybe requireToken
     withAsync getProjectInfo \projectPathAsync -> do
       withNix \store evalState -> do

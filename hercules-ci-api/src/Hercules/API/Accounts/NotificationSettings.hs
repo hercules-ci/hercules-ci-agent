@@ -4,8 +4,8 @@
 module Hercules.API.Accounts.NotificationSettings where
 
 import Hercules.API.Accounts.SimpleAccount (SimpleAccount)
+import Hercules.API.Forge.SimpleForge (SimpleForge)
 import Hercules.API.Prelude
-import Hercules.API.SourceHostingSite.SimpleSite (SimpleSite)
 
 data NotificationLevel
   = Ignore
@@ -27,7 +27,7 @@ data NotificationAccountOverride = NotificationSettingsOverride
 data AuthorizedEmail = AuthorizedEmail
   { address :: Text,
     isPrimary :: Bool,
-    source :: Maybe SimpleSite
+    source :: Maybe SimpleForge
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 

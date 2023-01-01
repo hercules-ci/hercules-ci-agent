@@ -9,6 +9,7 @@ data AttributeError = AttributeError
     -- | Not intended to be displayed to the user. This is
     --   @Just "BuildException"@ for evaluation time build failures.
     errorType :: Maybe Text,
-    errorDerivation :: Maybe Text
+    errorDerivation :: Maybe Text,
+    trace :: Maybe Text
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

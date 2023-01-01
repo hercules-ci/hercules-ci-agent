@@ -43,7 +43,7 @@ instance FromJSON CachixCache where
             CachixCache
               <$> (fold <$> o .:? "signingKeys")
               <*> o
-                .:? "authToken"
+              .:? "authToken"
               <*> o
-                .: "publicKeys"
+              .: "publicKeys"
         ]
