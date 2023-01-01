@@ -35,8 +35,8 @@ stderrLineHandler :: KatipContext m => Map Text Value -> Text -> Int -> ByteStri
 stderrLineHandler callerContext _processRole _ ln
   | "@katip " `BS.isPrefixOf` ln,
     Just item <- A.decode (LBS.fromStrict $ BS.drop 7 ln) =
-      -- "This is the lowest level function [...] useful when implementing centralised logging services."
-      Katip.Core.logKatipItem (Katip.Core.SimpleLogPayload . M.toList . fmap (Katip.Core.AnyLogPayload :: A.Value -> Katip.Core.AnyLogPayload) . extendContext <$> item)
+    -- "This is the lowest level function [...] useful when implementing centralised logging services."
+    Katip.Core.logKatipItem (Katip.Core.SimpleLogPayload . M.toList . fmap (Katip.Core.AnyLogPayload :: A.Value -> Katip.Core.AnyLogPayload) . extendContext <$> item)
   where
     extendContext workerItem = M.union workerItem callerContext
 stderrLineHandler _ processRole pid ln =

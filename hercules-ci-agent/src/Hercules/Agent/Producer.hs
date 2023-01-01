@@ -163,13 +163,13 @@ withBoundedDelayBatchProducer maxDelay maxItems sourceP f = do
                   doPerformBatch buf
                   beginReading
          in beginReading
-  liftIO
-    $ withAsync
+  liftIO $
+    withAsync
       ( forever $ do
           threadDelay maxDelay
           atomically $ writeTQueue flushes ()
       )
-    $ \_flusher -> unlift $ withProducer producer f
+      $ \_flusher -> unlift $ withProducer producer f
 
 syncer :: MonadIO m => (Syncing a -> m ()) -> m ()
 syncer writer = do

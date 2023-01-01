@@ -203,24 +203,24 @@ runCommand herculesState ch command = do
       Logger.withTappedStderr Logger.tapper $
         connectCommand ch $ do
           liftIO $ restrictEval eval
-          void
-            $ liftIO
-            $ flip
-              forkFinally
-              (escalateAs \e -> FatalError $ "Failed to fork: " <> show e)
-            $ unlift
-            $ runConduitRes
-              ( Data.Conduit.handleC
-                  ( \e -> do
-                      yield . Event.Error . exceptionTextMessage =<< liftIO (renderException e)
-                      liftIO $ throwTo mainThread e
-                  )
-                  ( do
-                      runEval herculesState eval
-                      liftIO $ throwTo mainThread ExitSuccess
-                  )
-                  .| sinkChanTerminate (shortcutChannel herculesState)
-              )
+          void $
+            liftIO $
+              flip
+                forkFinally
+                (escalateAs \e -> FatalError $ "Failed to fork: " <> show e)
+                $ unlift $
+                  runConduitRes
+                    ( Data.Conduit.handleC
+                        ( \e -> do
+                            yield . Event.Error . exceptionTextMessage =<< liftIO (renderException e)
+                            liftIO $ throwTo mainThread e
+                        )
+                        ( do
+                            runEval herculesState eval
+                            liftIO $ throwTo mainThread ExitSuccess
+                        )
+                        .| sinkChanTerminate (shortcutChannel herculesState)
+                    )
           awaitForever $ \case
             Command.BuildResult (BuildResult.BuildResult path attempt result) -> do
               katipAddContext (sl "path" path <> sl "result" (show result :: Text)) $

@@ -491,14 +491,14 @@ runEvalProcess store projectDir file autoArguments nixPath emit uploadDerivation
   let decode = decodeUtf8With lenientDecode
       toGitConfigEnv items =
         M.fromList $
-          ("GIT_CONFIG_COUNT", show (length items))
-            : concatMap
-              ( \(i, (k, v)) ->
-                  [ ("GIT_CONFIG_KEY_" <> show i, k),
-                    ("GIT_CONFIG_VALUE_" <> show i, v)
-                  ]
-              )
-              (zip [0 :: Int ..] items)
+          ("GIT_CONFIG_COUNT", show (length items)) :
+          concatMap
+            ( \(i, (k, v)) ->
+                [ ("GIT_CONFIG_KEY_" <> show i, k),
+                  ("GIT_CONFIG_VALUE_" <> show i, v)
+                ]
+            )
+            (zip [0 :: Int ..] items)
       envSettings =
         WorkerProcess.WorkerEnvSettings
           { nixPath = nixPath,
