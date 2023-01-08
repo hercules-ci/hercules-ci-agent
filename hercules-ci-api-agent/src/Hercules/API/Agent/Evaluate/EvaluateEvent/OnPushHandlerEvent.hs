@@ -1,4 +1,3 @@
-{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 
 module Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent where

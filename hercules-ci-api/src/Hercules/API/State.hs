@@ -8,9 +8,9 @@ import Data.ByteString (ByteString)
 import Data.Swagger (NamedSchema (NamedSchema), binarySchema)
 import Data.Swagger.Schema (ToSchema (..))
 import Hercules.API.Accounts.Account (Account)
+import Hercules.API.Forge.Forge (Forge)
 import Hercules.API.Prelude
 import Hercules.API.Projects.Project (Project)
-import Hercules.API.SourceHostingSite.SourceHostingSite (SourceHostingSite)
 import Hercules.API.State.ProjectState (ProjectState)
 import Hercules.API.State.StateLockAcquireRequest (StateLockAcquireRequest)
 import Hercules.API.State.StateLockAcquireResponse (StateLockAcquireResponse, StateLockAcquiredResponse)
@@ -77,7 +77,7 @@ data StateAPI auth f = StateAPI
       f
         :- Substitute
              ( "site"
-                 :> Capture' '[Required, Strict] "site" (Name SourceHostingSite)
+                 :> Capture' '[Required, Strict] "site" (Name Forge)
                  :> "account"
                  :> Capture' '[Required, Strict] "account" (Name Account)
                  :> "project"

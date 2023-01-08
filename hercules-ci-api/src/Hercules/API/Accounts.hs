@@ -15,10 +15,8 @@ import Hercules.API.Accounts.CLIAuthorizationRequestStatus (CLIAuthorizationRequ
 import Hercules.API.Accounts.CLITokensResponse (CLITokensResponse)
 import Hercules.API.Accounts.NotificationSettings (NotificationSettings)
 import Hercules.API.Accounts.NotificationSettingsPatch (NotificationSettingsPatch)
+import Hercules.API.Forge.Forge (Forge)
 import Hercules.API.Prelude hiding (id)
-import Hercules.API.SourceHostingSite.SourceHostingSite
-  ( SourceHostingSite,
-  )
 import Servant.API
 import Servant.Auth ()
 
@@ -86,7 +84,7 @@ data AccountsAPI auth f = AccountsAPI
       f
         :- Substitute
              ( "site"
-                 :> Capture "site" (Name SourceHostingSite)
+                 :> Capture "site" (Name Forge)
                  :> "account"
                  :> Capture "account" (Name Account)
                  :> Placeholder
@@ -96,7 +94,7 @@ data AccountsAPI auth f = AccountsAPI
       f
         :- Summary "Accounts that the authenticated user owns, admins or collaborates with."
           :> "accounts"
-          :> QueryParam "site" (Name SourceHostingSite)
+          :> QueryParam "site" (Name Forge)
           :> QueryParam "name" (Name Account)
           :> auth
           :> Get '[JSON] [Account],
@@ -162,7 +160,7 @@ data AccountsAPI auth f = AccountsAPI
       f
         :- Summary "Retrieve installation status after redirect from external source site settings."
           :> "sites"
-          :> Capture "siteId" (Id SourceHostingSite)
+          :> Capture "forgeId" (Id Forge)
           :> "installation"
           :> Capture "installationId" Int
           :> "status"

@@ -137,7 +137,9 @@ spec = describe "Evaluation" $ do
                     EvaluateTask.inputMetadata = "src" =: defaultMeta
                   }
             )
-        let TaskStatus.Exceptional msg = s
+        let msg = case s of
+              TaskStatus.Exceptional m -> m
+              _ -> panic "task status"
         toS msg `shouldContain` "HttpExceptionRequest"
         toS msg `shouldContain` "Connection refused"
         r `shouldBe` []

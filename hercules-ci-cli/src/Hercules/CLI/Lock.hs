@@ -14,11 +14,11 @@ import qualified Data.UUID
 import qualified Data.UUID.V4 as UUID4
 import Hercules.API (Id, NoContent)
 import qualified Hercules.API.Accounts.SimpleAccount as SimpleAccount
+import qualified Hercules.API.Forge.SimpleForge as SimpleForge
 import Hercules.API.Id (Id (Id), idText)
 import Hercules.API.Name (nameText)
 import qualified Hercules.API.Projects.SimpleJob as SimpleJob
 import qualified Hercules.API.Projects.SimpleProject as SimpleProject
-import qualified Hercules.API.SourceHostingSite.SimpleSite as SimpleSite
 import Hercules.API.State (ProjectStateResourceGroup (acquireLock), StateAPI (deleteLockLease, updateLockLease))
 import qualified Hercules.API.State.StateLockAcquireRequest as StateLockAcquireRequest
 import Hercules.API.State.StateLockAcquireResponse (StateLockAcquireResponse (Acquired, Blocked))
@@ -270,7 +270,7 @@ logBlocked s = do
           jobUrl =
             Hercules.Frontend.job
               links
-              (SimpleSite.name $ SimpleAccount.site $ SimpleProject.owner project)
+              (SimpleForge.name $ SimpleAccount.site $ SimpleProject.owner project)
               (SimpleAccount.name $ SimpleProject.owner project)
               (SimpleProject.name project)
               (fromIntegral (SimpleJob.index job))

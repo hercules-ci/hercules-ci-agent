@@ -20,6 +20,17 @@ data BuildAPI auth f = BuildAPI
           :> "retry"
           :> auth
           :> Post '[PlainText, JSON] NoContent,
+    cancelDerivation ::
+      f
+        :- Summary "Cancel a derivation"
+          :> Description "If running, the build or push process will be killed. It will not be restarted, unless a rebuild is requested, or when output contents are required during evaluation (import from derivation)."
+          :> "accounts"
+          :> Capture "accountId" (Id Account)
+          :> "derivations"
+          :> Capture "derivationPath" Text
+          :> "cancel"
+          :> auth
+          :> Post '[PlainText, JSON] NoContent,
     readDerivationLogText ::
       f
         :- Summary "Read a derivation build log"

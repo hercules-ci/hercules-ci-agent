@@ -25,6 +25,7 @@ data EvaluationDetail = EvaluationDetail
     agentVersion :: Text,
     messages :: [Message],
     attributes :: [Attribute (Result AttributeError Derivation)],
+    ifdAttributes :: [IFDAttribute],
     evaluationDependencies :: [EvaluationDependency],
     evaluationLog :: Maybe (Id "log"),
     -- | A set of (path, derivationstatus) that is relevant to the evaluation
@@ -37,4 +38,7 @@ data EvaluationDetail = EvaluationDetail
     derivationsCancelledCount :: Int,
     unmetAgentRequirements :: [AgentRequirements]
   }
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+
+newtype IFDAttribute = IFDAttribute (Attribute Derivation)
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

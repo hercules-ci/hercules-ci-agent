@@ -2,9 +2,9 @@
 
 module Hercules.API.Accounts.Account where
 
+import Hercules.API.Forge.Forge (Forge)
 import qualified Hercules.API.Organizations.Organization as Organization
 import Hercules.API.Prelude
-import Hercules.API.SourceHostingSite.SourceHostingSite (SourceHostingSite)
 
 data AccountType = User | Organization
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
@@ -35,7 +35,7 @@ data Account = Account
     -- Hercules CI on this account.
     isInstallable :: Bool,
     membershipRole :: Maybe MembershipRole,
-    sourceHostingSites :: Maybe (Map Text SourceHostingSite),
+    sourceHostingSites :: Maybe (Map Text Forge),
     manageInstallationURL :: Maybe Text,
     installationIsSelection :: Maybe Bool
   }

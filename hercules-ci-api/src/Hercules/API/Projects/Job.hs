@@ -49,6 +49,7 @@ data JobType
   = Config
   | Legacy
   | OnPush
+  | OnSchedule
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
 
 data GitCommitSource = GitCommitSource

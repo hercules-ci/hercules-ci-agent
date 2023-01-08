@@ -4,6 +4,7 @@ module Hercules.API.Effects.EffectInfo where
 
 import Hercules.API.Build.DerivationInfo.DerivationInput (DerivationInput)
 import Hercules.API.Effects.EffectEvent (EffectEvent)
+import Hercules.API.Effects.EffectReference (EffectReference)
 import Hercules.API.Prelude
 import Hercules.API.Projects.Job (Job)
 import Hercules.API.Projects.Project (Project)
@@ -25,6 +26,7 @@ data EffectInfo = EffectInfo
     requiredSystemFeatures :: [Text],
     inputDerivations :: [DerivationInput],
     events :: [[EffectEvent]],
+    waitingForEffects :: [EffectReference],
     mayCancel :: Bool,
     dummy :: Maybe EffectEvent -- TODO: remove and update/fix codegen
   }

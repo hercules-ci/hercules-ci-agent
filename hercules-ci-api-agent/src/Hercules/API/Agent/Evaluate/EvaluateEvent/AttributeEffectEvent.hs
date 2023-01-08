@@ -5,6 +5,7 @@ module Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent where
 
 import Hercules.API.Prelude
 
+-- | An effect was found in an attribute
 data AttributeEffectEvent = AttributeEffectEvent
   { expressionPath :: [Text],
     derivationPath :: Text,

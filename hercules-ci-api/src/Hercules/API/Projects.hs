@@ -9,6 +9,7 @@ import Hercules.API.Build.EvaluationDetail
   )
 import qualified Hercules.API.Build.FailureGraph as FailureGraph
 import Hercules.API.Build.Log (Log)
+import Hercules.API.Forge.Forge (Forge)
 import Hercules.API.Inputs.ImmutableGitInput (ImmutableGitInput)
 import Hercules.API.Paging (PagedResponse)
 import Hercules.API.Prelude
@@ -20,25 +21,46 @@ import Hercules.API.Projects.Job
   ( Job,
     ProjectAndJobs,
   )
+import Hercules.API.Projects.JobHandlers (JobHandlers)
 import Hercules.API.Projects.PatchProject
   ( PatchProject,
   )
 import Hercules.API.Projects.Project (Project)
-import Hercules.API.SourceHostingSite.SourceHostingSite
-  ( SourceHostingSite,
-  )
 import Servant.API
 
+type GetJsonWithPreflight a =
+  Get
+    '[JSON]
+    (Headers '[Header "Access-Control-Allow-Origin" Text] a)
+    :<|> Verb
+           'OPTIONS
+           204
+           '[JSON]
+           ( Headers
+               '[ Header "Access-Control-Allow-Origin" Text,
+                  Header "Access-Control-Allow-Headers" Text,
+                  Header "Access-Control-Allow-Methods" Text
+                ]
+               NoContent
+           )
+
 data ProjectResourceGroup auth f = ProjectResourceGroup
-  { getJobs ::
+  { get ::
+      f
+        :- Summary "Retrieve a project"
+          :> auth
+          :> Get '[JSON] Project,
+    getJobs ::
       f
         :- Summary "Retrieve information about jobs"
           :> "jobs"
           :> QueryParam' '[Optional, Description "Constrain the results by git ref, such as refs/heads/my-branch or HEAD"] "ref" Text
           :> QueryParam' '[Optional, Description "Only return successful jobs, or only failed ones"] "success" Bool
           :> QueryParam' '[Optional, Description "Return jobs that come \"after\" the provided id in the response order."] "offsetId" (Id Job)
+          :> QueryParam' '[Optional, Description "Return jobs that come \"after\" the provided index in the response order."] "offsetIndex" Int64
+          :> QueryParam' '[Optional, Description "Return at most n jobs."] "limit" Int64
           :> auth
-          :> Get '[JSON] PagedJobs,
+          :> GetJsonWithPreflight PagedJobs,
     getJobSource ::
       f
         :- Summary "Get source information from the latest successful job/jobs satisfying the provided requirements."
@@ -64,7 +86,7 @@ data ProjectsAPI auth f = ProjectsAPI
       f
         :- Substitute
              ( "site"
-                 :> Capture' '[Required, Strict] "site" (Name SourceHostingSite)
+                 :> Capture' '[Required, Strict] "site" (Name Forge)
                  :> "account"
                  :> Capture' '[Required, Strict] "account" (Name Account)
                  :> "project"
@@ -84,7 +106,7 @@ data ProjectsAPI auth f = ProjectsAPI
       f
         :- Summary "Find projects"
           :> "projects"
-          :> QueryParam' '[Optional] "site" (Name SourceHostingSite)
+          :> QueryParam' '[Optional] "site" (Name Forge)
           :> QueryParam' '[Optional] "account" (Name Account)
           :> QueryParam' '[Optional] "project" (Name Project)
           :> auth
@@ -116,13 +138,22 @@ data ProjectsAPI auth f = ProjectsAPI
       f
         :- Summary "Find jobs"
           :> "jobs"
-          :> QueryParam' '[Optional, Description "Currently only \"github\" or omit entirely"] "site" (Name SourceHostingSite)
+          :> QueryParam' '[Optional, Description "Currently only \"github\" or omit entirely"] "site" (Name Forge)
           :> QueryParam' '[Optional, Description "Account name filter"] "account" (Name Account)
           :> QueryParam' '[Optional, Description "Project name filter. Required if you want to retrieve all jobs"] "project" (Name Project)
           :> QueryParam' '[Optional, Description "To get a specific job by index"] "index" Int
           :> QueryParam' '[Optional, Description "Number of latest jobs to get, when project name is omitted. Range [1..50], default 10."] "latest" Int
           :> auth
           :> Get '[JSON] [ProjectAndJobs],
+    getJobHandlers ::
+      f
+        :- Summary "Get a job's handler declarations, if any."
+          :> Description "Handlers define what to build and do on events such as onPush, onSchedule."
+          :> "jobs"
+          :> Capture' '[Required, Strict] "jobId" (Id Job)
+          :> "handlers"
+          :> auth
+          :> Get '[JSON] JobHandlers,
     projectJobEvaluation ::
       f
         :- Summary "List all attributes in a job"
@@ -131,7 +162,7 @@ data ProjectsAPI auth f = ProjectsAPI
           :> Capture' '[Required, Strict] "jobId" (Id Job)
           :> "evaluation"
           :> auth
-          :> Get '[JSON] EvaluationDetail,
+          :> GetJsonWithPreflight EvaluationDetail,
     jobDerivationFailureGraph ::
       f
         :- Summary "Find all failures in an evaluation's derivations"
@@ -153,6 +184,18 @@ data ProjectsAPI auth f = ProjectsAPI
           :> Capture' '[Required, Strict] "jobId" (Id Job)
           :> "rerun"
           :> QueryParam "rebuildFailures" Bool
+          :> auth
+          :> Post '[JSON] Job,
+    jobTriggerOnSchedule ::
+      f
+        :- Summary "Create a scheduled job to run now, based on a configuration job."
+          :> Description
+               "This is mostly intended for trying out new scheduled jobs before they are merged. The job is run in the context of the job's branch; not that of the default branch."
+          :> "jobs"
+          :> Capture' '[Required, Strict] "jobId" (Id Job)
+          :> "on-schedule"
+          :> Capture' '[Required, Strict] "jobName" Text
+          :> "run"
           :> auth
           :> Post '[JSON] Job,
     jobCancel ::

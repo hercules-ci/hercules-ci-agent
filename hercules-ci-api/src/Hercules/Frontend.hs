@@ -4,11 +4,12 @@ module Hercules.Frontend where
 
 import qualified Data.Text as T
 import Hercules.API.Accounts.Account (Account)
+import Hercules.API.Auth (AuthRoutes)
+import Hercules.API.Forge.Forge
+  ( Forge,
+  )
 import Hercules.API.Prelude
 import Hercules.API.Projects.Project (Project)
-import Hercules.API.SourceHostingSite.SourceHostingSite
-  ( SourceHostingSite,
-  )
 import Network.URI
 import Servant.API
 import Servant.Links
@@ -22,7 +23,7 @@ data FrontendRoutes view f = FrontendRoutes
         :- view,
     account ::
       f
-        :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
+        :- Capture' [Required, Strict] "site" (Name Forge)
           :> Capture' [Required, Strict] "account" (Name Account)
           :> view,
     cliAuthorize ::
@@ -34,18 +35,19 @@ data FrontendRoutes view f = FrontendRoutes
           :> view,
     project ::
       f
-        :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
+        :- Capture' [Required, Strict] "site" (Name Forge)
           :> Capture' [Required, Strict] "account" (Name Account)
           :> Capture' [Required, Strict] "project" (Name Project)
           :> view,
     job ::
       f
-        :- Capture' [Required, Strict] "site" (Name SourceHostingSite)
+        :- Capture' [Required, Strict] "site" (Name Forge)
           :> Capture' [Required, Strict] "account" (Name Account)
           :> Capture' [Required, Strict] "project" (Name Project)
           :> "jobs"
           :> Capture' [Required, Strict] "jobIndex" Int
           :> view,
+    auth :: ToServant (AuthRoutes view) f,
     notificationSettings ::
       f
         :- "settings" :> "notifications" :> view

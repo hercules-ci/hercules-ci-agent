@@ -19,10 +19,12 @@ data AgentSession = AgentSession
     platforms :: [Text],
     systemFeatures :: [Text],
     cachixPushCaches :: [Text],
+    pushCaches :: [Text],
     substituters :: [Text],
     creation :: UTCTime,
     lastSeen :: Maybe UTCTime,
     available :: Bool,
+    concurrentTasks :: Int,
     labels :: Labels
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)

@@ -53,12 +53,24 @@ library
     Hercules.API.Build.FailureGraph
     Hercules.API.Build.Log
     Hercules.API.Build.LogLine
+    Hercules.API.ClientInfo
+    Hercules.API.ClientInfo.ClientInfo
     Hercules.API.Derivation
     Hercules.API.Effects
     Hercules.API.Effects.EffectEvent
     Hercules.API.Effects.EffectInfo
+    Hercules.API.Effects.EffectReference
+    Hercules.API.Error
     Hercules.API.Evaluation.AttributeError
     Hercules.API.Evaluation.Evaluation
+    Hercules.API.Forge
+    Hercules.API.Forge.Forge
+    Hercules.API.Forge.SimpleForge
+    Hercules.API.GitLab
+    Hercules.API.GitLab.CreateInstallationBuilderRequest
+    Hercules.API.GitLab.CreateInstallationBuilderResponse
+    Hercules.API.GitLab.InstallationBuilder
+    Hercules.API.GitLab.PatchInstallationBuilder
     Hercules.API.Health
     Hercules.API.Inputs.ImmutableGitInput
     Hercules.API.Inputs.ImmutableInput
@@ -75,6 +87,10 @@ library
     Hercules.API.Projects.CreateProject
     Hercules.API.Projects.CreateUserEffectTokenResponse
     Hercules.API.Projects.Job
+    Hercules.API.Projects.JobHandlers
+    Hercules.API.Projects.JobHandlers.OnPushHandler
+    Hercules.API.Projects.JobHandlers.OnScheduleHandler
+    Hercules.API.Projects.LegacySimpleJob
     Hercules.API.Projects.PatchProject
     Hercules.API.Projects.Project
     Hercules.API.Projects.SimpleJob
@@ -85,8 +101,6 @@ library
     Hercules.API.Repos.SimpleRepo
     Hercules.API.Result
     Hercules.API.Servant.Status
-    Hercules.API.SourceHostingSite.SimpleSite
-    Hercules.API.SourceHostingSite.SourceHostingSite
     Hercules.API.State
     Hercules.API.State.ProjectState
     Hercules.API.State.StateFile
@@ -118,7 +132,7 @@ library
     -fwarn-name-shadowing -fwarn-incomplete-patterns
 
   build-depends:
-      aeson >= 2
+      aeson                    >=2
     , base                     >=4.7    && <5
     , bytestring
     , containers
