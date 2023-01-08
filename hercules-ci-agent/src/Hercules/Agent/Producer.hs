@@ -14,7 +14,6 @@ import Control.Monad.IO.Unlift
 import Control.Monad.State
 import Data.Foldable
 import Data.Traversable
-import Katip
 import UnliftIO.Exception
 import Prelude
 
@@ -63,7 +62,7 @@ cancel p = liftIO $ throwTo (producerThread p) ProducerCancelled
 --
 -- @withProducer (\write -> write "a" >> write "b") $ \producer -> consume producer@
 withProducer ::
-  (MonadIO m, MonadUnliftIO m) =>
+  (MonadUnliftIO m) =>
   ((p -> m ()) -> m r) ->
   (Producer p r -> m a) ->
   m a
@@ -122,7 +121,7 @@ withSync t f = do
 --     - Alternatively, maybe use stm-delay (which uses GHC.Event for efficiency)
 --       https://hackage.haskell.org/package/stm-delay-0.1.1.1/docs/Control-Concurrent-STM-Delay.html
 withBoundedDelayBatchProducer ::
-  (MonadIO m, MonadUnliftIO m, KatipContext m) =>
+  (MonadIO m, MonadUnliftIO m) =>
   -- | Max time before flushing in microseconds
   Int ->
   -- | Max number of items in batch

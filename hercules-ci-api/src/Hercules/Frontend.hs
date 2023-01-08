@@ -12,7 +12,6 @@ import Hercules.API.Prelude
 import Hercules.API.Projects.Project (Project)
 import Network.URI
 import Servant.API
-import Servant.API.Generic
 import Servant.Links
 
 -- | URL routes for the web interface.

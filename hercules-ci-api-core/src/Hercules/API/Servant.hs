@@ -30,7 +30,7 @@ import Prelude
 -- Ideally, this functionality would be built into a new combinator.
 useApi ::
   forall subapi api mode.
-  (GenericServant api mode, GenericServant subapi mode) =>
+  (GenericServant subapi mode) =>
   (api mode -> ToServant subapi mode) ->
   api mode ->
   subapi mode
@@ -40,7 +40,7 @@ useApi = (Servant.API.Generic.fromServant .)
 -- subapis.
 useApiE ::
   forall subapi api mode a.
-  (GenericServant (api a) mode, GenericServant (subapi a) mode) =>
+  (GenericServant (subapi a) mode) =>
   (api a mode -> ToServant (subapi a) mode) ->
   api a mode ->
   subapi a mode
@@ -49,7 +49,7 @@ useApiE = useApi
 -- | @flip 'useApi'
 enterApi ::
   forall subapi api mode.
-  (GenericServant api mode, GenericServant subapi mode) =>
+  (GenericServant subapi mode) =>
   api mode ->
   (api mode -> ToServant subapi mode) ->
   subapi mode
@@ -58,7 +58,7 @@ enterApi = flip useApi
 -- | @flip 'useApiE'
 enterApiE ::
   forall subapi api mode a.
-  (GenericServant (api a) mode, GenericServant (subapi a) mode) =>
+  (GenericServant (subapi a) mode) =>
   api a mode ->
   (api a mode -> ToServant (subapi a) mode) ->
   subapi a mode

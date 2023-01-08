@@ -2,8 +2,8 @@
 
 module Hercules.API.Health where
 
+import Hercules.API.Prelude
 import Servant.API
-import Servant.API.Generic
 
 data HealthAPI auth f = HealthAPI
   { db ::

@@ -8,7 +8,6 @@ import Hercules.API.GitLab.InstallationBuilder (InstallationBuilder, Installatio
 import Hercules.API.GitLab.PatchInstallationBuilder (PatchInstallationBuilder)
 import Hercules.API.Prelude
 import Servant.API
-import Servant.API.Generic
 
 data GitLabAPI auth f = GitLabAPI
   { createInstallationBuilder ::

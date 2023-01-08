@@ -7,7 +7,6 @@ import Hercules.API.Prelude
 import Hercules.API.Repos.Repo (Repo)
 import Hercules.API.Repos.RepoKey (RepoKey)
 import Servant.API
-import Servant.API.Generic
 
 data ReposAPI auth f = ReposAPI
   { reposByOwner ::

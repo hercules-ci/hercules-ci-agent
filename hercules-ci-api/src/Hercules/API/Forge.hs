@@ -6,7 +6,6 @@ module Hercules.API.Forge where
 import Hercules.API.Forge.Forge (Forge)
 import Hercules.API.Prelude
 import Servant.API
-import Servant.API.Generic
 
 data ForgeResourceGroup auth f = ForgeResourceGroup
   { get ::

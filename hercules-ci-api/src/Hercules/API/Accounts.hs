@@ -18,7 +18,6 @@ import Hercules.API.Accounts.NotificationSettingsPatch (NotificationSettingsPatc
 import Hercules.API.Forge.Forge (Forge)
 import Hercules.API.Prelude hiding (id)
 import Servant.API
-import Servant.API.Generic
 import Servant.Auth ()
 
 data AccountResourceGroup auth f = AccountResourceGroup
