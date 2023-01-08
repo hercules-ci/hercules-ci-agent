@@ -12,43 +12,55 @@ import Servant.API.Generic
 
 data GitLabAPI auth f = GitLabAPI
   { createInstallationBuilder ::
-      f :- "gitlab" :> "installation"
-        :> ReqBody '[JSON] CreateInstallationBuilderRequest
-        :> auth
-        :> Post '[JSON] InstallationBuilder,
+      f
+        :- "gitlab"
+          :> "installation"
+          :> ReqBody '[JSON] CreateInstallationBuilderRequest
+          :> auth
+          :> Post '[JSON] InstallationBuilder,
     getInstallationBuilders ::
-      f :- "gitlab" :> "installations"
-        :> auth
-        :> Get '[JSON] InstallationBuilders,
+      f
+        :- "gitlab"
+          :> "installations"
+          :> auth
+          :> Get '[JSON] InstallationBuilders,
     getInstallationBuilder ::
-      f :- "gitlab" :> "installation"
-        :> Capture "installationId" (Id InstallationBuilder)
-        :> auth
-        :> Get '[JSON] InstallationBuilder,
+      f
+        :- "gitlab"
+          :> "installation"
+          :> Capture "installationId" (Id InstallationBuilder)
+          :> auth
+          :> Get '[JSON] InstallationBuilder,
     patchInstallationBuilder ::
-      f :- "gitlab" :> "installation"
-        :> Capture "installationId" (Id InstallationBuilder)
-        :> auth
-        :> ReqBody '[JSON] PatchInstallationBuilder
-        :> Patch '[JSON] InstallationBuilder,
+      f
+        :- "gitlab"
+          :> "installation"
+          :> Capture "installationId" (Id InstallationBuilder)
+          :> auth
+          :> ReqBody '[JSON] PatchInstallationBuilder
+          :> Patch '[JSON] InstallationBuilder,
     deleteInstallationBuilder ::
-      f :- "gitlab" :> "installation"
-        :> Capture "installationId" (Id InstallationBuilder)
-        :> auth
-        :> Delete '[JSON] NoContent,
+      f
+        :- "gitlab"
+          :> "installation"
+          :> Capture "installationId" (Id InstallationBuilder)
+          :> auth
+          :> Delete '[JSON] NoContent,
     installAccount ::
-      f :- "accounts"
-        :> Capture "accountId" (Id Account)
-        :> "gitlab"
-        :> "install"
-        :> auth
-        :> Post '[JSON] NoContent,
+      f
+        :- "accounts"
+          :> Capture "accountId" (Id Account)
+          :> "gitlab"
+          :> "install"
+          :> auth
+          :> Post '[JSON] NoContent,
     deinstallAccount ::
-      f :- "accounts"
-        :> Capture "accountId" (Id Account)
-        :> "gitlab"
-        :> "deinstall"
-        :> auth
-        :> Post '[JSON] NoContent
+      f
+        :- "accounts"
+          :> Capture "accountId" (Id Account)
+          :> "gitlab"
+          :> "deinstall"
+          :> auth
+          :> Post '[JSON] NoContent
   }
   deriving (Generic)

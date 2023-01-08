@@ -11,17 +11,19 @@ import Servant.API.Generic
 
 data ReposAPI auth f = ReposAPI
   { reposByOwner ::
-      f :- Summary "Repositories that the account owns or has explicit access to."
-        :> "accounts"
-        :> Capture' '[Required, Strict] "accountId" (Id Account)
-        :> "repos"
-        :> auth
-        :> Get '[JSON] [Repo],
+      f
+        :- Summary "Repositories that the account owns or has explicit access to."
+          :> "accounts"
+          :> Capture' '[Required, Strict] "accountId" (Id Account)
+          :> "repos"
+          :> auth
+          :> Get '[JSON] [Repo],
     parseGitURL ::
-      f :- Summary "Parse a git remote URL into site, owner and repo. Returns 400 if invalid, 404 if the site can not be determined. Does provide any guarantee that the repository exists."
-        :> "parse-git-url"
-        :> QueryParam' '[Required, Strict] "gitURL" Text
-        :> auth
-        :> Get '[JSON] RepoKey
+      f
+        :- Summary "Parse a git remote URL into site, owner and repo. Returns 400 if invalid, 404 if the site can not be determined. Does provide any guarantee that the repository exists."
+          :> "parse-git-url"
+          :> QueryParam' '[Required, Strict] "gitURL" Text
+          :> auth
+          :> Get '[JSON] RepoKey
   }
   deriving (Generic)

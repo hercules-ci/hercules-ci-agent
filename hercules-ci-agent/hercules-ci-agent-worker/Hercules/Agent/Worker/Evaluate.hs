@@ -741,12 +741,12 @@ walk evalEnv autoArgs v0 = withIFDQueue evalEnv \enqueue ->
                         && vt
                           == Hercules.CNix.Expr.Raw.Bool
                     )
-                    $ logLocM DebugS $
-                      logStr $
-                        "Ignoring "
-                          <> show path
-                          <> " : "
-                          <> (show vt :: Text)
+                    $ logLocM DebugS
+                    $ logStr
+                    $ "Ignoring "
+                      <> show path
+                      <> " : "
+                      <> (show vt :: Text)
                   pass
    in start
 
@@ -768,7 +768,7 @@ walkDerivation store evalState effectsAnywhere path attrValue = do
       Just True
         | effectsAnywhere
             || inEffects path ->
-          throwE $ Right Attribute.Effect
+            throwE $ Right Attribute.Effect
       Just True | otherwise -> throwE $ Left $ toException $ UserException "This derivation is marked as an effect, but effects are only allowed below the effects attribute."
       _ -> pass
     isDependenciesOnly <- liftEitherAs Left =<< liftIO (getAttrBool evalState attrValue "buildDependenciesOnly")

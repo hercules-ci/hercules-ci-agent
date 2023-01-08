@@ -105,7 +105,7 @@ servantClientApi = Proxy
 type API auth =
   HerculesServantAPI auth
     :<|> "api"
-    :> SwaggerSchemaUI "v1" "swagger.json"
+      :> SwaggerSchemaUI "v1" "swagger.json"
 
 api :: Proxy (API auth)
 api = Proxy
@@ -115,13 +115,13 @@ swagger =
   toSwagger api'
     & info
       . title
-    .~ "Hercules CI API"
+      .~ "Hercules CI API"
     & info
       . version
-    .~ "v1"
+      .~ "v1"
     & info
       . description
-    ?~ "You have reached the Hercules Continuous Integration Application Programming Interface. This user interface provides human friendly access to the various endpoints. To get started with Hercules CI, see hercules-ci.com. Happy building! —the Hercules team"
+      ?~ "You have reached the Hercules Continuous Integration Application Programming Interface. This user interface provides human friendly access to the various endpoints. To get started with Hercules CI, see hercules-ci.com. Happy building! —the Hercules team"
     & withTags clientProjects "project" "Project and job operations"
     & withTags clientBuild "build" "Build related operations"
     & withTags clientEffects "effect" "Effect related operations"

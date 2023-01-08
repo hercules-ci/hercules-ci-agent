@@ -21,28 +21,31 @@ type OAuthReturn stage view =
 -- | Endpoints for authentication
 data AuthAPI auth f = AuthAPI
   { initiateGitHubLogin ::
-      f :- "api"
-        :> "auth"
-        :> "github"
-        :> QueryParam' '[Optional, Strict] "redirect" Text
-        :> Get302 '[PlainText, JSON] '[],
+      f
+        :- "api"
+          :> "auth"
+          :> "github"
+          :> QueryParam' '[Optional, Strict] "redirect" Text
+          :> Get302 '[PlainText, JSON] '[],
     signOut ::
-      f :- Summary "Terminate the session and help clear the cookies."
-        :> "api"
-        :> "auth"
-        :> "sign-out"
-        :> auth
-        :> Post '[JSON] (Headers '[Header "Set-Cookie" SetCookie, Header "Set-Cookie" SetCookie] NoContent),
+      f
+        :- Summary "Terminate the session and help clear the cookies."
+          :> "api"
+          :> "auth"
+          :> "sign-out"
+          :> auth
+          :> Post '[JSON] (Headers '[Header "Set-Cookie" SetCookie, Header "Set-Cookie" SetCookie] NoContent),
     start ::
-      f :- Summary "Initiate an OAuth login, redirecting the client to a URL at the OAuth provider."
-        :> "api"
-        :> "auth"
-        :> Capture "type" Text
-        :> "start"
-        :> Capture "forgeId" (Id Forge)
-        :> QueryParam' '[Optional, Strict] "redirect" Text
-        :> auth
-        :> Get302 '[PlainText, JSON] '[],
+      f
+        :- Summary "Initiate an OAuth login, redirecting the client to a URL at the OAuth provider."
+          :> "api"
+          :> "auth"
+          :> Capture "type" Text
+          :> "start"
+          :> Capture "forgeId" (Id Forge)
+          :> QueryParam' '[Optional, Strict] "redirect" Text
+          :> auth
+          :> Get302 '[PlainText, JSON] '[],
     return ::
       f
         :- OAuthReturn

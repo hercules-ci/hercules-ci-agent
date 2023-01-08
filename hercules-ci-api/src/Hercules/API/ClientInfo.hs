@@ -9,9 +9,10 @@ import Servant.API.Generic
 
 data ClientInfoAPI auth f = ClientInfoAPI
   { getClientInfo ::
-      f :- "client"
-        :> "info"
-        :> auth
-        :> Get '[JSON] ClientInfo
+      f
+        :- "client"
+          :> "info"
+          :> auth
+          :> Get '[JSON] ClientInfo
   }
   deriving (Generic)

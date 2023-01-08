@@ -30,33 +30,37 @@ type ContentDisposition = Header "Content-Disposition" Text
 
 data ProjectStateResourceGroup auth f = ProjectStateResourceGroup
   { putStateData ::
-      f :- Summary "Upload a state file"
-        :> "state"
-        :> Capture' '[Required, Strict] "stateName" Text
-        :> "data"
-        :> StreamBody NoFraming OctetStream (SourceIO RawBytes)
-        :> auth
-        :> Put '[JSON] NoContent,
+      f
+        :- Summary "Upload a state file"
+          :> "state"
+          :> Capture' '[Required, Strict] "stateName" Text
+          :> "data"
+          :> StreamBody NoFraming OctetStream (SourceIO RawBytes)
+          :> auth
+          :> Put '[JSON] NoContent,
     getStates ::
-      f :- Summary "List all state files"
-        :> "states"
-        :> auth
-        :> Get '[JSON] ProjectState,
+      f
+        :- Summary "List all state files"
+          :> "states"
+          :> auth
+          :> Get '[JSON] ProjectState,
     getStateData ::
-      f :- Summary "Download a state file"
-        :> "state"
-        :> Capture' '[Required, Strict] "stateName" Text
-        :> "data"
-        :> QueryParam' '[Optional, Strict] "version" Int
-        :> auth
-        :> StreamGet NoFraming OctetStream (Headers '[ContentLength, ContentDisposition] (SourceIO RawBytes)),
+      f
+        :- Summary "Download a state file"
+          :> "state"
+          :> Capture' '[Required, Strict] "stateName" Text
+          :> "data"
+          :> QueryParam' '[Optional, Strict] "version" Int
+          :> auth
+          :> StreamGet NoFraming OctetStream (Headers '[ContentLength, ContentDisposition] (SourceIO RawBytes)),
     acquireLock ::
-      f :- Summary "Acquire a lock"
-        :> "lock"
-        :> Capture' '[Required, Strict] "lockName" Text
-        :> ReqBody '[JSON] StateLockAcquireRequest
-        :> auth
-        :> Post '[JSON] StateLockAcquireResponse
+      f
+        :- Summary "Acquire a lock"
+          :> "lock"
+          :> Capture' '[Required, Strict] "lockName" Text
+          :> ReqBody '[JSON] StateLockAcquireRequest
+          :> auth
+          :> Post '[JSON] StateLockAcquireResponse
   }
   deriving (Generic)
 
@@ -82,15 +86,17 @@ data StateAPI auth f = StateAPI
              )
              (ToServantApi (ProjectStateResourceGroup auth)),
     updateLockLease ::
-      f :- "lock-leases"
-        :> Capture' '[Required, Strict] "lockLeaseId" (Id "StateLockLease")
-        :> ReqBody '[JSON] StateLockUpdateRequest
-        :> auth
-        :> Post '[JSON] StateLockAcquiredResponse,
+      f
+        :- "lock-leases"
+          :> Capture' '[Required, Strict] "lockLeaseId" (Id "StateLockLease")
+          :> ReqBody '[JSON] StateLockUpdateRequest
+          :> auth
+          :> Post '[JSON] StateLockAcquiredResponse,
     deleteLockLease ::
-      f :- "lock-leases"
-        :> Capture' '[Required, Strict] "lockLeaseId" (Id "StateLockLease")
-        :> auth
-        :> Delete '[JSON] NoContent
+      f
+        :- "lock-leases"
+          :> Capture' '[Required, Strict] "lockLeaseId" (Id "StateLockLease")
+          :> auth
+          :> Delete '[JSON] NoContent
   }
   deriving (Generic)

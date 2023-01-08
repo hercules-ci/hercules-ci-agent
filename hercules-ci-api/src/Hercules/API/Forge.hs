@@ -10,13 +10,15 @@ import Servant.API.Generic
 
 data ForgeResourceGroup auth f = ForgeResourceGroup
   { get ::
-      f :- Summary ("Get the forge.")
-        :> auth
-        :> Get '[JSON] Forge,
+      f
+        :- Summary ("Get the forge.")
+          :> auth
+          :> Get '[JSON] Forge,
     delete ::
-      f :- Summary ("Delete the forge.")
-        :> auth
-        :> Delete '[JSON] NoContent
+      f
+        :- Summary ("Delete the forge.")
+          :> auth
+          :> Delete '[JSON] NoContent
   }
   deriving (Generic)
 
