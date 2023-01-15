@@ -48,7 +48,7 @@ in
         nix.package = lib.mkIf daemonIsNixUnstable pkgs.nixUnstable;
         services.hercules-ci-agent.enable = true;
         # Instead of the default, we want the nix library version from the build matrix (which should include at least the default)
-        services.hercules-ci-agent.package = lib.mkForce pkgs.hercules-ci-agent;
+        services.hercules-ci-agent.package = lib.mkForce flake.packages.${pkgs.hostPlatform.system}.hercules-ci-agent;
 
         # test suite fetches tarballs over http:// on the test network.
         services.hercules-ci-agent.settings.allowInsecureBuiltinFetchers = true;
@@ -64,9 +64,11 @@ in
         virtualisation.memorySize = 1024;
       };
     };
-    api = { ... }: {
+    api = { pkgs, ... }: {
       networking.firewall.allowedTCPPorts = [ 80 ];
-      environment.systemPackages = [ pkgs.testSuitePkgs.hercules-ci-agent-packages.internal.haskellPackages.hercules-ci-agent-test ];
+      environment.systemPackages = [
+        flake.packages.${pkgs.hostPlatform.system}.internal-hercules-ci-agent-test
+      ];
     };
   };
 
