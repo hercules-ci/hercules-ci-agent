@@ -14,7 +14,7 @@ module MockTasksApi
   )
 where
 
-import qualified AgentTask
+import AgentTask qualified
 import Conduit
   ( MonadResource,
     MonadThrow,
@@ -22,19 +22,19 @@ import Conduit
     mapC,
   )
 import Control.Concurrent.STM
-import qualified Control.Exception.Safe
+import Control.Exception.Safe qualified
 import Data.Aeson
   ( FromJSON,
     ToJSON,
     eitherDecode,
   )
-import qualified Data.Aeson as A
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
+import Data.Aeson qualified as A
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BL
 import Data.Conduit ((.|))
-import qualified Data.Conduit as Conduit
-import qualified Data.Conduit.Combinators as Conduit
-import qualified Data.Conduit.Tar as Tar
+import Data.Conduit qualified as Conduit
+import Data.Conduit.Combinators qualified as Conduit
+import Data.Conduit.Tar qualified as Tar
 import Data.Conduit.Zlib (gzip)
 import Data.IORef
   ( IORef,
@@ -42,42 +42,42 @@ import Data.IORef
     newIORef,
     readIORef,
   )
-import qualified Data.List as L
-import qualified Data.Map as M
-import qualified Data.Text as T
+import Data.List qualified as L
+import Data.Map qualified as M
+import Data.Text qualified as T
 import Data.UUID (UUID)
-import qualified Data.UUID.V4 as UUID
-import qualified DummyApi
+import Data.UUID.V4 qualified as UUID
+import DummyApi qualified
 import Hercules.API.Agent
 import Hercules.API.Agent.Build (BuildAPI (..))
-import qualified Hercules.API.Agent.Build.BuildEvent as BuildEvent
-import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
+import Hercules.API.Agent.Build.BuildEvent qualified as BuildEvent
+import Hercules.API.Agent.Build.BuildTask qualified as BuildTask
 import Hercules.API.Agent.Evaluate (EvalAPI (..))
 import Hercules.API.Agent.Evaluate.DerivationStatus (DerivationStatus)
-import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatus
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest as BuildRequest
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
-import qualified Hercules.API.Agent.Evaluate.ImmutableInput as ImmutableInput
+import Hercules.API.Agent.Evaluate.DerivationStatus qualified as DerivationStatus
+import Hercules.API.Agent.Evaluate.EvaluateEvent qualified as EvaluateEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest qualified as BuildRequest
+import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
+import Hercules.API.Agent.Evaluate.ImmutableInput qualified as ImmutableInput
 import Hercules.API.Agent.LifeCycle (LifeCycleAPI (..))
-import qualified Hercules.API.Agent.LifeCycle as LifeCycle
-import qualified Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 as CreateAgentSession
-import qualified Hercules.API.Agent.LifeCycle.ServiceInfo as SI
+import Hercules.API.Agent.LifeCycle qualified as LifeCycle
+import Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 qualified as CreateAgentSession
+import Hercules.API.Agent.LifeCycle.ServiceInfo qualified as SI
 import Hercules.API.Agent.Socket.AgentPayload (AgentPayload)
 import Hercules.API.Agent.Socket.Frame as Frame
 import Hercules.API.Agent.Socket.ServicePayload (ServicePayload)
-import qualified Hercules.API.Agent.Socket.ServicePayload as SP
+import Hercules.API.Agent.Socket.ServicePayload qualified as SP
 import Hercules.API.Agent.Tasks (TasksAPI (..))
 import Hercules.API.Id
 import Hercules.API.Logs (LogsAPI (..))
 import Hercules.API.Logs.LogEntry (LogEntry)
 import Hercules.API.Logs.LogMessage (LogMessage (LogEntries))
 import Hercules.API.Task (Task)
-import qualified Hercules.API.Task as Task
-import qualified Hercules.API.TaskStatus as TaskStatus
+import Hercules.API.Task qualified as Task
+import Hercules.API.TaskStatus qualified as TaskStatus
 import Network.Wai.Handler.Warp (run)
-import qualified Network.WebSockets as WS
-import qualified Network.WebSockets.Connection
+import Network.WebSockets qualified as WS
+import Network.WebSockets.Connection qualified
 import Orphans ()
 import Protolude hiding (Handler)
 import Servant.API
@@ -93,7 +93,7 @@ import System.Directory
 import System.Environment (getEnvironment)
 import System.FilePath ((</>))
 import TestSupport
-import qualified Prelude
+import Prelude qualified
 
 data ServerState = ServerState
   { queue :: MVar ServicePayload,

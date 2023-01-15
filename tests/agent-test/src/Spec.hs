@@ -1,7 +1,7 @@
 module Spec where
 
-import qualified BuildSpec
-import qualified EvaluationSpec
+import BuildSpec qualified
+import EvaluationSpec qualified
 import MockTasksApi (ServerHandle)
 import Test.Hspec
 
