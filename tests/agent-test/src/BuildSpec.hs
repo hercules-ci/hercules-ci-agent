@@ -4,23 +4,24 @@
 module BuildSpec where
 
 import Control.Concurrent.STM.TVar (readTVar)
-import qualified Data.Aeson as A
-import qualified Data.Map as M
-import qualified Data.UUID.V4 as UUID
-import qualified Hercules.API.Agent.Build.BuildEvent as BuildEvent
-import qualified Hercules.API.Agent.Build.BuildEvent.OutputInfo as OutputInfo
-import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
+import Data.Aeson qualified as A
+import Data.Map qualified as M
+import Data.Text qualified as T
+import Data.UUID.V4 qualified as UUID
+import Hercules.API.Agent.Build.BuildEvent qualified as BuildEvent
+import Hercules.API.Agent.Build.BuildEvent.OutputInfo qualified as OutputInfo
+import Hercules.API.Agent.Build.BuildTask qualified as BuildTask
 import Hercules.API.Agent.Evaluate.EvaluateEvent
   ( EvaluateEvent,
   )
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnPush as EvaluateTask.OnPush
-import qualified Hercules.API.Agent.Evaluate.ImmutableInput as ImmutableInput
+import Hercules.API.Agent.Evaluate.EvaluateEvent qualified as EvaluateEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent qualified as AttributeEvent
+import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
+import Hercules.API.Agent.Evaluate.EvaluateTask.OnPush qualified as EvaluateTask.OnPush
+import Hercules.API.Agent.Evaluate.ImmutableInput qualified as ImmutableInput
 import Hercules.API.Id (Id (Id))
-import qualified Hercules.API.Logs.LogEntry as LogEntry
-import qualified Hercules.API.TaskStatus as TaskStatus
+import Hercules.API.Logs.LogEntry qualified as LogEntry
+import Hercules.API.TaskStatus qualified as TaskStatus
 import MockTasksApi
 import Protolude
 import System.Timeout (timeout)
@@ -74,7 +75,7 @@ isAttrLike _ = False
 (=:) = M.singleton
 
 spec :: SpecWith ServerHandle
-spec = describe "Build" $
+spec = describe "Build" do
   it "works" $ \srv -> do
     -- Setup: put the drv in the agent's store
     id <- randomId
@@ -138,6 +139,75 @@ spec = describe "Build" $
         guard $
           isJust $
             entries & find \case LogEntry.Result {rtype = LogEntry.ResultTypeBuildLogLine, fields = f} | toList f == [LogEntry.String "hello on stdout"] -> True; _ -> False
+      pass
+    case x of
+      Nothing -> failWith "Did not receive log in time."
+      Just _ -> pass
+
+  it "prints cyclic output reference error" $ \srv -> do
+    -- Setup: put the drv in the agent's store
+    id <- randomId
+    (s, r) <-
+      runEval
+        srv
+        ( fixupInputs
+            defaultEvalTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/build-cyclic-output-reference" <> M.singleton "n" "/tarball/nixpkgs",
+                EvaluateTask.autoArguments =
+                  M.singleton
+                    "nixpkgs"
+                    (EvaluateTask.SubPathOf "n" Nothing),
+                EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                EvaluateTask.selector = EvaluateTask.OnPush $ EvaluateTask.OnPush.MkOnPush {name = "ci", inputs = "nixpkgs" =: ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")}
+              }
+        )
+    s `shouldBe` TaskStatus.Successful ()
+    drvPath <-
+      case attrLike r of
+        [EvaluateEvent.Attribute ae] -> do
+          let drvPath = AttributeEvent.derivationPath ae
+          AttributeEvent.expressionPath ae `shouldBe` ["it"]
+          toS drvPath `shouldContain` "/nix/store"
+          toS drvPath `shouldContain` "cyclic"
+          pure drvPath
+        _ -> failWith $ "Events should be a single attribute, not: " <> show r
+
+    id2 <- randomId
+    (s2, be) <-
+      runBuild
+        srv
+        ( BuildTask.BuildTask
+            { id = id2,
+              derivationPath = drvPath,
+              logToken = "pretend-jwt-for-log",
+              inputDerivationOutputPaths = []
+            }
+        )
+    s2 `shouldBe` TaskStatus.Terminated ()
+    case be of
+      [] -> pass
+      _ -> failWith $ "Didn't expect build events: " <> show be
+    x <- timeout 30_000_000 do
+      atomically do
+        entries <- readTVar (logEntries $ serverState srv)
+        -- unsafePerformIO do
+        --   for_ (reverse entries) print
+        --   pure pass
+
+        guard $
+          isJust $
+            entries & find \case
+              LogEntry.Msg {level = 0, msg = m}
+                | "cycle detected"
+                    `T.isInfixOf` m
+                    && "outputOne"
+                    `T.isInfixOf` m
+                    && "outputTwo"
+                    `T.isInfixOf` m ->
+                    True
+              _ -> False
+
       pass
     case x of
       Nothing -> failWith "Did not receive log in time."
