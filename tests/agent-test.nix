@@ -1,4 +1,4 @@
-{ flake, daemonIsNixUnstable }:
+{ flake, daemonIsNixUnstable, trusted ? true }:
 { pkgs, ... }:
 let
   testdata = pkgs.runCommand "testdata" { } ''
@@ -23,6 +23,22 @@ in
     agent = { config, pkgs, lib, ... }: {
       imports = [
         flake.nixosModules.agent-profile
+        {
+          config =
+            if trusted
+            then {
+              assertions = [
+                {
+                  assertion = config.services.hercules-ci-agent.settings.nixUserIsTrusted;
+                  message = "nixUserIsTrusted is the default.";
+                }
+              ];
+            }
+            else {
+              services.hercules-ci-agent.settings.nixUserIsTrusted = lib.mkForce false;
+              nix.settings.trusted-users = lib.mkForce [ ];
+            };
+        }
       ];
       config = {
         # Keep build dependencies around, because we'll be offline
@@ -38,7 +54,6 @@ in
         services.hercules-ci-agent.settings.allowInsecureBuiltinFetchers = true;
 
         services.hercules-ci-agent.settings.apiBaseUrl = "http://api";
-        services.hercules-ci-agent.settings.nixUserIsTrusted = lib.mkForce false;
         services.hercules-ci-agent.settings.binaryCachesPath = (pkgs.writeText "binary-caches.json" (builtins.toJSON { })).outPath;
         services.hercules-ci-agent.settings.clusterJoinTokenPath = (pkgs.writeText "pretend-agent-token" "").outPath;
         services.hercules-ci-agent.settings.concurrentTasks = 4; # Decrease on itest memory problems

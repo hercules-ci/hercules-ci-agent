@@ -228,6 +228,7 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
             status = result.success() ? -1 : -2;
             break;
         }
+        printError(result.errorMsg);
         success = result.success();
         errorMessage = strdup(result.errorMsg.c_str());
         startTime = result.startTime;

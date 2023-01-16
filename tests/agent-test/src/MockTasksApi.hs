@@ -57,6 +57,8 @@ import Hercules.API.Agent.Evaluate.DerivationStatus (DerivationStatus)
 import Hercules.API.Agent.Evaluate.DerivationStatus qualified as DerivationStatus
 import Hercules.API.Agent.Evaluate.EvaluateEvent qualified as EvaluateEvent
 import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest qualified as BuildRequest
+import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo (DerivationInfo)
+import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo qualified as DerivationInfo
 import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
 import Hercules.API.Agent.Evaluate.ImmutableInput qualified as ImmutableInput
 import Hercules.API.Agent.LifeCycle (LifeCycleAPI (..))
@@ -110,6 +112,8 @@ data ServerState = ServerState
             (Id (Task EvaluateTask.EvaluateTask))
             [EvaluateEvent.EvaluateEvent]
         ),
+    derivationInfos ::
+      IORef (Map Text DerivationInfo),
     buildTasks ::
       IORef
         ( Map
@@ -187,11 +191,26 @@ runBuild ::
   ServerHandle ->
   BuildTask.BuildTask ->
   IO (TaskStatus.TaskStatus, [BuildEvent.BuildEvent])
-runBuild sh@(ServerHandle st) task = do
+runBuild sh@(ServerHandle st) task0 = do
+  task <- fixupBuildTask sh task0
   enqueue sh (AgentTask.Build task)
   s <- await sh (idText $ BuildTask.id task)
   evs <- readIORef (buildEvents st)
   pure $ (,) s $ fromMaybe [] $ M.lookup (BuildTask.id task) evs
+
+fixupBuildTask :: ServerHandle -> BuildTask.BuildTask -> IO BuildTask.BuildTask
+fixupBuildTask (ServerHandle st) t = do
+  drvs <- readIORef $ derivationInfos st
+  let inouts =
+        [ outPath
+          | di <- toList $ drvs & M.lookup (BuildTask.derivationPath t),
+            (dep, outs) <- DerivationInfo.inputDerivations di & M.toList,
+            depInfo <- toList $ drvs & M.lookup dep,
+            out <- outs,
+            outInfo <- depInfo & DerivationInfo.outputs & M.lookup out & toList,
+            outPath <- DerivationInfo.path outInfo & toList
+        ]
+  pure $ t {BuildTask.inputDerivationOutputPaths = inouts}
 
 withServer :: (ServerHandle -> IO ()) -> IO ()
 withServer doIt = do
@@ -205,10 +224,12 @@ withServer doIt = do
   dt <- newIORef mempty
   d <- newTVarIO mempty
   le <- newTVarIO mempty
+  dis <- newIORef mempty
   let st =
         ServerState
           { queue = q,
             evalEvents = ee,
+            derivationInfos = dis,
             evalTasks = et,
             buildEvents = be,
             buildTasks = bt,
@@ -439,21 +460,24 @@ handleTasksUpdate ::
   AuthResult Session ->
   Handler NoContent
 handleTasksUpdate st id body _authResult = do
-  liftIO $
+  let newDrvInfos = [(DerivationInfo.derivationPath di, di) | EvaluateEvent.DerivationInfo di <- body]
+  liftIO do
     atomicModifyIORef_ (evalEvents st) $ \m ->
       M.alter (\prev -> Just $ fromMaybe mempty prev <> body) id m
+    atomicModifyIORef_ (derivationInfos st) $
+      M.union (M.fromList newDrvInfos)
   for_ body $ \case
-    EvaluateEvent.BuildRequest BuildRequest.BuildRequest {derivationPath = drvPath} -> do
-      buildId <- liftIO randomId
-      liftIO $
-        enqueue (ServerHandle st) $
-          AgentTask.Build $
-            BuildTask.BuildTask
-              { BuildTask.id = buildId,
-                BuildTask.derivationPath = drvPath,
-                BuildTask.logToken = "eyBlurb=",
-                inputDerivationOutputPaths = []
-              }
+    EvaluateEvent.BuildRequest BuildRequest.BuildRequest {derivationPath = drvPath} -> liftIO do
+      buildId <- randomId
+      enqueue (ServerHandle st)
+        . AgentTask.Build
+        <=< fixupBuildTask (ServerHandle st)
+        $ BuildTask.BuildTask
+          { BuildTask.id = buildId,
+            BuildTask.derivationPath = drvPath,
+            BuildTask.logToken = "eyBlurb=",
+            inputDerivationOutputPaths = []
+          }
     _ -> pass
   pure NoContent
 

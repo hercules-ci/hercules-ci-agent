@@ -345,7 +345,8 @@
                 # isx86_64: Don't run the VM tests on aarch64 to save time
                 // lib.optionalAttrs (pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64)
                   {
-                    agent-functional-test = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = false; });
+                    agent-functional-test = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = false; trusted = true; });
+                    agent-functional-test-untrusted = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = false; trusted = false; });
                     # agent-functional-test-daemon-nixUnstable = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = true; });
                     multi-example-eq = multi-example.eq;
                     multi-example-multi = multi-example.multi;
