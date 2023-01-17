@@ -163,6 +163,7 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
           stopTime = 0;
         }
         catch (nix::Error &e) {
+          printError(e.msg());
           status = -2;
           success = false;
           errorMessage = strdup(e.msg().c_str());
@@ -227,6 +228,7 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
             status = result.success() ? -1 : -2;
             break;
         }
+        printError(result.errorMsg);
         success = result.success();
         errorMessage = strdup(result.errorMsg.c_str());
         startTime = result.startTime;

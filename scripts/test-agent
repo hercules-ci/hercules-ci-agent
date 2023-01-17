@@ -105,7 +105,7 @@ ln -s "$NIXPKGSBALL" "$tmp/testdata/nixpkgs"
 # shellcheck disable=SC2086
 BASE_URL="http://127.0.0.1:$PORT" \
 TESTDATA="$tmp/testdata" \
-"$(one $PWD/dist-newstyle/build/*/ghc-*/hercules-ci-agent-test-*/x/hercules-ci-agent-test/build/hercules-ci-agent-test/hercules-ci-agent-test)" &
+"$(one $PWD/dist-newstyle/build/*/ghc-*/hercules-ci-agent-test-*/x/hercules-ci-agent-test/build/hercules-ci-agent-test/hercules-ci-agent-test)" "$@" &
 TEST_PID=$!
 
 until nc -w 1 127.0.0.1 "$PORT"; do sleep 0.1; done

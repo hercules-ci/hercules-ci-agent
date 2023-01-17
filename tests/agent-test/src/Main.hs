@@ -2,7 +2,7 @@ module Main where
 
 import MockTasksApi (withServer)
 import Protolude
-import qualified Spec
+import Spec qualified
 import System.IO
 import System.Timeout (timeout)
 import Test.Hspec

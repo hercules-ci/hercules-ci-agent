@@ -4,32 +4,32 @@
 module EvaluationSpec where
 
 import Control.Concurrent.STM (readTVar)
-import qualified Data.Aeson as A
+import Data.Aeson qualified as A
 import Data.List (last)
-import qualified Data.Map as M
-import qualified Data.Text as T
-import qualified Data.UUID.V4 as UUID
+import Data.Map qualified as M
+import Data.Text qualified as T
+import Data.UUID.V4 qualified as UUID
 import Hercules.API.Agent.Evaluate.EvaluateEvent
   ( EvaluateEvent,
   )
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent as AttributeEffectEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent as AttributeErrorEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as BuildRequired
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent as OnPushHandlerEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent as OnScheduleHandlerEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent qualified as EvaluateEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent qualified as AttributeEffectEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent qualified as AttributeErrorEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent qualified as AttributeEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired qualified as BuildRequired
+import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo qualified as DerivationInfo
+import Hercules.API.Agent.Evaluate.EvaluateEvent.Message qualified as Message
+import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent qualified as OnPushHandlerEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent qualified as OnScheduleHandlerEvent
 import Hercules.API.Agent.Evaluate.EvaluateTask (Identifier, Selector (ConfigOrLegacy))
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnPush as EvaluateTask.OnPush
+import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
+import Hercules.API.Agent.Evaluate.EvaluateTask.OnPush qualified as EvaluateTask.OnPush
 import Hercules.API.Agent.Evaluate.ImmutableInput (ImmutableInput (ArchiveUrl))
-import qualified Hercules.API.Agent.Evaluate.ImmutableInput as API.ImmutableInput
+import Hercules.API.Agent.Evaluate.ImmutableInput qualified as API.ImmutableInput
 import Hercules.API.DayOfWeek (DayOfWeek (..))
 import Hercules.API.Id (Id (Id))
-import qualified Hercules.API.Logs.LogEntry as LogEntry
-import qualified Hercules.API.TaskStatus as TaskStatus
+import Hercules.API.Logs.LogEntry qualified as LogEntry
+import Hercules.API.TaskStatus qualified as TaskStatus
 import MockTasksApi
 import Protolude
 import System.Timeout (timeout)

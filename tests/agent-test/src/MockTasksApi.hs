@@ -14,7 +14,7 @@ module MockTasksApi
   )
 where
 
-import qualified AgentTask
+import AgentTask qualified
 import Conduit
   ( MonadResource,
     MonadThrow,
@@ -22,19 +22,19 @@ import Conduit
     mapC,
   )
 import Control.Concurrent.STM
-import qualified Control.Exception.Safe
+import Control.Exception.Safe qualified
 import Data.Aeson
   ( FromJSON,
     ToJSON,
     eitherDecode,
   )
-import qualified Data.Aeson as A
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
+import Data.Aeson qualified as A
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BL
 import Data.Conduit ((.|))
-import qualified Data.Conduit as Conduit
-import qualified Data.Conduit.Combinators as Conduit
-import qualified Data.Conduit.Tar as Tar
+import Data.Conduit qualified as Conduit
+import Data.Conduit.Combinators qualified as Conduit
+import Data.Conduit.Tar qualified as Tar
 import Data.Conduit.Zlib (gzip)
 import Data.IORef
   ( IORef,
@@ -42,42 +42,44 @@ import Data.IORef
     newIORef,
     readIORef,
   )
-import qualified Data.List as L
-import qualified Data.Map as M
-import qualified Data.Text as T
+import Data.List qualified as L
+import Data.Map qualified as M
+import Data.Text qualified as T
 import Data.UUID (UUID)
-import qualified Data.UUID.V4 as UUID
-import qualified DummyApi
+import Data.UUID.V4 qualified as UUID
+import DummyApi qualified
 import Hercules.API.Agent
 import Hercules.API.Agent.Build (BuildAPI (..))
-import qualified Hercules.API.Agent.Build.BuildEvent as BuildEvent
-import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
+import Hercules.API.Agent.Build.BuildEvent qualified as BuildEvent
+import Hercules.API.Agent.Build.BuildTask qualified as BuildTask
 import Hercules.API.Agent.Evaluate (EvalAPI (..))
 import Hercules.API.Agent.Evaluate.DerivationStatus (DerivationStatus)
-import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatus
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest as BuildRequest
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
-import qualified Hercules.API.Agent.Evaluate.ImmutableInput as ImmutableInput
+import Hercules.API.Agent.Evaluate.DerivationStatus qualified as DerivationStatus
+import Hercules.API.Agent.Evaluate.EvaluateEvent qualified as EvaluateEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest qualified as BuildRequest
+import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo (DerivationInfo)
+import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo qualified as DerivationInfo
+import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
+import Hercules.API.Agent.Evaluate.ImmutableInput qualified as ImmutableInput
 import Hercules.API.Agent.LifeCycle (LifeCycleAPI (..))
-import qualified Hercules.API.Agent.LifeCycle as LifeCycle
-import qualified Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 as CreateAgentSession
-import qualified Hercules.API.Agent.LifeCycle.ServiceInfo as SI
+import Hercules.API.Agent.LifeCycle qualified as LifeCycle
+import Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 qualified as CreateAgentSession
+import Hercules.API.Agent.LifeCycle.ServiceInfo qualified as SI
 import Hercules.API.Agent.Socket.AgentPayload (AgentPayload)
 import Hercules.API.Agent.Socket.Frame as Frame
 import Hercules.API.Agent.Socket.ServicePayload (ServicePayload)
-import qualified Hercules.API.Agent.Socket.ServicePayload as SP
+import Hercules.API.Agent.Socket.ServicePayload qualified as SP
 import Hercules.API.Agent.Tasks (TasksAPI (..))
 import Hercules.API.Id
 import Hercules.API.Logs (LogsAPI (..))
 import Hercules.API.Logs.LogEntry (LogEntry)
 import Hercules.API.Logs.LogMessage (LogMessage (LogEntries))
 import Hercules.API.Task (Task)
-import qualified Hercules.API.Task as Task
-import qualified Hercules.API.TaskStatus as TaskStatus
+import Hercules.API.Task qualified as Task
+import Hercules.API.TaskStatus qualified as TaskStatus
 import Network.Wai.Handler.Warp (run)
-import qualified Network.WebSockets as WS
-import qualified Network.WebSockets.Connection
+import Network.WebSockets qualified as WS
+import Network.WebSockets.Connection qualified
 import Orphans ()
 import Protolude hiding (Handler)
 import Servant.API
@@ -93,7 +95,7 @@ import System.Directory
 import System.Environment (getEnvironment)
 import System.FilePath ((</>))
 import TestSupport
-import qualified Prelude
+import Prelude qualified
 
 data ServerState = ServerState
   { queue :: MVar ServicePayload,
@@ -110,6 +112,8 @@ data ServerState = ServerState
             (Id (Task EvaluateTask.EvaluateTask))
             [EvaluateEvent.EvaluateEvent]
         ),
+    derivationInfos ::
+      IORef (Map Text DerivationInfo),
     buildTasks ::
       IORef
         ( Map
@@ -187,11 +191,26 @@ runBuild ::
   ServerHandle ->
   BuildTask.BuildTask ->
   IO (TaskStatus.TaskStatus, [BuildEvent.BuildEvent])
-runBuild sh@(ServerHandle st) task = do
+runBuild sh@(ServerHandle st) task0 = do
+  task <- fixupBuildTask sh task0
   enqueue sh (AgentTask.Build task)
   s <- await sh (idText $ BuildTask.id task)
   evs <- readIORef (buildEvents st)
   pure $ (,) s $ fromMaybe [] $ M.lookup (BuildTask.id task) evs
+
+fixupBuildTask :: ServerHandle -> BuildTask.BuildTask -> IO BuildTask.BuildTask
+fixupBuildTask (ServerHandle st) t = do
+  drvs <- readIORef $ derivationInfos st
+  let inouts =
+        [ outPath
+          | di <- toList $ drvs & M.lookup (BuildTask.derivationPath t),
+            (dep, outs) <- DerivationInfo.inputDerivations di & M.toList,
+            depInfo <- toList $ drvs & M.lookup dep,
+            out <- outs,
+            outInfo <- depInfo & DerivationInfo.outputs & M.lookup out & toList,
+            outPath <- DerivationInfo.path outInfo & toList
+        ]
+  pure $ t {BuildTask.inputDerivationOutputPaths = inouts}
 
 withServer :: (ServerHandle -> IO ()) -> IO ()
 withServer doIt = do
@@ -205,10 +224,12 @@ withServer doIt = do
   dt <- newIORef mempty
   d <- newTVarIO mempty
   le <- newTVarIO mempty
+  dis <- newIORef mempty
   let st =
         ServerState
           { queue = q,
             evalEvents = ee,
+            derivationInfos = dis,
             evalTasks = et,
             buildEvents = be,
             buildTasks = bt,
@@ -439,21 +460,24 @@ handleTasksUpdate ::
   AuthResult Session ->
   Handler NoContent
 handleTasksUpdate st id body _authResult = do
-  liftIO $
+  let newDrvInfos = [(DerivationInfo.derivationPath di, di) | EvaluateEvent.DerivationInfo di <- body]
+  liftIO do
     atomicModifyIORef_ (evalEvents st) $ \m ->
       M.alter (\prev -> Just $ fromMaybe mempty prev <> body) id m
+    atomicModifyIORef_ (derivationInfos st) $
+      M.union (M.fromList newDrvInfos)
   for_ body $ \case
-    EvaluateEvent.BuildRequest BuildRequest.BuildRequest {derivationPath = drvPath} -> do
-      buildId <- liftIO randomId
-      liftIO $
-        enqueue (ServerHandle st) $
-          AgentTask.Build $
-            BuildTask.BuildTask
-              { BuildTask.id = buildId,
-                BuildTask.derivationPath = drvPath,
-                BuildTask.logToken = "eyBlurb=",
-                inputDerivationOutputPaths = []
-              }
+    EvaluateEvent.BuildRequest BuildRequest.BuildRequest {derivationPath = drvPath} -> liftIO do
+      buildId <- randomId
+      enqueue (ServerHandle st)
+        . AgentTask.Build
+        <=< fixupBuildTask (ServerHandle st)
+        $ BuildTask.BuildTask
+          { BuildTask.id = buildId,
+            BuildTask.derivationPath = drvPath,
+            BuildTask.logToken = "eyBlurb=",
+            inputDerivationOutputPaths = []
+          }
     _ -> pass
   pure NoContent
 
