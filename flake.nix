@@ -412,6 +412,18 @@
                         hls-fourmolu-plugin = null;
                       }
                     );
+
+                    ghcid = (
+                      if system == "aarch64-darwin"
+                      then h.overrideCabal (drv: { enableSeparateBinOutput = false; })
+                      else x: x
+                    ) super.ghcid;
+                    ormolu = (
+                      if system == "aarch64-darwin"
+                      then h.overrideCabal (drv: { enableSeparateBinOutput = false; })
+                      else x: x
+                    ) super.ormolu;
+
                   };
                 };
               };
