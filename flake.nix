@@ -290,17 +290,6 @@
 
               haskellProjects = {
                 internal = {
-                  # prevent unnecessary rebuilds
-                  source-overrides = {
-                    cabal-pkg-config-version-hook = builtins.path { path = ./cabal-pkg-config-version-hook; };
-                    hercules-ci-agent = builtins.path { path = ./hercules-ci-agent; };
-                    hercules-ci-api = builtins.path { path = ./hercules-ci-api; };
-                    hercules-ci-api-agent = builtins.path { path = ./hercules-ci-api-agent; };
-                    hercules-ci-api-core = builtins.path { path = ./hercules-ci-api-core; };
-                    hercules-ci-cli = builtins.path { path = ./hercules-ci-cli; };
-                    hercules-ci-cnix-expr = builtins.path { path = ./hercules-ci-cnix-expr; };
-                    hercules-ci-cnix-store = builtins.path { path = ./hercules-ci-cnix-store; };
-                  };
                   # option default scan is not recursive
                   packages = lib.mkOptionDefault {
                     hercules-ci-agent-test.root = builtins.path { path = ./tests/agent-test; };
