@@ -8,6 +8,7 @@
   inputs.pre-commit-hooks-nix.inputs.nixpkgs.follows = "nixpkgs";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
+  inputs.haskell-flake.url = "github:srid/haskell-flake";
 
   outputs = inputs@{ self, nixpkgs, flake-parts, ... }:
     let
@@ -78,8 +79,10 @@
 
       suffixAttrs = suf: inputs.nixpkgs.lib.mapAttrs' (n: v: { name = n + suf; value = v; });
     in
-    flake-parts.lib.mkFlake { inherit self; } (flakeArgs@{ config, lib, ... }: {
+    flake-parts.lib.mkFlake { inherit inputs; } (flakeArgs@{ config, lib, ... }: {
       imports = [
+        inputs.flake-parts.flakeModules.easyOverlay
+        inputs.haskell-flake.flakeModule
         inputs.pre-commit-hooks-nix.flakeModule
         ./variants.nix
       ];
@@ -91,8 +94,7 @@
           "x86_64-linux"
         ];
         flake = {
-          overlay =
-            final: prev: (import ./nix/make-overlay.nix self) final prev;
+          overlay = config.flake.overlays.default;
 
           # A module like the one in Nixpkgs
           nixosModules.agent-service =
@@ -234,7 +236,8 @@
                 testSuitePkgs = pkgs; # TODO: reuse pkgs via self so we don't build a variant
                 devTools =
                   {
-                    inherit (self.hercules-ci-agent-packages.internal.haskellPackages)
+                    # haskell-flake: finalPackages?
+                    inherit (pkgs.haskellPackages)
                       ghc
                       ghcid
                       # TODO Use wrapped pkgs.cabal2nix, currently broken on darwin
@@ -255,22 +258,169 @@
               system != "aarch64-linux"
             ;
 
+            h = pkgs.haskell.lib.compose;
+
+            addCompactUnwind =
+              if pkgs.stdenv.hostPlatform.isDarwin
+              then h.appendConfigureFlags [ "--ghc-option=-fcompact-unwind" ]
+              else x: x;
+
+            nix = pkgs.nix;
+
           in
           {
             config = {
+              # public overlay
+              overlayAttrs = {
+                inherit (config.packages) hercules-ci-cli;
+                hercules-ci-agent = config.packages.hercules-ci-agent // lib.optionalAttrs (self.sourceInfo?rev) { rev = self.sourceInfo.rev; };
+                hci = config.packages.hercules-ci-cli;
+              };
+
+              # internal pkgs
               _module.args.pkgs =
                 import config.nixpkgsSource {
                   overlays = [
-                    (import ./nix/make-overlay.nix self)
                     dev-and-test-overlay
                     flakeArgs.config.extraOverlay
                   ];
                   config = { };
                   inherit system;
                 };
-              packages.hercules-ci-api-swagger = pkgs.hercules-ci-agent-packages.hercules-ci-api-swagger;
-              packages.hercules-ci-cli = pkgs.hercules-ci-agent-packages.hercules-ci-cli;
-              packages.hercules-ci-agent = pkgs.hercules-ci-agent;
+
+              haskellProjects = {
+                internal = {
+                  # option default scan is not recursive
+                  packages = lib.mkOptionDefault {
+                    hercules-ci-agent-test.root = builtins.path { path = ./tests/agent-test; };
+                  };
+
+                  overrides = self: super: {
+
+                    cachix = (super.cachix.override (o: {
+                      nix = pkgs.nix;
+                    })).overrideAttrs (o: {
+                      postPatch = ''
+                        ${o.postPatch or ""}
+                        # jailbreak pkgconfig deps
+                        cp cachix.cabal cachix.cabal.backup
+                        sed -i cachix.cabal -e 's/\(nix-[a-z]*\) *(==[0-9.]* *|| *>[0-9.]*) *&& *<[0-9.]*/\1/g'
+                        sed -i cachix.cabal -e 's/pkgconfig-depends:.*/pkgconfig-depends: nix-main, nix-store/'
+                        echo
+                        echo Applied:
+                        diff -U5 cachix.cabal.backup cachix.cabal ||:
+                        echo
+                        rm cachix.cabal.backup
+                      '';
+                    });
+
+                    hercules-ci-optparse-applicative =
+                      super.callPackage ./nix/hercules-ci-optparse-applicative.nix { };
+
+                    inline-c-cpp =
+                      # https://github.com/fpco/inline-c/pull/132
+                      assert lib.any
+                        (patch: lib.hasSuffix "inline-c-cpp-pr-132-1.patch" (baseNameOf patch))
+                        super.inline-c-cpp.patches;
+                      super.inline-c-cpp;
+
+                    hercules-ci-agent = lib.pipe super.hercules-ci-agent [
+                      h.justStaticExecutables
+                      (h.addBuildTool pkgs.makeBinaryWrapper)
+                      addCompactUnwind
+                      h.enableDWARFDebugging
+                      (h.addBuildDepends [ pkgs.boost ])
+                      (h.overrideCabal (o: {
+                        postCompileBuildDriver = ''
+                          echo Setup version:
+                          ./Setup --version
+                        '';
+                        postInstall = ''
+                          ${o.postInstall or ""}
+                          mkdir -p $out/libexec
+                          mv $out/bin/hercules-ci-agent $out/libexec
+                          makeWrapper $out/libexec/hercules-ci-agent $out/bin/hercules-ci-agent --prefix PATH : ${lib.makeBinPath 
+                            ([ pkgs.gnutar pkgs.gzip pkgs.git pkgs.openssh ]
+                             ++ lib.optional pkgs.stdenv.isLinux pkgs.runc)}
+                        '';
+                        passthru = o.passthru or { } // {
+                          inherit nix;
+                        };
+                      }))
+                      (self.generateOptparseApplicativeCompletions [ "hercules-ci-agent" ])
+                    ];
+
+                    hercules-ci-agent_lib = lib.pipe self.hercules-ci-agent [
+                      (h.overrideCabal (o: {
+                        isLibrary = true;
+                        isExecutable = false;
+                        postFixup = "";
+                      }))
+                    ];
+                    hercules-ci-cli = lib.pipe super.hercules-ci-cli [
+                      (x: x.override (o: {
+                        hercules-ci-agent = self.hercules-ci-agent_lib;
+                      }))
+                      (h.addBuildTool pkgs.makeBinaryWrapper)
+                      addCompactUnwind
+                      h.disableLibraryProfiling
+                      h.justStaticExecutables
+                      (self.generateOptparseApplicativeCompletions [ "hci" ])
+                      (h.overrideCabal (o:
+                        let binPath = lib.optionals pkgs.stdenv.isLinux [ pkgs.runc ];
+                        in
+                        {
+                          postInstall =
+                            o.postInstall or ""
+                            + lib.optionalString (binPath != [ ]) ''
+                              wrapProgram $out/bin/hci --prefix PATH : ${lib.makeBinPath binPath}
+                            '';
+                        }
+                      ))
+                    ];
+
+                    # FIXME: https://github.com/hercules-ci/hercules-ci-agent/pull/443/files
+                    hercules-ci-cnix-expr = lib.pipe super.hercules-ci-cnix-expr [
+                      (x: x.override (o: { inherit nix; }))
+                      (h.addBuildTool pkgs.git)
+                    ];
+
+                    hercules-ci-cnix-store = lib.pipe super.hercules-ci-cnix-store [
+                      (x: x.override (o: { inherit nix; }))
+                    ];
+
+                    # Permission denied error in tests. Might be a system configuration error on the machine?
+                    # TODO: see if rio builds on hydra.nixos.org after https://github.com/NixOS/nixpkgs/pull/160733
+                    rio = h.dontCheck super.rio;
+
+                    hie-bios = h.appendPatch ./nix/hie-bios.patch super.hie-bios;
+
+                    # Dodge build failures of components we don't need.
+                    haskell-language-server = h.appendConfigureFlags [ "-f-fourmolu" ] (
+                      super.haskell-language-server.override {
+                        hls-fourmolu-plugin = null;
+                      }
+                    );
+
+                    ghcid = (
+                      if system == "aarch64-darwin"
+                      then h.overrideCabal (drv: { enableSeparateBinOutput = false; })
+                      else x: x
+                    ) super.ghcid;
+                    ormolu = (
+                      if system == "aarch64-darwin"
+                      then h.overrideCabal (drv: { enableSeparateBinOutput = false; })
+                      else x: x
+                    ) super.ormolu;
+
+                  };
+                };
+              };
+              packages.hercules-ci-api-swagger =
+                pkgs.callPackage ./hercules-ci-api/swagger.nix { hercules-ci-api = config.packages.internal-hercules-ci-api; };
+              packages.hercules-ci-cli = config.packages.internal-hercules-ci-cli;
+              packages.hercules-ci-agent = config.packages.internal-hercules-ci-agent;
+
               # packages.hercules-ci-agent-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-agent;
               # packages.hercules-ci-cli-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-cli;
               pre-commit.pkgs = pkgs;
@@ -297,11 +447,12 @@
               };
               devShells.default =
                 let
-                  inherit (pkgs.hercules-ci-agent-packages.internal) haskellPackages;
+                  # TODO haskell-flake final packages
+                  inherit (pkgs) haskellPackages;
                   shellWithHaskell = true;
                   baseShell =
                     if shellWithHaskell
-                    then import ./nix/shellFor-cabal.nix { inherit haskellPackages pkgs; }
+                    then config.devShells.internal
                     else pkgs.mkShell { };
                   shell = baseShell.overrideAttrs (o: {
                     NIX_PATH = "nixpkgs=${pkgs.path}";
@@ -340,7 +491,7 @@
                   multi-example = pkgs.callPackage ./tests/multi-example.nix { };
                 in
                 {
-                  cli = pkgs.callPackage ./tests/cli.nix { hci = pkgs.hercules-ci-agent-packages.hercules-ci-cli; };
+                  cli = pkgs.callPackage ./tests/cli.nix { hci = config.packages.hercules-ci-cli; };
                 }
                 # isx86_64: Don't run the VM tests on aarch64 to save time
                 // lib.optionalAttrs (pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64)

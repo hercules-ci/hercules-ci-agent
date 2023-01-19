@@ -1,8 +1,7 @@
-resolver: ghc-9.0.2
-# compiler: ghc-9.0.2
+resolver: ghc-9.2.4
 
 packages:
-  # - ./cabal-pkg-config-version-hook
+  - ./cabal-pkg-config-version-hook
   - ./hercules-ci-agent
   - ./hercules-ci-api-agent
   - ./hercules-ci-api-core
