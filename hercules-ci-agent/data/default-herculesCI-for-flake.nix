@@ -29,13 +29,13 @@ let
   # flake -> evalArgs -> { flake | herculesCI }
   addDefaults = flake: evalArgs:
     let
+      herculesCI = optionalCall (flake.herculesCI or { }) evalArgs;
       args = evalArgs // {
         ciSystems =
-          if flake?herculesCI.ciSystems
-          then listToAttrs (map (sys: nameValuePair sys { }) flake.herculesCI.ciSystems)
+          if herculesCI?ciSystems
+          then listToAttrs (map (sys: nameValuePair sys { }) herculesCI.ciSystems)
           else args.herculesCI.ciSystems;
       };
-      herculesCI = optionalCall (flake.herculesCI or { }) evalArgs;
     in
     herculesCI // optionalAttrs (!herculesCI?onPush) {
       onPush.default = {

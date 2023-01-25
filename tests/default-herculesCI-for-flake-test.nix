@@ -3,7 +3,10 @@ let lib_ = lib;
 in rec {
   lib = lib_;
   default-hci-for-flake = import ../hercules-ci-agent/data/default-herculesCI-for-flake.nix;
-  inherit (default-hci-for-flake) flakeToOutputs;
+
+  fakePkg = name: { type = "derivation"; inherit name; outPath = "/path/to/${name}"; };
+
+  inherit (default-hci-for-flake) flakeToOutputs addDefaults;
   flakeToOutputs' = flakeOutputs:
     flakeToOutputs flakeOutputs { ciSystems = { "riscv-freebsd" = { }; }; };
   thisFileDir = builtins.path {
@@ -43,7 +46,19 @@ in rec {
   };
   outputs1 = flakeToOutputs' { outputs = flakeOutputs1; };
 
+  toFlake = x: x // { outputs = x; };
+  flake2 = toFlake {
+    packages.x86_64-linux.hello = fakePkg "hello86";
+    packages.aarch64-darwin.hello = fakePkg "iHello";
+    herculesCI = args: {
+      ciSystems = [ "x86_64-linux" ];
+    };
+  };
+  outputs2 = addDefaults flake2 { herculesCI = { ciSystems = { "aarch64-darwin" = null; }; }; };
+
   test = done:
     assert outputs1 == flakeOutputs1;
+    assert lib.attrNames (outputs2.onPush.default.outputs.packages) == [ "x86_64-linux" ];
     done;
+
 }
