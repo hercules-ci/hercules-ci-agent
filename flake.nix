@@ -508,7 +508,7 @@
                 # only check pre-commit on development capable systems
                 // lib.optionalAttrs (!isDevVariant) { pre-commit = lib.mkForce pkgs.emptyFile; }
                 // lib.optionalAttrs (system == "x86_64-linux") {
-                  nixTests =
+                  evalTests =
                     (import ./tests/default-herculesCI-for-flake-test.nix
                       { inherit lib; }).test
                       pkgs.emptyFile;
