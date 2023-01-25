@@ -23,19 +23,21 @@ let
         (attrNames set)
     );
   optionalAttrs = b: if b then a: a else _: { };
-  optionalCall = f: a: if builtins.isFunction f then f a else f;
   # end lib
+
+  # Not quite the same as lib.toFunction, as it will not call a __functor.
+  optionalCall = f: a: if builtins.isFunction f then f a else f;
 
   # flake -> evalArgs -> { flake | herculesCI }
   addDefaults = flake: evalArgs:
     let
+      herculesCI = optionalCall (flake.herculesCI or { }) evalArgs;
       args = evalArgs // {
         ciSystems =
-          if flake?herculesCI.ciSystems
-          then listToAttrs (map (sys: nameValuePair sys { }) flake.herculesCI.ciSystems)
+          if herculesCI?ciSystems
+          then listToAttrs (map (sys: nameValuePair sys { }) herculesCI.ciSystems)
           else args.herculesCI.ciSystems;
       };
-      herculesCI = optionalCall (flake.herculesCI or { }) evalArgs;
     in
     herculesCI // optionalAttrs (!herculesCI?onPush) {
       onPush.default = {
