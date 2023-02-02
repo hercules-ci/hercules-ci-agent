@@ -5,6 +5,8 @@ module Hercules.CLI.Main
   )
 where
 
+import qualified Data.Text as T
+import Data.Version (showVersion)
 import Hercules.CLI.Client (prettyPrintHttpErrors)
 import qualified Hercules.CLI.Effect as Effect
 import qualified Hercules.CLI.Exception as Exception
@@ -19,6 +21,7 @@ import qualified Hercules.CNix.Util
 import Hercules.CNix.Verbosity (setShowTrace)
 import qualified Language.C.Inline.Cpp.Exception as C
 import qualified Options.Applicative as Optparse
+import Paths_hercules_ci_cli
 import Protolude
 
 main :: IO ()
@@ -26,6 +29,12 @@ main =
   prettyPrintErrors $
     Exception.handleUserException $
       prettyPrintHttpErrors $ do
+        args <- getArgs
+        case args of
+          -- optparse-applicative doesn't allow commands prefixed by `--`.
+          ["--version"] -> do
+            exitVersion
+          _ -> pass
         join $ execParser opts
 
 initNix :: IO ()
@@ -64,9 +73,16 @@ opts =
     (commands <**> helper)
     (Optparse.fullDesc <> Optparse.header "Command line interface to Hercules CI")
 
+exitVersion :: IO ()
+exitVersion = do
+  putText ("hci " <> ver)
+  exitSuccess
+  where
+    ver = toS (showVersion Paths_hercules_ci_cli.version)
+
 setCommonOpts :: Optparse.Parser (IO ())
 setCommonOpts =
-  Optparse.flag pass (setShowTrace True) (Optparse.long "show-trace")
+  Optparse.flag pass (setShowTrace True) (Optparse.long "show-trace" <> Optparse.help "Print evaluation stack traces in full")
 
 commands :: Optparse.Parser (IO ())
 commands =
@@ -81,6 +97,10 @@ commands =
             "state"
             (Optparse.progDesc "Perform operations on state files")
             State.commandParser
+          <> mkCommand
+            "version"
+            (Optparse.progDesc "Print the command name and version")
+            (pure exitVersion)
           <> mkCommand
             "effect"
             (Optparse.progDesc "Run effects locally")
