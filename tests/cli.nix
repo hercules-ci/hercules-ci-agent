@@ -4,6 +4,11 @@ runCommand "test-cli"
 {
   nativeBuildInputs = [ hci jq nodePackages.json-diff ];
 } ''
+  set -x
+  hci --version | grep -E 'hci [0-9.]+'
+  hci --version | grep -F 'hci ${hci.version}'
+  [[ "$(hci --version)" == "$(hci version)" ]]
+
   >expected cat <<EOF
   {
     "kind": "Secret",
@@ -37,5 +42,6 @@ runCommand "test-cli"
   EOF
   echo wobble | >actual hci secret echo --string foo bar --password wibble
   json-diff expected actual
+
   touch $out
 ''

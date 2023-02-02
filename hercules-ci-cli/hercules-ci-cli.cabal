@@ -34,6 +34,8 @@ library
       Hercules.CLI.Secret
       Hercules.CLI.State
       Hercules.CLI.Options
+  other-modules:
+      Paths_hercules_ci_cli
   hs-source-dirs:
       src
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
