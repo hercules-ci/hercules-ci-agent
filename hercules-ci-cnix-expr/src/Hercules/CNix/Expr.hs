@@ -510,7 +510,11 @@ getFlakeFromFlakeRef evalState flakeRef = do
         nix::flake::LockFlags {
           .updateLockFile = false,
           .useRegistries = false,
+#if NIX_IS_AT_LEAST(2,13,0)
+          .allowUnlocked = false,
+#else
           .allowMutable = false,
+#endif
         }),
       *r);
     return r;
@@ -531,7 +535,11 @@ getLocalFlake evalState path = do
         nix::flake::LockFlags {
           .updateLockFile = false,
           .useRegistries = false,
+#if NIX_IS_AT_LEAST(2,13,0)
+          .allowUnlocked = false,
+#else
           .allowMutable = false,
+#endif
         }),
       *r);
     return r;
@@ -562,7 +570,11 @@ getFlakeFromGit evalState url ref rev =
         nix::flake::LockFlags {
           .updateLockFile = false,
           .useRegistries = false,
+#if NIX_IS_AT_LEAST(2,13,0)
+          .allowUnlocked = false,
+#else
           .allowMutable = false,
+#endif
         }),
       *r);
     return r;
