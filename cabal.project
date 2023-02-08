@@ -7,13 +7,6 @@ source-repository-package
     location: https://github.com/hercules-ci/optparse-applicative.git
     tag: 3d20deefbef2e66d3c075facc5d01c1aede34f3c
 
-source-repository-package
-    type: git
-    location: https://github.com/hercules-ci/cachix.git
-    -- v1.1 + nix 2.12
-    tag: a78caa9c794360f005236071038ff838e0201b2b
-    subdir: cachix
-
 constraints:
   hercules-ci-cnix-store +nix-2_4,
   hercules-ci-cnix-expr +nix-2_4,

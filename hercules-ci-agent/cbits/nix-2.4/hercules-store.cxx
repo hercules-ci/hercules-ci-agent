@@ -300,6 +300,19 @@ void HerculesStore::buildPaths(const std::vector<DerivedPath> & derivedPaths, Bu
 
   // TODO: don't ignore the Opaques
   for (auto & derivedPath : derivedPaths) {
+#if NIX_IS_AT_LEAST(2,13,0)
+    auto sOrDrvPath = StorePathWithOutputs::tryFromDerivedPath(derivedPath);
+    std::set<std::string> outputs;
+    std::visit(overloaded {
+        [&](const StorePathWithOutputs & s) {
+            // paths.push_back(StorePathWithOutputs { built.drvPath, built.outputs });
+            paths.push_back(s);
+        },
+        [&](const StorePath & drvPath) {
+            // should this be substituted?
+        },
+    }, sOrDrvPath);
+#else
     std::visit(overloaded {
       [&](DerivedPath::Built built) {
           paths.push_back(StorePathWithOutputs { built.drvPath, built.outputs });
@@ -308,6 +321,7 @@ void HerculesStore::buildPaths(const std::vector<DerivedPath> & derivedPaths, Bu
           // TODO: pass this to the callback as well
       },
     }, derivedPath.raw());
+#endif
   }
 
   builderCallback(pathsPtr, &exceptionToThrow);

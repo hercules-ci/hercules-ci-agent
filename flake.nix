@@ -8,7 +8,7 @@
   inputs.pre-commit-hooks-nix.inputs.nixpkgs.follows = "nixpkgs";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
-  inputs.haskell-flake.url = "github:srid/haskell-flake";
+  inputs.haskell-flake.url = "github:srid/haskell-flake/0.1.0";
 
   outputs = inputs@{ self, nixpkgs, flake-parts, ... }:
     let
