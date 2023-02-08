@@ -14,6 +14,7 @@ data AttributeErrorEvent = AttributeErrorEvent
   }
   deriving (Generic, Show, Eq, NFData)
 
+-- Smoke test
 instance ToJSON AttributeErrorEvent where
   toJSON = genericToJSON aesonOptions
 
