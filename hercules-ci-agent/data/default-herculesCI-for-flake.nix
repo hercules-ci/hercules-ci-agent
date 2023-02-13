@@ -52,18 +52,24 @@ let
     then attrs: attrs
     else intersectAttrs ciSystems;
 
+  getSystem = sys:
+    sys._module.args.pkgs.stdenv.buildPlatform.system
+      or sys.config.system.build.toplevel.stdenv.buildPlatform.system
+      or sys.config.nixpkgs.localSystem.system
+      or sys.config.nixpkgs.system
+  ;
+
   isEnabledSystemConfig = ciSystems:
     if ciSystems == null
     then sys: true
     else
       sys:
-      hasAttr sys.config.nixpkgs.localSystem.system ciSystems
-      || hasAttr sys.config.nixpkgs.system ciSystems;
+      hasAttr (getSystem sys) ciSystems;
 
   filterSystemConfigs = ciSystems: filterAttrs (k: v:
     if isEnabledSystemConfig ciSystems v
     then true
-    else builtins.trace "Ignoring flake attribute ${k} (system not in ciSystems)" false);
+    else builtins.trace "Ignoring flake attribute ${k} (system ${getSystem v} not in ciSystems)" false);
 
   translateFlakeAttr = args: k: v:
     if translations?${k}
