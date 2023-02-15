@@ -53,8 +53,10 @@ in rec {
     nixosConfigurations.rusty = lib.nixosSystem { modules = [ ]; system = "x86_64-linux"; };
     nixosConfigurations.trusty = lib.nixosSystem { modules = [{ nixpkgs.hostPlatform = "x86_64-linux"; }]; };
     nixosConfigurations.dusty = lib.nixosSystem { modules = [{ nixpkgs.hostPlatform = "i686-linux"; }]; };
-    darwinConfigurations.my-intel.config.system.build.toplevel = fakePkg "my-intel" // { stdenv.buildPlatform.system = "x86_64-darwin"; };
-    darwinConfigurations.my-apple.config.system.build.toplevel = fakePkg "my-apple" // { stdenv.buildPlatform.system = "aarch64-darwin"; };
+    darwinConfigurations.my-intel.config.system.build.toplevel = fakePkg "my-intel";
+    darwinConfigurations.my-intel.config.nixpkgs.system = "x86_64-darwin";
+    darwinConfigurations.my-apple.config.system.build.toplevel = fakePkg "my-apple";
+    darwinConfigurations.my-apple.config.nixpkgs.system = "aarch64-darwin";
     herculesCI = args: {
       ciSystems = [ "x86_64-linux" "x86_64-darwin" ];
     };
