@@ -13,6 +13,7 @@ import qualified Hercules.Agent.ServiceInfo as ServiceInfo
 import qualified Hercules.Agent.Token as Token
 import qualified Hercules.CNix
 import qualified Hercules.CNix.Util
+import qualified Hercules.CNix.Verbosity
 import qualified Katip as K
 import qualified Network.HTTP.Client.TLS
 import Protolude
@@ -65,8 +66,8 @@ setupLogging cfg f = do
 emptyNamespace :: K.Namespace
 emptyNamespace = K.Namespace []
 
-initCNix :: IO ()
-initCNix = do
+initCNix :: Config.FinalConfig -> IO ()
+initCNix cfg = do
   Hercules.CNix.init
-  Hercules.CNix.setTalkative
+  Hercules.CNix.Verbosity.setVerbosity $ Config.nixVerbosity cfg
   Hercules.CNix.Util.installDefaultSigINTHandler
