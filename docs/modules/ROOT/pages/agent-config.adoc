@@ -96,6 +96,11 @@ involving arrays of non-primitive types may not be representable currently.
 
 Optional. Defaults to `InfoS`. More verbose: `DebugS`, less verbose: `WarningS`, `ErrorS`.
 
+[[nixVerbosity]]
+== nixVerbosity
+
+Optional. Defaults to `Talkative`. More verbose: `Debug`, `Vomit`, less verbose: `Info`, `Warn`, `Error`.
+
 [[secretsJsonPath]]
 == secretsJsonPath
 

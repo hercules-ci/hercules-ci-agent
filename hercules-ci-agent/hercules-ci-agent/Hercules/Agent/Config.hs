@@ -19,6 +19,7 @@ import qualified Data.Aeson.KeyMap as AK
 import Data.Scientific (floatingOrInteger, fromFloatDigits)
 import qualified Data.Vector as V
 import GHC.Conc (getNumProcessors)
+import Hercules.CNix.Verbosity (Verbosity (..))
 import Katip (Severity (..))
 import Protolude hiding (to)
 import qualified System.Environment
@@ -56,6 +57,7 @@ data Config purpose = Config
     binaryCachesPath :: Item purpose 'Required FilePath,
     secretsJsonPath :: Item purpose 'Required FilePath,
     logLevel :: Item purpose 'Required Severity,
+    nixVerbosity :: Item purpose 'Required Verbosity,
     labels :: Item purpose 'Required (Map Text A.Value),
     allowInsecureBuiltinFetchers :: Item purpose 'Required Bool
   }
@@ -89,6 +91,8 @@ tomlCodec =
     .= secretsJsonPath
     <*> dioptional (Toml.enumBounded "logLevel")
     .= logLevel
+    <*> dioptional (Toml.enumBounded "nixVerbosity")
+    .= nixVerbosity
     <*> dioptional (Toml.tableMap _KeyText embedJson "labels")
     .= labels
     <*> dioptional (Toml.bool "allowInsecureBuiltinFetchers")
@@ -214,6 +218,7 @@ finalizeConfig loc input = do
         secretsJsonPath = secretsJsonP,
         workDirectory = workDir,
         logLevel = logLevel input & fromMaybe InfoS,
+        nixVerbosity = nixVerbosity input & fromMaybe Talkative,
         labels = fromMaybe mempty $ labels input,
         allowInsecureBuiltinFetchers = fromMaybe False $ allowInsecureBuiltinFetchers input
       }

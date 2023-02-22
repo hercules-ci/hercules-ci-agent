@@ -81,10 +81,10 @@ import qualified Prelude
 
 main :: IO ()
 main = do
-  Init.initCNix
   opts <- Options.parse
   let cfgPath = Options.configFile opts
   cfg <- Config.finalizeConfig cfgPath =<< Config.readConfig cfgPath
+  Init.initCNix cfg
   Init.setupLogging cfg $ \logEnv -> do
     env <- Init.newEnv cfg logEnv
     case Options.mode opts of
