@@ -11,6 +11,7 @@ import Data.Has (Has)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent as AttributeEffectEvent
+import Hercules.API.Attribute (attributePathFromString)
 import Hercules.API.Id (Id (Id, idUUID))
 import qualified Hercules.API.Projects as Projects
 import qualified Hercules.API.Projects.CreateUserEffectTokenResponse as CreateUserEffectTokenResponse
@@ -156,7 +157,7 @@ getEffectDrv store evalState projectOptionMaybe ref attr = do
 evaluateEffectDerivation :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Store -> Maybe ProjectPath -> Text -> Text -> RIO r Derivation
 evaluateEffectDerivation evalState store projectOptionMaybe ref attr = do
   args <- liftIO $ createHerculesCIArgs (Just ref)
-  let attrPath = T.split (== '.') attr
+  let attrPath = attributePathFromString attr
       nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
   uio <- askUnliftIO
   valMaybe <- liftIO $ getVirtualValueByPath evalState (toS nixFile) args (resolveInputs uio evalState projectOptionMaybe) (map encodeUtf8 attrPath)

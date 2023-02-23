@@ -5,7 +5,6 @@ module Hercules.CLI.Main
   )
 where
 
-import qualified Data.Text as T
 import Data.Version (showVersion)
 import Hercules.CLI.Client (prettyPrintHttpErrors)
 import qualified Hercules.CLI.Effect as Effect
