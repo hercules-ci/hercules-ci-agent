@@ -5,7 +5,6 @@ module Hercules.CLI.Nix where
 import Control.Concurrent.Async (mapConcurrently)
 import Control.Monad.IO.Unlift (unliftIO)
 import Data.Has (Has)
-import qualified Data.List as L
 import qualified Data.Map as M
 import qualified Data.Text as T
 import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration (InputDeclaration (SiblingInput))
@@ -114,8 +113,39 @@ mkSemanticTextCompleter f =
           else innerCompleter input
     )
 
+mkAttributePathCompleter :: (([Text], Text) -> IO [(CompletionItemOptions, ([Text], Bool))]) -> Completer
+mkAttributePathCompleter f =
+  mkSemanticTextCompleter
+    ( \input -> do
+        let startsEscape =
+              (input & T.reverse & T.takeWhile (== '\\') & T.length & odd)
+                || (".\"" `T.isSuffixOf` input)
+            decode s
+              | ".\"\"" `T.isSuffixOf` s =
+                  (attributePathFromString s, "")
+            decode s =
+              let path = attributePathFromString s
+               in (initSafe path, lastMay path & fromMaybe "")
+            encode (path, dot) = attributePathToString path <> if dot then "." else ""
+            innerCompleter = nestedCompleter decode encode f
+        if startsEscape
+          then do
+            r <- innerCompleter (T.dropEnd 1 input)
+            -- Requiring input to be a prefix of the suggestions prevents corrections,
+            -- so we only filter when necessary.
+            pure
+              [ item
+                | item@(_, suggestionText) <- r,
+                  input `T.isPrefixOf` suggestionText
+              ]
+          else innerCompleter input
+    )
+
 isoCompleter :: (b -> a) -> (a -> b) -> (a -> IO [(CompletionItemOptions, a)]) -> (b -> IO [(CompletionItemOptions, b)])
-isoCompleter parse unparse f = fmap (fmap (fmap unparse)) . f . parse
+isoCompleter = nestedCompleter
+
+nestedCompleter :: (a -> b) -> (c -> d) -> (b -> IO [(CompletionItemOptions, c)]) -> (a -> IO [(CompletionItemOptions, d)])
+nestedCompleter parse unparse f = fmap (fmap (fmap unparse)) . f . parse
 
 encodeBash :: Text -> Text
 encodeBash = toS . f . toS
@@ -134,7 +164,7 @@ decodeBash = toS . g . toS
     g "" = ""
 
 ciNixAttributeCompleter :: Optparse.Completer
-ciNixAttributeCompleter = mkSemanticTextCompleter \partial -> do
+ciNixAttributeCompleter = mkAttributePathCompleter \(partialPath, partialComponent) -> do
   withNix \_store evalState -> do
     CNix.Verbosity.setVerbosity CNix.Verbosity.Error
     ref <- do
@@ -146,19 +176,10 @@ ciNixAttributeCompleter = mkSemanticTextCompleter \partial -> do
         s <- maybeStr
         rightToMaybe (runExcept (runReaderT (unReadM projectPathReadM) (toS s)))
     args <- createHerculesCIArgs ref
-    let partialComponents = partial & removePartialEscape & attributePathFromString
-        prefix = L.init partialComponents
-        partialComponent = lastMay partialComponents & fromMaybe ""
-        prefixStr = attributePathToString prefix
-        addPrefix x = attributePathToString (prefix <> [x])
-        hasPartialEscape = partial & T.reverse & T.takeWhile (== '\\') & T.length & odd
-        removePartialEscape
-          | hasPartialEscape = T.dropEnd 1
-          | otherwise = identity
     runAuthenticated do
       uio <- askUnliftIO
       liftIO $
-        getVirtualValueByPath evalState (toS $ GitSource.outPath $ HerculesCIArgs.primaryRepo args) args (resolveInputs uio evalState projectMaybe) (encodeUtf8 <$> prefix) >>= \case
+        getVirtualValueByPath evalState (toS $ GitSource.outPath $ HerculesCIArgs.primaryRepo args) args (resolveInputs uio evalState projectMaybe) (encodeUtf8 <$> partialPath) >>= \case
           Nothing -> pure []
           Just focusValue -> do
             match' evalState focusValue >>= \case
@@ -166,7 +187,7 @@ ciNixAttributeCompleter = mkSemanticTextCompleter \partial -> do
                 attrs <- getAttrs evalState attrset
                 isDeriv <- isDerivation evalState focusValue
                 if isDeriv
-                  then pure [(mempty {Optparse.cioFiles = False}, prefixStr)]
+                  then pure [(mempty {Optparse.cioFiles = False}, (partialPath, False))]
                   else
                     let matches =
                           attrs
@@ -174,34 +195,20 @@ ciNixAttributeCompleter = mkSemanticTextCompleter \partial -> do
                             & map decodeUtf8
                             & filter (/= "recurseForDerivations")
                             & filter (T.isPrefixOf partialComponent)
-
-                        filterMatches items | not hasPartialEscape = items
-                        filterMatches items
-                          | otherwise =
-                              [ item
-                                | item@(_, suggestionText) <- items,
-                                  partial `T.isPrefixOf` suggestionText
-                              ]
-                     in filterMatches <$> case matches of
+                     in case matches of
                           [singleMatch] -> do
                             ma <- getAttr evalState attrset (encodeUtf8 singleMatch)
                             matchIsDeriv <-
                               ma
                                 & traverse (isDerivation evalState)
                                 <&> fromMaybe False
-                            if matchIsDeriv
-                              then
-                                pure $
-                                  matches
-                                    & map (\match -> (mempty {Optparse.cioAddSpace = True, Optparse.cioFiles = False}, addPrefix match))
-                              else
-                                pure $
-                                  matches
-                                    & map (\match -> (mempty {Optparse.cioAddSpace = False, Optparse.cioFiles = False}, addPrefix match <> "."))
+                            pure $
+                              matches
+                                & map (\match -> (mempty {Optparse.cioAddSpace = matchIsDeriv, Optparse.cioFiles = False}, (partialPath ++ [match], not matchIsDeriv)))
                           _ ->
                             pure $
                               matches
-                                & map (\match -> (mempty {Optparse.cioAddSpace = False, Optparse.cioFiles = False}, addPrefix match))
+                                & map (\match -> (mempty {Optparse.cioAddSpace = False, Optparse.cioFiles = False}, (partialPath ++ [match], False)))
               _ -> pure []
 
 attrByPath :: Ptr EvalState -> RawValue -> [ByteString] -> IO (Maybe RawValue)
