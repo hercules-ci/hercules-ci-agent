@@ -10,6 +10,7 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration (InputDeclaration (SiblingInput))
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration as InputDeclaration
+import Hercules.API.Attribute (attributePathFromString, attributePathToString)
 import qualified Hercules.API.Inputs.ImmutableGitInput as API.ImmutableGitInput
 import Hercules.API.Projects (getJobSource)
 import Hercules.Agent.NixFile (getVirtualValueByPath)
@@ -94,8 +95,46 @@ withNix f = do
   UnliftIO uio <- askUnliftIO
   liftIO $ withStore \store -> withEvalState store (uio . f store)
 
+mkSemanticTextCompleter :: (Text -> IO [(CompletionItemOptions, Text)]) -> Completer
+mkSemanticTextCompleter f =
+  mkTextCompleter
+    ( \input -> do
+        let startsEscape = input & T.reverse & T.takeWhile (== '\\') & T.length & odd
+            innerCompleter = isoCompleter decodeBash encodeBash f
+        if startsEscape
+          then do
+            r <- innerCompleter (T.dropEnd 1 input)
+            -- Requiring input to be a prefix of the suggestions prevents corrections,
+            -- so we only filter when necessary.
+            pure
+              [ item
+                | item@(_, suggestionText) <- r,
+                  input `T.isPrefixOf` suggestionText
+              ]
+          else innerCompleter input
+    )
+
+isoCompleter :: (b -> a) -> (a -> b) -> (a -> IO [(CompletionItemOptions, a)]) -> (b -> IO [(CompletionItemOptions, b)])
+isoCompleter parse unparse f = fmap (fmap (fmap unparse)) . f . parse
+
+encodeBash :: Text -> Text
+encodeBash = toS . f . toS
+  where
+    f ('"' : s) = '\\' : '"' : f s
+    f ('\'' : s) = '\\' : '\'' : f s
+    f ('\\' : s) = '\\' : '\\' : f s
+    f (c : s) = c : f s
+    f "" = ""
+
+decodeBash :: Text -> Text
+decodeBash = toS . g . toS
+  where
+    g ('\\' : c : s) = c : g s
+    g (c : s) = c : g s
+    g "" = ""
+
 ciNixAttributeCompleter :: Optparse.Completer
-ciNixAttributeCompleter = mkTextCompleter \partial -> do
+ciNixAttributeCompleter = mkSemanticTextCompleter \partial -> do
   withNix \_store evalState -> do
     CNix.Verbosity.setVerbosity CNix.Verbosity.Error
     ref <- do
@@ -107,11 +146,15 @@ ciNixAttributeCompleter = mkTextCompleter \partial -> do
         s <- maybeStr
         rightToMaybe (runExcept (runReaderT (unReadM projectPathReadM) (toS s)))
     args <- createHerculesCIArgs ref
-    let partialComponents = T.split (== '.') partial
+    let partialComponents = partial & removePartialEscape & attributePathFromString
         prefix = L.init partialComponents
         partialComponent = lastMay partialComponents & fromMaybe ""
-        prefixStr = T.intercalate "." prefix
-        addPrefix x = T.intercalate "." (prefix <> [x])
+        prefixStr = attributePathToString prefix
+        addPrefix x = attributePathToString (prefix <> [x])
+        hasPartialEscape = partial & T.reverse & T.takeWhile (== '\\') & T.length & odd
+        removePartialEscape
+          | hasPartialEscape = T.dropEnd 1
+          | otherwise = identity
     runAuthenticated do
       uio <- askUnliftIO
       liftIO $
@@ -131,7 +174,15 @@ ciNixAttributeCompleter = mkTextCompleter \partial -> do
                             & map decodeUtf8
                             & filter (/= "recurseForDerivations")
                             & filter (T.isPrefixOf partialComponent)
-                     in case matches of
+
+                        filterMatches items | not hasPartialEscape = items
+                        filterMatches items
+                          | otherwise =
+                              [ item
+                                | item@(_, suggestionText) <- items,
+                                  partial `T.isPrefixOf` suggestionText
+                              ]
+                     in filterMatches <$> case matches of
                           [singleMatch] -> do
                             ma <- getAttr evalState attrset (encodeUtf8 singleMatch)
                             matchIsDeriv <-
