@@ -52,18 +52,24 @@ let
     then attrs: attrs
     else intersectAttrs ciSystems;
 
-  isEnabledSystemConfig = ciSystems:
+  getSystemNixDarwin = sys: sys.config.nixpkgs.system;
+
+  getSystemNixOS = sys:
+    if sys?options.nixpkgs.hostPlatform && sys.options.nixpkgs.hostPlatform.isDefined
+    then sys.config.nixpkgs.buildPlatform.system
+    else sys.config.nixpkgs.localSystem.system or sys.config.nixpkgs.system;
+
+  isEnabledSystemConfig = getter: ciSystems:
     if ciSystems == null
     then sys: true
     else
       sys:
-      hasAttr sys.config.nixpkgs.localSystem.system ciSystems
-      || hasAttr sys.config.nixpkgs.system ciSystems;
+      hasAttr (getter sys) ciSystems;
 
-  filterSystemConfigs = ciSystems: filterAttrs (k: v:
-    if isEnabledSystemConfig ciSystems v
+  filterSystemConfigs = getter: ciSystems: filterAttrs (k: v:
+    if isEnabledSystemConfig getter ciSystems v
     then true
-    else builtins.trace "Ignoring flake attribute ${k} (system not in ciSystems)" false);
+    else builtins.trace "Ignoring flake attribute ${k} (system ${getter v} not in ciSystems)" false);
 
   translateFlakeAttr = args: k: v:
     if translations?${k}
@@ -166,8 +172,8 @@ let
       devShell = forSystems (sys: translateShell);
       devShells = forSystems (sys: mapAttrs (k: translateShell));
       apps = forSystems (sys: mapAttrs (k: checkApp));
-      nixosConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs args.ciSystems attrs);
-      darwinConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs args.ciSystems attrs);
+      nixosConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs getSystemNixOS args.ciSystems attrs);
+      darwinConfigurations = args: attrs: mapAttrs (k: sys: { config.system.build.toplevel = sys.config.system.build.toplevel; }) (filterSystemConfigs getSystemNixDarwin args.ciSystems attrs);
       formatter = forSystems (sys: formatter: formatter);
       templates = args: attrs: mapAttrs checkTemplate attrs;
 

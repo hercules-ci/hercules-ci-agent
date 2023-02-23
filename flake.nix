@@ -510,7 +510,7 @@
                 // lib.optionalAttrs (system == "x86_64-linux") {
                   evalTests =
                     (import ./tests/default-herculesCI-for-flake-test.nix
-                      { inherit lib; }).test
+                      { inherit (nixpkgs) lib; }).test
                       pkgs.emptyFile;
                 };
             };
