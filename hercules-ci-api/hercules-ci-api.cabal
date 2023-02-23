@@ -1,4 +1,4 @@
-cabal-version:      1.12
+cabal-version:      2.2
 name:               hercules-ci-api
 version:            0.7.2.1
 synopsis:           Hercules CI API definition with Servant
@@ -15,7 +15,32 @@ source-repository head
   type:     git
   location: https://github.com/hercules-ci/hercules-ci
 
+common defaults
+  default-language:   Haskell2010
+  default-extensions:
+    NoImplicitPrelude
+    DeriveGeneric
+    DeriveTraversable
+    DisambiguateRecordFields
+    FlexibleContexts
+    InstanceSigs
+    LambdaCase
+    MultiParamTypeClasses
+    OverloadedStrings
+    RankNTypes
+    TupleSections
+    TypeApplications
+    TypeOperators
+
+  ghc-options:
+    -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures
+    -fwarn-name-shadowing -fwarn-incomplete-patterns
+
+common defaults-exe
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+
 library
+  import:          defaults
   exposed-modules:
     Hercules.API
     Hercules.API.Accounts
@@ -111,28 +136,9 @@ library
     Hercules.API.State.StateVersion
     Hercules.Frontend
 
-  hs-source-dirs:     src
-  default-extensions:
-    NoImplicitPrelude
-    DeriveGeneric
-    DeriveTraversable
-    DisambiguateRecordFields
-    FlexibleContexts
-    InstanceSigs
-    LambdaCase
-    MultiParamTypeClasses
-    OverloadedStrings
-    RankNTypes
-    TupleSections
-    TypeApplications
-    TypeOperators
-
-  ghc-options:
-    -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures
-    -fwarn-name-shadowing -fwarn-incomplete-patterns
-
+  hs-source-dirs:  src
   build-depends:
-      aeson                    >=2
+    , aeson                    >=2
     , base                     >=4.7    && <5
     , bytestring
     , containers
@@ -158,33 +164,12 @@ library
     , time
     , uuid
 
-  default-language:   Haskell2010
-
 executable hercules-gen-swagger
-  main-is:            Main.hs
-  hs-source-dirs:     hercules-gen-swagger
-  default-extensions:
-    NoImplicitPrelude
-    DeriveGeneric
-    DeriveTraversable
-    DisambiguateRecordFields
-    FlexibleContexts
-    InstanceSigs
-    LambdaCase
-    MultiParamTypeClasses
-    OverloadedStrings
-    RankNTypes
-    TupleSections
-    TypeApplications
-    TypeOperators
-
-  ghc-options:
-    -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures
-    -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts
-    -with-rtsopts=-N
-
+  import:         defaults, defaults-exe
+  main-is:        Main.hs
+  hs-source-dirs: hercules-gen-swagger
   build-depends:
-      aeson
+    , aeson
     , base                     >=4.7    && <5
     , bytestring
     , containers
@@ -209,4 +194,36 @@ executable hercules-gen-swagger
     , time
     , uuid
 
-  default-language:   Haskell2010
+test-suite hercules-ci-api-unit-tests
+  import:           defaults, defaults-exe
+  type:             exitcode-stdio-1.0
+  main-is:          Main.hs
+  other-modules:
+    Hercules.API.AttributeSpec
+    Spec
+
+  hs-source-dirs:   test
+  build-depends:
+    , aeson
+    , base
+    , bytestring
+    , containers
+    , exceptions
+    , hashable
+    , hercules-ci-api
+    , hercules-ci-api-core
+    , hspec
+    , http-api-data
+    , http-media
+    , protolude
+    , QuickCheck
+    , quickcheck-classes
+    , servant               >=0.14.1
+    , servant-auth
+    , string-conv
+    , text
+    , time
+    , uuid
+    , vector
+
+  default-language: Haskell2010

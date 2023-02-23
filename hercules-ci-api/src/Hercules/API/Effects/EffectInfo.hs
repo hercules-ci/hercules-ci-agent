@@ -8,6 +8,7 @@ import Hercules.API.Effects.EffectReference (EffectReference)
 import Hercules.API.Prelude
 import Hercules.API.Projects.Job (Job)
 import Hercules.API.Projects.Project (Project)
+import Hercules.API.Projects.SimpleJob (SimpleJob)
 
 data EffectStatus
   = Waiting
@@ -27,6 +28,7 @@ data EffectInfo = EffectInfo
     inputDerivations :: [DerivationInput],
     events :: [[EffectEvent]],
     waitingForEffects :: [EffectReference],
+    waitingForJobs :: [SimpleJob],
     mayCancel :: Bool,
     dummy :: Maybe EffectEvent -- TODO: remove and update/fix codegen
   }
