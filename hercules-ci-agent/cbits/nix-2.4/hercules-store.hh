@@ -154,7 +154,9 @@ public:
 
   virtual Path toRealPath(const Path & storePath) override;
 
+#if ! NIX_IS_AT_LEAST(2,14,0)
   virtual void createUser(const std::string & userName, uid_t userId) override;
+#endif
 
 };
 

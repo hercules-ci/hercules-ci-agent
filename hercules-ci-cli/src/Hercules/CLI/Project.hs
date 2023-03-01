@@ -22,7 +22,7 @@ import Hercules.Error (escalate, escalateAs)
 import Network.HTTP.Types (Status (Status, statusCode))
 import Options.Applicative (bashCompleter, completer, help, long, metavar, option, strOption)
 import qualified Options.Applicative as Optparse
-import Protolude hiding (option)
+import Protolude
 import RIO (RIO)
 import Servant.Client.Core (ClientError (FailureResponse), ResponseF (responseStatusCode))
 import Servant.Client.Core.Response (ResponseF (Response))

@@ -8,7 +8,7 @@ where
 import Hercules.Agent.CabalInfo (herculesAgentVersion)
 import Hercules.Agent.Config (ConfigPath (..))
 import Options.Applicative
-import Protolude hiding (option)
+import Protolude
 
 data Options = Options
   { configFile :: ConfigPath,

@@ -90,14 +90,18 @@ extern "C" int main(int argc, char **argv) {
                 ref<Store> store = openStore();
                 daemon::TrustedFlag trusted = daemon::NotTrusted;
                 daemon::RecursiveFlag recursive = daemon::NotRecursive;
+#if ! NIX_IS_AT_LEAST(2,14,0)
                 std::function<void(Store &)> authHook = [](Store &){};
+#endif
                 daemon::processConnection(
                     store
                     , from
                     , to
                     , trusted
                     , recursive
+#if ! NIX_IS_AT_LEAST(2,14,0)
                     , authHook
+#endif
                     );
             });
         } catch (Interrupted & e) {
