@@ -14,7 +14,7 @@ import Hercules.CLI.Options (mkCommand, subparser)
 import Hercules.CLI.Project (ProjectPath (projectPathOwner, projectPathProject, projectPathSite), findProjectContextually, projectOption)
 import Options.Applicative (auto, bashCompleter, completer, help, long, metavar, option, strOption)
 import qualified Options.Applicative as Optparse
-import Protolude hiding (option)
+import Protolude
 import RIO (RIO, runRIO, withBinaryFile)
 import Servant.API (Headers (Headers), fromSourceIO, toSourceIO)
 import Servant.Client.Generic (AsClientT)
