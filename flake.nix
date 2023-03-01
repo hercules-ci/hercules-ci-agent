@@ -9,6 +9,8 @@
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
   inputs.haskell-flake.url = "github:srid/haskell-flake/0.1.0";
+  # Omit to use nixpkgs' nix
+  # inputs.nix.url = "github:NixOS/nix/2.14-maintenance";
 
   outputs = inputs@{ self, nixpkgs, flake-parts, ... }:
     let
@@ -248,6 +250,16 @@
                       nix-prefetch-git
                       ;
                   };
+                nix =
+                  if inputs?nix
+                  then
+                    inputs.nix.packages.${pkgs.stdenv.hostPlatform.system}.default or (
+                      lib.warn
+                        "The `nix` flake does not define a package for system ${pkgs.stdenv.hostPlatform.system}. Using nixpkgs' `nix` instead."
+                        pkgs.nix
+                    )
+                  else
+                    pkgs.nix;
               };
 
             isDevVariant =
@@ -298,7 +310,7 @@
                   overrides = self: super: {
 
                     cachix = (super.cachix.override (o: {
-                      nix = pkgs.nix;
+                      inherit nix;
                     })).overrideAttrs (o: {
                       postPatch = ''
                         ${o.postPatch or ""}
