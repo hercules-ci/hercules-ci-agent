@@ -239,9 +239,11 @@ unsigned int WrappingStore::getProtocol() {
   return wrappedStore->getProtocol();
 }
 
+#if ! NIX_IS_AT_LEAST(2,14,0)
 void WrappingStore::createUser(const std::string & userName, uid_t userId) {
   wrappedStore->createUser(userName, userId);
 }
+#endif
 
 /////
 
