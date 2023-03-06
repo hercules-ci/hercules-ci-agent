@@ -5,13 +5,17 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## 0.3.3.4 - 2023-03-06
+## 0.3.3.5 - 2023-03-06
 
 ### Added
 
  - Nix 2.14 support
 
  - Nix 2.13 support
+
+## 0.3.3.4 - 2023-03-06
+
+A dud.
 
 ## 0.3.3.3 - 2022-12-29
 
