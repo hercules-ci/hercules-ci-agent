@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           hercules-ci-agent
-version:        0.9.10
+version:        0.9.11
 synopsis:       Runs Continuous Integration tasks on your machines
 category:       Nix, CI, Testing, DevOps
 homepage:       https://docs.hercules-ci.com
@@ -66,8 +66,8 @@ common cxx-opts
 
 custom-setup
   setup-depends:
-    base
-    , Cabal >= 2.2.0.0
+    base < 5
+    , Cabal >= 2.2.0.0 && < 4
     , cabal-pkg-config-version-hook
 
 
@@ -221,7 +221,7 @@ executable hercules-ci-agent
     , hercules-ci-agent
     , hercules-ci-api
     , hercules-ci-api-core == 0.1.5.0
-    , hercules-ci-api-agent == 0.4.6.1
+    , hercules-ci-api-agent == 0.5.0.0
     , hostname
     , http-client
     , http-client-tls

@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.9.11] - 2022-03-06
 
 ### BREAKING
 
@@ -29,6 +29,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
     sudo chown -R _hercules-ci-agent:_hercules-ci-agent /var/lib/hercules-ci-agent
     ```
+
+### Fixed
+
+ - Non-builder build errors such as output cycles are now reported
+   in the build log.
+
+ - `ciSystems` is now taken into account by the default `onPush.default`
+   job when the `herculesCI` attribute of a flake is a function.
+
+ - `darwinConfigurations` is now filtered in accordance with `ciSystems`.
+
+
+### Added
+
+ - Nix verbosity can now be specified in the config file under the
+   new attribute `nixVerbosity`.
+
+ - Cachix 1.3 support
+
+ - Nix 2.14 support
+
+ - Nix 2.13 support
+
 
 ## [0.9.10] - 2022-12-29
 
@@ -681,6 +704,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Initial release
 
+[0.9.11]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.10...hercules-ci-agent-0.9.11
 [0.9.10]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.9...hercules-ci-agent-0.9.10
 [0.9.9]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.8...hercules-ci-agent-0.9.9
 [0.9.8]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.7...hercules-ci-agent-0.9.8

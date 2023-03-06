@@ -8,7 +8,7 @@
   inputs.pre-commit-hooks-nix.inputs.nixpkgs.follows = "nixpkgs";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
-  inputs.haskell-flake.url = "github:srid/haskell-flake/0.1.0";
+  inputs.haskell-flake.url = "github:hercules-ci/haskell-flake/0.1-extraLibraries";
   # Omit to use nixpkgs' nix
   # inputs.nix.url = "github:NixOS/nix/2.14-maintenance";
 
@@ -306,6 +306,8 @@
                   packages = lib.mkOptionDefault {
                     hercules-ci-agent-test.root = builtins.path { path = ./tests/agent-test; };
                   };
+
+                  extraLibraries = hp: { inherit (hp) releaser; };
 
                   overrides = self: super: {
 

@@ -5,6 +5,19 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.5.0.0 - 2023-03-06
+
+### Changed
+
+ - `SourceHostingSite` was renamed to `Forge`
+
+### Added
+
+ - GitLab endpoints
+ - `onSchedule` information
+ - Various small additions
+
+
 ## 0.4.6.1 - 2022-12-29
 
 Maintenance and tooling update.
