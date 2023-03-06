@@ -194,10 +194,14 @@ ciAttributeArgument =
       <> completer ciNixAttributeCompleter
 
 asBranchOption :: Optparse.Parser Text
-asBranchOption = strOption $ long "as-branch" <> metavar "BRANCH" <> help "Pretend we're on another git branch" <> completer (flatCompleter getAllBranches)
+asBranchOption =
+  strOption (long "pretend-branch" <> metavar "BRANCH" <> help "Pretend we're on another git branch" <> completer (flatCompleter getAllBranches))
+    <|> strOption (long "as-branch" <> metavar "BRANCH" <> help "Alias for --pretend-branch")
 
 asRefOption :: Optparse.Parser Text
-asRefOption = strOption $ long "as-ref" <> metavar "REF" <> help "Pretend we're on another git ref" <> completer (flatCompleter getHypotheticalRefs)
+asRefOption =
+  strOption (long "pretend-ref" <> metavar "REF" <> help "Pretend we're on another git ref" <> completer (flatCompleter getHypotheticalRefs))
+    <|> strOption (long "as-ref" <> metavar "REF" <> help "Alias for --pretend-ref")
 
 asRefOptions :: Optparse.Parser (Maybe Text)
 asRefOptions = optional (asRefOption <|> (("refs/heads/" <>) <$> asBranchOption))

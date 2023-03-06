@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Added
 
+ - `hci effect run --pretend-branch` and `--pretend-ref` can now be used to replace `--as-*`.
+   This command allows an effect to run locally for development, instead of on `hercules-ci-agent`.
+
+   `--as-*` flags are still available, for those who don't want to switch right away, to remain compatible with outdated installations of `hci`.
+
  - `--version`
 
 ## 0.3.5 - 2022-12-29

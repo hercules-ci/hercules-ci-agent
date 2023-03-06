@@ -169,8 +169,8 @@ ciNixAttributeCompleter = mkAttributePathCompleter \(partialPath, partialCompone
   withNix \_store evalState -> do
     CNix.Verbosity.setVerbosity CNix.Verbosity.Error
     ref <- do
-      ref <- scanOption "--as-ref"
-      branch <- scanOption "--as-branch"
+      ref <- liftA2 (<|>) (scanOption "--as-ref") (scanOption "--pretend-ref")
+      branch <- liftA2 (<|>) (scanOption "--as-branch") (scanOption "--pretend-branch")
       pure $ refBranchToRef ref branch
     projectMaybe <-
       scanOption "--project" <&> \maybeStr -> do
