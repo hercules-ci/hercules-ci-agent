@@ -47,7 +47,11 @@ push cache paths workers = withNamedContext "cache" cache $ do
                           withNamedContext "size" size $
                             withNamedContext "retry" (show retryStatus :: Text) $
                               logLocM DebugS "pushing",
+#if MIN_VERSION_cachix(1,3,0)
+                      on401 = \err -> throwIO $ FatalError $ "Cachix push is unauthorized: " <> show err,
+#else
                       on401 = throwIO $ FatalError "Cachix push is unauthorized",
+#endif
                       onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
                       onDone = ctx $ logLocM DebugS "push done",
 #if MIN_VERSION_cachix(1,1,0)
