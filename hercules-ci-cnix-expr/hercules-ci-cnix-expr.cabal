@@ -68,8 +68,8 @@ common cxx-opts
 
 custom-setup
   setup-depends:
-    base
-    , Cabal >= 2.2.0.0
+    base < 5
+    , Cabal >= 2.2.0.0 && < 4
     , cabal-pkg-config-version-hook
 
 
