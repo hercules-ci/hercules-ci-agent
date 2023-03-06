@@ -4,22 +4,14 @@
 
 Run an effect locally.
 
+This commands pulls context from the repository and the Hercules CI API. See <<implicit-inputs>>.
+
 == Parameters
 
 [[param-ATTRIBUTE]]
 === ATTRIBUTE
 
 The attribute path that leads to the effect. Tab completion is sensitive to `--as-branch` and such, so you want to specify that first.
-
-[[option-as-branch]]
-=== `--as-branch BRANCH`
-
-Pretend we're on another git branch. This sets the `src.ref` attribute appropriately.
-
-[[option-as-ref]]
-=== `--as-ref BRANCH`
-
-Pretend we're on another git ref. This sets the `src.ref` attribute appropriately.
 
 [[option-no-token]]
 === `--no-token`
@@ -28,10 +20,39 @@ Don't get an API token. Disallows access to state files, but can run in untruste
 
 This does not inhibit use of a token provided via the xref:environment.adoc#HERCULES_CI_API_TOKEN[`HERCULES_CI_API_TOKEN`] variable.
 
+[[option-pretend-branch]]
+=== `--pretend-branch BRANCH`
+
+Pretend we're on another git branch. This sets parameters like xref:hercules-ci-agent:ROOT:evaluation.adoc#params-herculesCI-commit[`ref` and `branch`] and `src.ref` to match `BRANCH` value.
+
+Since `hci` 0.3.6. Older versions have `--as-branch`.
+
+[[option-pretend-ref]]
+=== `--pretend-ref REF`
+
+Pretend we're on another git ref. This sets parameters like xref:hercules-ci-agent:ROOT:evaluation.adoc#params-herculesCI-commit[`ref` and `branch`] and `src.ref` to match `REF` value.
+
+Since `hci` 0.3.6. Older versions have `--as-ref`.
+
 [[option-project]]
 === `--project PROJECT`
 
 Project path, e.g. `github/my-org/my-project`. Default: auto-detected.
+
+== Parameter aliases
+
+These aren't technically deprecated yet, to ensure that the alternative is available to everyone when the time to switch comes.
+You may switch away from these on your own initiative.
+
+[[option-as-branch]]
+=== `--as-branch BRANCH`
+
+Alias for <<option-pretend-branch>>.
+
+[[option-as-ref]]
+=== `--as-ref BRANCH`
+
+Alias for <<option-pretend-ref>>.
 
 [[implicit-inputs]]
 == Implicit inputs
@@ -39,5 +60,7 @@ Project path, e.g. `github/my-org/my-project`. Default: auto-detected.
 This command uses `git` metadata from the working directory, unless <<option-as-ref>> (or similar) and <<option-project>> are specified.
 
 Values for secrets are looked up in a xref:environment.adoc#secrets.json[local `secrets.json`] or from xref:environment.adoc#HERCULES_CI_SECRETS_JSON[`HERCULES_CI_SECRETS_JSON`].
+
+Information such as the project id are looked up through the Hercules CI API.
 
 include::hci:partial$implicit-api.adoc[]
