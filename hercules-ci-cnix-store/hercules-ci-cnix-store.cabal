@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           hercules-ci-cnix-store
-version:        0.3.3.3
+version:        0.3.3.4
 synopsis:       Haskell bindings for Nix's libstore
 category:       Nix
 homepage:       https://docs.hercules-ci.com
@@ -52,8 +52,8 @@ common cxx-opts
 
 custom-setup
   setup-depends:
-    base
-    , Cabal >= 2.2.0.0
+    base < 5
+    , Cabal >= 2.2.0.0 && < 3
     , cabal-pkg-config-version-hook
 
 library
