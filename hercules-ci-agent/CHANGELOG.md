@@ -30,6 +30,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     sudo chown -R _hercules-ci-agent:_hercules-ci-agent /var/lib/hercules-ci-agent
     ```
 
+### Fixed
+
+ - Non-builder build errors such as output cycles are now reported
+   in the build log.
+
+ - `ciSystems` is now taken into account by the default `onPush.default`
+   job when the `herculesCI` attribute of a flake is a function.
+
+ - `darwinConfigurations` is now filtered in accordance with `ciSystems`.
+
+
+### Added
+
+ - Nix verbosity can now be specified in the config file under the
+   new attribute `nixVerbosity`.
+
+ - Cachix 1.3 support
+
+ - Nix 2.14 support
+
+ - Nix 2.13 support
+
+
 ## [0.9.10] - 2022-12-29
 
 ### Fixed
