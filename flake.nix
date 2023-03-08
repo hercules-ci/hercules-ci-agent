@@ -11,6 +11,11 @@
   inputs.haskell-flake.url = "github:hercules-ci/haskell-flake/0.1-extraLibraries";
   # Omit to use nixpkgs' nix
   # inputs.nix.url = "github:NixOS/nix/2.14-maintenance";
+  # Omit to use nixpkgs' cachix
+  # inputs.cachix = {
+  #   url = "github:cachix/cachix";
+  #   inputs.nixpkgs.follows = "nixpkgs";
+  # };
 
   outputs = inputs@{ self, nixpkgs, flake-parts, ... }:
     let
@@ -310,23 +315,19 @@
                   extraLibraries = hp: { inherit (hp) releaser; };
 
                   overrides = self: super: {
-
-                    cachix = (super.cachix.override (o: {
-                      inherit nix;
-                    })).overrideAttrs (o: {
-                      postPatch = ''
-                        ${o.postPatch or ""}
-                        # jailbreak pkgconfig deps
-                        cp cachix.cabal cachix.cabal.backup
-                        sed -i cachix.cabal -e 's/\(nix-[a-z]*\) *(==[0-9.]* *|| *>[0-9.]*) *&& *<[0-9.]*/\1/g'
-                        sed -i cachix.cabal -e 's/pkgconfig-depends:.*/pkgconfig-depends: nix-main, nix-store/'
-                        echo
-                        echo Applied:
-                        diff -U5 cachix.cabal.backup cachix.cabal ||:
-                        echo
-                        rm cachix.cabal.backup
-                      '';
-                    });
+                    inherit (if inputs?cachix
+                    then
+                      inputs.cachix.lib.customHaskellPackages
+                        {
+                          inherit pkgs;
+                          haskellPackages = self;
+                        }
+                    else {
+                      cachix = super.cachix.override (o: {
+                        inherit nix;
+                      });
+                      inherit (super) cachix-api;
+                    }) cachix cachix-api;
 
                     hercules-ci-optparse-applicative =
                       super.callPackage ./nix/hercules-ci-optparse-applicative.nix { };
@@ -401,6 +402,7 @@
 
                     hercules-ci-cnix-store = lib.pipe super.hercules-ci-cnix-store [
                       (x: x.override (o: { inherit nix; }))
+                      (x: x.overrideAttrs (a: { passthru = a.passthru // { nixPackage = nix; }; }))
                     ];
 
                     # Permission denied error in tests. Might be a system configuration error on the machine?
