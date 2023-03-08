@@ -12,10 +12,10 @@
   # Omit to use nixpkgs' nix
   # inputs.nix.url = "github:NixOS/nix/2.14-maintenance";
   # Omit to use nixpkgs' cachix
-  # inputs.cachix = {
-  #   url = "github:cachix/cachix";
-  #   inputs.nixpkgs.follows = "nixpkgs";
-  # };
+  inputs.cachix = {
+    url = "github:hercules-ci/cachix/expose-haskell-packages";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
 
   outputs = inputs@{ self, nixpkgs, flake-parts, ... }:
     let
