@@ -1,13 +1,13 @@
 packages:
-  ./cabal-pkg-config-version-hook/cabal-pkg-config-version-hook.cabal
-  ./hercules-ci-agent/hercules-ci-agent.cabal
-  ./hercules-ci-api-agent/hercules-ci-api-agent.cabal
-  ./hercules-ci-api-core/hercules-ci-api-core.cabal
-  ./hercules-ci-api/hercules-ci-api.cabal
-  ./hercules-ci-cli/hercules-ci-cli.cabal
-  ./hercules-ci-cnix-expr/hercules-ci-cnix-expr.cabal
-  ./hercules-ci-cnix-store/hercules-ci-cnix-store.cabal
-  ./tests/agent-test/hercules-ci-agent-test.cabal
+  ./cabal-pkg-config-version-hook
+  ./hercules-ci-agent
+  ./hercules-ci-api-agent
+  ./hercules-ci-api-core
+  ./hercules-ci-api
+  ./hercules-ci-cli
+  ./hercules-ci-cnix-expr
+  ./hercules-ci-cnix-store
+  ./tests/agent-test
 
 source-repository-package
     type: git
