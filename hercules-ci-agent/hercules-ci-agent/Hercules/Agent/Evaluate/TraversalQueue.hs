@@ -59,7 +59,7 @@ waitUntilDone env = liftBase $
     check (n == 0)
 
 readJust_ ::
-  (MonadBase IO m, MonadIO m) =>
+  (MonadBase IO m) =>
   Chan (Maybe a) ->
   (a -> m ()) ->
   m ()

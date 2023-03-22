@@ -270,11 +270,11 @@ infixl 9 >>.
 type MonadEval m = (MonadIO m, MonadReader (Ptr EvalState) m)
 
 -- | A combination of '>>=' and '#.'.
-(>>.) :: (KnownSymbol s, as . s ~ b, MonadEval m) => m (PSObject (Attrs' as w)) -> AttrLabel s -> m (PSObject b)
+(>>.) :: (KnownSymbol s, MonadEval m) => m (PSObject (Attrs' as w)) -> AttrLabel s -> m (PSObject (as . s))
 mas >>. p = mas >>= \as -> as #. p
 
 -- | Attribute selector. @a #. #b@ is @a.b@ in Nix. Operates on attributes that are required (@_.@) in the schema, throwing an error if necessary.
-(#.) :: (KnownSymbol s, as . s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (PSObject b)
+(#.) :: (KnownSymbol s, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (PSObject (as . s))
 as #. p = do
   evalState <- ask
   let name = T.pack (symbolVal p)
@@ -284,11 +284,11 @@ as #. p = do
     Just b -> pure PSObject {value = b, provenance = Attribute (provenance as) name}
 
 -- | A combination of '>>=' and '#?'.
-(>>?) :: (KnownSymbol s, as ? s ~ b, MonadEval m) => m (PSObject (Attrs' as w)) -> AttrLabel s -> m (Maybe (PSObject b))
+(>>?) :: (KnownSymbol s, MonadEval m) => m (PSObject (Attrs' as w)) -> AttrLabel s -> m (Maybe (PSObject (as ? s)))
 mas >>? p = mas >>= \as -> as #? p
 
 -- | Attribute selector. @a #? #b@ is @a.b@ in Nix, but handles the missing case without exception. Operates on attributes that are optional (@_?@) in the schema, throwing an error if necessary.
-(#?) :: (KnownSymbol s, as ? s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (Maybe (PSObject b))
+(#?) :: (KnownSymbol s, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (Maybe (PSObject (as ? s)))
 as #? p = do
   evalState <- ask
   let name = T.pack (symbolVal p)
@@ -306,7 +306,7 @@ as #?? p = do
 --
 -- It provides a decent error message with attrset provenance, but can't provide
 -- extra context like you can when manually handling the @a '#?' b@ 'Nothing' case.
-(#?!) :: (KnownSymbol s, as ? s ~ b, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (PSObject b)
+(#?!) :: (KnownSymbol s, MonadEval m) => PSObject (Attrs' as w) -> AttrLabel s -> m (PSObject (as ? s))
 as #?! p = do
   as #? p >>= \case
     Nothing -> throwIO $ MissingAttribute (provenance as) (T.pack (symbolVal p))
@@ -392,7 +392,6 @@ instance
 (|!) ::
   forall a b c m.
   ( CheckType (NixTypeForSchema a),
-    MonadIO m,
     MonadEval m,
     PossibleTypesForSchema a,
     PossibleTypesForSchema b
@@ -421,12 +420,12 @@ englishOr [y, z] = y <> " or " <> z
 englishOr (a : as) = a <> ", " <> englishOr as
 
 -- | Optional application.
-($?) :: (MonadEval m, PossibleTypesForSchema a, PossibleTypesForSchema b) => PSObject (a ->? b) -> PSObject a -> m (PSObject b)
+($?) :: (MonadEval m, PossibleTypesForSchema b) => PSObject (a ->? b) -> PSObject a -> m (PSObject b)
 x $? a =
   pure x >>$? pure a
 
 -- | Optional application. Like '$?' but takes care of monadic binding as a convenience.
-(>>$?) :: (MonadEval m, PossibleTypesForSchema a, PossibleTypesForSchema b) => m (PSObject (a ->? b)) -> m (PSObject a) -> m (PSObject b)
+(>>$?) :: (MonadEval m, PossibleTypesForSchema b) => m (PSObject (a ->? b)) -> m (PSObject a) -> m (PSObject b)
 x >>$? a =
   ( (\f -> a >>= (f .$))
       |! pure
@@ -434,7 +433,7 @@ x >>$? a =
     =<< x
 
 -- | Application. Like '$.' but takes care of monadic binding as a convenience.
-(>>$.) :: (MonadEval m, PossibleTypesForSchema a, PossibleTypesForSchema b) => m (PSObject (a ->. b)) -> m (PSObject a) -> m (PSObject b)
+(>>$.) :: (MonadEval m) => m (PSObject (a ->. b)) -> m (PSObject a) -> m (PSObject b)
 f >>$. a = do
   f' <- f
   a' <- a

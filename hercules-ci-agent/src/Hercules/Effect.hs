@@ -58,7 +58,7 @@ parseSecretRef attrName _ = Left $ "Could not parse secret reference " <> attrNa
 
 -- | Write secrets to file based on secretsMap value
 writeSecrets ::
-  (MonadIO m, KatipContext m) =>
+  (KatipContext m) =>
   -- | Whether we're in a friendly context, such as the CLI.
   Bool ->
   Maybe SecretContext ->

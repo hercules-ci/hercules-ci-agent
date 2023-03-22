@@ -315,12 +315,12 @@ getHomeExpr evalState eval =
         toValue evalState pso
     else escalateAs UserException =<< liftIO (loadNixFile evalState (toS $ Eval.cwd eval) (coerce $ Eval.gitSource eval))
 
-walkOnPush :: (MonadEval m, MonadUnliftIO m, KatipContext m, MonadThrow m) => EvalEnv -> OnPush.OnPush -> PSObject HerculesCISchema -> ConduitT i Event m ()
+walkOnPush :: (MonadEval m, MonadUnliftIO m, KatipContext m) => EvalEnv -> OnPush.OnPush -> PSObject HerculesCISchema -> ConduitT i Event m ()
 walkOnPush evalEnv onPushParams herculesCI = do
   handler <- herculesCI #?! #onPush >>= requireDict (OnPush.name onPushParams)
   walkHandler evalEnv (OnPush.inputs onPushParams) handler
 
-walkOnSchedule :: (MonadEval m, MonadUnliftIO m, KatipContext m, MonadThrow m) => EvalEnv -> OnSchedule.OnSchedule -> PSObject HerculesCISchema -> ConduitT i Event m ()
+walkOnSchedule :: (MonadEval m, MonadUnliftIO m, KatipContext m) => EvalEnv -> OnSchedule.OnSchedule -> PSObject HerculesCISchema -> ConduitT i Event m ()
 walkOnSchedule evalEnv onScheduleParams herculesCI = do
   handler <- herculesCI #?! #onSchedule >>= requireDict (OnSchedule.name onScheduleParams)
   walkHandler evalEnv (OnSchedule.extraInputs onScheduleParams) handler
@@ -685,7 +685,6 @@ walk evalEnv autoArgs v0 = withIFDQueue evalEnv \enqueue ->
       store = evalEnvStore evalEnv
       evalState = evalEnvState evalEnv
       walk' ::
-        (MonadUnliftIO m, KatipContext m) =>
         -- If True, always walk this attribute set. Only True for the root.
         Bool ->
         -- Attribute path

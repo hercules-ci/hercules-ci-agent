@@ -30,7 +30,8 @@ data HerculesCIArgs = HerculesCIArgs
   deriving (ToRawValue) via (ViaJSON HerculesCIArgs)
 
 newtype CISystems = CISystems (Maybe (Map Text ()))
-  deriving (Generic, ToJSON)
+  deriving (Generic)
+  deriving anyclass (ToJSON)
   deriving (ToRawValue) via (ViaJSON CISystems)
 
 fromGitSource :: GitSource -> HerculesCIMeta -> HerculesCIArgs
