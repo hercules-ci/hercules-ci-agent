@@ -28,6 +28,10 @@ flag nix-2_5
   description: Build for Nix >=2.5pre*
   default: True
 
+flag ide
+  description: Whether to enable IDE workarounds. You shouldn't need this.
+  default: False
+
 -- match the C++ language standard Nix is using
 common cxx-opts
   cxx-options:
@@ -93,7 +97,8 @@ library
     , unix
     , unliftio-core
     , vector
-  extra-libraries:
+  if ! flag(ide)
+    extra-libraries:
       boost_context
   default-language: Haskell2010
   default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators

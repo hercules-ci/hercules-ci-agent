@@ -30,6 +30,10 @@ flag nix-2_5
   description: Build for Nix >=2.5*
   default: False
 
+flag ide
+  description: Whether to enable IDE workarounds. You shouldn't need this.
+  default: False
+
 source-repository head
   type: git
   location: https://github.com/hercules-ci/hercules-ci-agent
@@ -303,8 +307,9 @@ executable hercules-ci-agent-worker
   include-dirs:
       cbits
       cbits/nix-2.4
-  extra-libraries:
-      boost_context
+  if ! flag(ide)
+    extra-libraries:
+        boost_context
   build-depends:
       aeson
     , async

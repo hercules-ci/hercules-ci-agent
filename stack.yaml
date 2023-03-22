@@ -18,6 +18,14 @@ packages:
 
 system-ghc: true
 
+flags:
+  hercules-ci-cnix-store:
+    ide: true
+  hercules-ci-cnix-expr:
+    ide: true
+  hercules-ci-agent:
+    ide: true
+
 nix:
   enable: false
   packages: []
