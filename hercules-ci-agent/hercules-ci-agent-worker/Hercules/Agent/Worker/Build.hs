@@ -20,7 +20,7 @@ import Hercules.CNix.Store (Store, queryPathInfo, validPathInfoNarHash32, validP
 import Katip
 import Protolude hiding (yield)
 
-runBuild :: (MonadIO m, KatipContext m) => Store -> Command.Build.Build -> ConduitT i Event m ()
+runBuild :: (KatipContext m) => Store -> Command.Build.Build -> ConduitT i Event m ()
 runBuild store build = do
   let extraPaths = Command.Build.inputDerivationOutputPaths build
       drvPath = encodeUtf8 $ Command.Build.drvPath build

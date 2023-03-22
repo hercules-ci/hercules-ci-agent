@@ -258,7 +258,7 @@ restrictEval eval = do
     safeSchemes = "ssh:// https://"
     allSchemes = safeSchemes <> " http:// git://"
 
-logger :: (MonadIO m, MonadUnliftIO m, KatipContext m) => LogSettings.LogSettings -> Int -> ConduitM () (Vector LogEntry) m () -> m ()
+logger :: (MonadUnliftIO m, KatipContext m) => LogSettings.LogSettings -> Int -> ConduitM () (Vector LogEntry) m () -> m ()
 logger logSettings_ storeProtocolVersionValue entriesSource = do
   socketConfig <- liftIO $ makeSocketConfig logSettings_ storeProtocolVersionValue
   let withPings socket m =

@@ -248,7 +248,7 @@ close =
 -- Conduits for logger
 --
 
-withLoggerConduit :: (MonadIO m, MonadUnliftIO m) => (ConduitT () (Vector LogEntry) m () -> m ()) -> m a -> m a
+withLoggerConduit :: (MonadUnliftIO m) => (ConduitT () (Vector LogEntry) m () -> m ()) -> m a -> m a
 withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
   ((io `finally` liftIO close) <* wait popperAsync) `onException` liftIO (timeout 2_000_000 (wait popperAsync))
   where
