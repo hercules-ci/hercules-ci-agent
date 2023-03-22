@@ -9,14 +9,14 @@ packages:
   - ./hercules-ci-cli
   - ./hercules-ci-cnix-expr
   - ./tests/agent-test
-  # Disable so that cachix, its consumer becomes a regular dependency, in order
-  # not to confuse the stack repl + hie-bios + hls setup.
-  # - ./hercules-ci-cnix-store
+  - ./hercules-ci-cnix-store
+
+  # incorporate into "local" build so the tooling doesn't get confused by the
+  # local -> snapshot -> local dependency, such as agent -> cachix -> cnix-store
+  - ./dev/vendor/cachix/cachix
+  - ./dev/vendor/cachix/cachix-api
 
 system-ghc: true
-
-# extra-deps:
-  # - cachix-0.6.1@sha256:7b835ba840e5cb801da19125f86628c042120179eb3505c59984c7ab97b35faa,3616
 
 nix:
   enable: false
