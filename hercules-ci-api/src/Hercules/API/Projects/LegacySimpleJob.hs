@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Projects.LegacySimpleJob where
 
@@ -15,4 +16,5 @@ data LegacySimpleJob = LegacySimpleJob
     status :: JobStatus,
     phase :: JobPhase
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

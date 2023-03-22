@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Error where
 
@@ -13,4 +14,5 @@ data Error = Error
     -- | Human-readable error message.
     message :: Text
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

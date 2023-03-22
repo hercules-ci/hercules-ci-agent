@@ -21,8 +21,10 @@ common defaults
     NoImplicitPrelude
     DeriveGeneric
     DeriveTraversable
+    DerivingStrategies
     DisambiguateRecordFields
     FlexibleContexts
+    ImportQualifiedPost
     InstanceSigs
     LambdaCase
     MultiParamTypeClasses
@@ -75,6 +77,7 @@ library
     Hercules.API.Build.DerivationInfo.DerivationOutput
     Hercules.API.Build.EvaluationDependency
     Hercules.API.Build.EvaluationDetail
+    Hercules.API.Build.EvaluationDiff
     Hercules.API.Build.FailureGraph
     Hercules.API.Build.Log
     Hercules.API.Build.LogLine
@@ -93,7 +96,6 @@ library
     Hercules.API.Forge.SimpleForge
     Hercules.API.GitLab
     Hercules.API.GitLab.CreateInstallationBuilderRequest
-    Hercules.API.GitLab.CreateInstallationBuilderResponse
     Hercules.API.GitLab.InstallationBuilder
     Hercules.API.GitLab.PatchInstallationBuilder
     Hercules.API.Health
@@ -126,6 +128,7 @@ library
     Hercules.API.Repos.SimpleRepo
     Hercules.API.Result
     Hercules.API.Servant.Status
+    Hercules.API.SimpleAttribute
     Hercules.API.State
     Hercules.API.State.ProjectState
     Hercules.API.State.StateFile

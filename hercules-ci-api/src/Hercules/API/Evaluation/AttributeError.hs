@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Evaluation.AttributeError where
 
@@ -12,4 +13,5 @@ data AttributeError = AttributeError
     errorDerivation :: Maybe Text,
     trace :: Maybe Text
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

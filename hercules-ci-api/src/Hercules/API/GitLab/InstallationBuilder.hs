@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.GitLab.InstallationBuilder where
 
@@ -14,9 +15,11 @@ data InstallationBuilder = InstallationBuilder
     forge :: Maybe SimpleForge,
     errors :: [Error]
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 data InstallationBuilders = InstallationBuilders
   { items :: [InstallationBuilder]
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

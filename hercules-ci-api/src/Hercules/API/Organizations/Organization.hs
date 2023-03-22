@@ -1,8 +1,9 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Organizations.Organization where
 
-import qualified Hercules.API.BillingStatus as BillingStatus
+import Hercules.API.BillingStatus qualified as BillingStatus
 import Hercules.API.Prelude
 
 data Organization = Organization
@@ -15,4 +16,5 @@ data Organization = Organization
     subscriptionCancelUrl :: Maybe Text,
     subscriptionUpdateUrl :: Maybe Text
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

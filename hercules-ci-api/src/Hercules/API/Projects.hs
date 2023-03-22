@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Projects where
 
@@ -7,7 +8,8 @@ import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Build.EvaluationDetail
   ( EvaluationDetail,
   )
-import qualified Hercules.API.Build.FailureGraph as FailureGraph
+import Hercules.API.Build.EvaluationDiff (EvaluationDiff)
+import Hercules.API.Build.FailureGraph qualified as FailureGraph
 import Hercules.API.Build.Log (Log)
 import Hercules.API.Forge.Forge (Forge)
 import Hercules.API.Inputs.ImmutableGitInput (ImmutableGitInput)
@@ -145,6 +147,14 @@ data ProjectsAPI auth f = ProjectsAPI
           :> QueryParam' '[Optional, Description "Number of latest jobs to get, when project name is omitted. Range [1..50], default 10."] "latest" Int
           :> auth
           :> Get '[JSON] [ProjectAndJobs],
+    getJob ::
+      f
+        :- Summary "Retrieve a job"
+          :> Description "Retrieve a job"
+          :> "jobs"
+          :> Capture' '[Required, Strict] "jobId" (Id Job)
+          :> auth
+          :> Get '[JSON] Job,
     getJobHandlers ::
       f
         :- Summary "Get a job's handler declarations, if any."
@@ -163,6 +173,17 @@ data ProjectsAPI auth f = ProjectsAPI
           :> "evaluation"
           :> auth
           :> GetJsonWithPreflight EvaluationDetail,
+    projectJobEvaluationDiff ::
+      f
+        :- Summary "Compare two evaluations"
+          :> Description "A list of attributes that have been added, removed or changed between two evaluations. Also lists changes to the IFD derivations."
+          :> "jobs"
+          :> Capture' '[Required, Strict] "jobId" (Id Job)
+          :> "evaluation"
+          :> "compare"
+          :> Capture' '[Required, Strict] "baseJobId" (Id Job)
+          :> auth
+          :> GetJsonWithPreflight EvaluationDiff,
     jobDerivationFailureGraph ::
       f
         :- Summary "Find all failures in an evaluation's derivations"
@@ -224,4 +245,5 @@ data ProjectsAPI auth f = ProjectsAPI
   deriving (Generic)
 
 newtype PagedJobs = PagedJobs (PagedResponse Job)
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Build.DerivationInfo where
 
@@ -24,4 +25,5 @@ data DerivationInfo = DerivationInfo
     mayCancel :: Bool,
     dummy :: Maybe DerivationEvent -- TODO: remove and update/fix codegen
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

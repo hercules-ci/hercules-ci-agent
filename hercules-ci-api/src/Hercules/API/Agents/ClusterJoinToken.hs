@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Agents.ClusterJoinToken where
 
@@ -12,4 +13,5 @@ data ClusterJoinToken = ClusterJoinToken
     -- TODO lastAccessTime :: Maybe UTCTime
     description :: Text
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

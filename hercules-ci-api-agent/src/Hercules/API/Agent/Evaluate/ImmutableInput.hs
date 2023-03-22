@@ -15,4 +15,5 @@ data ImmutableInput
     --
     -- Translates to @builtins.fetchGit@
     Git ImmutableGitInput
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

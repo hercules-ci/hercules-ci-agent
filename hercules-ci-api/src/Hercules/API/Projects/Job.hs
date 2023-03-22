@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Projects.Job
   ( module Hercules.API.Projects.Job,
@@ -11,6 +12,7 @@ import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Evaluation.Evaluation
   ( Evaluation,
   )
+import Hercules.API.Forge.Forge (Forge)
 import Hercules.API.Inputs.ImmutableInput (ImmutableInput)
 import Hercules.API.Prelude
 import Hercules.API.Projects.Project (Project)
@@ -21,6 +23,9 @@ data Job = Job
   { id :: Id Job,
     projectId :: Id Project,
     index :: Int64,
+    repoName :: Name Project,
+    ownerName :: Name Account,
+    forgeName :: Name Forge,
     repoId :: Id Repo,
     startTime :: UTCTime,
     endTime :: Maybe UTCTime,
@@ -43,14 +48,16 @@ data Job = Job
     mayCancel :: Bool,
     mayRerun :: Bool
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 data JobType
   = Config
   | Legacy
   | OnPush
   | OnSchedule
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 data GitCommitSource = GitCommitSource
   { revision :: Text,
@@ -60,10 +67,12 @@ data GitCommitSource = GitCommitSource
     committer :: Maybe Account,
     link :: Text
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 data ProjectAndJobs = ProjectAndJobs
   { project :: Project,
     jobs :: [Job]
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

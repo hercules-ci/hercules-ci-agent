@@ -2,7 +2,7 @@
 
 module Hercules.API.AttributeSpec (spec) where
 
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Hercules.API.Attribute
 import Protolude
 import Test.Hspec

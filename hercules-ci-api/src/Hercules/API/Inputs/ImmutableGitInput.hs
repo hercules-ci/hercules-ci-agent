@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Inputs.ImmutableGitInput where
 
@@ -15,4 +16,5 @@ data ImmutableGitInput = ImmutableGitInput
     jobs :: Maybe [SimpleJob],
     historyURL :: Maybe Text
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

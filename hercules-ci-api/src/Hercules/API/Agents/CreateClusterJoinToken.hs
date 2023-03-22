@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Agents.CreateClusterJoinToken where
 
@@ -8,4 +9,5 @@ import Hercules.API.Prelude
 data CreateClusterJoinToken = CreateClusterJoinToken
   { description :: Text
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

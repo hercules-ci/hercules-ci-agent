@@ -23,8 +23,10 @@ data AgentSession = AgentSession
     substituters :: [Text],
     creation :: UTCTime,
     lastSeen :: Maybe UTCTime,
+    revocation :: Maybe UTCTime,
     available :: Bool,
     concurrentTasks :: Int,
     labels :: Labels
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

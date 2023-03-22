@@ -14,4 +14,5 @@ data ImmutableGitInput = ImmutableGitInput
     owner :: Maybe Text,
     name :: Maybe Text
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

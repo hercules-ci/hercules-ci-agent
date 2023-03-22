@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Projects.JobHandlers
   ( JobHandlers (..),
@@ -15,4 +16,5 @@ data JobHandlers = JobHandlers
     onPush :: Map Text OnPushHandler,
     onSchedule :: Map Text OnScheduleHandler
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

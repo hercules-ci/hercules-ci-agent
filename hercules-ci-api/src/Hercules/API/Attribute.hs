@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
 module Hercules.API.Attribute
@@ -12,12 +13,12 @@ where
 
 import Control.Applicative (Alternative ((<|>)))
 import Control.Lens (at, (%~))
-import qualified Data.Aeson as A
+import Data.Aeson qualified as A
 import Data.Aeson.Lens
 import Data.Function ((&))
 import Data.Proxy (Proxy (Proxy))
 import Data.Swagger (ToParamSchema (..))
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Hercules.API.Prelude
 import Servant.API (FromHttpApiData (..), ToHttpApiData (..))
 import Prelude ()
@@ -28,7 +29,8 @@ data AttributeType
   | MayFail
   | DependenciesOnly
   | Effect
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 -- | An arbitrary ordering
 deriving instance Ord AttributeType
@@ -38,7 +40,8 @@ data Attribute a = Attribute
     value :: a,
     typ :: AttributeType
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON)
 
 instance FromJSON a => FromJSON (Attribute a) where
   parseJSON v = A.parseJSON (fixup v)
@@ -55,7 +58,8 @@ deriving instance Foldable Attribute
 deriving instance Traversable Attribute
 
 newtype AttributePath = AttributePath {fromAttributePath :: [Text]}
-  deriving (Generic, Eq, NFData)
+  deriving (Generic, Eq)
+  deriving anyclass (NFData)
 
 instance FromHttpApiData AttributePath where
   parseUrlPiece = Right . AttributePath . attributePathFromString

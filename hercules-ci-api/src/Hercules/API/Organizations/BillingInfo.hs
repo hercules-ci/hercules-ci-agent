@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Organizations.BillingInfo where
 
@@ -9,4 +10,5 @@ data BillingInfo = BillingInfo
   { nextPayment :: Maybe UTCTime,
     activeUsers :: [Account]
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

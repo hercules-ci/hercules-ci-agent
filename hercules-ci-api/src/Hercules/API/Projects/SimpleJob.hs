@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Projects.SimpleJob where
 
@@ -13,7 +14,8 @@ data SimpleJob = SimpleJob
     status :: JobStatus,
     phase :: JobPhase
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 data JobPhase
   = Queued
@@ -21,13 +23,15 @@ data JobPhase
   | Building
   | Effects
   | Done
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 data JobStatus
   = Pending
   | Failure
   | Success
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 -- | Whichever is "worse": 'Failure' wins out, otherwise 'Pending' wins out, otherwise all are 'Success'.
 instance Semigroup JobStatus where
