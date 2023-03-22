@@ -87,6 +87,7 @@
         inputs.haskell-flake.flakeModule
         inputs.pre-commit-hooks-nix.flakeModule
         ./nix/variants.nix
+        ./nix/development.nix
       ];
       config = {
         systems = [
