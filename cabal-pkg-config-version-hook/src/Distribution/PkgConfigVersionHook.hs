@@ -91,7 +91,7 @@ mkSettings :: String -> Settings
 mkSettings name =
   Settings
     { pkgConfigName = name,
-      macroName = map (\x -> case x of '-' -> '_') name,
+      macroName = map (\c -> case c of '-' -> '_'; x -> x) name,
       flagPrefixName = name
     }
 
