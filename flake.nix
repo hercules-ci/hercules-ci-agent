@@ -86,7 +86,7 @@
         inputs.flake-parts.flakeModules.easyOverlay
         inputs.haskell-flake.flakeModule
         inputs.pre-commit-hooks-nix.flakeModule
-        ./variants.nix
+        ./nix/variants.nix
       ];
       config = {
         systems = [
