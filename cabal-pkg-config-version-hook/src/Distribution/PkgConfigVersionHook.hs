@@ -35,12 +35,15 @@ where
 
 import Control.Lens ((%~), (^.))
 import Control.Monad (when)
+import Data.Char (isSpace)
 import qualified Data.Char as C
 import Data.Foldable (toList)
 import Data.Function ((&))
 import qualified Data.List as L
 import Distribution.Simple
-import Distribution.Simple.Setup (configConfigurationsFlags)
+import Distribution.Simple.Configure (configCompilerAuxEx)
+import Distribution.Simple.Program (ConfiguredProgram, getProgramOutput, needProgram, pkgConfigProgram)
+import Distribution.Simple.Setup (configConfigurationsFlags, configPrograms, configVerbosity, fromFlag)
 import Distribution.Types.BuildInfo.Lens (ccOptions, cppOptions, cxxOptions)
 import Distribution.Types.Flag (flagName, mkFlagAssignment, mkFlagName, unFlagName)
 import Distribution.Types.GenericPackageDescription.Lens
@@ -53,6 +56,7 @@ import Distribution.Types.GenericPackageDescription.Lens
     condTestSuites,
     genPackageFlags,
   )
+import Distribution.Verbosity (Verbosity)
 import System.IO (hPutStrLn, stderr)
 import System.Process (readProcess)
 import qualified Text.ParserCombinators.ReadP as P
@@ -97,7 +101,14 @@ mkSettings name =
 
 -- | Extend the value of 'confHook'. It's what powers 'addHook'.
 composeConfHook settings origHook = \(genericPackageDescription, hookedBuildInfo) confFlags -> do
-  (actualMajor, actualMinor, actualPatch) <- getPkgConfigPackageVersion (pkgConfigName settings)
+  (_compiler, _platform, programDb) <- configCompilerAuxEx confFlags
+  let verbosity = fromFlag (configVerbosity confFlags)
+  mpkgConfig <- needProgram verbosity pkgConfigProgram programDb
+  pkgConfig <- case mpkgConfig of
+    Nothing -> error "Cannot find pkg-config program."
+    Just (pkgConfig, _) -> pure pkgConfig
+
+  (actualMajor, actualMinor, actualPatch) <- getPkgConfigPackageVersion verbosity pkgConfig (pkgConfigName settings)
 
   let defines =
         [ "-D" <> macroName settings <> "_MAJOR=" <> show actualMajor,
@@ -149,16 +160,18 @@ unambiguously p s =
     [(v, _)] -> Just v
     _ -> Nothing
 
-getPkgConfigPackageVersion :: String -> IO (Int, Int, Int)
-getPkgConfigPackageVersion pkgName = do
-  s <- readProcess "pkg-config" ["--modversion", pkgName] ""
+getPkgConfigPackageVersion :: Verbosity -> ConfiguredProgram -> String -> IO (Int, Int, Int)
+getPkgConfigPackageVersion verbosity pkgConfig pkgName = do
+  s <- trim <$> getProgramOutput verbosity pkgConfig ["--modversion", pkgName]
   case L.sortOn (\(_, s) -> length s) $ P.readP_to_S parseVersion s of
     [] -> error ("Could not parse version " ++ show s ++ " returned by pkg-config for package " ++ pkgName)
     (v, r) : _ -> do
-      when (L.dropWhile C.isSpace r /= "") $ do
+      when (L.dropWhile isSpace r /= "") $ do
         log ("ignoring trailing text " ++ show r ++ " in version " ++ show s ++ " of pkg-config package " ++ pkgName)
       let v' = v ++ L.repeat 0
       pure (v' L.!! 0, v' L.!! 1, v' L.!! 2)
+  where
+    trim = L.dropWhile isSpace . L.dropWhileEnd isSpace
 
 -- Should probably use a Cabal function?
 log = hPutStrLn stderr
