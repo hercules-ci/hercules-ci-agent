@@ -4,7 +4,7 @@
 module Hercules.Agent.NixFile.GitSource where
 
 import Data.Aeson (FromJSON, ToJSON)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Hercules.CNix.Expr (ToRawValue, ViaJSON (ViaJSON))
 import Protolude
 

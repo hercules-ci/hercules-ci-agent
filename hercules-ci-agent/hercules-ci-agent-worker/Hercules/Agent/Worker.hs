@@ -11,10 +11,10 @@ where
 
 import Conduit
 import Control.Concurrent.STM hiding (check)
-import qualified Control.Exception.Lifted as EL
+import Control.Exception.Lifted qualified as EL
 import Control.Monad.Except
 import Control.Monad.IO.Unlift
-import qualified Data.Conduit
+import Data.Conduit qualified
 import Data.Conduit.Extras (sinkChan, sinkChanTerminate, sourceChan)
 import Data.Conduit.Katip.Orphans ()
 import Data.Conduit.Serialization.Binary
@@ -22,19 +22,19 @@ import Data.Conduit.Serialization.Binary
     conduitEncode,
   )
 import Data.IORef
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Data.Vector (Vector)
-import qualified Data.Vector as V
-import qualified Hercules.API.Agent.LifeCycle.ServiceInfo
+import Data.Vector qualified as V
+import Hercules.API.Agent.LifeCycle.ServiceInfo qualified
 import Hercules.API.Logs.LogEntry (LogEntry)
-import qualified Hercules.API.Logs.LogEntry as LogEntry
+import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Hercules.API.Logs.LogHello (LogHello (LogHello, clientProtocolVersion, storeProtocolVersion))
 import Hercules.API.Logs.LogMessage (LogMessage)
-import qualified Hercules.API.Logs.LogMessage as LogMessage
+import Hercules.API.Logs.LogMessage qualified as LogMessage
 import Hercules.Agent.Sensitive
-import qualified Hercules.Agent.Socket as Socket
+import Hercules.Agent.Socket qualified as Socket
 import Hercules.Agent.Worker.Build (runBuild)
-import qualified Hercules.Agent.Worker.Build.Logger as Logger
+import Hercules.Agent.Worker.Build.Logger qualified as Logger
 import Hercules.Agent.Worker.Conduit (takeCWhileStopEarly, withMessageLimit)
 import Hercules.Agent.Worker.Effect (runEffect)
 import Hercules.Agent.Worker.Env (HerculesState (..))
@@ -45,34 +45,34 @@ import Hercules.Agent.Worker.Logging (withKatip)
 import Hercules.Agent.WorkerProtocol.Command
   ( Command,
   )
-import qualified Hercules.Agent.WorkerProtocol.Command as Command
-import qualified Hercules.Agent.WorkerProtocol.Command.Build as Build
-import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
-import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Effect
+import Hercules.Agent.WorkerProtocol.Command qualified as Command
+import Hercules.Agent.WorkerProtocol.Command.Build qualified as Build
+import Hercules.Agent.WorkerProtocol.Command.BuildResult qualified as BuildResult
+import Hercules.Agent.WorkerProtocol.Command.Effect qualified as Effect
 import Hercules.Agent.WorkerProtocol.Command.Eval
   ( Eval,
   )
-import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
+import Hercules.Agent.WorkerProtocol.Command.Eval qualified as Eval
 import Hercules.Agent.WorkerProtocol.Event
   ( Event (Exception),
   )
-import qualified Hercules.Agent.WorkerProtocol.Event as Event
-import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
+import Hercules.Agent.WorkerProtocol.Event qualified as Event
+import Hercules.Agent.WorkerProtocol.LogSettings qualified as LogSettings
 import Hercules.CNix as CNix
 import Hercules.CNix.Expr (init, setExtraStackOverflowHandlerToSleep)
 import Hercules.CNix.Util (installDefaultSigINTHandler)
 import Hercules.CNix.Verbosity (setShowTrace)
 import Hercules.Error
 import Katip
-import qualified Network.URI
+import Network.URI qualified
 import Protolude hiding (bracket, catch, check, evalState, wait, withAsync, yield)
-import qualified System.Environment as Environment
+import System.Environment qualified as Environment
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.Posix.Signals (Handler (Catch), installHandler, raiseSignal, sigINT, sigTERM)
 import System.Timeout (timeout)
 import UnliftIO.Async (wait, withAsync)
 import Prelude ()
-import qualified Prelude
+import Prelude qualified
 
 main :: IO ()
 main = do

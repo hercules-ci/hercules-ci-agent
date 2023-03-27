@@ -8,9 +8,9 @@ import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Foreign (alloca, peek)
 import Hercules.CNix.Encapsulation (HasEncapsulation (moveToForeignPtrWrapper))
 import Hercules.CNix.Store (StorePath (StorePath), traverseNonNull)
-import qualified Hercules.CNix.Store.Context
-import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exception as C
+import Hercules.CNix.Store.Context qualified
+import Language.C.Inline.Cpp qualified as C
+import Language.C.Inline.Cpp.Exception qualified as C
 import Protolude
 
 C.context (C.cppCtx <> C.fptrCtx <> C.bsCtx <> Hercules.CNix.Store.Context.context)

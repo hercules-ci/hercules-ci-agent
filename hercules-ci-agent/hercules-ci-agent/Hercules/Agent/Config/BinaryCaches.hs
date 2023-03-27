@@ -9,8 +9,8 @@ where
 
 import Control.Exception.Lifted (catchJust)
 import Data.Aeson
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Map as M
+import Data.ByteString.Lazy qualified as BL
+import Data.Map qualified as M
 import Hercules.Agent.Bag
 import Hercules.Agent.Config
 import Hercules.Agent.Log

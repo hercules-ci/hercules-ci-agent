@@ -2,22 +2,22 @@
 
 module Hercules.Agent.Cache where
 
-import qualified Data.Map as M
-import qualified Data.Text as T
+import Data.Map qualified as M
+import Data.Text qualified as T
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
-import qualified Hercules.Agent.Cachix as Cachix
-import qualified Hercules.Agent.Config.BinaryCaches as Config
+import Hercules.Agent.Cachix qualified as Cachix
+import Hercules.Agent.Config.BinaryCaches qualified as Config
 import Hercules.Agent.Env (App)
-import qualified Hercules.Agent.Env as Env
-import qualified Hercules.Agent.Netrc as Netrc
-import qualified Hercules.Agent.Nix as Nix
-import qualified Hercules.CNix as CNix
+import Hercules.Agent.Env qualified as Env
+import Hercules.Agent.Netrc qualified as Netrc
+import Hercules.Agent.Nix qualified as Nix
+import Hercules.CNix qualified as CNix
 import Hercules.CNix.Std.Set (StdSet, toListFP)
-import qualified Hercules.CNix.Std.Set as Std.Set
+import Hercules.CNix.Std.Set qualified as Std.Set
 import Hercules.CNix.Store (StorePath)
-import qualified Hercules.CNix.Store as Store
+import Hercules.CNix.Store qualified as Store
 import Hercules.Error (defaultRetry)
-import qualified Hercules.Formats.NixCache as NixCache
+import Hercules.Formats.NixCache qualified as NixCache
 import Katip
 import Protolude
 

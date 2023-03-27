@@ -3,7 +3,7 @@
 module Hercules.Agent.WorkerProtocol.Command.Eval where
 
 import Data.Binary
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
+import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
 import Hercules.API.Agent.Evaluate.ImmutableGitInput (ImmutableGitInput)
 import Hercules.Agent.NixFile.GitSource (GitSource)
 import Hercules.Agent.WorkerProtocol.LogSettings

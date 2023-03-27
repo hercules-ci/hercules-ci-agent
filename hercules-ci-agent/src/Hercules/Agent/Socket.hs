@@ -17,23 +17,23 @@ import Control.Concurrent.STM.TBQueue (TBQueue, flushTBQueue, newTBQueue, writeT
 import Control.Concurrent.STM.TChan (TChan, writeTChan)
 import Control.Concurrent.STM.TVar (TVar, modifyTVar, readTVar, writeTVar)
 import Control.Monad.IO.Unlift
-import qualified Data.Aeson as A
+import Data.Aeson qualified as A
 import Data.DList (DList, fromList)
 import Data.List (dropWhileEnd, splitAt)
 import Data.Semigroup
 import Data.Time (NominalDiffTime, addUTCTime, diffUTCTime, getCurrentTime)
 import Data.Time.Extras
 import Hercules.API.Agent.LifeCycle.ServiceInfo (ServiceInfo)
-import qualified Hercules.API.Agent.LifeCycle.ServiceInfo as ServiceInfo
+import Hercules.API.Agent.LifeCycle.ServiceInfo qualified as ServiceInfo
 import Hercules.API.Agent.Socket.Frame (Frame)
-import qualified Hercules.API.Agent.Socket.Frame as Frame
+import Hercules.API.Agent.Socket.Frame qualified as Frame
 import Hercules.Agent.STM (atomically, newTChanIO, newTVarIO)
 import Katip (KatipContext, Severity (..), katipAddContext, katipAddNamespace, logLocM, sl)
 import Network.URI (URI, uriAuthority, uriPath, uriPort, uriQuery, uriRegName, uriScheme)
 import Network.WebSockets (Connection, runClientWith)
-import qualified Network.WebSockets as WS
+import Network.WebSockets qualified as WS
 import Protolude hiding (atomically, handle, race, race_)
-import qualified UnliftIO
+import UnliftIO qualified
 import UnliftIO.Async (race, race_)
 import UnliftIO.Exception (handle)
 import UnliftIO.STM (readTVarIO)

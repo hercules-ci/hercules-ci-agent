@@ -16,7 +16,7 @@ module Data.Functor.Partitioner
 where
 
 import Data.Coerce
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Protolude
 
 -- TODO: Profunctor

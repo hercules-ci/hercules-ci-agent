@@ -5,7 +5,7 @@ module Hercules.Agent.NixFile.HerculesCIArgs where
 
 import Data.Aeson (ToJSON)
 import Hercules.Agent.NixFile.GitSource (GitSource)
-import qualified Hercules.Agent.NixFile.GitSource as GitSource
+import Hercules.Agent.NixFile.GitSource qualified as GitSource
 import Hercules.CNix.Expr (ToRawValue, ViaJSON (ViaJSON))
 import Protolude
 

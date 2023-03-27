@@ -1,20 +1,20 @@
 module Hercules.Agent.AgentSocket (withAgentSocket) where
 
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Hercules.API.Agent.LifeCycle.StartInfo (Hello, tasksInProgress)
 import Hercules.API.Agent.Socket.AgentPayload (AgentPayload)
-import qualified Hercules.API.Agent.Socket.AgentPayload as AgentPayload
+import Hercules.API.Agent.Socket.AgentPayload qualified as AgentPayload
 import Hercules.API.Agent.Socket.ServicePayload (ServicePayload)
-import qualified Hercules.API.Agent.Socket.ServicePayload as ServicePayload
+import Hercules.API.Agent.Socket.ServicePayload qualified as ServicePayload
 import Hercules.API.Id (Id)
 import Hercules.API.Task (Task)
-import qualified Hercules.API.Task as Task
+import Hercules.API.Task qualified as Task
 import Hercules.Agent.Env
   ( App,
   )
-import qualified Hercules.Agent.Env as Agent.Env
+import Hercules.Agent.Env qualified as Agent.Env
 import Hercules.Agent.STM (TVar, readTVarIO)
-import qualified Hercules.Agent.ServiceInfo as ServiceInfo
+import Hercules.Agent.ServiceInfo qualified as ServiceInfo
 import Hercules.Agent.Socket as Socket
 import Protolude hiding
   ( bracket,
@@ -25,7 +25,7 @@ import Protolude hiding
     retry,
     withMVar,
   )
-import qualified Servant.Auth.Client
+import Servant.Auth.Client qualified
 
 withAgentSocket :: Hello -> TVar (Map (Id (Task Task.Any)) b) -> (Socket ServicePayload AgentPayload -> App a) -> App a
 withAgentSocket hello tasks f = do

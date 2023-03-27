@@ -19,7 +19,7 @@ import Control.Exception.Lifted (bracket)
 import Control.Monad.Base
 import Control.Monad.Trans.Control
 import Data.IORef.Lifted
-import qualified Data.Set as Set
+import Data.Set qualified as Set
 import Protolude hiding
   ( bracket,
     newChan,

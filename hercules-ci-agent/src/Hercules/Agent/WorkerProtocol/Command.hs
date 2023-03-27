@@ -3,10 +3,10 @@
 module Hercules.Agent.WorkerProtocol.Command where
 
 import Data.Binary
-import qualified Hercules.Agent.WorkerProtocol.Command.Build as Build
-import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
-import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Effect
-import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
+import Hercules.Agent.WorkerProtocol.Command.Build qualified as Build
+import Hercules.Agent.WorkerProtocol.Command.BuildResult qualified as BuildResult
+import Hercules.Agent.WorkerProtocol.Command.Effect qualified as Effect
+import Hercules.Agent.WorkerProtocol.Command.Eval qualified as Eval
 import Protolude
 
 data Command

@@ -10,10 +10,10 @@ module Hercules.Secrets
   )
 where
 
-import qualified Control.Monad.Writer
+import Control.Monad.Writer qualified
 import Data.Binary (Binary)
 import Data.Tagged
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Hercules.Formats.Secret
 import Protolude
 

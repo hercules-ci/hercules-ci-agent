@@ -4,7 +4,7 @@ module Hercules.Agent.Worker.Conduit where
 
 import Data.Conduit (ConduitT, await, awaitForever, yield, (.|))
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef)
-import qualified Data.Sequence as Seq
+import Data.Sequence qualified as Seq
 import Protolude hiding (pred, yield)
 
 tailC :: Monad m => Int -> ConduitT i i m ()

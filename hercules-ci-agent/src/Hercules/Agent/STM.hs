@@ -12,7 +12,7 @@ module Hercules.Agent.STM
 where
 
 import Control.Concurrent.STM (STM, TBQueue, TChan, TVar, readTVar, writeTVar)
-import qualified Control.Concurrent.STM as STM
+import Control.Concurrent.STM qualified as STM
 import Protolude hiding (atomically)
 
 atomically :: MonadIO m => STM a -> m a

@@ -1,22 +1,22 @@
 module Hercules.Agent.Token where
 
 import Control.Lens ((^?))
-import qualified Data.Aeson as Aeson
+import Data.Aeson qualified as Aeson
 import Data.Aeson.Lens (key, _String)
-import qualified Data.ByteString.Base64.Lazy as B64L
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Text as T
-import qualified Hercules.API.Agent.LifeCycle
-import qualified Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 as CreateAgentSession
+import Data.ByteString.Base64.Lazy qualified as B64L
+import Data.ByteString.Lazy qualified as BL
+import Data.Text qualified as T
+import Hercules.API.Agent.LifeCycle qualified
+import Hercules.API.Agent.LifeCycle.CreateAgentSession_V2 qualified as CreateAgentSession
 import Hercules.Agent.Client (lifeCycleClient)
 import Hercules.Agent.Config (baseDirectory)
 import Hercules.Agent.Env as Env
-import qualified Hercules.Agent.EnvironmentInfo as EnvironmentInfo
+import Hercules.Agent.EnvironmentInfo qualified as EnvironmentInfo
 import Hercules.Agent.Log
 import Hercules.Error
 import Protolude
 import Servant.Auth.Client (Token (Token))
-import qualified System.Directory
+import System.Directory qualified
 import System.FilePath ((</>))
 
 getDir :: App FilePath

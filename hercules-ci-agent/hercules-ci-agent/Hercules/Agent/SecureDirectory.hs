@@ -3,10 +3,10 @@ module Hercules.Agent.SecureDirectory where
 import Hercules.Agent.Config (FinalConfig, workDirectory)
 import Hercules.Agent.Env
 import Protolude
-import qualified System.Directory
+import System.Directory qualified
 import System.FilePath ((</>))
-import qualified System.IO.Temp
-import qualified System.Posix.Files as Posix
+import System.IO.Temp qualified
+import System.Posix.Files qualified as Posix
 
 init :: FinalConfig -> IO ()
 init cfg = do

@@ -32,14 +32,14 @@ module Hercules.Agent.NixFile
 where
 
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration (InputDeclaration (SiblingInput), SiblingInput (MkSiblingInput))
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration
+import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration qualified
 import Hercules.Agent.NixFile.CiNixArgs (CiNixArgs (CiNixArgs))
-import qualified Hercules.Agent.NixFile.CiNixArgs
+import Hercules.Agent.NixFile.CiNixArgs qualified
 import Hercules.Agent.NixFile.GitSource (GitSource)
 import Hercules.Agent.NixFile.HerculesCIArgs (HerculesCIArgs)
-import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
+import Hercules.Agent.NixFile.HerculesCIArgs qualified as HerculesCIArgs
 import Hercules.CNix.Expr
   ( EvalState,
     Match (IsAttrs),
@@ -59,11 +59,11 @@ import Hercules.CNix.Expr
   )
 import Hercules.CNix.Expr.Raw (RawValue)
 import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), Provenance (Other), StringWithoutContext, basicAttrsWithProvenance, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (.$), (>>$.), type (->.), type (->?), type (.), type (::.), type (::?), type (::??), type (?), type (|.))
-import qualified Hercules.CNix.Expr.Schema as Schema
+import Hercules.CNix.Expr.Schema qualified as Schema
 import Hercules.Error (escalateAs)
 import Paths_hercules_ci_agent (getDataFileName)
 import Protolude hiding (evalState)
-import qualified System.Directory as Dir
+import System.Directory qualified as Dir
 import System.FilePath (takeDirectory, takeFileName, (</>))
 import UnliftIO.Directory (doesPathExist)
 

@@ -1,12 +1,12 @@
 module Hercules.Agent.ServiceInfo where
 
-import qualified Hercules.API.Agent.LifeCycle as API.LifeCycle
-import qualified Hercules.API.Agent.LifeCycle.ServiceInfo as ServiceInfo
-import qualified Hercules.Agent.Client as Client
+import Hercules.API.Agent.LifeCycle qualified as API.LifeCycle
+import Hercules.API.Agent.LifeCycle.ServiceInfo qualified as ServiceInfo
+import Hercules.Agent.Client qualified as Client
 import Hercules.Error (escalate)
 import Network.URI
 import Protolude
-import qualified Servant.Client.Streaming
+import Servant.Client.Streaming qualified
 
 data Env = Env
   { agentSocketBaseURL :: URI,

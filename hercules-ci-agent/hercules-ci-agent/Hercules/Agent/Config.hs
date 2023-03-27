@@ -14,15 +14,15 @@ module Hercules.Agent.Config
   )
 where
 
-import qualified Data.Aeson as A
-import qualified Data.Aeson.KeyMap as AK
+import Data.Aeson qualified as A
+import Data.Aeson.KeyMap qualified as AK
 import Data.Scientific (floatingOrInteger, fromFloatDigits)
-import qualified Data.Vector as V
+import Data.Vector qualified as V
 import GHC.Conc (getNumProcessors)
 import Hercules.CNix.Verbosity (Verbosity (..))
 import Katip (Severity (..))
 import Protolude hiding (to)
-import qualified System.Environment
+import System.Environment qualified
 import System.FilePath ((</>))
 import Toml
 

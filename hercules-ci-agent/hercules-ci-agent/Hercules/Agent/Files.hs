@@ -3,7 +3,7 @@
 module Hercules.Agent.Files where
 
 import Control.Monad.IO.Unlift
-import qualified Hercules.Agent.Config as Config
+import Hercules.Agent.Config qualified as Config
 import Hercules.Agent.Env
 import Protolude
 import System.Directory

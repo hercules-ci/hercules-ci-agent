@@ -2,12 +2,12 @@
 
 module Hercules.Agent.Netrc where
 
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import qualified Hercules.Agent.Env as Env
+import Data.Text qualified as T
+import Data.Text.IO qualified as T
+import Hercules.Agent.Env qualified as Env
 import Hercules.Agent.Netrc.Env (Env (Env, netrcFile))
-import qualified Hercules.Agent.Nix as Nix
-import qualified Hercules.Agent.SecureDirectory as SecureDirectory
+import Hercules.Agent.Nix qualified as Nix
+import Hercules.Agent.SecureDirectory qualified as SecureDirectory
 import Protolude
 import System.IO (hClose)
 

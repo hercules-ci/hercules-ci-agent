@@ -1,6 +1,6 @@
 module Hercules.Agent.WorkerProcessSpec (spec) where
 
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Hercules.API.Agent.Evaluate.EvaluateTask
 import Hercules.Agent.WorkerProcess
 import Protolude

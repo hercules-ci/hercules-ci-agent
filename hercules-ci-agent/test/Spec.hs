@@ -3,12 +3,12 @@ module Spec
   )
 where
 
-import qualified Hercules.Agent.Nix.RetrieveDerivationInfoSpec
-import qualified Hercules.Agent.NixPathSpec
-import qualified Hercules.Agent.Worker.ConduitSpec
-import qualified Hercules.Agent.Worker.STMSpec
-import qualified Hercules.Agent.WorkerProcessSpec
-import qualified Hercules.SecretsSpec
+import Hercules.Agent.Nix.RetrieveDerivationInfoSpec qualified
+import Hercules.Agent.NixPathSpec qualified
+import Hercules.Agent.Worker.ConduitSpec qualified
+import Hercules.Agent.Worker.STMSpec qualified
+import Hercules.Agent.WorkerProcessSpec qualified
+import Hercules.SecretsSpec qualified
 import Test.Hspec
 
 spec :: Spec

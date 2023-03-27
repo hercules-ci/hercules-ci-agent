@@ -10,10 +10,10 @@ module Hercules.Agent.Log
 where
 
 import Data.Aeson
-import qualified Data.Aeson as A
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as LBS
-import qualified Data.Map as M
+import Data.Aeson qualified as A
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as LBS
+import Data.Map qualified as M
 import Katip hiding (logLocM)
 import Katip.Core
 import Katip.Monadic (logLocM)

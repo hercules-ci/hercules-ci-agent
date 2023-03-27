@@ -6,19 +6,19 @@
 module Hercules.Agent.Worker.Build.Logger (initLogger, withLoggerConduit, tapper, withTappedStderr, batch, unbatch, filterProgress, nubProgress) where
 
 import Conduit (MonadUnliftIO, filterC)
-import qualified Data.ByteString.Char8 as BSC
+import Data.ByteString.Char8 qualified as BSC
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Data.Conduit (ConduitT, Flush (..), await, awaitForever, yield)
 import Data.Vector (Vector)
-import qualified Data.Vector as V
+import Data.Vector qualified as V
 import Foreign (alloca, nullPtr, peek)
 import Hercules.API.Logs.LogEntry (LogEntry)
-import qualified Hercules.API.Logs.LogEntry as LogEntry
+import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Hercules.Agent.Worker.Build.Logger.Context (Fields, HerculesLoggerEntry, context)
 import Hercules.CNix.Store.Context (unsafeMallocBS)
 import Katip
-import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exception as C
+import Language.C.Inline.Cpp qualified as C
+import Language.C.Inline.Cpp.Exception qualified as C
 import Protolude hiding (bracket, finally, mask_, onException, tryJust, wait, withAsync, yield)
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.IO.Error (isEOFError)

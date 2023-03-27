@@ -5,22 +5,22 @@
 module Hercules.Effect where
 
 import Control.Monad.Catch (MonadThrow)
-import qualified Data.Aeson as A
-import qualified Data.Aeson.KeyMap as AK
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Map as M
+import Data.Aeson qualified as A
+import Data.Aeson.KeyMap qualified as AK
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BL
+import Data.Map qualified as M
 import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent (GitToken (..), SecretRef (GitToken, SimpleSecret), SimpleSecret (MkSimpleSecret))
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent qualified
 import Hercules.API.Id (Id, idText)
 import Hercules.Agent.Sensitive (Sensitive (Sensitive, reveal), revealContainer)
-import qualified Hercules.Agent.WorkerProcess as WorkerProcess
+import Hercules.Agent.WorkerProcess qualified as WorkerProcess
 import Hercules.CNix (Derivation)
 import Hercules.CNix.Store (getDerivationArguments, getDerivationBuilder, getDerivationEnv)
 import Hercules.Effect.Container (BindMount (BindMount))
-import qualified Hercules.Effect.Container as Container
+import Hercules.Effect.Container qualified as Container
 import Hercules.Error (escalateAs)
-import qualified Hercules.Formats.Secret as Formats.Secret
+import Hercules.Formats.Secret qualified as Formats.Secret
 import Hercules.Secrets (SecretContext, evalCondition, evalConditionTrace)
 import Katip (KatipContext, Severity (..), logLocM, logStr)
 import Network.Socket (Family (AF_UNIX), SockAddr (SockAddrUnix), SocketType (Stream), bind, listen, socket, withFdSocket)
@@ -29,7 +29,7 @@ import System.FilePath
 import System.Posix (dup, fdToHandle)
 import UnliftIO.Directory (createDirectory, createDirectoryIfMissing)
 import UnliftIO.Process (withCreateProcess)
-import qualified UnliftIO.Process as Process
+import UnliftIO.Process qualified as Process
 
 parseDrvSecretsMap :: Map ByteString ByteString -> Either Text (Map Text SecretRef)
 parseDrvSecretsMap drvEnv =
