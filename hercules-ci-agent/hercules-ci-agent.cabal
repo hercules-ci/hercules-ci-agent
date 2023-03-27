@@ -452,6 +452,8 @@ test-suite hercules-test
     , transformers-base
     , unliftio-core
     , vector
+  build-tool-depends:
+      hspec-discover:hspec-discover
   default-language: Haskell2010
 
 executable hercules-ci-nix-daemon
