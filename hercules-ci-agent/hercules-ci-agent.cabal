@@ -35,24 +35,24 @@ source-repository head
 
 common hs
   default-extensions: 
-    NoImplicitPrelude
     DeriveGeneric
     DeriveTraversable
     DerivingStrategies
     DisambiguateRecordFields
     FlexibleContexts
-    ImportQualifiedPost
     InstanceSigs
     LambdaCase
     MultiParamTypeClasses
-    NumericUnderscores
-    OverloadedRecordDot
+    NoImplicitPrelude
     OverloadedStrings
     RankNTypes
     TupleSections
     TypeApplications
     TypeOperators
-
+    OverloadedRecordDot
+    ImportQualifiedPost
+    NumericUnderscores
+    ScopedTypeVariables
   ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -Werror=incomplete-patterns -Werror=missing-fields
 
 common rts
@@ -105,6 +105,7 @@ library
       Data.Fixed.Extras
       Data.Time.Extras
       Hercules.Agent.Binary
+      Hercules.Agent.Conduit
       Hercules.Agent.NixFile
       Hercules.Agent.NixFile.GitSource
       Hercules.Agent.NixFile.HerculesCIArgs
@@ -126,7 +127,6 @@ library
       Hercules.Agent.WorkerProtocol.Event.AttributeError
       Hercules.Agent.WorkerProtocol.Event.AttributeIFD
       Hercules.Agent.WorkerProtocol.Event.BuildResult
-      Hercules.Agent.WorkerProtocol.LogSettings
       Hercules.Agent.WorkerProtocol.Orphans
       Hercules.Effect
       Hercules.Effect.Container
@@ -140,8 +140,6 @@ library
       Paths_hercules_ci_agent
   hs-source-dirs:
       src
-  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
-  ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns
   build-depends:
       aeson >= 2
     , async
@@ -184,6 +182,7 @@ library
     , unliftio-core
     , unliftio
     , uuid
+    , vector
     , websockets
     , wuss
   default-language: Haskell2010
@@ -216,6 +215,7 @@ executable hercules-ci-agent
       Hercules.Agent.Files
       Hercules.Agent.Init
       Hercules.Agent.Log
+      Hercules.Agent.LogSocket
       Hercules.Agent.Netrc
       Hercules.Agent.Netrc.Env
       Hercules.Agent.Nix
@@ -231,8 +231,6 @@ executable hercules-ci-agent
       Paths_hercules_ci_agent
   hs-source-dirs:
       hercules-ci-agent
-  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
-  ghc-options: -Werror=incomplete-patterns -Werror=missing-fields -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts "-with-rtsopts=-maxN8 -qg"
   build-depends:
       aeson
     , async
@@ -309,7 +307,6 @@ executable hercules-ci-agent-worker
       Hercules.Agent.Worker.Build.Prefetched
       Hercules.Agent.Worker.Build.Logger
       Hercules.Agent.Worker.Build.Logger.Context
-      Hercules.Agent.Worker.Conduit
       Hercules.Agent.Worker.Effect
       Hercules.Agent.Worker.Env
       Hercules.Agent.Worker.Error
@@ -326,15 +323,7 @@ executable hercules-ci-agent-worker
       cbits/hercules-logger.cxx
       cbits/nix-2.4/hercules-store.cxx
 
-  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
   ghc-options:
-    -Werror=incomplete-patterns -Werror=missing-fields
-    -Wall
-    -fwarn-tabs
-    -fwarn-unused-imports
-    -fwarn-missing-signatures
-    -fwarn-name-shadowing
-    -fwarn-incomplete-patterns
     -threaded
     -rtsopts
     -with-rtsopts=-maxN8
@@ -399,6 +388,7 @@ test-suite hercules-ci-agent-unit-tests
   main-is: TestMain.hs
   other-modules:
       Data.Conduit.Extras
+      Hercules.Agent.Conduit
       Hercules.Agent.Log
       Hercules.Agent.NixPath
       Hercules.Agent.NixPathSpec
@@ -406,8 +396,7 @@ test-suite hercules-ci-agent-unit-tests
       Hercules.Agent.Nix.RetrieveDerivationInfoSpec
       Hercules.Agent.WorkerProcess
       Hercules.Agent.WorkerProcessSpec
-      Hercules.Agent.Worker.Conduit
-      Hercules.Agent.Worker.ConduitSpec
+      Hercules.Agent.ConduitSpec
       Hercules.Agent.Worker.STM
       Hercules.Agent.Worker.STMSpec
       Hercules.Secrets
@@ -421,8 +410,6 @@ test-suite hercules-ci-agent-unit-tests
       test
       hercules-ci-agent
       hercules-ci-agent-worker
-  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators
-  ghc-options: -Werror=incomplete-patterns -Werror=missing-fields -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
     , async

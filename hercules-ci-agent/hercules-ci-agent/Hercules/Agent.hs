@@ -56,10 +56,13 @@ import Hercules.Agent.EnvironmentInfo (extractAgentInfo)
 import Hercules.Agent.Evaluate qualified as Evaluate
 import Hercules.Agent.Init qualified as Init
 import Hercules.Agent.Log
+import Hercules.Agent.LogSocket (LogSettings (LogSettings), withLoggerNoFlush)
+import Hercules.Agent.LogSocket qualified
 import Hercules.Agent.Netrc qualified as Netrc
 import Hercules.Agent.Options qualified as Options
 import Hercules.Agent.STM
-import Hercules.Agent.Socket as Socket
+import Hercules.Agent.ServiceInfo qualified
+import Hercules.Agent.Socket qualified as Socket
 import Hercules.Agent.Token (withAgentToken)
 import Hercules.CNix.Store qualified as CNix.Store
 import Hercules.Error
@@ -67,6 +70,7 @@ import Hercules.Error
     exponential,
     retry,
   )
+import Network.URI (uriToString)
 import Protolude hiding
   ( atomically,
     bracket,
@@ -117,23 +121,40 @@ run env _cfg = do
               withAgentSocket hello tasks \socket ->
                 withApplicationLevelPinger socket $ do
                   logLocM InfoS "Agent online."
+                  storeProtocolVersion <- liftIO do
+                    CNix.Store.openStore >>= CNix.Store.getStoreProtocolVersion
+
+                  let baseURL = env.serviceInfo.bulkSocketBaseURL & toString
+                      toString uri = uriToString identity uri "" & toS
+
+                  let launchTask' task path_ f = launchTask tasks socket (Task.upcastId task.id) do
+                        Netrc.withNixNetrc $ Cache.withCaches do
+                          withLoggerNoFlush
+                            ("task" <> show task.id)
+                            storeProtocolVersion
+                            LogSettings
+                              { path = path_,
+                                baseURL = baseURL,
+                                token = task.logToken
+                              }
+                            \logger -> do
+                              f logger
+
                   forever $ do
-                    liftIO (atomically $ readTChan $ serviceChan socket) >>= \case
+                    liftIO (atomically $ readTChan $ socket.serviceChan) >>= \case
                       ServicePayload.ServiceInfo _ -> pass
                       ServicePayload.StartEvaluation evalTask ->
-                        launchTask tasks socket (Task.upcastId $ EvaluateTask.id evalTask) do
+                        launchTask' evalTask "/api/v1/logs/build/socket" \logger -> do
                           Netrc.withNixNetrc $ Cache.withCaches do
                             CNix.Store.withStore \store -> do
-                              Evaluate.performEvaluation store evalTask
+                              Evaluate.performEvaluation logger store evalTask
                             pure $ TaskStatus.Successful ()
                       ServicePayload.StartBuild buildTask ->
-                        launchTask tasks socket (Task.upcastId $ BuildTask.id buildTask) do
-                          Netrc.withNixNetrc $ Cache.withCaches do
-                            Build.performBuild buildTask
+                        launchTask' buildTask "/api/v1/logs/build/socket" \logger -> do
+                          Build.performBuild logger buildTask
                       ServicePayload.StartEffect effectTask ->
-                        launchTask tasks socket (Task.upcastId $ EffectTask.id effectTask) do
-                          Netrc.withNixNetrc $ Cache.withCaches do
-                            Effect.performEffect effectTask
+                        launchTask' effectTask "/api/v1/logs/build/socket" \logger -> do
+                          Effect.performEffect logger effectTask
                       ServicePayload.Cancel cancellation -> cancelTask tasks socket cancellation
 
 withTaskState :: (TVar (Map (Id (Task Task.Any)) ThreadId) -> App a) -> App a

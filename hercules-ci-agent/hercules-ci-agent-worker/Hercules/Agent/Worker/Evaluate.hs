@@ -169,7 +169,7 @@ runEval ::
   HerculesState ->
   Eval ->
   ConduitM i Event m ()
-runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
+runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eval = do
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setGlobalOption
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setOption
   liftIO initThread
@@ -211,12 +211,12 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                 then do
                   logLocM DebugS "Output already valid"
                   -- Report IFD
-                  liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing False
+                  liftIO $ st.sendEvents $ pure $ Event.Build drvPath (decode outputName) Nothing False
                 else do
                   don'tBlock <- liftIO (readIORef isNonBlocking)
                   let doBlock = not don'tBlock
 
-                  liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing doBlock
+                  liftIO $ st.sendEvents $ pure $ Event.Build drvPath (decode outputName) Nothing doBlock
 
                   buildAsync <- liftIO $ asyncInTVarMap (drvStorePath, outputName) (drvOutputSubstituteAsyncs st) do
                     ensurePath (wrappedStore st) outputPath
@@ -232,7 +232,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                         clearSubstituterCaches
                         clearPathInfoCache store
                         ensurePath (wrappedStore st) outputPath `catch` \(_e1 :: SomeException) -> do
-                          writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) (Just attempt0) doBlock
+                          st.sendEvents $ pure $ Event.Build drvPath (decode outputName) (Just attempt0) doBlock
 
                           (_, result') <-
                             wait =<< asyncInTVarMap drvStorePath (drvRebuildAsyncs st) do

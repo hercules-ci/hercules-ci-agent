@@ -3,6 +3,7 @@ module Hercules.Agent.Worker.Env where
 import Control.Concurrent.STM (TVar)
 import Data.IORef (IORef)
 import Data.UUID (UUID)
+import Data.Vector (Vector)
 import Hercules.Agent.Worker.HerculesStore (HerculesStore)
 import Hercules.Agent.WorkerProtocol.Command.BuildResult qualified as BuildResult
 import Hercules.Agent.WorkerProtocol.Event (Event)
@@ -18,6 +19,6 @@ data HerculesState = HerculesState
     drvsInProgress :: IORef (Set StorePath),
     herculesStore :: Ptr (Ref HerculesStore),
     wrappedStore :: Store,
-    shortcutChannel :: Chan (Maybe Event),
+    sendEvents :: Vector Event -> IO (),
     extraNixOptions :: [(Text, Text)]
   }

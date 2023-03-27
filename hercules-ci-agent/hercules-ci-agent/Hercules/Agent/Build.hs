@@ -4,6 +4,7 @@ module Hercules.Agent.Build where
 import Data.Aeson qualified as A
 import Data.IORef.Lifted
 import Data.Map qualified as M
+import Data.Vector (Vector)
 import Hercules.API.Agent.Build qualified as API.Build
 import Hercules.API.Agent.Build.BuildEvent qualified as BuildEvent
 import Hercules.API.Agent.Build.BuildEvent.OutputInfo
@@ -15,6 +16,7 @@ import Hercules.API.Agent.Build.BuildTask
   ( BuildTask,
   )
 import Hercules.API.Agent.Build.BuildTask qualified as BuildTask
+import Hercules.API.Logs.LogEntry (LogEntry)
 import Hercules.API.Servant (noContent)
 import Hercules.API.TaskStatus (TaskStatus)
 import Hercules.API.TaskStatus qualified as TaskStatus
@@ -28,23 +30,20 @@ import Hercules.Agent.Env
 import Hercules.Agent.Env qualified as Env
 import Hercules.Agent.Log
 import Hercules.Agent.Nix qualified as Nix
-import Hercules.Agent.Sensitive (Sensitive (Sensitive))
-import Hercules.Agent.ServiceInfo qualified as ServiceInfo
 import Hercules.Agent.WorkerProcess
 import Hercules.Agent.WorkerProcess qualified as WorkerProcess
 import Hercules.Agent.WorkerProtocol.Command qualified as Command
 import Hercules.Agent.WorkerProtocol.Command.Build qualified as Command.Build
 import Hercules.Agent.WorkerProtocol.Event qualified as Event
 import Hercules.Agent.WorkerProtocol.Event.BuildResult qualified as BuildResult
-import Hercules.Agent.WorkerProtocol.LogSettings qualified as LogSettings
+import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON))
 import Hercules.CNix.Store qualified as CNix
 import Hercules.Error (defaultRetry)
-import Network.URI qualified
 import Protolude
 import System.Process
 
-performBuild :: BuildTask.BuildTask -> App TaskStatus
-performBuild buildTask = do
+performBuild :: (Vector LogEntry -> IO ()) -> BuildTask.BuildTask -> App TaskStatus
+performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath" buildTask.derivationPath) $ do
   workerExe <- getWorkerExe
   commandChan <- liftIO newChan
   statusRef <- newIORef Nothing
@@ -57,21 +56,21 @@ performBuild buildTask = do
               extraEnv = mempty
             }
         )
-  let opts = [show extraNixOptions]
-      procSpec =
-        (System.Process.proc workerExe opts)
+  let procSpec =
+        (System.Process.proc workerExe ["build", toS buildTask.derivationPath])
           { env = Just workerEnv,
             close_fds = True,
             cwd = Nothing
           }
       writeEvent :: Event.Event -> App ()
       writeEvent event = case event of
+        Event.LogItems (ViaJSON e) -> do
+          liftIO (sendLogEntries e)
         Event.BuildResult r -> writeIORef statusRef $ Just r
         Event.Exception e -> do
           logLocM DebugS $ logStr (show e :: Text)
           panic e
         _ -> pass
-  baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   materialize <- asks (not . Config.nixUserIsTrusted . Env.config)
   liftIO $
     writeChan commandChan $
@@ -80,23 +79,18 @@ performBuild buildTask = do
           Command.Build.Build
             { drvPath = BuildTask.derivationPath buildTask,
               inputDerivationOutputPaths = encodeUtf8 <$> BuildTask.inputDerivationOutputPaths buildTask,
-              logSettings =
-                LogSettings.LogSettings
-                  { token = Sensitive $ BuildTask.logToken buildTask,
-                    path = "/api/v1/logs/build/socket",
-                    baseURL = toS $ Network.URI.uriToString identity baseURL ""
-                  },
               materializeDerivation = materialize
             }
   let stderrHandler =
         stderrLineHandler
+          sendLogEntries
           ( M.fromList
               [ ("taskId", A.toJSON (BuildTask.id buildTask)),
                 ("derivationPath", A.toJSON (BuildTask.derivationPath buildTask))
               ]
           )
           "Builder"
-  exitCode <- runWorker procSpec stderrHandler commandChan writeEvent
+  exitCode <- runWorker extraNixOptions procSpec (stderrHandler) commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> logStr (show exitCode :: Text)
   case exitCode of
     ExitSuccess -> pass

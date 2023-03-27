@@ -14,6 +14,9 @@ import Data.Aeson qualified as A
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as LBS
 import Data.Map qualified as M
+import Data.Vector (Vector)
+import Hercules.API.Logs.LogEntry (LogEntry)
+import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Katip hiding (logLocM)
 import Katip.Core
 import Katip.Monadic (logLocM)
@@ -31,16 +34,16 @@ panicWithLog msg = do
   logLocM ErrorS $ logStr msg
   panic msg
 
-stderrLineHandler :: KatipContext m => Map Text Value -> Text -> Int -> ByteString -> m ()
-stderrLineHandler callerContext _processRole _ ln
+makeStderrLogItem :: ByteString -> LogEntry
+makeStderrLogItem msg = LogEntry.Msg {msg = "<worker stderr> " <> decodeUtf8With lenientDecode msg, i = 0, ms = 0, level = 0}
+
+stderrLineHandler :: KatipContext m => (Vector LogEntry -> IO ()) -> Map Text Value -> Text -> Int -> ByteString -> m ()
+stderrLineHandler _sendLogItems callerContext _processRole _ ln
   | "@katip " `BS.isPrefixOf` ln,
     Just item <- A.decode (LBS.fromStrict $ BS.drop 7 ln) =
       -- "This is the lowest level function [...] useful when implementing centralised logging services."
       Katip.Core.logKatipItem (Katip.Core.SimpleLogPayload . M.toList . fmap (Katip.Core.AnyLogPayload :: A.Value -> Katip.Core.AnyLogPayload) . extendContext <$> item)
   where
     extendContext workerItem = M.union workerItem callerContext
-stderrLineHandler _ processRole pid ln =
-  withNamedContext "worker" (pid :: Int) $
-    logLocM InfoS $
-      logStr $
-        processRole <> ": " <> decodeUtf8With lenientDecode ln
+stderrLineHandler sendLogItems _ _processRole _pid ln =
+  liftIO $ sendLogItems $ pure $ makeStderrLogItem ln

@@ -11,6 +11,7 @@ where
 import Conduit hiding (Producer)
 import Control.Exception.Safe qualified as Safe
 import Control.Monad.IO.Unlift
+import Data.Aeson qualified as A
 import Data.Binary (Binary)
 import Data.Conduit.Extras (conduitToCallbacks, sourceChan)
 import Data.Conduit.Serialization.Binary
@@ -22,7 +23,7 @@ import GHC.IO.Exception
 import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
 import Hercules.Agent.NixPath (renderNixPath)
 import Paths_hercules_ci_agent (getBinDir)
-import Protolude
+import Protolude hiding (yield)
 import System.Environment (getEnvironment)
 import System.FilePath ((</>))
 import System.IO (hClose)
@@ -75,13 +76,15 @@ getDaemonExe = do
 -- using a 'Binary' interface.
 runWorker ::
   (Binary command, Binary event, MonadUnliftIO m, MonadThrow m) =>
+  -- | Extra Nix options
+  [(Text, Text)] ->
   -- | Process invocation details. Will ignore std_in, std_out and std_err fields.
   CreateProcess ->
   (Int -> ByteString -> m ()) ->
   Chan (Maybe command) ->
   (event -> m ()) ->
   m ExitCode
-runWorker baseProcess stderrLineHandler commandChan eventHandler = do
+runWorker extraNixOptions baseProcess stderrLineHandler commandChan eventHandler = do
   UnliftIO {unliftIO = unlift} <- askUnliftIO
   let createProcessSpec =
         baseProcess
@@ -109,8 +112,11 @@ runWorker baseProcess stderrLineHandler commandChan eventHandler = do
                 (sourceHandle errHandle .| linesUnboundedAsciiC .| awaitForever (liftIO . unlift . stderrLineHandler pid))
       let eventConduit = sourceHandle outHandle .| conduitDecode
           commandConduit =
-            sourceChan commandChan
-              .| conduitEncode
+            ( do
+                yield (toS (A.encode extraNixOptions <> "\n"))
+                sourceChan commandChan
+                  .| conduitEncode
+            )
               .| concatMapC (\x -> [Chunk x, Flush])
               .| handleC handleEPIPE (sinkHandleFlush inHandle)
           handleEPIPE e | ioeGetErrorType e == ResourceVanished = pure ()
