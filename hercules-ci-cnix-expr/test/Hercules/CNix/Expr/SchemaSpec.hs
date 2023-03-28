@@ -8,7 +8,6 @@ import Hercules.CNix.Expr (EvalState, NixPath, NixString)
 import qualified Hercules.CNix.Expr as Expr
 import Hercules.CNix.Expr.Raw (RawValueType (Attrs, Bool, Lambda, Null, String))
 import Hercules.CNix.Expr.Schema
-import Hercules.CNix.Expr.Schema (FromPSObject (fromPSObject))
 import Protolude hiding (TypeError, check, evalState)
 import SingleState (evalState)
 import Test.Hspec

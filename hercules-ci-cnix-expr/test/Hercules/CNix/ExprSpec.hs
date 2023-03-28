@@ -136,7 +136,8 @@ spec = do
                 ExitSuccess -> pass
             readProc exe args = do
               -- putErrText $ "Reading " <> show exe <> " " <> show args
-              (t, r) <- System.Process.withCreateProcess ((System.Process.proc exe args) {System.Process.cwd = Just dir, System.Process.std_out = System.Process.CreatePipe}) \_ (Just stdo) _ p -> do
+              (t, r) <- System.Process.withCreateProcess ((System.Process.proc exe args) {System.Process.cwd = Just dir, System.Process.std_out = System.Process.CreatePipe}) \_ stdom _ p -> do
+                stdo <- maybe (panic "no stdout") pure stdom
                 t <- T.hGetContents stdo
                 (t,) <$> waitForProcess p
               case r of
