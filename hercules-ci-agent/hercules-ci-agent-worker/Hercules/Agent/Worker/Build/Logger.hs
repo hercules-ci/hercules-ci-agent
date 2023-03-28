@@ -60,25 +60,25 @@ popMany =
         (\buf -> [C.block| void { delete $(LogEntryQueue *buf); }|])
         ( \buf -> do
             [C.block| void {
-        herculesLogger->popMany($(int limit), *$(LogEntryQueue *buf));
-        }|]
+              herculesLogger->popMany($(int limit), *$(LogEntryQueue *buf));
+            }|]
             let getBufHeadAndReinsertClose =
                   [C.block| HerculesLoggerEntry * {
-              LogEntryQueue &buf = *$(LogEntryQueue *buf);
-              if (buf.empty()) {
-                return nullptr;
-              } else {
-                auto r = buf.front().get();
-                if (r == nullptr) {
-                  herculesLogger->close();
-                }
-                return r;
-              }
-            }|]
+                    LogEntryQueue &buf = *$(LogEntryQueue *buf);
+                    if (buf.empty()) {
+                      return nullptr;
+                    } else {
+                      auto r = buf.front().get();
+                      if (r == nullptr) {
+                        herculesLogger->close();
+                      }
+                      return r;
+                    }
+                  }|]
                 dropBufHead =
                   [C.block| void { 
-            $(LogEntryQueue *buf)->pop();
-          }|]
+                    $(LogEntryQueue *buf)->pop();
+                  }|]
                 popBufHead = do
                   hdN <- getBufHeadAndReinsertClose
                   forNonNull hdN $ \hd -> do
