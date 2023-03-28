@@ -50,10 +50,13 @@ import Hercules.Agent.WorkerProtocol.Event
   )
 import Hercules.Agent.WorkerProtocol.Event qualified as Event
 import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON))
+import Hercules.Agent.WorkerProtocol.WorkerConfig (WorkerConfig)
+import Hercules.Agent.WorkerProtocol.WorkerConfig qualified
 import Hercules.CNix as CNix
 import Hercules.CNix.Expr (init, setExtraStackOverflowHandlerToSleep)
 import Hercules.CNix.Util (installDefaultSigINTHandler)
-import Hercules.CNix.Verbosity (setShowTrace)
+import Hercules.CNix.Verbosity (setShowTrace, setVerbosity)
+import Hercules.CNix.Verbosity qualified as CNix.Verbosity
 import Hercules.Error
 import Katip
 import Protolude hiding (bracket, catch, check, evalState, wait, withAsync, yield)
@@ -71,11 +74,11 @@ main = do
       _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
       installDefaultSigINTHandler
       setExtraStackOverflowHandlerToSleep
-      optionsBytes <- BSC.hGetLine parentHandles.commands
-      options <- case A.eitherDecode (toS optionsBytes) of
-        Left e -> panic ("Could not parse worker options: " <> show e)
+      workerConfigBytes <- BSC.hGetLine parentHandles.commands
+      workerConfig <- case A.eitherDecode (toS workerConfigBytes) of
+        Left e -> panic ("Could not parse WorkerConfig: " <> show e)
         Right r -> pure r
-      taskWorker parentHandles.commands sendEvents options
+      taskWorker parentHandles.commands sendEvents workerConfig
 
 withNixLogger ::
   (Vector Event -> IO ()) ->
@@ -133,15 +136,19 @@ setOptions = traverse_ \(k, v) -> do
   setGlobalOption k v
   setOption k v
 
-taskWorker :: Handle -> (Vector Event -> IO ()) -> [(Text, Text)] -> IO ()
-taskWorker commandsHandle sendEvents_ options = do
-  setOptions options
+taskWorker :: Handle -> (Vector Event -> IO ()) -> WorkerConfig -> IO ()
+taskWorker commandsHandle sendEvents_ cfg = do
+  setOptions cfg.nixOptions
+  -- at least info messages are expected in the dashboard logs
+  let nixVerbosity = CNix.Verbosity.both CNix.Verbosity.Info cfg.nixVerbosity.unViaShowRead
+      withKatip' = withKatip cfg.verbosity.unViaShowRead
+  setVerbosity nixVerbosity
   drvsCompleted_ <- newTVarIO mempty
   drvBuildAsyncs_ <- newTVarIO mempty
   drvRebuildAsyncs_ <- newTVarIO mempty
   drvOutputSubstituteAsyncs_ <- newTVarIO mempty
   drvsInProgress_ <- newIORef mempty
-  withStore $ \wrappedStore_ -> withHerculesStore wrappedStore_ $ \herculesStore_ -> withKatip $ do
+  withStore $ \wrappedStore_ -> withHerculesStore wrappedStore_ $ \herculesStore_ -> withKatip' do
     liftIO $ setBuilderCallback herculesStore_ mempty
     let st =
           HerculesState
@@ -153,7 +160,8 @@ taskWorker commandsHandle sendEvents_ options = do
               herculesStore = herculesStore_,
               wrappedStore = wrappedStore_,
               sendEvents = sendEvents_,
-              extraNixOptions = options
+              extraNixOptions = cfg.nixOptions,
+              nixVerbosity = cfg.nixVerbosity.unViaShowRead
             }
     runConduitRes do
       sourceHandle commandsHandle

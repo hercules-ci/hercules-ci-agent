@@ -9,6 +9,7 @@ import Hercules.Agent.WorkerProtocol.Command.BuildResult qualified as BuildResul
 import Hercules.Agent.WorkerProtocol.Event (Event)
 import Hercules.CNix (Ref)
 import Hercules.CNix.Store (Store, StorePath)
+import Hercules.CNix.Verbosity qualified as CNix
 import Protolude
 
 data HerculesState = HerculesState
@@ -20,5 +21,6 @@ data HerculesState = HerculesState
     herculesStore :: Ptr (Ref HerculesStore),
     wrappedStore :: Store,
     sendEvents :: Vector Event -> IO (),
-    extraNixOptions :: [(Text, Text)]
+    extraNixOptions :: [(Text, Text)],
+    nixVerbosity :: CNix.Verbosity
   }

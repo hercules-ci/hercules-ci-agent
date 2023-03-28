@@ -22,13 +22,20 @@ import Data.Map qualified as M
 import GHC.IO.Exception
 import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
 import Hercules.Agent.NixPath (renderNixPath)
+import Hercules.Agent.WorkerProtocol.WorkerConfig (WorkerConfig)
 import Paths_hercules_ci_agent (getBinDir)
 import Protolude hiding (yield)
 import System.Environment (getEnvironment)
 import System.FilePath ((</>))
 import System.IO (hClose)
-import System.IO.Error
+import System.IO.Error (illegalOperationErrorType, ioeGetErrorType, mkIOError)
 import System.Process
+  ( CreateProcess (std_err, std_in, std_out),
+    StdStream (CreatePipe),
+    getPid,
+    waitForProcess,
+    withCreateProcess,
+  )
 import System.Timeout (timeout)
 import Prelude ()
 
@@ -76,15 +83,15 @@ getDaemonExe = do
 -- using a 'Binary' interface.
 runWorker ::
   (Binary command, Binary event, MonadUnliftIO m, MonadThrow m) =>
-  -- | Extra Nix options
-  [(Text, Text)] ->
+  -- | Extra Nix options, and other "env" values
+  WorkerConfig ->
   -- | Process invocation details. Will ignore std_in, std_out and std_err fields.
   CreateProcess ->
   (Int -> ByteString -> m ()) ->
   Chan (Maybe command) ->
   (event -> m ()) ->
   m ExitCode
-runWorker extraNixOptions baseProcess stderrLineHandler commandChan eventHandler = do
+runWorker workerConfig baseProcess stderrLineHandler commandChan eventHandler = do
   UnliftIO {unliftIO = unlift} <- askUnliftIO
   let createProcessSpec =
         baseProcess
@@ -113,7 +120,7 @@ runWorker extraNixOptions baseProcess stderrLineHandler commandChan eventHandler
       let eventConduit = sourceHandle outHandle .| conduitDecode
           commandConduit =
             ( do
-                yield (toS (A.encode extraNixOptions <> "\n"))
+                yield (toS (A.encode workerConfig <> "\n"))
                 sourceChan commandChan
                   .| conduitEncode
             )

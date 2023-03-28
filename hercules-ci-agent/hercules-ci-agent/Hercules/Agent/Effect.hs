@@ -12,8 +12,8 @@ import Hercules.Agent.Config qualified as Config
 import Hercules.Agent.Env hiding (config)
 import Hercules.Agent.Env qualified as Env
 import Hercules.Agent.Files
+import Hercules.Agent.InitWorkerConfig qualified as InitWorkerConfig
 import Hercules.Agent.Log
-import Hercules.Agent.Nix qualified as Nix
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
 import Hercules.Agent.WorkerProcess
 import Hercules.Agent.WorkerProcess qualified as WorkerProcess
@@ -30,7 +30,7 @@ performEffect :: (Vector LogEntry -> IO ()) -> EffectTask.EffectTask -> App Task
 performEffect sendLogEntries effectTask = withWorkDir "effect" $ \workDir -> do
   workerExe <- getWorkerExe
   commandChan <- liftIO newChan
-  extraNixOptions <- Nix.askExtraOptions
+  workerConfig <- InitWorkerConfig.getWorkerConfig
   workerEnv <-
     liftIO $
       WorkerProcess.prepareEnv
@@ -88,7 +88,7 @@ performEffect sendLogEntries effectTask = withWorkDir "effect" $ \workDir -> do
               ]
           )
           "Effect worker"
-  exitCode <- runWorker extraNixOptions procSpec stderrHandler commandChan writeEvent
+  exitCode <- runWorker workerConfig procSpec stderrHandler commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> logStr (show exitCode :: Text)
   let showSig n | n == PS.sigABRT = " (Aborted)"
       showSig n | n == PS.sigBUS = " (Bus)"

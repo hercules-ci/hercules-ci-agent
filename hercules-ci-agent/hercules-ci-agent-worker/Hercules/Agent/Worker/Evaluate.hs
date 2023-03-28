@@ -170,8 +170,10 @@ runEval ::
   Eval ->
   ConduitM i Event m ()
 runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eval = do
+  -- TODO: redundant as these have already been set?
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setGlobalOption
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setOption
+
   liftIO initThread
   let store = nixStore hStore
       isFlake = Eval.isFlakeJob eval

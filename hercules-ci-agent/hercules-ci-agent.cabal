@@ -128,6 +128,7 @@ library
       Hercules.Agent.WorkerProtocol.Event.AttributeIFD
       Hercules.Agent.WorkerProtocol.Event.BuildResult
       Hercules.Agent.WorkerProtocol.Orphans
+      Hercules.Agent.WorkerProtocol.WorkerConfig
       Hercules.Effect
       Hercules.Effect.Container
       Hercules.Secrets
@@ -214,6 +215,7 @@ executable hercules-ci-agent
       Hercules.Agent.Evaluate.TraversalQueue
       Hercules.Agent.Files
       Hercules.Agent.Init
+      Hercules.Agent.InitWorkerConfig
       Hercules.Agent.Log
       Hercules.Agent.LogSocket
       Hercules.Agent.Netrc
@@ -396,6 +398,9 @@ test-suite hercules-ci-agent-unit-tests
       Hercules.Agent.Nix.RetrieveDerivationInfoSpec
       Hercules.Agent.WorkerProcess
       Hercules.Agent.WorkerProcessSpec
+      Hercules.Agent.WorkerProtocol.ViaJSON
+      Hercules.Agent.WorkerProtocol.WorkerConfig
+      Hercules.Agent.WorkerProtocol.WorkerConfigSpec
       Hercules.Agent.ConduitSpec
       Hercules.Agent.Worker.STM
       Hercules.Agent.Worker.STMSpec
@@ -427,6 +432,7 @@ test-suite hercules-ci-agent-unit-tests
     , hercules-ci-agent
     , hercules-ci-api-core
     , hspec
+    , HUnit
     , katip
     , lifted-async
     , lifted-base
@@ -434,6 +440,7 @@ test-suite hercules-ci-agent-unit-tests
     , mtl
     , process
     , protolude
+    , QuickCheck
     , safe-exceptions
     , stm
     , tagged
@@ -441,6 +448,7 @@ test-suite hercules-ci-agent-unit-tests
     , text
     , transformers-base
     , unliftio-core
+    , uuid
     , vector
   build-tool-depends:
       hspec-discover:hspec-discover

@@ -28,8 +28,8 @@ import Hercules.Agent.Client qualified
 import Hercules.Agent.Config qualified as Config
 import Hercules.Agent.Env
 import Hercules.Agent.Env qualified as Env
+import Hercules.Agent.InitWorkerConfig qualified as InitWorkerConfig
 import Hercules.Agent.Log
-import Hercules.Agent.Nix qualified as Nix
 import Hercules.Agent.WorkerProcess
 import Hercules.Agent.WorkerProcess qualified as WorkerProcess
 import Hercules.Agent.WorkerProtocol.Command qualified as Command
@@ -47,7 +47,7 @@ performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath"
   workerExe <- getWorkerExe
   commandChan <- liftIO newChan
   statusRef <- newIORef Nothing
-  extraNixOptions <- Nix.askExtraOptions
+  workerConfig <- InitWorkerConfig.getWorkerConfig
   workerEnv <-
     liftIO $
       WorkerProcess.prepareEnv
@@ -90,7 +90,7 @@ performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath"
               ]
           )
           "Builder"
-  exitCode <- runWorker extraNixOptions procSpec (stderrHandler) commandChan writeEvent
+  exitCode <- runWorker workerConfig procSpec (stderrHandler) commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> logStr (show exitCode :: Text)
   case exitCode of
     ExitSuccess -> pass

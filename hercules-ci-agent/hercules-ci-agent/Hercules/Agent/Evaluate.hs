@@ -61,6 +61,7 @@ import Hercules.Agent.Env qualified as Env
 import Hercules.Agent.Evaluate.TraversalQueue (Queue)
 import Hercules.Agent.Evaluate.TraversalQueue qualified as TraversalQueue
 import Hercules.Agent.Files
+import Hercules.Agent.InitWorkerConfig qualified as WorkerConfig
 import Hercules.Agent.Log
 import Hercules.Agent.Netrc qualified as Netrc
 import Hercules.Agent.Nix qualified as Nix
@@ -707,8 +708,8 @@ produceWorkerEvents sendLogEntries taskId eval envSettings commandChan writeEven
               ]
           )
           "Effect worker"
-
-  WorkerProcess.runWorker eval.extraNixOptions wps stderrHandler commandChan writeEvent
+  cfg <- WorkerConfig.getWorkerConfig
+  WorkerProcess.runWorker cfg wps stderrHandler commandChan writeEvent
 
 drvPoller :: Maybe UUID -> Text -> App (UUID, BuildResult.BuildStatus)
 drvPoller notAttempt drvPath = do
