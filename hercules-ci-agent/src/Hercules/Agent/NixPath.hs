@@ -5,8 +5,8 @@ module Hercules.Agent.NixPath
   )
 where
 
-import qualified Data.Text as T
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
+import Data.Text qualified as T
+import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
 import Protolude
 
 renderNixPath ::

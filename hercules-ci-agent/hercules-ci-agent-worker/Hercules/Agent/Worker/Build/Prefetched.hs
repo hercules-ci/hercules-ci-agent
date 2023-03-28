@@ -18,13 +18,13 @@ module Hercules.Agent.Worker.Build.Prefetched
   )
 where
 
-import qualified Data.ByteString.Char8 as C8
+import Data.ByteString.Char8 qualified as C8
 import Foreign (alloca, peek)
 import Foreign.C (peekCString)
 import Hercules.CNix.Encapsulation
 import Hercules.CNix.Store
-import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exception as C
+import Language.C.Inline.Cpp qualified as C
+import Language.C.Inline.Cpp.Exception qualified as C
 import Protolude
 
 C.context context

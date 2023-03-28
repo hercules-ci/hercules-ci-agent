@@ -1,30 +1,30 @@
 module Hercules.Agent.Effect where
 
-import qualified Data.Aeson as A
+import Data.Aeson qualified as A
 import Data.IORef
-import qualified Data.Map as M
-import qualified Hercules.API.Agent.Effect.EffectTask as EffectTask
+import Data.Map qualified as M
+import Hercules.API.Agent.Effect.EffectTask qualified as EffectTask
 import Hercules.API.TaskStatus (TaskStatus)
-import qualified Hercules.API.TaskStatus as TaskStatus
-import qualified Hercules.Agent.Config as Config
+import Hercules.API.TaskStatus qualified as TaskStatus
+import Hercules.Agent.Config qualified as Config
 import Hercules.Agent.Env hiding (config)
-import qualified Hercules.Agent.Env as Env
+import Hercules.Agent.Env qualified as Env
 import Hercules.Agent.Files
 import Hercules.Agent.Log
-import qualified Hercules.Agent.Nix as Nix
+import Hercules.Agent.Nix qualified as Nix
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
-import qualified Hercules.Agent.ServiceInfo as ServiceInfo
+import Hercules.Agent.ServiceInfo qualified as ServiceInfo
 import Hercules.Agent.WorkerProcess
-import qualified Hercules.Agent.WorkerProcess as WorkerProcess
-import qualified Hercules.Agent.WorkerProtocol.Command as Command
-import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Command.Effect
-import qualified Hercules.Agent.WorkerProtocol.Event as Event
-import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
+import Hercules.Agent.WorkerProcess qualified as WorkerProcess
+import Hercules.Agent.WorkerProtocol.Command qualified as Command
+import Hercules.Agent.WorkerProtocol.Command.Effect qualified as Command.Effect
+import Hercules.Agent.WorkerProtocol.Event qualified as Event
+import Hercules.Agent.WorkerProtocol.LogSettings qualified as LogSettings
 import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON))
-import qualified Hercules.Secrets as Secrets
-import qualified Network.URI
+import Hercules.Secrets qualified as Secrets
+import Network.URI qualified
 import Protolude
-import qualified System.Posix.Signals as PS
+import System.Posix.Signals qualified as PS
 import System.Process
 
 performEffect :: EffectTask.EffectTask -> App TaskStatus

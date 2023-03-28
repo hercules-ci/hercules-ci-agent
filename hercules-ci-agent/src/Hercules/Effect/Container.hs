@@ -7,10 +7,10 @@ module Hercules.Effect.Container where
 import Control.Lens
 import Data.Aeson (Value (String), eitherDecode, encode, object, toJSON)
 import Data.Aeson.Lens
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.Map as M
-import qualified Data.UUID.V4 as UUID
+import Data.ByteString qualified as BS
+import Data.ByteString.Lazy qualified as BL
+import Data.Map qualified as M
+import Data.UUID.V4 qualified as UUID
 import GHC.IO.Exception (IOErrorType (HardwareFault))
 import Protolude
 import System.Directory (createDirectory)

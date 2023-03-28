@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Build.DerivationInfo.DerivationOutput where
 
@@ -8,4 +9,5 @@ data DerivationOutput = DerivationOutput
   { outputName :: Text,
     outputPath :: Maybe Text
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

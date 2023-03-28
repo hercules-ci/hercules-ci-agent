@@ -5,14 +5,14 @@ module Hercules.Agent.Worker.Effect where
 
 import Control.Monad.Catch (MonadThrow)
 import Hercules.Agent.Worker.Build.Prefetched (buildDerivation)
-import qualified Hercules.Agent.Worker.Build.Prefetched as Build
-import qualified Hercules.Agent.WorkerProtocol.Command.Effect as Command.Effect
+import Hercules.Agent.Worker.Build.Prefetched qualified as Build
+import Hercules.Agent.WorkerProtocol.Command.Effect qualified as Command.Effect
 import Hercules.Agent.WorkerProtocol.ViaJSON (fromViaJSON)
 import Hercules.CNix (Store)
-import qualified Hercules.CNix as CNix
+import Hercules.CNix qualified as CNix
 import Hercules.CNix.Store (Derivation)
 import Hercules.Effect (RunEffectParams (..))
-import qualified Hercules.Effect as Effect
+import Hercules.Effect qualified as Effect
 import Katip (KatipContext)
 import Protolude
 import UnliftIO.Directory (getCurrentDirectory)

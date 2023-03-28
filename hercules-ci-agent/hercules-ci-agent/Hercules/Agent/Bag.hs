@@ -10,7 +10,7 @@ module Hercules.Agent.Bag
 where
 
 import Data.Aeson
-import qualified Data.Aeson.KeyMap as AK
+import Data.Aeson.KeyMap qualified as AK
 import Data.Aeson.Types
 import Data.Functor.Compose
 import Data.Functor.Partitioner hiding

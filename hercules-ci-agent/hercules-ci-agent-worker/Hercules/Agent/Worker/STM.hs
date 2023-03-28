@@ -5,7 +5,7 @@ module Hercules.Agent.Worker.STM where
 import Control.Concurrent.Async
 import Control.Concurrent.STM (TVar, readTVar, writeTVar)
 import Control.Monad.Fix (mfix)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Protolude
 
 asyncIfSTM ::

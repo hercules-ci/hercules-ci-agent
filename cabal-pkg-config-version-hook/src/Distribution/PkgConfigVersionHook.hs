@@ -1,3 +1,6 @@
+-- This is the default, but we have to instruct the formatter used on the repo:
+{-# LANGUAGE NoImportQualifiedPost #-}
+
 -- |
 --
 --  Example:
@@ -39,12 +42,12 @@ import qualified Data.Char as C
 import Data.Foldable (toList)
 import Data.Function ((&))
 import qualified Data.List as L
-import Distribution.Simple
-import Distribution.Simple.Setup (configConfigurationsFlags)
+import Distribution.Simple (UserHooks (confHook))
+import Distribution.Simple.Setup (ConfigFlags, configConfigurationsFlags)
 import Distribution.Types.BuildInfo.Lens (ccOptions, cppOptions, cxxOptions)
 import Distribution.Types.Flag (flagName, mkFlagAssignment, mkFlagName, unFlagName)
 import Distribution.Types.GenericPackageDescription.Lens
-  ( allCondTrees,
+  ( GenericPackageDescription,
     condBenchmarks,
     condExecutables,
     condForeignLibs,
@@ -91,11 +94,17 @@ mkSettings :: String -> Settings
 mkSettings name =
   Settings
     { pkgConfigName = name,
-      macroName = map (\x -> case x of '-' -> '_') name,
+      macroName = map (\c -> case c of '-' -> '_'; x -> x) name,
       flagPrefixName = name
     }
 
 -- | Extend the value of 'confHook'. It's what powers 'addHook'.
+composeConfHook ::
+  Settings ->
+  ((GenericPackageDescription, a) -> ConfigFlags -> IO b) ->
+  (GenericPackageDescription, a) ->
+  Distribution.Simple.Setup.ConfigFlags ->
+  IO b
 composeConfHook settings origHook = \(genericPackageDescription, hookedBuildInfo) confFlags -> do
   (actualMajor, actualMinor, actualPatch) <- getPkgConfigPackageVersion (pkgConfigName settings)
 
@@ -145,14 +154,14 @@ parseFlagVersion =
 
 unambiguously :: P.ReadP a -> String -> Maybe a
 unambiguously p s =
-  case filter (\(a, x) -> x == "") $ P.readP_to_S p s of
+  case filter (\(_a, x) -> x == "") $ P.readP_to_S p s of
     [(v, _)] -> Just v
     _ -> Nothing
 
 getPkgConfigPackageVersion :: String -> IO (Int, Int, Int)
 getPkgConfigPackageVersion pkgName = do
   s <- readProcess "pkg-config" ["--modversion", pkgName] ""
-  case L.sortOn (\(_, s) -> length s) $ P.readP_to_S parseVersion s of
+  case L.sortOn (\(_, remainder) -> length remainder) $ P.readP_to_S parseVersion s of
     [] -> error ("Could not parse version " ++ show s ++ " returned by pkg-config for package " ++ pkgName)
     (v, r) : _ -> do
       when (L.dropWhile C.isSpace r /= "") $ do
@@ -161,4 +170,5 @@ getPkgConfigPackageVersion pkgName = do
       pure (v' L.!! 0, v' L.!! 1, v' L.!! 2)
 
 -- Should probably use a Cabal function?
+log :: String -> IO ()
 log = hPutStrLn stderr

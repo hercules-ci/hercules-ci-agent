@@ -1,6 +1,6 @@
 module Hercules.Agent.Nix.Init where
 
-import qualified Hercules.Agent.EnvironmentInfo as EnvironmentInfo
+import Hercules.Agent.EnvironmentInfo qualified as EnvironmentInfo
 import Hercules.Agent.Nix.Env
 import Protolude
 

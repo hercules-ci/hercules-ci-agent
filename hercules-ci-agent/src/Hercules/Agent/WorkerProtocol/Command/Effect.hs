@@ -3,7 +3,7 @@
 
 module Hercules.Agent.WorkerProtocol.Command.Effect where
 
-import qualified Data.Aeson as A
+import Data.Aeson qualified as A
 import Data.Binary
 import Hercules.API.Id (Id)
 import Hercules.Agent.Sensitive

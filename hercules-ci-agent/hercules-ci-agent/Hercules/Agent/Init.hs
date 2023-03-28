@@ -1,25 +1,25 @@
 module Hercules.Agent.Init where
 
-import qualified Hercules.Agent.Cachix.Init
-import qualified Hercules.Agent.Compat as Compat
-import qualified Hercules.Agent.Config as Config
-import qualified Hercules.Agent.Config.BinaryCaches as BC
+import Hercules.Agent.Cachix.Init qualified
+import Hercules.Agent.Compat qualified as Compat
+import Hercules.Agent.Config qualified as Config
+import Hercules.Agent.Config.BinaryCaches qualified as BC
 import Hercules.Agent.Env (Env (Env))
-import qualified Hercules.Agent.Env as Env
-import qualified Hercules.Agent.Netrc.Env as Netrc
-import qualified Hercules.Agent.Nix.Init
-import qualified Hercules.Agent.SecureDirectory as SecureDirectory
-import qualified Hercules.Agent.ServiceInfo as ServiceInfo
-import qualified Hercules.Agent.Token as Token
-import qualified Hercules.CNix
-import qualified Hercules.CNix.Util
-import qualified Hercules.CNix.Verbosity
-import qualified Katip as K
-import qualified Network.HTTP.Client.TLS
+import Hercules.Agent.Env qualified as Env
+import Hercules.Agent.Netrc.Env qualified as Netrc
+import Hercules.Agent.Nix.Init qualified
+import Hercules.Agent.SecureDirectory qualified as SecureDirectory
+import Hercules.Agent.ServiceInfo qualified as ServiceInfo
+import Hercules.Agent.Token qualified as Token
+import Hercules.CNix qualified
+import Hercules.CNix.Util qualified
+import Hercules.CNix.Verbosity qualified
+import Katip qualified as K
+import Network.HTTP.Client.TLS qualified
 import Protolude
-import qualified Servant.Auth.Client
-import qualified Servant.Client
-import qualified System.Directory
+import Servant.Auth.Client qualified
+import Servant.Client qualified
+import System.Directory qualified
 
 newEnv :: Config.FinalConfig -> K.LogEnv -> IO Env
 newEnv config logEnv = do

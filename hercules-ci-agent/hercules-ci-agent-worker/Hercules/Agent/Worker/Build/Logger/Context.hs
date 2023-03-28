@@ -10,10 +10,10 @@ module Hercules.Agent.Worker.Build.Logger.Context
   )
 where
 
-import qualified Data.Map as M
-import qualified Language.C.Inline.Context as C
-import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Types as C
+import Data.Map qualified as M
+import Language.C.Inline.Context qualified as C
+import Language.C.Inline.Cpp qualified as C
+import Language.C.Types qualified as C
 import Protolude
 
 data HerculesLoggerEntry

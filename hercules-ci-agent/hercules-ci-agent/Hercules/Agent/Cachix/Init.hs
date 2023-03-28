@@ -8,21 +8,21 @@ import Cachix.Client.Version (cachixVersion)
 #else
 import Cachix.Client.Env (cachixVersion)
 #endif
-import qualified Cachix.Client.Push as Cachix.Push
-import qualified Cachix.Client.Secrets as Cachix.Secrets
+import Cachix.Client.Push qualified as Cachix.Push
+import Cachix.Client.Secrets qualified as Cachix.Secrets
 import Cachix.Client.URI (defaultCachixBaseUrl)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Hercules.Agent.Cachix.Env as Env
-import qualified Hercules.Agent.Config as Config
+import Hercules.Agent.Config qualified as Config
 import Hercules.CNix.Store (openStore)
 import Hercules.Error
-import qualified Hercules.Formats.CachixCache as CachixCache
-import qualified Katip as K
+import Hercules.Formats.CachixCache qualified as CachixCache
+import Katip qualified as K
 import Network.HTTP.Client (ManagerSettings (managerModifyRequest, managerResponseTimeout), responseTimeoutNone)
 import Network.HTTP.Client.TLS (newTlsManagerWith, tlsManagerSettings)
 import Network.HTTP.Simple (setRequestHeader)
 import Protolude
-import qualified Servant.Auth.Client
+import Servant.Auth.Client qualified
 import Servant.Client (mkClientEnv)
 
 -- TODO use from lib after cachix >0.3.5 + https://github.com/cachix/cachix/pull/274

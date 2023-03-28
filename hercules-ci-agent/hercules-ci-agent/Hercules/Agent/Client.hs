@@ -29,7 +29,7 @@ import Servant.API
 import Servant.Auth.Client ()
 import Servant.Client.Generic (AsClientT)
 import Servant.Client.Streaming (ClientM)
-import qualified Servant.Client.Streaming
+import Servant.Client.Streaming qualified
 
 -- | Bad instance to make it the client for State api compile. GHC seems to pick
 -- the wrong overlappable instance.

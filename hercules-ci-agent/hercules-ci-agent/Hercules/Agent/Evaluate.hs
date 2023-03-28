@@ -8,15 +8,15 @@ module Hercules.Agent.Evaluate
 where
 
 import Conduit
-import qualified Control.Concurrent.Async.Lifted as Async.Lifted
+import Control.Concurrent.Async.Lifted qualified as Async.Lifted
 import Control.Concurrent.Chan.Lifted
 import Control.Exception.Lifted (finally)
-import qualified Control.Exception.Safe as Safe
+import Control.Exception.Safe qualified as Safe
 import Control.Lens (at, (^?))
 import Control.Monad.IO.Unlift (askUnliftIO, unliftIO)
-import qualified Data.Aeson as A
+import Data.Aeson qualified as A
 import Data.Aeson.Lens (_String)
-import qualified Data.ByteString.Lazy as BL
+import Data.ByteString.Lazy qualified as BL
 import Data.Char (isAsciiLower, isAsciiUpper)
 import Data.Conduit.Process (sourceProcessWithStreams)
 import Data.IORef
@@ -24,77 +24,77 @@ import Data.IORef
     newIORef,
     readIORef,
   )
-import qualified Data.Map as M
-import qualified Data.Set as S
-import qualified Data.Text as T
+import Data.Map qualified as M
+import Data.Set qualified as S
+import Data.Text qualified as T
 import Data.UUID (UUID)
 import Hercules.API (Id)
 import Hercules.API.Agent.Evaluate
   ( getDerivationStatus2,
     tasksUpdateEvaluation,
   )
-import qualified Hercules.API.Agent.Evaluate.DerivationStatus as DerivationStatus
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent as EvaluateEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent as AttributeEffectEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent as AttributeErrorEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent as AttributeEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeIFDEvent as AttributeIFDEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest as BuildRequest
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired as BuildRequired
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.JobConfig as JobConfig
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.Message as Message
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll as PushedAll
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
+import Hercules.API.Agent.Evaluate.DerivationStatus qualified as DerivationStatus
+import Hercules.API.Agent.Evaluate.EvaluateEvent qualified as EvaluateEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent qualified as AttributeEffectEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeErrorEvent qualified as AttributeErrorEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent qualified as AttributeEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeIFDEvent qualified as AttributeIFDEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest qualified as BuildRequest
+import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired qualified as BuildRequired
+import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo qualified as DerivationInfo
+import Hercules.API.Agent.Evaluate.EvaluateEvent.JobConfig qualified as JobConfig
+import Hercules.API.Agent.Evaluate.EvaluateEvent.Message qualified as Message
+import Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll qualified as PushedAll
+import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
 import Hercules.API.Agent.Evaluate.ImmutableGitInput (ImmutableGitInput)
-import qualified Hercules.API.Agent.Evaluate.ImmutableGitInput as ImmutableGitInput
-import qualified Hercules.API.Agent.Evaluate.ImmutableInput as ImmutableInput
+import Hercules.API.Agent.Evaluate.ImmutableGitInput qualified as ImmutableGitInput
+import Hercules.API.Agent.Evaluate.ImmutableInput qualified as ImmutableInput
 import Hercules.API.Servant (noContent)
 import Hercules.API.Task (Task)
-import qualified Hercules.Agent.Cache as Agent.Cache
-import qualified Hercules.Agent.Client
-import qualified Hercules.Agent.Config as Config
+import Hercules.Agent.Cache qualified as Agent.Cache
+import Hercules.Agent.Client qualified
+import Hercules.Agent.Config qualified as Config
 import Hercules.Agent.Env
-import qualified Hercules.Agent.Env as Env
+import Hercules.Agent.Env qualified as Env
 import Hercules.Agent.Evaluate.TraversalQueue (Queue)
-import qualified Hercules.Agent.Evaluate.TraversalQueue as TraversalQueue
+import Hercules.Agent.Evaluate.TraversalQueue qualified as TraversalQueue
 import Hercules.Agent.Files
 import Hercules.Agent.Log
-import qualified Hercules.Agent.Netrc as Netrc
-import qualified Hercules.Agent.Nix as Nix
+import Hercules.Agent.Netrc qualified as Netrc
+import Hercules.Agent.Nix qualified as Nix
 import Hercules.Agent.Nix.RetrieveDerivationInfo
   ( retrieveDerivationInfo,
   )
 import Hercules.Agent.NixFile (findNixFile)
-import qualified Hercules.Agent.NixFile.GitSource as GitSource
+import Hercules.Agent.NixFile.GitSource qualified as GitSource
 import Hercules.Agent.NixPath
   ( renderSubPath,
   )
 import Hercules.Agent.Producer
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
-import qualified Hercules.Agent.ServiceInfo as ServiceInfo
+import Hercules.Agent.ServiceInfo qualified as ServiceInfo
 import Hercules.Agent.WorkerProcess ()
-import qualified Hercules.Agent.WorkerProcess as WorkerProcess
-import qualified Hercules.Agent.WorkerProtocol.Command as Command
-import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
-import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
-import qualified Hercules.Agent.WorkerProtocol.Event as Event
-import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as WorkerAttribute
-import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as WorkerAttributeError
-import qualified Hercules.Agent.WorkerProtocol.Event.AttributeIFD as AttributeIFD
-import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
+import Hercules.Agent.WorkerProcess qualified as WorkerProcess
+import Hercules.Agent.WorkerProtocol.Command qualified as Command
+import Hercules.Agent.WorkerProtocol.Command.BuildResult qualified as BuildResult
+import Hercules.Agent.WorkerProtocol.Command.Eval qualified as Eval
+import Hercules.Agent.WorkerProtocol.Event qualified as Event
+import Hercules.Agent.WorkerProtocol.Event.Attribute qualified as WorkerAttribute
+import Hercules.Agent.WorkerProtocol.Event.AttributeError qualified as WorkerAttributeError
+import Hercules.Agent.WorkerProtocol.Event.AttributeIFD qualified as AttributeIFD
+import Hercules.Agent.WorkerProtocol.LogSettings qualified as LogSettings
 import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON), fromViaJSON)
 import Hercules.CNix.Store (Store, StorePath, parseStorePath)
-import qualified Hercules.CNix.Store as CNix
+import Hercules.CNix.Store qualified as CNix
 import Hercules.Effect (parseDrvSecretsMap)
 import Hercules.Error (defaultRetry, quickRetry)
-import qualified Network.HTTP.Client.Conduit as HTTP.Conduit
-import qualified Network.HTTP.Simple as HTTP.Simple
-import qualified Network.URI
+import Network.HTTP.Client.Conduit qualified as HTTP.Conduit
+import Network.HTTP.Simple qualified as HTTP.Simple
+import Network.URI qualified
 import Protolude hiding (finally, newChan, writeChan)
-import qualified Servant.Client
+import Servant.Client qualified
 import Servant.Client.Core (showBaseUrl)
-import qualified System.Directory as Dir
+import System.Directory qualified as Dir
 import System.FilePath
 import System.Process
 import UnliftIO (atomicModifyIORef')

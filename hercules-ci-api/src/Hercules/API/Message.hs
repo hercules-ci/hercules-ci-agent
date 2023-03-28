@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Message where
 
@@ -9,7 +10,8 @@ data Message = Message
     typ :: Type,
     message :: Text
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 data Type
   = -- | Something went wrong, inform user about possible
@@ -24,4 +26,5 @@ data Type
     -- @trace@. Indeed side effecting evaluation breaks the
     -- abstraction.
     Trace
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

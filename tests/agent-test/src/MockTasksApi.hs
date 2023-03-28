@@ -1,6 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module MockTasksApi
@@ -518,7 +519,8 @@ atomicModifyIORef_ :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef_ r = atomicModifyIORef r . ((,()) .)
 
 newtype Session = Session (Id "AgentSession")
-  deriving (Generic, ToJSON, FromJSON)
+  deriving (Generic)
+  deriving anyclass (ToJSON, FromJSON)
 
 instance FromJWT Session
 

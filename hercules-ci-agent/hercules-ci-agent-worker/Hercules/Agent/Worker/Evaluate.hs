@@ -15,56 +15,56 @@ import Control.Exception.Safe (isAsyncException)
 import Control.Monad.Except
 import Control.Monad.IO.Unlift
 import Data.Coerce (coerce)
-import qualified Data.Conduit
+import Data.Conduit qualified
 import Data.Conduit.Katip.Orphans ()
 import Data.IORef
-import qualified Data.Map as M
-import qualified Data.Set as S
-import qualified Data.Text as T
+import Data.Map qualified as M
+import Data.Set qualified as S
+import Data.Text qualified as T
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent (OnPushHandlerEvent))
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent
+import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent qualified
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent (OnScheduleHandlerEvent (OnScheduleHandlerEvent), TimeConstraints (TimeConstraints))
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnPush as OnPush
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask.OnSchedule as OnSchedule
-import qualified Hercules.API.Agent.Evaluate.ImmutableGitInput as API.ImmutableGitInput
-import qualified Hercules.API.Agent.Evaluate.ImmutableInput as API.ImmutableInput
+import Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent qualified
+import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
+import Hercules.API.Agent.Evaluate.EvaluateTask.OnPush qualified as OnPush
+import Hercules.API.Agent.Evaluate.EvaluateTask.OnSchedule qualified as OnSchedule
+import Hercules.API.Agent.Evaluate.ImmutableGitInput qualified as API.ImmutableGitInput
+import Hercules.API.Agent.Evaluate.ImmutableInput qualified as API.ImmutableInput
 import Hercules.API.DayOfWeek (DayOfWeek (..))
 import Hercules.Agent.NixFile (HerculesCISchema, InputsSchema, OutputsSchema, getHerculesCI, homeExprRawValue, loadNixFile, parseExtraInputs)
-import qualified Hercules.Agent.NixFile as NixFile
+import Hercules.Agent.NixFile qualified as NixFile
 import Hercules.Agent.NixFile.HerculesCIArgs (CISystems (CISystems), HerculesCIMeta (HerculesCIMeta), fromGitSource)
-import qualified Hercules.Agent.NixFile.HerculesCIArgs
+import Hercules.Agent.NixFile.HerculesCIArgs qualified
 import Hercules.Agent.Worker.Env (HerculesState (..))
 import Hercules.Agent.Worker.Error (ExceptionText (exceptionTextDerivationPath), exceptionTextMessage, exceptionTextTrace, renderException, throwBuildError)
 import Hercules.Agent.Worker.HerculesStore (nixStore, setBuilderCallback)
 import Hercules.Agent.Worker.STM (asyncInTVarMap)
-import qualified Hercules.Agent.WorkerProtocol.Command.BuildResult as BuildResult
+import Hercules.Agent.WorkerProtocol.Command.BuildResult qualified as BuildResult
 import Hercules.Agent.WorkerProtocol.Command.Eval
   ( Eval,
   )
-import qualified Hercules.Agent.WorkerProtocol.Command.Eval as Eval
+import Hercules.Agent.WorkerProtocol.Command.Eval qualified as Eval
 import Hercules.Agent.WorkerProtocol.Event (Event)
-import qualified Hercules.Agent.WorkerProtocol.Event as Event
-import qualified Hercules.Agent.WorkerProtocol.Event.Attribute as Attribute
-import qualified Hercules.Agent.WorkerProtocol.Event.AttributeError as AttributeError
-import qualified Hercules.Agent.WorkerProtocol.Event.AttributeIFD as Event.AttributeIFD
-import qualified Hercules.Agent.WorkerProtocol.ViaJSON as ViaJSON
+import Hercules.Agent.WorkerProtocol.Event qualified as Event
+import Hercules.Agent.WorkerProtocol.Event.Attribute qualified as Attribute
+import Hercules.Agent.WorkerProtocol.Event.AttributeError qualified as AttributeError
+import Hercules.Agent.WorkerProtocol.Event.AttributeIFD qualified as Event.AttributeIFD
+import Hercules.Agent.WorkerProtocol.ViaJSON qualified as ViaJSON
 import Hercules.CNix as CNix
 import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, initThread, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, toValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
-import qualified Hercules.CNix.Expr.Raw
+import Hercules.CNix.Expr.Raw qualified
 import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, provenance, requireDict, traverseArray, (#.), (#?), (#?!), (#??), ($?), (|!), type (->?), type (.))
-import qualified Hercules.CNix.Expr.Schema as Schema
+import Hercules.CNix.Expr.Schema qualified as Schema
 import Hercules.CNix.Expr.Typed (Value)
 import Hercules.CNix.Std.Vector (StdVector)
-import qualified Hercules.CNix.Std.Vector as Std.Vector
+import Hercules.CNix.Std.Vector qualified as Std.Vector
 import Hercules.CNix.Store.Context (NixStorePathWithOutputs)
 import Hercules.Error
 import Hercules.UserException (UserException (UserException))
 import Katip
 import Protolude hiding (bracket, catch, check, evalState, wait, withAsync, yield)
-import qualified UnliftIO
+import UnliftIO qualified
 import UnliftIO.Async (wait)
 import UnliftIO.Exception (bracket, catch)
 import Prelude ()
@@ -315,12 +315,12 @@ getHomeExpr evalState eval =
         toValue evalState pso
     else escalateAs UserException =<< liftIO (loadNixFile evalState (toS $ Eval.cwd eval) (coerce $ Eval.gitSource eval))
 
-walkOnPush :: (MonadEval m, MonadUnliftIO m, KatipContext m, MonadThrow m) => EvalEnv -> OnPush.OnPush -> PSObject HerculesCISchema -> ConduitT i Event m ()
+walkOnPush :: (MonadEval m, MonadUnliftIO m, KatipContext m) => EvalEnv -> OnPush.OnPush -> PSObject HerculesCISchema -> ConduitT i Event m ()
 walkOnPush evalEnv onPushParams herculesCI = do
   handler <- herculesCI #?! #onPush >>= requireDict (OnPush.name onPushParams)
   walkHandler evalEnv (OnPush.inputs onPushParams) handler
 
-walkOnSchedule :: (MonadEval m, MonadUnliftIO m, KatipContext m, MonadThrow m) => EvalEnv -> OnSchedule.OnSchedule -> PSObject HerculesCISchema -> ConduitT i Event m ()
+walkOnSchedule :: (MonadEval m, MonadUnliftIO m, KatipContext m) => EvalEnv -> OnSchedule.OnSchedule -> PSObject HerculesCISchema -> ConduitT i Event m ()
 walkOnSchedule evalEnv onScheduleParams herculesCI = do
   handler <- herculesCI #?! #onSchedule >>= requireDict (OnSchedule.name onScheduleParams)
   walkHandler evalEnv (OnSchedule.extraInputs onScheduleParams) handler
@@ -685,7 +685,6 @@ walk evalEnv autoArgs v0 = withIFDQueue evalEnv \enqueue ->
       store = evalEnvStore evalEnv
       evalState = evalEnvState evalEnv
       walk' ::
-        (MonadUnliftIO m, KatipContext m) =>
         -- If True, always walk this attribute set. Only True for the root.
         Bool ->
         -- Attribute path

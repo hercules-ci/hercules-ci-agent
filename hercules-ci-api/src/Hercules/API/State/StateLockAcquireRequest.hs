@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.State.StateLockAcquireRequest where
 
@@ -17,4 +18,5 @@ data StateLockAcquireRequest = StateLockAcquireRequest
     -- | Generate a random key to make sure that a retry can be successful.
     idempotencyKey :: Maybe (Id "IdempotencyKey")
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

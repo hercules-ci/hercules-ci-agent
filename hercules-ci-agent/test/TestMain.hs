@@ -2,7 +2,7 @@ module Main where
 
 import Hercules.CNix (init)
 import Protolude
-import qualified Spec
+import Spec qualified
 import Test.Hspec.Runner
 
 main :: IO ()

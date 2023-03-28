@@ -41,7 +41,7 @@ data Msg p r
 -- receives a function for returning payloads @p@.
 --
 -- @f@ may produce a final result value @r@ when it is done.
-forkProducer :: forall m p r. (MonadIO m, MonadUnliftIO m) => ((p -> m ()) -> m r) -> m (Producer p r)
+forkProducer :: forall m p r. (MonadUnliftIO m) => ((p -> m ()) -> m r) -> m (Producer p r)
 forkProducer f = do
   q <- liftIO newTQueueIO
   let write :: MonadIO m' => Msg p r -> m' ()
@@ -89,7 +89,7 @@ data Syncing a = Syncable a | Syncer (Maybe SomeException -> STM ())
 -- | Sends sync notifications after the whole computation succeeds (or fails)
 -- Note: not exception safe in the presence of pure exceptions.
 withSync ::
-  (MonadIO m, MonadUnliftIO m, Traversable t) =>
+  (MonadUnliftIO m, Traversable t) =>
   t (Syncing a) ->
   (t (Maybe a) -> m b) ->
   m b
@@ -121,7 +121,7 @@ withSync t f = do
 --     - Alternatively, maybe use stm-delay (which uses GHC.Event for efficiency)
 --       https://hackage.haskell.org/package/stm-delay-0.1.1.1/docs/Control-Concurrent-STM-Delay.html
 withBoundedDelayBatchProducer ::
-  (MonadIO m, MonadUnliftIO m) =>
+  (MonadUnliftIO m) =>
   -- | Max time before flushing in microseconds
   Int ->
   -- | Max number of items in batch

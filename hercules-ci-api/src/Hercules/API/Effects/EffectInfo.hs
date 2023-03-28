@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Effects.EffectInfo where
 
@@ -17,7 +18,8 @@ data EffectStatus
   | DependencyFailed
   | Successful
   | Cancelled
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 data EffectInfo = EffectInfo
   { status :: EffectStatus,
@@ -32,4 +34,5 @@ data EffectInfo = EffectInfo
     mayCancel :: Bool,
     dummy :: Maybe EffectEvent -- TODO: remove and update/fix codegen
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

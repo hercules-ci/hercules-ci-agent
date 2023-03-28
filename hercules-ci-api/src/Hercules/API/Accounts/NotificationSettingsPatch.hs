@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Accounts.NotificationSettingsPatch where
 
@@ -10,4 +11,5 @@ data NotificationSettingsPatch = NotificationSettingsPatch
   { defaultSetting :: Maybe NotificationSetting,
     accountOverrides :: Map (Id Account) NotificationSetting
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

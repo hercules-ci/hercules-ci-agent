@@ -2,7 +2,7 @@
 
 module Hercules.Frontend where
 
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Auth (AuthRoutes)
 import Hercules.API.Forge.Forge

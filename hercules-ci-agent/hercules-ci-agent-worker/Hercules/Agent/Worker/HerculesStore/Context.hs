@@ -9,13 +9,13 @@ module Hercules.Agent.Worker.HerculesStore.Context
   )
 where
 
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Hercules.CNix.Expr.Context (Ref)
 import Hercules.CNix.Std.Vector (stdVectorCtx)
-import qualified Hercules.CNix.Store.Context as Store
-import qualified Language.C.Inline.Context as C
-import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Types as C
+import Hercules.CNix.Store.Context qualified as Store
+import Language.C.Inline.Context qualified as C
+import Language.C.Inline.Cpp qualified as C
+import Language.C.Types qualified as C
 import Protolude
 
 data HerculesStore

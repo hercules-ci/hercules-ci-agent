@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Accounts.CLIAuthorizationRequestCreateResponse where
 
@@ -8,4 +9,5 @@ data CLIAuthorizationRequestCreateResponse = CLIAuthorizationRequestCreateRespon
   { temporaryCLIToken :: Text,
     browserURL :: Text
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

@@ -4,7 +4,7 @@ module Hercules.API.Agents.AgentInfo where
 
 import Control.Applicative
 import Control.Lens (at, (%~))
-import qualified Data.Aeson as A
+import Data.Aeson qualified as A
 import Data.Aeson.Lens (_Object)
 import Hercules.API.Prelude
 

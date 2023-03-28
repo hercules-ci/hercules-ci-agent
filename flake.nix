@@ -86,7 +86,8 @@
         inputs.flake-parts.flakeModules.easyOverlay
         inputs.haskell-flake.flakeModule
         inputs.pre-commit-hooks-nix.flakeModule
-        ./variants.nix
+        ./nix/variants.nix
+        ./nix/development.nix
       ];
       config = {
         systems = [
@@ -433,28 +434,6 @@
 
               # packages.hercules-ci-agent-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-agent;
               # packages.hercules-ci-cli-nixUnstable = config.variants.nixUnstable.packages.hercules-ci-cli;
-              pre-commit.pkgs = pkgs;
-              pre-commit.settings = {
-                hooks = {
-                  # TODO: hlint.enable = true;
-                  ormolu.enable = true;
-                  ormolu.excludes = [
-                    # CPP
-                    "Hercules/Agent/Cachix.hs"
-                    "Hercules/Agent/Compat.hs"
-                    "Hercules/Agent/StoreFFI.hs"
-                    "Hercules/CNix/Expr.hs" # parse error in quasiquotation
-                    "Hercules/CNix/Store.hs" # parse error in quasiquotation + CPP
-                  ];
-                  shellcheck.enable = true;
-                  nixpkgs-fmt.enable = true;
-                  nixpkgs-fmt.excludes = [ "tests/agent-test/testdata/" ];
-                };
-                excludes = [
-                  ".*/vendor/.*"
-                ];
-                settings.ormolu.defaultExtensions = [ "TypeApplications" ];
-              };
               devShells.default =
                 let
                   # TODO haskell-flake final packages

@@ -2,18 +2,18 @@
 
 module Hercules.Agent.EnvironmentInfo where
 
-import qualified Data.ByteString as BS
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Hercules.API.Agent.LifeCycle.AgentInfo as AgentInfo
+import Data.ByteString qualified as BS
+import Data.Set qualified as S
+import Data.Text qualified as T
+import Hercules.API.Agent.LifeCycle.AgentInfo qualified as AgentInfo
 import Hercules.Agent.CabalInfo as CabalInfo
 import Hercules.Agent.Cachix.Info as Cachix.Info
-import qualified Hercules.Agent.Config as Config
+import Hercules.Agent.Config qualified as Config
 import Hercules.Agent.Env as Env
 import Hercules.Agent.Log
-import qualified Hercules.CNix as CNix
-import qualified Hercules.CNix.Settings as Settings
-import qualified Hercules.CNix.Store as Store
+import Hercules.CNix qualified as CNix
+import Hercules.CNix.Settings qualified as Settings
+import Hercules.CNix.Store qualified as Store
 import Network.HostName (getHostName)
 import Protolude hiding (to)
 

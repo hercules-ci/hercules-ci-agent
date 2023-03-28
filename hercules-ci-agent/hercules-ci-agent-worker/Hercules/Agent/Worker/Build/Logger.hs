@@ -6,19 +6,19 @@
 module Hercules.Agent.Worker.Build.Logger (initLogger, withLoggerConduit, tapper, withTappedStderr, batch, unbatch, filterProgress, nubProgress) where
 
 import Conduit (MonadUnliftIO, filterC)
-import qualified Data.ByteString.Char8 as BSC
+import Data.ByteString.Char8 qualified as BSC
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Data.Conduit (ConduitT, Flush (..), await, awaitForever, yield)
 import Data.Vector (Vector)
-import qualified Data.Vector as V
+import Data.Vector qualified as V
 import Foreign (alloca, nullPtr, peek)
 import Hercules.API.Logs.LogEntry (LogEntry)
-import qualified Hercules.API.Logs.LogEntry as LogEntry
+import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Hercules.Agent.Worker.Build.Logger.Context (Fields, HerculesLoggerEntry, context)
 import Hercules.CNix.Store.Context (unsafeMallocBS)
 import Katip
-import qualified Language.C.Inline.Cpp as C
-import qualified Language.C.Inline.Cpp.Exception as C
+import Language.C.Inline.Cpp qualified as C
+import Language.C.Inline.Cpp.Exception qualified as C
 import Protolude hiding (bracket, finally, mask_, onException, tryJust, wait, withAsync, yield)
 import System.IO (BufferMode (LineBuffering), hSetBuffering)
 import System.IO.Error (isEOFError)
@@ -60,25 +60,25 @@ popMany =
         (\buf -> [C.block| void { delete $(LogEntryQueue *buf); }|])
         ( \buf -> do
             [C.block| void {
-        herculesLogger->popMany($(int limit), *$(LogEntryQueue *buf));
-        }|]
+              herculesLogger->popMany($(int limit), *$(LogEntryQueue *buf));
+            }|]
             let getBufHeadAndReinsertClose =
                   [C.block| HerculesLoggerEntry * {
-              LogEntryQueue &buf = *$(LogEntryQueue *buf);
-              if (buf.empty()) {
-                return nullptr;
-              } else {
-                auto r = buf.front().get();
-                if (r == nullptr) {
-                  herculesLogger->close();
-                }
-                return r;
-              }
-            }|]
+                    LogEntryQueue &buf = *$(LogEntryQueue *buf);
+                    if (buf.empty()) {
+                      return nullptr;
+                    } else {
+                      auto r = buf.front().get();
+                      if (r == nullptr) {
+                        herculesLogger->close();
+                      }
+                      return r;
+                    }
+                  }|]
                 dropBufHead =
                   [C.block| void { 
-            $(LogEntryQueue *buf)->pop();
-          }|]
+                    $(LogEntryQueue *buf)->pop();
+                  }|]
                 popBufHead = do
                   hdN <- getBufHeadAndReinsertClose
                   forNonNull hdN $ \hd -> do
@@ -248,7 +248,7 @@ close =
 -- Conduits for logger
 --
 
-withLoggerConduit :: (MonadIO m, MonadUnliftIO m) => (ConduitT () (Vector LogEntry) m () -> m ()) -> m a -> m a
+withLoggerConduit :: (MonadUnliftIO m) => (ConduitT () (Vector LogEntry) m () -> m ()) -> m a -> m a
 withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
   ((io `finally` liftIO close) <* wait popperAsync) `onException` liftIO (timeout 2_000_000 (wait popperAsync))
   where

@@ -8,6 +8,10 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
+
+-- redundant-constraints: False positive in default signature for `toRawValue`
+{-# OPTIONS_GHC -Wno-redundant-constraints #-}
+
 #ifdef __GHCIDE__
 # define NIX_IS_AT_LEAST(mm,m,p) 1
 #endif
@@ -628,10 +632,10 @@ instance ToRawValue RawValue where
   toRawValue _ = pure
 
 -- | Upcast
-instance ToRawValue (Value a)
+instance forall (a :: Type). ToRawValue (Value a)
 
 -- | Identity
-instance ToValue (Value a) where
+instance forall (a :: Type). ToValue (Value a) where
   type NixTypeFor (Value a) = a
   toValue _ = pure
 

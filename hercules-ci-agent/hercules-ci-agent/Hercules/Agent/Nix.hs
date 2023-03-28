@@ -1,8 +1,8 @@
 module Hercules.Agent.Nix where
 
 import Control.Monad.Trans.Maybe
-import qualified Data.ByteString as BS
-import qualified Data.Text as T
+import Data.ByteString qualified as BS
+import Data.Text qualified as T
 import Hercules.Agent.Env as Agent.Env
 import Hercules.Agent.EnvironmentInfo (getNixInfo, nixNetrcFile)
 import Hercules.Agent.Nix.Env as Nix.Env

@@ -5,7 +5,7 @@ module Hercules.Agent.NixFile.HerculesCIArgs where
 
 import Data.Aeson (ToJSON)
 import Hercules.Agent.NixFile.GitSource (GitSource)
-import qualified Hercules.Agent.NixFile.GitSource as GitSource
+import Hercules.Agent.NixFile.GitSource qualified as GitSource
 import Hercules.CNix.Expr (ToRawValue, ViaJSON (ViaJSON))
 import Protolude
 
@@ -30,7 +30,8 @@ data HerculesCIArgs = HerculesCIArgs
   deriving (ToRawValue) via (ViaJSON HerculesCIArgs)
 
 newtype CISystems = CISystems (Maybe (Map Text ()))
-  deriving (Generic, ToJSON)
+  deriving (Generic)
+  deriving anyclass (ToJSON)
   deriving (ToRawValue) via (ViaJSON CISystems)
 
 fromGitSource :: GitSource -> HerculesCIMeta -> HerculesCIArgs

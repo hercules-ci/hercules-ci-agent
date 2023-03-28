@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Projects.JobHandlers.OnScheduleHandler
   ( OnScheduleHandler (..),
@@ -15,7 +16,8 @@ data OnScheduleHandler = OnScheduleHandler
     when :: TimeConstraints,
     mainExists :: Bool
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 data TimeConstraints = TimeConstraints
   { minute :: Int,
@@ -23,4 +25,5 @@ data TimeConstraints = TimeConstraints
     dayOfWeek :: Maybe [DayOfWeek],
     dayOfMonth :: Maybe [Int]
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

@@ -2,8 +2,8 @@ module Hercules.Agent.Binary where
 
 import Data.Binary
 import Data.Binary.Get
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Builder.Extra as BL
+import Data.ByteString qualified as BS
+import Data.ByteString.Builder.Extra qualified as BL
 import System.IO (Handle)
 import Prelude
 

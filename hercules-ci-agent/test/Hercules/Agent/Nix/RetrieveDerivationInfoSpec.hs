@@ -3,8 +3,8 @@
 
 module Hercules.Agent.Nix.RetrieveDerivationInfoSpec where
 
-import qualified Data.ByteString as BS
-import qualified Data.Map as M
+import Data.ByteString qualified as BS
+import Data.Map qualified as M
 import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
 import Hercules.Agent.Nix.RetrieveDerivationInfo
 import Hercules.CNix

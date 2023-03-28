@@ -1,16 +1,19 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Accounts.Account where
 
 import Hercules.API.Forge.Forge (Forge)
-import qualified Hercules.API.Organizations.Organization as Organization
+import Hercules.API.Organizations.Organization qualified as Organization
 import Hercules.API.Prelude
 
 data AccountType = User | Organization
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 data MembershipRole = Member | Admin
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 data Account = Account
   { id :: Id Account,
@@ -39,4 +42,5 @@ data Account = Account
     manageInstallationURL :: Maybe Text,
     installationIsSelection :: Maybe Bool
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

@@ -2,7 +2,7 @@
 
 module Spec where
 
-import qualified Hercules.API.AttributeSpec
+import Hercules.API.AttributeSpec qualified
 import Test.Hspec
 
 spec :: Spec

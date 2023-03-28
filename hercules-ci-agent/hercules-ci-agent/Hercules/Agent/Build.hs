@@ -1,42 +1,42 @@
 module Hercules.Agent.Build where
 
-import qualified Data.Aeson as A
+import Data.Aeson qualified as A
 import Data.IORef.Lifted
-import qualified Data.Map as M
-import qualified Hercules.API.Agent.Build as API.Build
-import qualified Hercules.API.Agent.Build.BuildEvent as BuildEvent
+import Data.Map qualified as M
+import Hercules.API.Agent.Build qualified as API.Build
+import Hercules.API.Agent.Build.BuildEvent qualified as BuildEvent
 import Hercules.API.Agent.Build.BuildEvent.OutputInfo
   ( OutputInfo,
   )
-import qualified Hercules.API.Agent.Build.BuildEvent.OutputInfo as OutputInfo
-import qualified Hercules.API.Agent.Build.BuildEvent.Pushed as Pushed
+import Hercules.API.Agent.Build.BuildEvent.OutputInfo qualified as OutputInfo
+import Hercules.API.Agent.Build.BuildEvent.Pushed qualified as Pushed
 import Hercules.API.Agent.Build.BuildTask
   ( BuildTask,
   )
-import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
+import Hercules.API.Agent.Build.BuildTask qualified as BuildTask
 import Hercules.API.Servant (noContent)
 import Hercules.API.TaskStatus (TaskStatus)
-import qualified Hercules.API.TaskStatus as TaskStatus
-import qualified Hercules.Agent.Cache as Agent.Cache
-import qualified Hercules.Agent.Cachix.Env as Cachix.Env
-import qualified Hercules.Agent.Client
-import qualified Hercules.Agent.Config as Config
+import Hercules.API.TaskStatus qualified as TaskStatus
+import Hercules.Agent.Cache qualified as Agent.Cache
+import Hercules.Agent.Cachix.Env qualified as Cachix.Env
+import Hercules.Agent.Client qualified
+import Hercules.Agent.Config qualified as Config
 import Hercules.Agent.Env
-import qualified Hercules.Agent.Env as Env
+import Hercules.Agent.Env qualified as Env
 import Hercules.Agent.Log
-import qualified Hercules.Agent.Nix as Nix
+import Hercules.Agent.Nix qualified as Nix
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
-import qualified Hercules.Agent.ServiceInfo as ServiceInfo
+import Hercules.Agent.ServiceInfo qualified as ServiceInfo
 import Hercules.Agent.WorkerProcess
-import qualified Hercules.Agent.WorkerProcess as WorkerProcess
-import qualified Hercules.Agent.WorkerProtocol.Command as Command
-import qualified Hercules.Agent.WorkerProtocol.Command.Build as Command.Build
-import qualified Hercules.Agent.WorkerProtocol.Event as Event
-import qualified Hercules.Agent.WorkerProtocol.Event.BuildResult as BuildResult
-import qualified Hercules.Agent.WorkerProtocol.LogSettings as LogSettings
-import qualified Hercules.CNix.Store as CNix
+import Hercules.Agent.WorkerProcess qualified as WorkerProcess
+import Hercules.Agent.WorkerProtocol.Command qualified as Command
+import Hercules.Agent.WorkerProtocol.Command.Build qualified as Command.Build
+import Hercules.Agent.WorkerProtocol.Event qualified as Event
+import Hercules.Agent.WorkerProtocol.Event.BuildResult qualified as BuildResult
+import Hercules.Agent.WorkerProtocol.LogSettings qualified as LogSettings
+import Hercules.CNix.Store qualified as CNix
 import Hercules.Error (defaultRetry)
-import qualified Network.URI
+import Network.URI qualified
 import Protolude
 import System.Process
 

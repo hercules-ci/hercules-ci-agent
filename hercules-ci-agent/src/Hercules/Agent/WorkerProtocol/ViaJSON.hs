@@ -1,6 +1,6 @@
 module Hercules.Agent.WorkerProtocol.ViaJSON where
 
-import qualified Data.Aeson as A
+import Data.Aeson qualified as A
 import Data.Binary (Binary (..))
 import Prelude
 

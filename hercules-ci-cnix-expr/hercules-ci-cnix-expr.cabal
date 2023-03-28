@@ -38,6 +38,10 @@ flag nix-2_5
   description: Build for Nix >=2.5pre*
   default: False
 
+flag ide
+  description: Whether to enable IDE workarounds. You shouldn't need this.
+  default: False
+
 -- match the C++ language standard Nix is using
 common cxx-opts
   cxx-options:
@@ -113,8 +117,9 @@ library
       include
   install-includes:
       hercules-ci-cnix/expr.hxx
-  extra-libraries:
-      boost_context
+  if ! flag(ide)
+    extra-libraries:
+        boost_context
   pkgconfig-depends:
       nix-store >= 2.4
     , nix-expr >= 2.4

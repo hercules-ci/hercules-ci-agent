@@ -2,12 +2,12 @@
 
 module Hercules.Agent.Nix.RetrieveDerivationInfo where
 
-import qualified Data.Map as M
-import qualified Data.Text as T
+import Data.Map qualified as M
+import Data.Text qualified as T
 import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
   ( DerivationInfo (DerivationInfo),
   )
-import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo as DerivationInfo
+import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo qualified as DerivationInfo
 import Hercules.CNix
 import Protolude
 

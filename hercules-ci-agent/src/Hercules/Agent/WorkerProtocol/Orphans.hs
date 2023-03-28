@@ -4,7 +4,7 @@
 module Hercules.Agent.WorkerProtocol.Orphans where
 
 import Control.Monad.Fail (fail)
-import qualified Data.Aeson as A
+import Data.Aeson qualified as A
 import Data.Binary (Binary (get, put))
 import Hercules.API.Id (Id (..))
 import Hercules.CNix.Expr (ViaJSON (ViaJSON))

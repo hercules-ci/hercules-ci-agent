@@ -13,48 +13,48 @@ import Control.Concurrent.Lifted (forkFinally, killThread)
 import Control.Concurrent.STM.TChan
 import Control.Exception.Lifted (bracket)
 import Control.Monad.IO.Unlift (MonadUnliftIO)
-import qualified Data.Aeson as A
-import qualified Data.Map as M
+import Data.Aeson qualified as A
+import Data.Map qualified as M
 import Data.Time (getCurrentTime)
-import qualified Data.UUID.V4 as UUID
-import qualified Hercules.API.Agent.Build.BuildTask as BuildTask
-import qualified Hercules.API.Agent.Effect.EffectTask as EffectTask
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
-import qualified Hercules.API.Agent.LifeCycle as LifeCycle
+import Data.UUID.V4 qualified as UUID
+import Hercules.API.Agent.Build.BuildTask qualified as BuildTask
+import Hercules.API.Agent.Effect.EffectTask qualified as EffectTask
+import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
+import Hercules.API.Agent.LifeCycle qualified as LifeCycle
 import Hercules.API.Agent.LifeCycle.StartInfo (tasksInProgress)
-import qualified Hercules.API.Agent.LifeCycle.StartInfo as StartInfo
-import qualified Hercules.API.Agent.Socket.AgentPayload as AgentPayload
-import qualified Hercules.API.Agent.Socket.ServicePayload as ServicePayload
+import Hercules.API.Agent.LifeCycle.StartInfo qualified as StartInfo
+import Hercules.API.Agent.Socket.AgentPayload qualified as AgentPayload
+import Hercules.API.Agent.Socket.ServicePayload qualified as ServicePayload
 import Hercules.API.Agent.Tasks
   ( tasksSetStatus,
   )
 import Hercules.API.Id (Id (Id))
 import Hercules.API.Servant (noContent)
 import Hercules.API.Task (Task)
-import qualified Hercules.API.Task as Task
-import qualified Hercules.API.TaskStatus as TaskStatus
+import Hercules.API.Task qualified as Task
+import Hercules.API.TaskStatus qualified as TaskStatus
 import Hercules.Agent.AgentSocket (withAgentSocket)
-import qualified Hercules.Agent.Build as Build
+import Hercules.Agent.Build qualified as Build
 import Hercules.Agent.CabalInfo (herculesAgentVersion)
-import qualified Hercules.Agent.Cache as Cache
-import qualified Hercules.Agent.Cachix.Env as Cachix.Env
+import Hercules.Agent.Cache qualified as Cache
+import Hercules.Agent.Cachix.Env qualified as Cachix.Env
 import Hercules.Agent.Client
   ( lifeCycleClient,
     tasksClient,
   )
-import qualified Hercules.Agent.Config as Config
-import qualified Hercules.Agent.Effect as Effect
+import Hercules.Agent.Config qualified as Config
+import Hercules.Agent.Effect qualified as Effect
 import Hercules.Agent.Env
   ( App,
     runHerculesClient,
   )
-import qualified Hercules.Agent.Env as Env
+import Hercules.Agent.Env qualified as Env
 import Hercules.Agent.EnvironmentInfo (extractAgentInfo)
-import qualified Hercules.Agent.Evaluate as Evaluate
-import qualified Hercules.Agent.Init as Init
+import Hercules.Agent.Evaluate qualified as Evaluate
+import Hercules.Agent.Init qualified as Init
 import Hercules.Agent.Log
-import qualified Hercules.Agent.Netrc as Netrc
-import qualified Hercules.Agent.Options as Options
+import Hercules.Agent.Netrc qualified as Netrc
+import Hercules.Agent.Options qualified as Options
 import Hercules.Agent.STM
 import Hercules.Agent.Socket as Socket
 import Hercules.Agent.Token (withAgentToken)
@@ -77,7 +77,7 @@ import Protolude hiding
   )
 import System.Posix.Resource
 import UnliftIO.Exception (catch)
-import qualified Prelude
+import Prelude qualified
 
 main :: IO ()
 main = do

@@ -9,7 +9,7 @@ module Hercules.Agent.WorkerProcess
 where
 
 import Conduit hiding (Producer)
-import qualified Control.Exception.Safe as Safe
+import Control.Exception.Safe qualified as Safe
 import Control.Monad.IO.Unlift
 import Data.Binary (Binary)
 import Data.Conduit.Extras (conduitToCallbacks, sourceChan)
@@ -17,9 +17,9 @@ import Data.Conduit.Serialization.Binary
   ( conduitDecode,
     conduitEncode,
   )
-import qualified Data.Map as M
+import Data.Map qualified as M
 import GHC.IO.Exception
-import qualified Hercules.API.Agent.Evaluate.EvaluateTask as EvaluateTask
+import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
 import Hercules.Agent.NixPath (renderNixPath)
 import Paths_hercules_ci_agent (getBinDir)
 import Protolude

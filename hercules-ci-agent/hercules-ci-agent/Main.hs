@@ -3,7 +3,7 @@ module Main
   )
 where
 
-import qualified Hercules.Agent
+import Hercules.Agent qualified
 import Protolude
 import System.Posix.Signals
 

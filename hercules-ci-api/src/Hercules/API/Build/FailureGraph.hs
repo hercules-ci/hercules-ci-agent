@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Hercules.API.Build.FailureGraph where
 
@@ -11,7 +12,8 @@ import Hercules.API.Prelude
 data Graph = Graph
   { nodes :: [Node]
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
 
 -- | A derivation and any dependencies that caused it to fail, if applicable.
 data Node = Node
@@ -20,4 +22,5 @@ data Node = Node
     --   DependencyFailure for this derivation.
     failedDependencies :: [Text]
   }
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)

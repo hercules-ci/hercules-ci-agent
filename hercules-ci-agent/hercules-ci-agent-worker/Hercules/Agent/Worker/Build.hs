@@ -6,21 +6,21 @@ module Hercules.Agent.Worker.Build where
 import Conduit
 import Data.Conduit.Katip.Orphans ()
 import Hercules.Agent.Worker.Build.Prefetched (buildDerivation)
-import qualified Hercules.Agent.Worker.Build.Prefetched as Build
-import qualified Hercules.Agent.WorkerProtocol.Command.Build as Command.Build
+import Hercules.Agent.Worker.Build.Prefetched qualified as Build
+import Hercules.Agent.WorkerProtocol.Command.Build qualified as Command.Build
 import Hercules.Agent.WorkerProtocol.Event (Event)
-import qualified Hercules.Agent.WorkerProtocol.Event as Event
-import qualified Hercules.Agent.WorkerProtocol.Event.BuildResult as Event.BuildResult
+import Hercules.Agent.WorkerProtocol.Event qualified as Event
+import Hercules.Agent.WorkerProtocol.Event.BuildResult qualified as Event.BuildResult
 import Hercules.CNix
   ( DerivationOutput (derivationOutputName, derivationOutputPath),
     getDerivationOutputs,
   )
-import qualified Hercules.CNix as CNix
+import Hercules.CNix qualified as CNix
 import Hercules.CNix.Store (Store, queryPathInfo, validPathInfoNarHash32, validPathInfoNarSize)
 import Katip
 import Protolude hiding (yield)
 
-runBuild :: (MonadIO m, KatipContext m) => Store -> Command.Build.Build -> ConduitT i Event m ()
+runBuild :: (KatipContext m) => Store -> Command.Build.Build -> ConduitT i Event m ()
 runBuild store build = do
   let extraPaths = Command.Build.inputDerivationOutputPaths build
       drvPath = encodeUtf8 $ Command.Build.drvPath build

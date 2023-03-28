@@ -7,27 +7,27 @@ import Control.Monad.Base (MonadBase)
 import Control.Monad.Catch
 import Control.Monad.IO.Unlift
 import Control.Monad.Trans.Control (MonadBaseControl)
-import qualified Data.Map as M
+import Data.Map qualified as M
 import Hercules.API.Agent.Socket.AgentPayload (AgentPayload)
 import Hercules.API.Agent.Socket.ServicePayload (ServicePayload)
-import qualified Hercules.Agent.Cachix.Env as Cachix
+import Hercules.Agent.Cachix.Env qualified as Cachix
   ( Env,
     HasEnv (..),
   )
 import Hercules.Agent.Config (FinalConfig)
-import qualified Hercules.Agent.Config.BinaryCaches as Config.BinaryCaches
-import qualified Hercules.Agent.Netrc.Env as Netrc
-import qualified Hercules.Agent.Nix.Env as Nix
+import Hercules.Agent.Config.BinaryCaches qualified as Config.BinaryCaches
+import Hercules.Agent.Netrc.Env qualified as Netrc
+import Hercules.Agent.Nix.Env qualified as Nix
   ( Env,
   )
-import qualified Hercules.Agent.ServiceInfo as ServiceInfo
+import Hercules.Agent.ServiceInfo qualified as ServiceInfo
 import Hercules.Agent.Socket (Socket)
 import Hercules.Error
-import qualified Katip as K
-import qualified Network.HTTP.Client
+import Katip qualified as K
+import Network.HTTP.Client qualified
 import Protolude
-import qualified Servant.Auth.Client
-import qualified Servant.Client.Streaming
+import Servant.Auth.Client qualified
+import Servant.Client.Streaming qualified
 
 data Env = Env
   { manager :: Network.HTTP.Client.Manager,
