@@ -22,6 +22,13 @@ spec = do
           setShowTrace v
           v' <- getShowTrace
           v' `shouldBe` v
+  describe "both" do
+    it "extends the message volume 2nd" do
+      both Warn Notice `shouldBe` Notice
+    it "extends the message volume 1st" do
+      both Warn Error `shouldBe` Warn
+    it "extends the message volume eq" do
+      both Warn Warn `shouldBe` Warn
 
 -- bracket on global state is still a leaky abstraction, so we don't add this
 -- to the library.
