@@ -24,6 +24,7 @@ module Hercules.CNix.Expr
     setOption,
     setExtraStackOverflowHandlerToSleep,
     initThread,
+    runGcRegisteredThread,
     logInfo,
     withEvalState,
     withEvalStateConduit,
@@ -95,6 +96,8 @@ import Data.Aeson.KeyMap (toMapText)
 
 C.context (Hercules.CNix.Store.Context.context <> Hercules.CNix.Expr.Context.evalContext)
 
+C.verbatim "#define GC_THREADS 1"
+
 C.include "<stdio.h>"
 
 C.include "<cstring>"
@@ -141,6 +144,9 @@ init =
     [C.throwBlock| void {
       nix::initNix();
       nix::initGC();
+      GC_allow_register_threads();
+      // Unlikely to work. Prefer explicit registration on bound thread.
+      // GC_use_threads_discovery();
 #ifdef NIX_2_5
       std::set<nix::ExperimentalFeature> features(nix::settings.experimentalFeatures.get());
       features.insert(nix::ExperimentalFeature::Flakes);
@@ -157,6 +163,35 @@ initThread =
     [C.throwBlock| void {
       nix::detectStackOverflow();
     }|]
+
+-- | Run in a thread from which GC may be triggered safely.
+--
+-- This also installs the stack overflow handler.
+runGcRegisteredThread :: IO a -> IO a
+runGcRegisteredThread io =
+  runInBoundThread do
+    bracket
+      start
+      (const end)
+      (const io)
+  where
+    start =
+      do
+        initThread
+        [C.block| void {
+          struct GC_stack_base sb;
+          int r = GC_get_stack_base(&sb);
+          assert(r == GC_SUCCESS);
+          GC_register_my_thread(&sb);
+        }|]
+        pass
+    end =
+      do
+        [C.block| void {
+          GC_unregister_my_thread();
+        }|]
+        pass
+
 
 {- | Configure the stack overflow handler to sleep before returning, allowing
   other threads to continue for a bit.
