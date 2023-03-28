@@ -9,6 +9,9 @@ import Hercules.Agent.WorkerProtocol.Command.Effect qualified as Effect
 import Hercules.Agent.WorkerProtocol.Command.Eval qualified as Eval
 import Protolude
 
+-- | Information flowing from the environment to the worker. The name isn't
+-- accurate as it includes other information than just commands,
+-- e.g. 'BuildResult'.
 data Command
   = Eval Eval.Eval
   | BuildResult BuildResult.BuildResult
