@@ -1,4 +1,6 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE CPP #-}
+
 module Hercules.Agent.Build where
 
 import Data.Aeson qualified as A
@@ -107,7 +109,10 @@ performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath"
 #endif
       reportSuccess buildTask
       pure $ TaskStatus.Successful ()
-    Just BuildResult.BuildFailure {} -> pure $ TaskStatus.Terminated ()
+    Just BuildResult.BuildFailure {errorMessage = errorMessage} ->
+      katipAddContext (sl "errorMessage" errorMessage) do
+        logLocM DebugS "Build failed"
+        pure $ TaskStatus.Terminated ()
     Nothing -> pure $ TaskStatus.Exceptional "Build did not complete"
 
 convertOutputs :: Text -> [BuildResult.OutputInfo] -> Map Text OutputInfo

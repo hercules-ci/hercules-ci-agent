@@ -21,7 +21,8 @@ import Katip
 import Protolude hiding (yield)
 
 runBuild :: (KatipContext m) => Store -> Command.Build.Build -> ConduitT i Event m ()
-runBuild store build = do
+runBuild store build = katipAddContext (sl "derivationPath" build.drvPath) do
+  logLocM DebugS "runBuild"
   let extraPaths = Command.Build.inputDerivationOutputPaths build
       drvPath = encodeUtf8 $ Command.Build.drvPath build
   drvStorePath <- liftIO $ CNix.parseStorePath store drvPath
