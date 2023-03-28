@@ -53,7 +53,7 @@ import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON))
 import Hercules.Agent.WorkerProtocol.WorkerConfig (WorkerConfig)
 import Hercules.Agent.WorkerProtocol.WorkerConfig qualified
 import Hercules.CNix as CNix
-import Hercules.CNix.Expr (init, setExtraStackOverflowHandlerToSleep)
+import Hercules.CNix.Expr (allowThreads, init, runGcRegisteredThread, setExtraStackOverflowHandlerToSleep)
 import Hercules.CNix.Util (installDefaultSigINTHandler)
 import Hercules.CNix.Verbosity (setShowTrace, setVerbosity)
 import Hercules.CNix.Verbosity qualified as CNix.Verbosity
@@ -70,6 +70,7 @@ main = do
   withEventWriter parentHandles.events \sendEvents -> do
     withNixLogger sendEvents do
       Hercules.CNix.Expr.init
+      Hercules.CNix.Expr.allowThreads
       setShowTrace True
       _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
       installDefaultSigINTHandler
@@ -203,6 +204,7 @@ runCommand herculesState command = do
           flip
             forkFinally
             (escalateAs \e -> FatalError $ "Failed to fork: " <> show e)
+            $ runGcRegisteredThread
             $ unlift
             $ runConduitRes
               ( Data.Conduit.handleC

@@ -51,7 +51,7 @@ import Hercules.Agent.WorkerProtocol.Event.AttributeError qualified as Attribute
 import Hercules.Agent.WorkerProtocol.Event.AttributeIFD qualified as Event.AttributeIFD
 import Hercules.Agent.WorkerProtocol.ViaJSON qualified as ViaJSON
 import Hercules.CNix as CNix
-import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, initThread, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, toValue, withEvalStateConduit)
+import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, toValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
 import Hercules.CNix.Expr.Raw qualified
 import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, provenance, requireDict, traverseArray, (#.), (#?), (#?!), (#??), ($?), (|!), type (->?), type (.))
@@ -174,7 +174,6 @@ runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eva
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setGlobalOption
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setOption
 
-  liftIO initThread
   let store = nixStore hStore
       isFlake = Eval.isFlakeJob eval
   s <- storeUri store
