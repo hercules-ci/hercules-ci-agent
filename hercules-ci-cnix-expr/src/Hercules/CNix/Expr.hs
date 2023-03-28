@@ -24,6 +24,7 @@ module Hercules.CNix.Expr
     setOption,
     setExtraStackOverflowHandlerToSleep,
     initThread,
+    allowThreads,
     runGcRegisteredThread,
     logInfo,
     withEvalState,
@@ -144,9 +145,6 @@ init =
     [C.throwBlock| void {
       nix::initNix();
       nix::initGC();
-      GC_allow_register_threads();
-      // Unlikely to work. Prefer explicit registration on bound thread.
-      // GC_use_threads_discovery();
 #ifdef NIX_2_5
       std::set<nix::ExperimentalFeature> features(nix::settings.experimentalFeatures.get());
       features.insert(nix::ExperimentalFeature::Flakes);
@@ -157,6 +155,7 @@ init =
       nix::settings.experimentalFeatures.assign(features);
     } |]
 
+-- | Initialize the current (main) thread for stack overflow detection.
 initThread :: IO ()
 initThread =
   void
@@ -164,9 +163,21 @@ initThread =
       nix::detectStackOverflow();
     }|]
 
+-- | Configure the garbage collector to support threads.
+--
+-- This is not needed when all evaluation happens on the main thread.
+allowThreads :: IO ()
+allowThreads =
+  void
+    [C.block| void {
+      GC_allow_register_threads();
+    }|]
+
 -- | Run in a thread from which GC may be triggered safely.
 --
 -- This also installs the stack overflow handler.
+--
+-- NOTE: Before using this, you must call 'allowThreads' once.
 runGcRegisteredThread :: IO a -> IO a
 runGcRegisteredThread io =
   runInBoundThread do
