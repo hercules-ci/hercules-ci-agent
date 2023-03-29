@@ -224,13 +224,6 @@
               };
             };
           };
-
-          # Disabled checks
-
-          # Error: https://hercules-ci.com/accounts/github/hercules-ci/derivations/%2Fnix%2Fstore%2Fi9x1mv2m95l4y4yzsgb9qgg39m4c9ql7-python3.9-pre-commit-2.18.1.drv/log?via-job=3a8af400-acee-42a1-9fb0-0ae6af20133b
-          # PR: https://github.com/NixOS/nixpkgs/pull/167879
-          checks.x86_64-darwin.pre-commit = lib.mkForce emptyFile;
-          devShells.x86_64-darwin.default = lib.mkForce emptyFile;
         };
         perSystem = { config, pkgs, system, ... }:
           let
@@ -361,13 +354,16 @@
                       (self.generateOptparseApplicativeCompletions [ "hercules-ci-agent" ])
                     ];
 
-                    hercules-ci-agent_lib = lib.pipe self.hercules-ci-agent [
-                      (h.overrideCabal (o: {
-                        isLibrary = true;
-                        isExecutable = false;
-                        postFixup = "";
-                      }))
-                    ];
+                    hercules-ci-agent_lib = lib.pipe self.hercules-ci-agent
+                      # Don't override this when making a devShell, because Nixpkgs shellFor does not recognize it as a local dependency.
+                      (lib.optionals (!flakeArgs.config.isDev) [
+                        (h.overrideCabal (o: {
+                          isLibrary = true;
+                          isExecutable = false;
+                          postFixup = "";
+                        }))
+                      ])
+                    ;
                     hercules-ci-cli = lib.pipe super.hercules-ci-cli [
                       (x: x.override (o: {
                         hercules-ci-agent = self.hercules-ci-agent_lib;
@@ -515,11 +511,23 @@
         # variants.nixUnstable.extraOverlay = final: prev: {
         #   nix = addDebug inputs.nix.defaultPackage.${prev.stdenv.hostPlatform.system};
         # };
+
+        variants.dev.isDev = true;
+        # Take the devShells from the dev variant
+        flake.devShells = lib.mkIf (!config.isDev) (lib.mkForce (config.variants.dev.flake.devShells));
       };
       options = {
         # Set by variants
         extraOverlay = lib.mkOption {
           default = _: _: { };
+        };
+        isDev = lib.mkOption {
+          default = false;
+          description = ''
+            Whether we're producing a development attribute.
+
+            We apply some overrides to fix things up in the context of devShell.
+          '';
         };
       };
     });

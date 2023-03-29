@@ -390,7 +390,7 @@ executable hercules-ci-agent-worker
     , nix-main >= 2.0
   default-language: Haskell2010
 
-test-suite hercules-test
+test-suite hercules-ci-agent-unit-tests
   import: hs, rts
   type: exitcode-stdio-1.0
   main-is: TestMain.hs
