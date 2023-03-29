@@ -119,7 +119,7 @@ library
 
   default-language:   Haskell2010
 
-test-suite hercules-api-agent-unit-tests
+test-suite hercules-ci-api-agent-unit-tests
   type:               exitcode-stdio-1.0
   main-is:            Main.hs
   other-modules:

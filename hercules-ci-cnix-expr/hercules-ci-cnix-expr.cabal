@@ -130,7 +130,7 @@ library
       nix-cmd >= 2.8
 
 
-test-suite hercules-ci-cnix-expr-tests
+test-suite hercules-ci-cnix-expr-unit-tests
   type: exitcode-stdio-1.0
   main-is: TestMain.hs
   other-modules:

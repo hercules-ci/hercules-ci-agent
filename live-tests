@@ -1,0 +1,45 @@
+#!/usr/bin/env nix-shell
+# shellcheck shell=bash
+#!nix-shell ./shell.nix
+#!nix-shell -i bash
+set -eu -o pipefail
+
+fail() {
+  echo -e "\e[31;1merror: \e[0m$*" >&2
+  exit 1
+}
+
+if [ -z "${1:-}" ]; then
+  fail "Usage: $0 <package>"
+  exit 1
+fi
+
+# remove trailing slash (if added by shell autocompletion)
+package="${1%/}"
+# replace - by _
+package_id="${package//-/_}"
+
+project="$(dirname "${BASH_SOURCE[0]}")"
+
+cd "$project/$package"
+
+# Loading transitive deps interactively is important for some packages and it
+# seems like --load-local-deps would achieve that, but it doesn't seem to work.
+# So we hardcode the dependencies here.
+
+# NOTE: self is included in the deps for convenience
+hercules_ci_api_deps="hercules-ci-api:lib hercules-ci-api-core:lib"
+hercules_ci_api_agent_deps="hercules-ci-api-agent:lib hercules-ci-api-core:lib"
+hercules_ci_cnix_expr_deps="hercules-ci-cnix-expr:lib hercules-ci-cnix-store:lib"
+hercules_ci_agent_deps="hercules-ci-agent:lib $hercules_ci_api_agent_deps"
+hercules_ci_cli_deps="hercules-ci-cli:lib $hercules_ci_api_deps $hercules_ci_agent_deps"
+
+lookup_var=${package_id}_deps
+deps=${!lookup_var:-$package:lib}
+
+ghcid \
+  --command "stack repl --no-haddock $deps $package:test:$package-unit-tests" \
+  --test=Main.main \
+  --restart="$package.cabal" \
+  --restart="$project/stack.yaml" \
+  ;
