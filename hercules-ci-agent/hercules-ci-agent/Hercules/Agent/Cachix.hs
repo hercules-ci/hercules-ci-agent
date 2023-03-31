@@ -18,12 +18,12 @@ import Hercules.CNix.Store (StorePath)
 import Hercules.Error
 import qualified Hercules.Formats.CachixCache as CachixCache
 import Protolude
+import qualified Hercules.CNix.Store as CNix
 
-push :: Text -> [StorePath] -> Int -> App ()
-push cache paths workers = withNamedContext "cache" cache $ do
+push :: CNix.Store -> Text -> [StorePath] -> Int -> App ()
+push nixStore cache paths workers = withNamedContext "cache" cache $ do
   Agent.Cachix.Env
     { pushCaches = pushCaches,
-      nixStore = nixStore,
       clientEnv = clientEnv
     } <-
     asks Agent.Cachix.getEnv

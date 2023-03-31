@@ -11,12 +11,14 @@ import Cachix.Client.Env (cachixVersion)
 import Cachix.Client.Push qualified as Cachix.Push
 import Cachix.Client.Secrets qualified as Cachix.Secrets
 import Cachix.Client.URI (defaultCachixBaseUrl)
+import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Data.Map qualified as M
 import Hercules.Agent.Cachix.Env as Env
 import Hercules.Agent.Config qualified as Config
 import Hercules.CNix.Store (openStore)
 import Hercules.Error
 import Hercules.Formats.CachixCache qualified as CachixCache
+import Katip (KatipContext)
 import Katip qualified as K
 import Network.HTTP.Client (ManagerSettings (managerModifyRequest, managerResponseTimeout), responseTimeoutNone)
 import Network.HTTP.Client.TLS (newTlsManagerWith, tlsManagerSettings)
@@ -34,22 +36,24 @@ customManagerSettings =
       managerModifyRequest = return . setRequestHeader "User-Agent" [encodeUtf8 cachixVersion]
     }
 
-newEnv :: Config.FinalConfig -> Map Text CachixCache.CachixCache -> K.KatipContextT IO Env.Env
-newEnv _config cks = do
+withEnv :: (MonadUnliftIO m, KatipContext m) => Config.FinalConfig -> Map Text CachixCache.CachixCache -> (Env.Env -> m a) -> m a
+withEnv _config cks continue = do
   -- FIXME: sl doesn't work??
   K.katipAddContext (K.sl "caches" (M.keys cks)) $
     K.logLocM K.DebugS ("Cachix init " <> K.logStr (show (M.keys cks) :: Text))
   pcs <- liftIO $ toPushCaches cks
-  store <- liftIO openStore
   httpManager <- newTlsManagerWith customManagerSettings
-  pure
-    Env.Env
-      { pushCaches = pcs,
-        netrcLines = toNetrcLines cks,
-        cacheKeys = cks,
-        nixStore = store,
-        clientEnv = mkClientEnv httpManager defaultCachixBaseUrl
-      }
+  env <- do
+    store <- liftIO openStore
+    pure
+      Env.Env
+        { pushCaches = pcs,
+          netrcLines = toNetrcLines cks,
+          cacheKeys = cks,
+          nixStore = store,
+          clientEnv = mkClientEnv httpManager defaultCachixBaseUrl
+        }
+  continue env
 
 toNetrcLines :: Map Text CachixCache.CachixCache -> [Text]
 toNetrcLines = concatMap toNetrcLine . M.toList

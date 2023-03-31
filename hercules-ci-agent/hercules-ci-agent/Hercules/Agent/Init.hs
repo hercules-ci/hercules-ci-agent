@@ -1,3 +1,5 @@
+{-# LANGUAGE BlockArguments #-}
+
 module Hercules.Agent.Init where
 
 import Hercules.Agent.Cachix.Init qualified
@@ -21,8 +23,8 @@ import Servant.Auth.Client qualified
 import Servant.Client qualified
 import System.Directory qualified
 
-newEnv :: Config.FinalConfig -> K.LogEnv -> IO Env
-newEnv config logEnv = do
+withEnv :: Config.FinalConfig -> K.LogEnv -> (Env -> IO a) -> IO a
+withEnv config logEnv f = do
   let withLogging :: K.KatipContextT IO a -> IO a
       withLogging = K.runKatipContextT logEnv () "Init"
   withLogging $ K.logLocM K.DebugS $ "Config: " <> K.logStr (show config :: Text)
@@ -34,26 +36,27 @@ newEnv config logEnv = do
   let clientEnv :: Servant.Client.ClientEnv
       clientEnv = Servant.Client.mkClientEnv manager baseUrl
   token <- Token.readTokenFile $ toS $ Config.clusterJoinTokenPath config
-  cachix <- withLogging $ Hercules.Agent.Cachix.Init.newEnv config (BC.cachixCaches bcs)
-  nix <- Hercules.Agent.Nix.Init.newEnv
-  serviceInfo <- ServiceInfo.newEnv clientEnv
-  pure
-    Env
-      { manager = manager,
-        config = config,
-        herculesBaseUrl = baseUrl,
-        herculesClientEnv = clientEnv,
-        serviceInfo = serviceInfo,
-        currentToken = Servant.Auth.Client.Token $ encodeUtf8 token,
-        binaryCaches = bcs,
-        cachixEnv = cachix,
-        socket = panic "Socket not defined yet.", -- Hmm, needs different monad?
-        kNamespace = emptyNamespace,
-        kContext = mempty,
-        kLogEnv = logEnv,
-        nixEnv = nix,
-        netrcEnv = Netrc.Env Nothing
-      }
+  withLogging $ Hercules.Agent.Cachix.Init.withEnv config (BC.cachixCaches bcs) \cachix -> liftIO do
+    nix <- Hercules.Agent.Nix.Init.newEnv
+    serviceInfo <- ServiceInfo.newEnv clientEnv
+    let env =
+          Env
+            { manager = manager,
+              config = config,
+              herculesBaseUrl = baseUrl,
+              herculesClientEnv = clientEnv,
+              serviceInfo = serviceInfo,
+              currentToken = Servant.Auth.Client.Token $ encodeUtf8 token,
+              binaryCaches = bcs,
+              cachixEnv = cachix,
+              socket = panic "Socket not defined yet.", -- Hmm, needs different monad?
+              kNamespace = emptyNamespace,
+              kContext = mempty,
+              kLogEnv = logEnv,
+              nixEnv = nix,
+              netrcEnv = Netrc.Env Nothing
+            }
+    f env
 
 setupLogging :: Config.FinalConfig -> (K.LogEnv -> IO ()) -> IO ()
 setupLogging cfg f = do

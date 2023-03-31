@@ -58,6 +58,7 @@ import Hercules.Agent.Options qualified as Options
 import Hercules.Agent.STM
 import Hercules.Agent.Socket as Socket
 import Hercules.Agent.Token (withAgentToken)
+import Hercules.CNix.Store qualified as CNix.Store
 import Hercules.Error
   ( cap,
     exponential,
@@ -86,10 +87,10 @@ main = do
   cfg <- Config.finalizeConfig cfgPath =<< Config.readConfig cfgPath
   Init.initCNix cfg
   Init.setupLogging cfg $ \logEnv -> do
-    env <- Init.newEnv cfg logEnv
-    case Options.mode opts of
-      Options.Run -> run env cfg
-      Options.Test -> testConfiguration env cfg
+    Init.withEnv cfg logEnv $ \env -> do
+      case Options.mode opts of
+        Options.Run -> run env cfg
+        Options.Test -> testConfiguration env cfg
 
 testConfiguration :: Env.Env -> Config.FinalConfig -> IO ()
 testConfiguration _env _cfg = do
@@ -119,9 +120,8 @@ run env _cfg = do
                       ServicePayload.StartEvaluation evalTask ->
                         launchTask tasks socket (Task.upcastId $ EvaluateTask.id evalTask) do
                           Netrc.withNixNetrc $ Cache.withCaches do
-                            -- TODO move the store directly under env
-                            store <- asks (Cachix.Env.nixStore . Env.cachixEnv)
-                            Evaluate.performEvaluation store evalTask
+                            CNix.Store.withStore \store -> do
+                              Evaluate.performEvaluation store evalTask
                             pure $ TaskStatus.Successful ()
                       ServicePayload.StartBuild buildTask ->
                         launchTask tasks socket (Task.upcastId $ BuildTask.id buildTask) do

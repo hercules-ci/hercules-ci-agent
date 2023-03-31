@@ -128,7 +128,7 @@ push store buildTask outs = do
   forM_ caches $ \cache -> do
     -- TODO preserve StorePath instead
     storePaths <- liftIO $ for paths (CNix.parseStorePath store . encodeUtf8)
-    Agent.Cache.push cache storePaths 4
+    Agent.Cache.push store cache storePaths 4
     emitEvents buildTask [BuildEvent.Pushed $ Pushed.Pushed {cache = cache}]
 
 reportSuccess :: BuildTask -> App ()

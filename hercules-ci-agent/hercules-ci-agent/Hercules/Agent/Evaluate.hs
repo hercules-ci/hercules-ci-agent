@@ -219,7 +219,7 @@ produceEvaluationTaskEvents store task writeToBatch | EvaluateTask.isFlakeJob ta
           paths <- liftIO $ readIORef topDerivationPaths
           forM_ caches $ \cache -> do
             withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations"
-            Agent.Cache.push cache (toList paths) pushEvalWorkers
+            Agent.Cache.push store cache (toList paths) pushEvalWorkers
             emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll {cache = cache}
         captureAttrDrvAndEmit msg = do
           case msg of
@@ -363,7 +363,7 @@ produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpd
             paths <- liftIO $ readIORef topDerivationPaths
             forM_ caches $ \cache -> do
               withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations"
-              Agent.Cache.push cache (toList paths) pushEvalWorkers
+              Agent.Cache.push store cache (toList paths) pushEvalWorkers
               emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll {cache = cache}
           captureAttrDrvAndEmit msg = do
             case msg of
@@ -622,7 +622,7 @@ runEvalProcess store projectDir file autoArguments nixPath emit uploadDerivation
                         caches <- activePushCaches
                         forM_ caches $ \cache -> do
                           withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations for import from derivation"
-                          Agent.Cache.push cache [storePath] pushEvalWorkers
+                          Agent.Cache.push store cache [storePath] pushEvalWorkers
                   Async.Lifted.concurrently_
                     (uploadDerivationInfos storePath)
                     pushDerivations
@@ -732,7 +732,8 @@ drvPoller notAttempt drvPath = do
     Just (attempt, DerivationStatus.BuildSuccess) -> pure (attempt, BuildResult.Success)
 
 newtype SubprocessFailure = SubprocessFailure {message :: Text}
-  deriving (Typeable, Exception, Show)
+  deriving (Typeable, Show)
+  deriving anyclass (Exception)
 
 fetchSource :: FilePath -> Text -> App FilePath
 fetchSource targetDir url = do
