@@ -17,7 +17,7 @@ import Katip (KatipContext)
 import Protolude
 import UnliftIO.Directory (getCurrentDirectory)
 
-runEffect :: (MonadIO m, KatipContext m, MonadThrow m) => [(Text, Text)] -> Store -> Command.Effect.Effect -> m ExitCode
+runEffect :: (KatipContext m, MonadThrow m) => [(Text, Text)] -> Store -> Command.Effect.Effect -> m ExitCode
 runEffect extraNixOptions store command = do
   derivation <- prepareDerivation store command
   dir <- getCurrentDirectory
