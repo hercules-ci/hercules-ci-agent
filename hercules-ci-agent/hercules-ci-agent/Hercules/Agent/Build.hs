@@ -59,7 +59,7 @@ performBuild buildTask = do
         (System.Process.proc workerExe opts)
           { env = Just workerEnv,
             close_fds = True,
-            cwd = Just "/"
+            cwd = Nothing
           }
       writeEvent :: Event.Event -> App ()
       writeEvent event = case event of
