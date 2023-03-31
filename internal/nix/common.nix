@@ -82,6 +82,26 @@ in
   };
 
   config = mkIf cfg.enable {
+    # Make sure that nix.extraOptions does not override trusted-users
+    assertions = [
+      {
+        assertion =
+          (cfg.settings.nixUserIsTrusted or false) ->
+          builtins.match ".*(^|\n)[ \t]*trusted-users[ \t]*=.*" config.nix.extraOptions == null;
+        message = ''
+          hercules-ci-agent: Please do not set `trusted-users` in `nix.extraOptions`.
+          
+          The hercules-ci-agent module by default relies on `nix.settings.trusted-users`
+          to be effectful, but a line like `trusted-users = ...` in `nix.extraOptions`
+          will override the value set in `nix.settings.trusted-users`.
+
+          Instead of setting `trusted-users` in the `nix.extraOptions` string, you should
+          set an option with additive semantics, such as
+           - the NixOS option `nix.settings.trusted-users`, or
+           - the Nix option in the `extraOptions` string, `extra-trusted-users`
+        '';
+      }
+    ];
     nix.extraOptions = ''
       # A store path that was missing at first may well have finished building,
       # even shortly after the previous lookup. This *also* applies to the daemon.
