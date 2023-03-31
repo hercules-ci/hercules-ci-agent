@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 
@@ -8,6 +9,16 @@ import Cachix.Client.Version (cachixVersion)
 #else
 import Cachix.Client.Env (cachixVersion)
 #endif
+
+#if MIN_VERSION_cachix(1,4,0)
+import Cachix.Client.Store qualified as Cachix
+import Control.Monad.IO.Unlift (UnliftIO (UnliftIO), askUnliftIO)
+import Hercules.CNix.Settings qualified as CNix
+
+#else
+import Hercules.CNix.Store (openStore)
+
+#endif
 import Cachix.Client.Push qualified as Cachix.Push
 import Cachix.Client.Secrets qualified as Cachix.Secrets
 import Cachix.Client.URI (defaultCachixBaseUrl)
@@ -15,7 +26,6 @@ import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Data.Map qualified as M
 import Hercules.Agent.Cachix.Env as Env
 import Hercules.Agent.Config qualified as Config
-import Hercules.CNix.Store (openStore)
 import Hercules.Error
 import Hercules.Formats.CachixCache qualified as CachixCache
 import Katip (KatipContext)
@@ -43,6 +53,27 @@ withEnv _config cks continue = do
     K.logLocM K.DebugS ("Cachix init " <> K.logStr (show (M.keys cks) :: Text))
   pcs <- liftIO $ toPushCaches cks
   httpManager <- newTlsManagerWith customManagerSettings
+
+#if MIN_VERSION_cachix(1,4,0)
+  UnliftIO unlift <- askUnliftIO
+  useWAL <- liftIO CNix.getUseSQLiteWAL
+
+  liftIO do
+    Cachix.withLocalStore
+      Cachix.LocalStoreOptions
+        { storePrefix = "/nix",
+          useSqliteWAL = useWAL
+        }
+      \store -> unlift do
+        continue
+          Env.Env
+            { pushCaches = pcs,
+              netrcLines = toNetrcLines cks,
+              cacheKeys = cks,
+              store = store,
+              clientEnv = mkClientEnv httpManager defaultCachixBaseUrl
+            }
+#else
   env <- do
     store <- liftIO openStore
     pure
@@ -50,10 +81,11 @@ withEnv _config cks continue = do
         { pushCaches = pcs,
           netrcLines = toNetrcLines cks,
           cacheKeys = cks,
-          nixStore = store,
+          store = store,
           clientEnv = mkClientEnv httpManager defaultCachixBaseUrl
         }
   continue env
+#endif
 
 toNetrcLines :: Map Text CachixCache.CachixCache -> [Text]
 toNetrcLines = concatMap toNetrcLine . M.toList

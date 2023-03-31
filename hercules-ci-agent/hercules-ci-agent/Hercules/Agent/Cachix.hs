@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+
 module Hercules.Agent.Cachix
   ( module Hercules.Agent.Cachix,
     activePushCaches,
@@ -7,6 +8,10 @@ where
 
 import qualified Cachix.Client.Push as Cachix.Push
 import Cachix.Types.BinaryCache (CompressionMethod(XZ))
+#if MIN_VERSION_cachix(1,4,0)
+import qualified Cachix.Client.Store
+import qualified Cachix.Client.Store as Cachix
+#endif
 import Control.Monad.IO.Unlift
 import qualified Data.Map as M
 import qualified Hercules.Agent.Cachix.Env as Agent.Cachix
@@ -18,12 +23,13 @@ import Hercules.CNix.Store (StorePath)
 import Hercules.Error
 import qualified Hercules.Formats.CachixCache as CachixCache
 import Protolude
-import qualified Hercules.CNix.Store as CNix
+import qualified Hercules.CNix as CNix
 
 push :: CNix.Store -> Text -> [StorePath] -> Int -> App ()
 push nixStore cache paths workers = withNamedContext "cache" cache $ do
   Agent.Cachix.Env
     { pushCaches = pushCaches,
+      store = cachixStore,
       clientEnv = clientEnv
     } <-
     asks Agent.Cachix.getEnv
@@ -36,10 +42,14 @@ push nixStore cache paths workers = withNamedContext "cache" cache $ do
         Cachix.Push.PushParams
           { pushParamsName = Agent.Cachix.pushCacheName pushCache,
             pushParamsSecret = Agent.Cachix.pushCacheSecret pushCache,
-            pushParamsStore = nixStore,
+            pushParamsStore = cachixStore,
             pushParamsClientEnv = clientEnv,
             pushParamsStrategy = \storePath ->
+#if MIN_VERSION_cachix(1,4,0)
+              let ctx = withNamedContext "path" (Cachix.getPath storePath)
+#else
               let ctx = withNamedContext "path" (show storePath :: Text)
+#endif
                in Cachix.Push.PushStrategy
                     { onAlreadyPresent = pass,
                       onAttempt = \retryStatus size ->
@@ -63,11 +73,27 @@ push nixStore cache paths workers = withNamedContext "cache" cache $ do
                       omitDeriver = False
                     }
           }
+#if MIN_VERSION_cachix(1,4,0)
+  paths' <- paths & traverse (convertPath nixStore)
+#else
+  let paths' = paths
+#endif
   void $
     Cachix.Push.pushClosure
       (\f l -> liftIO $ Cachix.Push.mapConcurrentlyBounded workers (fmap (unliftIO ul) f) l)
       pushParams
-      paths
+      paths'
+
+#if MIN_VERSION_cachix(1,4,0)
+
+-- This assumes that the store is not relocated, as cachix does not support that at the time of writing.
+convertPath :: CNix.Store -> StorePath -> App Cachix.Client.Store.StorePath
+convertPath store storePath = do
+  storePathBytes <- liftIO $ CNix.storePathToPath store storePath
+  let storePathText = decodeUtf8With lenientDecode storePathBytes
+  pure (Cachix.Client.Store.StorePath storePathText)
+
+#endif
 
 getNetrcLines :: App [Text]
 getNetrcLines = asks (Agent.Cachix.netrcLines . Agent.Env.cachixEnv)
