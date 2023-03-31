@@ -119,6 +119,7 @@ test-suite hercules-ci-cnix-store-unit-tests
       Hercules.CNix.Std.SetSpec
       Hercules.CNix.Store.DerivationSpec
       Hercules.CNix.Store.TestUtil
+      Hercules.CNix.SettingsSpec
       Hercules.CNix.VerbositySpec
   hs-source-dirs:
       test
