@@ -1,4 +1,4 @@
-resolver: ghc-9.2.6
+resolver: ghc-9.2.7
 
 packages:
   - ./cabal-pkg-config-version-hook
@@ -10,11 +10,6 @@ packages:
   - ./hercules-ci-cnix-expr
   - ./tests/agent-test
   - ./hercules-ci-cnix-store
-
-  # incorporate into "local" build so the tooling doesn't get confused by the
-  # local -> snapshot -> local dependency, such as agent -> cachix -> cnix-store
-  - ./dev/vendor/cachix/cachix
-  - ./dev/vendor/cachix/cachix-api
 
 system-ghc: true
 
@@ -28,5 +23,4 @@ flags:
 
 nix:
   enable: false
-  packages: []
   shell-file: ./shell.nix

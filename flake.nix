@@ -1,7 +1,7 @@
 {
   description = "Hercules CI Agent";
 
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/haskell-updates";
   inputs.nix-darwin.url = "github:LnL7/nix-darwin"; # test only
   inputs.nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
   inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
@@ -300,23 +300,6 @@
                   devShell.extraLibraries = hp: { inherit (hp) releaser; };
 
                   overrides = self: super: {
-
-                    cachix = (super.cachix.override (o: {
-                      inherit nix;
-                    })).overrideAttrs (o: {
-                      postPatch = ''
-                        ${o.postPatch or ""}
-                        # jailbreak pkgconfig deps
-                        cp cachix.cabal cachix.cabal.backup
-                        sed -i cachix.cabal -e 's/\(nix-[a-z]*\) *(==[0-9.]* *|| *>[0-9.]*) *&& *<[0-9.]*/\1/g'
-                        sed -i cachix.cabal -e 's/pkgconfig-depends:.*/pkgconfig-depends: nix-main, nix-store/'
-                        echo
-                        echo Applied:
-                        diff -U5 cachix.cabal.backup cachix.cabal ||:
-                        echo
-                        rm cachix.cabal.backup
-                      '';
-                    });
 
                     hercules-ci-optparse-applicative =
                       super.callPackage ./nix/hercules-ci-optparse-applicative.nix { };

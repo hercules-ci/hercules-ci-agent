@@ -15,6 +15,6 @@ source-repository-package
     tag: 3d20deefbef2e66d3c075facc5d01c1aede34f3c
 
 constraints:
-  cachix >= 1.3,
-  cachix-api >= 1.3,
+  cachix >= 1.4.1,
+  cachix-api >= 1.4.1,
   jose >= 0.9,

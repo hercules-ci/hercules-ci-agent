@@ -1,3 +1,0 @@
-[submodule "dev/vendor/cachix"]
-	path = dev/vendor/cachix
-	url = https://github.com/cachix/cachix.git
