@@ -39,6 +39,8 @@ withCaches m = do
     m
 
 push ::
+  -- | Nix Store
+  CNix.Store ->
   -- | Cache name
   Text ->
   -- | Paths, which do not have to form a closure
@@ -46,14 +48,14 @@ push ::
   -- | Number of concurrent upload threads
   Int ->
   App ()
-push cacheName paths concurrency = katipAddNamespace "Push" $ katipAddContext (sl "cacheName" cacheName) do
+push store cacheName paths concurrency = katipAddNamespace "Push" $ katipAddContext (sl "cacheName" cacheName) do
   caches <- asks Env.binaryCaches
   let maybeNix =
         Config.nixCaches caches & M.lookup cacheName & fmap \cache ->
           nixPush cache paths concurrency
       maybeCachix =
         Config.cachixCaches caches & M.lookup cacheName & fmap \_cache ->
-          Cachix.push cacheName paths concurrency
+          Cachix.push store cacheName paths concurrency
       failNothing =
         throwIO $ FatalError $ "Agent does not have a binary cache named " <> show cacheName <> " in its configuration."
   fromMaybe failNothing (maybeNix <|> maybeCachix)

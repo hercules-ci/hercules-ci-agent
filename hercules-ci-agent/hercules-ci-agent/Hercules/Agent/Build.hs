@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Hercules.Agent.Build where
 
 import Data.Aeson qualified as A
@@ -18,7 +19,9 @@ import Hercules.API.Servant (noContent)
 import Hercules.API.TaskStatus (TaskStatus)
 import Hercules.API.TaskStatus qualified as TaskStatus
 import Hercules.Agent.Cache qualified as Agent.Cache
+#if ! MIN_VERSION_cachix(1, 4, 0)
 import Hercules.Agent.Cachix.Env qualified as Cachix.Env
+#endif
 import Hercules.Agent.Client qualified
 import Hercules.Agent.Config qualified as Config
 import Hercules.Agent.Env
@@ -103,8 +106,11 @@ performBuild buildTask = do
     Just BuildResult.BuildSuccess {outputs = outs'} -> do
       let outs = convertOutputs (BuildTask.derivationPath buildTask) outs'
       reportOutputInfos buildTask outs
-      store <- asks (Cachix.Env.nixStore . Env.cachixEnv)
-      push store buildTask outs
+#if MIN_VERSION_cachix(1, 4, 0)
+      CNix.withStore $ \store -> push store buildTask outs
+#else
+      asks (Cachix.Env.store . Env.cachixEnv) >>= \store -> push store buildTask outs
+#endif
       reportSuccess buildTask
       pure $ TaskStatus.Successful ()
     Just BuildResult.BuildFailure {} -> pure $ TaskStatus.Terminated ()
@@ -128,7 +134,7 @@ push store buildTask outs = do
   forM_ caches $ \cache -> do
     -- TODO preserve StorePath instead
     storePaths <- liftIO $ for paths (CNix.parseStorePath store . encodeUtf8)
-    Agent.Cache.push cache storePaths 4
+    Agent.Cache.push store cache storePaths 4
     emitEvents buildTask [BuildEvent.Pushed $ Pushed.Pushed {cache = cache}]
 
 reportSuccess :: BuildTask -> App ()

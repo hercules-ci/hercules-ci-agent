@@ -20,6 +20,7 @@
         ormolu.enable = true;
         ormolu.excludes = [
           # CPP
+          "Hercules/Agent/Build.hs"
           "Hercules/Agent/Cachix.hs"
           "Hercules/Agent/Compat.hs"
           "Hercules/Agent/StoreFFI.hs"

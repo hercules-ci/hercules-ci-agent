@@ -1,6 +1,6 @@
 module TestSupport where
 
-import Data.List as L
+import Data.List qualified as L
 import Data.String
 import Protolude
 import System.Environment

@@ -11,11 +11,14 @@ module Hercules.CNix.Settings
     getTrustedPublicKeys,
     getNarinfoCacheNegativeTtl,
     getNetrcFile,
+    getUseSQLiteWAL,
+    setUseSQLiteWAL,
   )
 where
 
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import qualified Data.Set as S
+import Foreign (fromBool, toBool)
 import Hercules.CNix.Encapsulation (moveToForeignPtrWrapper)
 import qualified Hercules.CNix.Std.Set as Std.Set
 import qualified Hercules.CNix.Std.String as Std.String
@@ -106,3 +109,14 @@ getNetrcFile =
     =<< [C.exp| const char *{
       strdup(nix::settings.netrcFile.get().c_str())
     }|]
+
+-- Gets the value of https://nixos.org/manual/nix/stable/command-ref/conf-file.html?highlight=use-sqlite-wal#conf-use-sqlite-wal
+getUseSQLiteWAL :: IO Bool
+getUseSQLiteWAL = do
+  [C.exp| bool { nix::settings.useSQLiteWAL }|] <&> toBool
+
+-- Sets the value of https://nixos.org/manual/nix/stable/command-ref/conf-file.html?highlight=use-sqlite-wal#conf-use-sqlite-wal
+setUseSQLiteWAL :: Bool -> IO ()
+setUseSQLiteWAL value = do
+  let v = fromBool value
+  [C.block| void { nix::settings.useSQLiteWAL = $(bool v); }|]

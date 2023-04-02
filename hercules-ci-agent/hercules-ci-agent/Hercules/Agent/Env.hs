@@ -66,7 +66,7 @@ instance Cachix.HasEnv Env where
   getEnv = cachixEnv
 
 newtype App a = App {fromApp :: ReaderT Env IO a}
-  deriving (Functor, Applicative, Monad, MonadReader Env, MonadIO, MonadCatch, MonadMask, MonadThrow, MonadUnliftIO, MonadBase IO, MonadBaseControl IO)
+  deriving newtype (Functor, Applicative, Monad, MonadReader Env, MonadIO, MonadCatch, MonadMask, MonadThrow, MonadUnliftIO, MonadBase IO, MonadBaseControl IO)
 
 runApp :: Env -> App a -> IO a
 runApp env (App m) = runReaderT m env

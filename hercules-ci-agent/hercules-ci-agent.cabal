@@ -243,7 +243,7 @@ executable hercules-ci-agent
     , binary
     , binary-conduit
     , bytestring
-    , cachix
+    , cachix >= 1.4.1 || <1.4
     , cachix-api
     , hercules-ci-cnix-store
     , conduit
