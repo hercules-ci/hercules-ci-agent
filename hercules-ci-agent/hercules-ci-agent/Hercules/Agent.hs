@@ -122,7 +122,7 @@ run env _cfg = do
                 withApplicationLevelPinger socket $ do
                   logLocM InfoS "Agent online."
                   storeProtocolVersion <- liftIO do
-                    CNix.Store.openStore >>= CNix.Store.getStoreProtocolVersion
+                    CNix.Store.withStore CNix.Store.getStoreProtocolVersion
 
                   let baseURL = env.serviceInfo.bulkSocketBaseURL & toString
                       toString uri = uriToString identity uri "" & toS
