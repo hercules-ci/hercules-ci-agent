@@ -41,7 +41,11 @@ private:
     Fields fields;
   };
 
+#if NIX_IS_AT_LEAST(2, 15, 0)
+  void log(nix::Verbosity lvl, const std::string_view s) override;
+#else
   void log(nix::Verbosity lvl, const nix::FormatOrString & fs) override;
+#endif
   void startActivity(nix::ActivityId act, nix::Verbosity lvl, nix::ActivityType type,
       const std::string & s, const Fields & fields, nix::ActivityId parent) override;
   void stopActivity(nix::ActivityId act) override;
