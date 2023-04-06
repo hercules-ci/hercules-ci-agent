@@ -35,7 +35,7 @@ panicWithLog msg = do
   panic msg
 
 makeStderrLogItem :: ByteString -> LogEntry
-makeStderrLogItem msg = LogEntry.Msg {msg = "<worker stderr> " <> decodeUtf8With lenientDecode msg, i = 0, ms = 0, level = 0}
+makeStderrLogItem msg = LogEntry.Msg {msg = decodeUtf8With lenientDecode msg, i = 0, ms = 0, level = 0}
 
 stderrLineHandler :: KatipContext m => (Vector LogEntry -> IO ()) -> Map Text Value -> Text -> Int -> ByteString -> m ()
 stderrLineHandler _sendLogItems callerContext _processRole _ ln
