@@ -16,6 +16,7 @@ import Conduit
     yield,
     (.|),
   )
+import Data.Time (UTCTime, diffUTCTime, getCurrentTime)
 import Data.Vector (Vector)
 import Data.Vector qualified as V
 import GHC.Conc (labelThread)
@@ -43,13 +44,37 @@ data LogSettings = LogSettings
   }
   deriving (Generic)
 
-withLoggerNoFlush :: (MonadUnliftIO m, KatipContext m) => Text -> Int -> LogSettings -> ((Vector LogEntry -> IO ()) -> m a) -> m a
+withLoggerNoFlush ::
+  (MonadUnliftIO m, KatipContext m) =>
+  -- | Label for the logger thread
+  Text ->
+  -- | Store protocol version
+  Int ->
+  LogSettings ->
+  -- | The logger function. It immediately replaces the time field of the log entries and queues them for asynchronous delivery.
+  ((Vector LogEntry -> IO ()) -> m a) ->
+  m a
 withLoggerNoFlush label storeProtocolVersion settings f = do
+  start <- liftIO getCurrentTime
   (loggr, stop) <- forkLogger label storeProtocolVersion settings
-  f loggr `finally` liftIO stop
+  f (loggr <=< setLogEntriesTime start) `finally` liftIO stop
+
+setLogEntriesTime :: Functor l => UTCTime -> l LogEntry -> IO (l LogEntry)
+setLogEntriesTime start l = do
+  now <- getCurrentTime
+  let diffMs = floor $ 1000 * diffUTCTime now start
+  pure $ l <&> \e -> e {LogEntry.ms = diffMs}
 
 -- FIXME: logger pool, diagnostics, timeout
-forkLogger :: forall m. (MonadUnliftIO m, KatipContext m) => Text -> Int -> LogSettings -> m (Vector LogEntry -> IO (), IO ())
+forkLogger ::
+  forall m.
+  (MonadUnliftIO m, KatipContext m) =>
+  -- | Label for the logger thread
+  Text ->
+  -- | Store protocol version
+  Int ->
+  LogSettings ->
+  m (Vector LogEntry -> IO (), IO ())
 forkLogger label storeProtocolVersion settings = do
   q <- newTBQueueIO 1000
 

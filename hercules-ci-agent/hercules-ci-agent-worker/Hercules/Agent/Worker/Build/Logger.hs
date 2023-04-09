@@ -123,13 +123,15 @@ forNonNull :: Ptr a -> (Ptr a -> IO b) -> IO (Maybe b)
 forNonNull p f = if p == nullPtr then pure Nothing else Just <$> f p
 
 -- popping multiple lines into an array would be nice
-convertEntry :: Ptr HerculesLoggerEntry -> IO LogEntry
-convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \levelPtr -> alloca \activityIdPtr -> alloca \typePtr -> alloca \parentPtr -> alloca \fieldsPtrPtr ->
+convertEntry ::
+  Ptr HerculesLoggerEntry ->
+  -- | 'LogEntry' without timestamp
+  IO LogEntry
+convertEntry logEntryPtr = alloca \textStrPtr -> alloca \levelPtr -> alloca \activityIdPtr -> alloca \typePtr -> alloca \parentPtr -> alloca \fieldsPtrPtr ->
   do
     r <-
       [C.throwBlock| int {
         const HerculesLogger::LogEntry &ln = *$(HerculesLoggerEntry *logEntryPtr);
-        *$(uint64_t *millisPtr) = ln.ms;
         switch (ln.entryType) {
           case 1:
             *$(const char **textStrPtr) = strdup(ln.text.c_str());
@@ -155,8 +157,9 @@ convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \le
             return 0;
         }
       }|]
-    ms_ <- peek millisPtr
+    -- Real timestamps and index number are set by the log monitoring process instead
     let i_ = 0
+        ms_ = 0
     case r of
       1 -> do
         textStr <- peek textStrPtr
