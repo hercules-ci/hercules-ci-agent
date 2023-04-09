@@ -31,10 +31,11 @@ import Hercules.Agent.Conduit (takeCWhileStopEarly, withMessageLimit)
 import Hercules.Agent.Log (KatipContext, Severity (DebugS, ErrorS), katipAddContext, logLocM, sl)
 import Hercules.Agent.Socket qualified as Socket
 import Hercules.CNix.Store (getClientProtocolVersion)
+import Katip (KatipContext (getKatipContext, getKatipNamespace), KatipContextT, Severity (WarningS), getLogEnv, runKatipContextT)
 import Network.URI qualified
 import Protolude hiding (atomically, finally, forkFinally, myThreadId, withAsync, yield)
 import System.Timeout.Lifted (timeout)
-import UnliftIO (MonadUnliftIO, atomically, catch, finally, newTBQueueIO, readTBQueue, withAsync, writeTBQueue)
+import UnliftIO (MonadUnliftIO, atomically, catch, finally, lengthTBQueue, newTBQueueIO, readTBQueue, withAsync, writeTBQueue)
 import UnliftIO.Concurrent (forkFinally, myThreadId)
 
 data LogSettings = LogSettings
@@ -65,7 +66,6 @@ setLogEntriesTime start l = do
   let diffMs = floor $ 1000 * diffUTCTime now start
   pure $ l <&> \e -> e {LogEntry.ms = diffMs}
 
--- FIXME: logger pool, diagnostics, timeout
 forkLogger ::
   forall m.
   (MonadUnliftIO m, KatipContext m) =>
@@ -75,8 +75,8 @@ forkLogger ::
   Int ->
   LogSettings ->
   m (Vector LogEntry -> IO (), IO ())
-forkLogger label storeProtocolVersion settings = do
-  q <- newTBQueueIO 1000
+forkLogger label storeProtocolVersion settings = katipAddContext (sl "label" label) do
+  q <- newTBQueueIO 100000
 
   let entriesSource :: ConduitM () (Vector LogEntry) m ()
       entriesSource = do
@@ -106,9 +106,16 @@ forkLogger label storeProtocolVersion settings = do
       liftIO (labelThread t ("logger for " <> toS label))
       logger settings storeProtocolVersion entriesSource
       pass
+  (UnliftKatipContextT unliftKatip) <- askUnliftKatipContextT
+  let putQ item = do
+        l <- atomically do
+          writeTBQueue q item
+          lengthTBQueue q
+        when (l > 10000) do
+          unliftKatip $ logLocM WarningS "Logger queue has significant backlog."
   pure
-    ( atomically . writeTBQueue q . Just,
-      atomically $ writeTBQueue q Nothing
+    ( putQ . Just,
+      putQ Nothing
     )
 
 logger :: (MonadUnliftIO m, KatipContext m) => LogSettings -> Int -> ConduitM () (Vector LogEntry) m () -> m ()
@@ -277,3 +284,15 @@ filterProgress = filterC \case
   Chunk LogEntry.Result {rtype = LogEntry.ResultTypeProgress} -> False
   Chunk LogEntry.Result {rtype = LogEntry.ResultTypeSetExpected} -> False
   _ -> True
+
+----- Utilities -----
+
+-- | Captures the whole logging context, by providing the capability to reduce @KatipContextT m@ to a plain @m@.
+newtype UnliftKatipContextT = UnliftKatipContextT {unliftKatipContextT :: forall a m. KatipContextT m a -> m a}
+
+askUnliftKatipContextT :: KatipContext m => m UnliftKatipContextT
+askUnliftKatipContextT = do
+  le <- getLogEnv
+  ctx <- getKatipContext
+  ns <- getKatipNamespace
+  pure (UnliftKatipContextT (runKatipContextT le ctx ns))
