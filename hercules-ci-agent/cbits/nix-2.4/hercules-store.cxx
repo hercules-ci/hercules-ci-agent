@@ -245,6 +245,12 @@ void WrappingStore::createUser(const std::string & userName, uid_t userId) {
 }
 #endif
 
+#if NIX_IS_AT_LEAST(2,15,0)
+std::optional<TrustedFlag> WrappingStore::isTrustedClient() {
+  return wrappedStore->isTrustedClient();
+}
+#endif
+
 /////
 
 HerculesStore::HerculesStore(const Params& params, ref<Store> storeToWrap)

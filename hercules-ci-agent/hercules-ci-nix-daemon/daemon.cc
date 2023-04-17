@@ -15,6 +15,11 @@
 
 using namespace nix;
 
+#if ! NIX_IS_AT_LEAST(2,15,0)
+using nix::daemon::TrustedFlag;
+using nix::daemon::NotTrusted;
+#endif
+
 static void sigChldHandler(int sigNo)
 {
     // Ensure we don't modify errno of whatever we've interrupted
@@ -88,7 +93,7 @@ extern "C" int main(int argc, char **argv) {
                 FdSink to(remote.get());
                 // TODO: disable caching without interfering with user parameters
                 ref<Store> store = openStore();
-                daemon::TrustedFlag trusted = daemon::NotTrusted;
+                TrustedFlag trusted = NotTrusted;
                 daemon::RecursiveFlag recursive = daemon::NotRecursive;
 #if ! NIX_IS_AT_LEAST(2,14,0)
                 std::function<void(Store &)> authHook = [](Store &){};
