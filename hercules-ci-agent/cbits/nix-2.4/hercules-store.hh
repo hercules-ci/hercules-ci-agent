@@ -158,6 +158,10 @@ public:
   virtual void createUser(const std::string & userName, uid_t userId) override;
 #endif
 
+#if NIX_IS_AT_LEAST(2,15,0)
+  virtual std::optional<TrustedFlag> isTrustedClient() override;
+#endif
+
 };
 
 class HerculesStore final : public WrappingStore {

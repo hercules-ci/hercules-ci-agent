@@ -145,7 +145,10 @@ init =
     [C.throwBlock| void {
       nix::initNix();
       nix::initGC();
-#ifdef NIX_2_5
+#if NIX_IS_AT_LEAST(2,15,0)
+      globalConfig.set("extra-experimental-features", "flakes");
+#else
+#if NIX_IS_AT_LEAST(2,5,0)
       std::set<nix::ExperimentalFeature> features(nix::settings.experimentalFeatures.get());
       features.insert(nix::ExperimentalFeature::Flakes);
 #else
@@ -153,6 +156,7 @@ init =
       features.push_back("flakes");
 #endif
       nix::settings.experimentalFeatures.assign(features);
+#endif
     } |]
 
 -- | Initialize the current (main) thread for stack overflow detection.

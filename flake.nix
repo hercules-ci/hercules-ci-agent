@@ -301,7 +301,7 @@
 
                   overrides = self: super: {
 
-                    cachix = (super.cachix.override (o: {
+                    cachix = ((super.cachix_1_3_3 or super.cachix).override (o: {
                       inherit nix;
                     })).overrideAttrs (o: {
                       postPatch = ''
