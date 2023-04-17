@@ -34,7 +34,7 @@ flag nix-2_4
   description: Build for Nix >=2.4pre*
   default: True
 
-flag nix-2_5
+flag nix-2_15
   description: Build for Nix >=2.5pre*
   default: False
 
@@ -44,16 +44,16 @@ flag ide
 
 -- match the C++ language standard Nix is using
 common cxx-opts
+  if flag(nix-2_15)
+    cxx-options:
+      -std=c++2a
+  else
+    cxx-options:
+      -std=c++17
+
   cxx-options:
-    -std=c++17
     -Wall
   extra-libraries: stdc++
-
-  if flag(nix-2_5)
-    cxx-options:
-      -DNIX_2_5
-    cpp-options:
-      -DNIX_2_5
 
   if os(darwin)
     -- avoid https://gitlab.haskell.org/ghc/ghc/issues/11829
@@ -61,9 +61,15 @@ common cxx-opts
 
   if impl(ghc >= 8.10)
     ghc-options:
-      -optcxx-std=c++17
       -optcxx-Wall
+    if flag(nix-2_15)
+      ghc-options:
+        -optcxx-std=c++2a
+    else
+      ghc-options:
+        -optcxx-std=c++17
   else
+    -- Remove soon
     ghc-options:
       -optc-std=c++17
       -optc-Wall

@@ -148,7 +148,7 @@ init =
 #if NIX_IS_AT_LEAST(2,15,0)
       globalConfig.set("extra-experimental-features", "flakes");
 #else
-#ifdef NIX_2_5
+#if NIX_IS_AT_LEAST(2,5,0)
       std::set<nix::ExperimentalFeature> features(nix::settings.experimentalFeatures.get());
       features.insert(nix::ExperimentalFeature::Flakes);
 #else
