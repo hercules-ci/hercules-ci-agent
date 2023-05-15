@@ -101,7 +101,7 @@
 
           # A module like the one in Nixpkgs
           nixosModules.agent-service =
-            { pkgs, ... }:
+            { lib, pkgs, ... }:
             {
               _file = "${toString ./flake.nix}#nixosModules.agent-service";
               imports = [
@@ -119,7 +119,7 @@
 
           # An opinionated module for configuring an agent machine
           nixosModules.agent-profile =
-            { pkgs, ... }:
+            { lib, pkgs, ... }:
             {
               _file = "${toString ./flake.nix}#nixosModules.agent-profile";
               imports = [
@@ -139,7 +139,7 @@
 
           # A module for configuring multiple agents on a single machine
           nixosModules.multi-agent-service =
-            { pkgs, ... }:
+            { lib, pkgs, ... }:
             {
               _file = "${toString ./flake.nix}#nixosModules.multi-agent-service";
               imports = [
@@ -166,7 +166,7 @@
 
           # A nix-darwin module
           darwinModules.agent-service =
-            { pkgs, ... }:
+            { lib, pkgs, ... }:
             {
               _file = "${toString ./flake.nix}#darwinModules.agent-service";
               imports = [
@@ -184,7 +184,7 @@
 
           # A nix-darwin module with more defaults set for machines that serve as agents
           darwinModules.agent-profile =
-            { pkgs, ... }:
+            { lib, pkgs, ... }:
             {
               _file = "${toString ./flake.nix}#darwinModules.agent-profile";
               imports = [
