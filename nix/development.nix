@@ -45,5 +45,9 @@
       hour = 4;
       dayOfWeek = "Wed";
     };
+    flakes = {
+      "." = { };
+      "dev/private" = { };
+    };
   };
 }
