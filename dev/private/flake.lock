@@ -192,11 +192,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1685557007,
-        "narHash": "sha256-0prbgwFJeBuLGJgNdOXCXQ8/oSamzkcNZYHr04ZXI2I=",
+        "lastModified": 1686160560,
+        "narHash": "sha256-hQZLrTZCxLM4FBtyzdIWeRpeqdcDYIobX8Y50q5pLDM=",
         "owner": "hercules-ci",
         "repo": "hercules-ci-effects",
-        "rev": "6d8e62977dc34fd2c187879856ebb6cf1faabba9",
+        "rev": "6bd36d1b18dd5a17315374f024479070cc132ab8",
         "type": "github"
       },
       "original": {
