@@ -8,7 +8,7 @@ where
 
 import qualified Cachix.Client.Push as Cachix.Push
 import Cachix.Types.BinaryCache (CompressionMethod(XZ))
-#if MIN_VERSION_cachix(1,4,0)
+#if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
 import qualified Cachix.Client.Store
 import qualified Cachix.Client.Store as Cachix
 #endif
@@ -45,7 +45,7 @@ push nixStore cache paths workers = withNamedContext "cache" cache $ do
             pushParamsStore = cachixStore,
             pushParamsClientEnv = clientEnv,
             pushParamsStrategy = \storePath ->
-#if MIN_VERSION_cachix(1,4,0)
+#if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
               let ctx = withNamedContext "path" (Cachix.getPath storePath)
 #else
               let ctx = withNamedContext "path" (show storePath :: Text)
@@ -73,7 +73,7 @@ push nixStore cache paths workers = withNamedContext "cache" cache $ do
                       omitDeriver = False
                     }
           }
-#if MIN_VERSION_cachix(1,4,0)
+#if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
   paths' <- paths & traverse (convertPath nixStore)
 #else
   let paths' = paths
@@ -84,7 +84,7 @@ push nixStore cache paths workers = withNamedContext "cache" cache $ do
       pushParams
       paths'
 
-#if MIN_VERSION_cachix(1,4,0)
+#if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
 
 -- This assumes that the store is not relocated, as cachix does not support that at the time of writing.
 convertPath :: CNix.Store -> StorePath -> App Cachix.Client.Store.StorePath

@@ -293,22 +293,30 @@
 
                   overrides = self: super: {
 
-                    cachix = ((super.cachix_1_3_3 or super.cachix).override (o: {
-                      inherit nix;
-                    })).overrideAttrs (o: {
-                      postPatch = ''
-                        ${o.postPatch or ""}
-                        # jailbreak pkgconfig deps
-                        cp cachix.cabal cachix.cabal.backup
-                        sed -i cachix.cabal -e 's/\(nix-[a-z]*\) *(==[0-9.]* *|| *>[0-9.]*) *&& *<[0-9.]*/\1/g'
-                        sed -i cachix.cabal -e 's/pkgconfig-depends:.*/pkgconfig-depends: nix-main, nix-store/'
-                        echo
-                        echo Applied:
-                        diff -U5 cachix.cabal.backup cachix.cabal ||:
-                        echo
-                        rm cachix.cabal.backup
-                      '';
-                    });
+                    cachix =
+                      if builtins.compareVersions super.cachix.version "1.5" >= 0
+                      then
+                        super.cachix.override
+                          (o: {
+                            inherit nix;
+                          })
+                      else
+                        ((super.cachix_1_3_3 or super.cachix).override (o: {
+                          inherit nix;
+                        })).overrideAttrs (o: {
+                          postPatch = ''
+                            ${o.postPatch or ""}
+                            # jailbreak pkgconfig deps
+                            cp cachix.cabal cachix.cabal.backup
+                            sed -i cachix.cabal -e 's/\(nix-[a-z]*\) *(==[0-9.]* *|| *>[0-9.]*) *&& *<[0-9.]*/\1/g'
+                            sed -i cachix.cabal -e 's/pkgconfig-depends:.*/pkgconfig-depends: nix-main, nix-store/'
+                            echo
+                            echo Applied:
+                            diff -U5 cachix.cabal.backup cachix.cabal ||:
+                            echo
+                            rm cachix.cabal.backup
+                          '';
+                        });
 
                     hercules-ci-optparse-applicative =
                       super.callPackage ./nix/hercules-ci-optparse-applicative.nix { };
@@ -386,6 +394,9 @@
 
                     hercules-ci-cnix-store = lib.pipe super.hercules-ci-cnix-store [
                       (x: x.override (o: { inherit nix; }))
+                      (x: x.overrideAttrs (o: {
+                        passthru = o.passthru // { nixPackage = nix; };
+                      }))
                     ];
 
                     # Permission denied error in tests. Might be a system configuration error on the machine?

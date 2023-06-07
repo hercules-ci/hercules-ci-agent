@@ -10,7 +10,7 @@ import Cachix.Client.Version (cachixVersion)
 import Cachix.Client.Env (cachixVersion)
 #endif
 
-#if MIN_VERSION_cachix(1,4,0)
+#if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
 import Cachix.Client.Store qualified as Cachix
 import Control.Monad.IO.Unlift (UnliftIO (UnliftIO), askUnliftIO)
 import Hercules.CNix.Settings qualified as CNix
@@ -54,7 +54,7 @@ withEnv _config cks continue = do
   pcs <- liftIO $ toPushCaches cks
   httpManager <- newTlsManagerWith customManagerSettings
 
-#if MIN_VERSION_cachix(1,4,0)
+#if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
   UnliftIO unlift <- askUnliftIO
   useWAL <- liftIO CNix.getUseSQLiteWAL
 

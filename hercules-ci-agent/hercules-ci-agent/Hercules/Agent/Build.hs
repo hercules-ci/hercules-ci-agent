@@ -19,7 +19,7 @@ import Hercules.API.Servant (noContent)
 import Hercules.API.TaskStatus (TaskStatus)
 import Hercules.API.TaskStatus qualified as TaskStatus
 import Hercules.Agent.Cache qualified as Agent.Cache
-#if ! MIN_VERSION_cachix(1, 4, 0)
+#if ! MIN_VERSION_cachix(1, 4, 0) || MIN_VERSION_cachix(1, 5, 0)
 import Hercules.Agent.Cachix.Env qualified as Cachix.Env
 #endif
 import Hercules.Agent.Client qualified
@@ -106,7 +106,7 @@ performBuild buildTask = do
     Just BuildResult.BuildSuccess {outputs = outs'} -> do
       let outs = convertOutputs (BuildTask.derivationPath buildTask) outs'
       reportOutputInfos buildTask outs
-#if MIN_VERSION_cachix(1, 4, 0)
+#if MIN_VERSION_cachix(1, 4, 0) && ! MIN_VERSION_cachix(1, 5, 0)
       CNix.withStore $ \store -> push store buildTask outs
 #else
       asks (Cachix.Env.store . Env.cachixEnv) >>= \store -> push store buildTask outs
