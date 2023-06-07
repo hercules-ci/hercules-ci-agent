@@ -38,4 +38,12 @@
     };
 
   };
+  hercules-ci.flake-update = {
+    enable = true;
+    autoMergeMethod = "merge";
+    when = {
+      hour = 4;
+      dayOfWeek = "Wed";
+    };
+  };
 }
