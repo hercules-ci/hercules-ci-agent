@@ -92,6 +92,7 @@
         partitions.dev.settings = { inputs, ... }: {
           imports = [
             ./nix/development.nix
+            ./nix/flake-update-pre-commit.nix
             inputs.hercules-ci-effects.flakeModule
             inputs.pre-commit-hooks-nix.flakeModule
           ];
