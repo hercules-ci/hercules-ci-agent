@@ -2,10 +2,6 @@
   description = "Hercules CI Agent";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-  inputs.nix-darwin.url = "github:LnL7/nix-darwin"; # test only
-  inputs.nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
-  inputs.pre-commit-hooks-nix.url = "github:cachix/pre-commit-hooks.nix";
-  inputs.pre-commit-hooks-nix.inputs.nixpkgs.follows = "nixpkgs";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
   inputs.haskell-flake.url = "github:srid/haskell-flake/0.2.0";
@@ -81,15 +77,25 @@
 
       suffixAttrs = suf: inputs.nixpkgs.lib.mapAttrs' (n: v: { name = n + suf; value = v; });
     in
-    flake-parts.lib.mkFlake { inherit inputs; } (flakeArgs@{ config, lib, ... }: {
+    flake-parts.lib.mkFlake { inherit inputs; } (flakeArgs@{ config, lib, inputs, ... }: {
       imports = [
         inputs.flake-parts.flakeModules.easyOverlay
         inputs.haskell-flake.flakeModule
-        inputs.pre-commit-hooks-nix.flakeModule
         ./nix/variants.nix
-        ./nix/development.nix
+        ./nix/flake-private-dev-inputs.nix
       ];
       config = {
+        privateDevInputSubflakePath = "dev/private";
+        partitionedAttrs.checks = "dev";
+        partitionedAttrs.devShells = "dev";
+        partitionedAttrs.herculesCI = "dev";
+        partitions.dev.settings = { inputs, ... }: {
+          imports = [
+            ./nix/development.nix
+            inputs.hercules-ci-effects.flakeModule
+            inputs.pre-commit-hooks-nix.flakeModule
+          ];
+        };
         systems = [
           "aarch64-darwin"
           "aarch64-linux"
@@ -208,20 +214,6 @@
             nixos = {
               path = ./templates/nixos;
               description = "A NixOS configuration with Hercules CI Agent";
-            };
-          };
-
-          herculesCI.onPush.default = {
-            outputs = { ... }: {
-              flake = {
-                inherit (self)
-                  checks
-                  defaultApp
-                  devShells
-                  legacyPackages
-                  packages
-                  ;
-              };
             };
           };
         };
@@ -356,7 +348,7 @@
 
                     hercules-ci-agent_lib = lib.pipe self.hercules-ci-agent
                       # Don't override this when making a devShell, because Nixpkgs shellFor does not recognize it as a local dependency.
-                      (lib.optionals (!flakeArgs.config.isDev) [
+                      (lib.optionals (!flakeArgs.config.isForDevShell) [
                         (h.overrideCabal (o: {
                           isLibrary = true;
                           isExecutable = false;
@@ -487,7 +479,8 @@
                     multi-example-eq = multi-example.eq;
                     multi-example-multi = multi-example.multi;
                   } // lib.optionalAttrs pkgs.stdenv.isDarwin {
-                  nix-darwin-example = pkgs.callPackage ./tests/nix-darwin-example.nix { flake = self; };
+                  nix-darwin-example =
+                    pkgs.callPackage ./tests/nix-darwin-example.nix { flake = self // { inherit inputs; }; };
                 }
                 // lib.optionalAttrs isDevVariant pkgs.devTools
                 # only check pre-commit on development capable systems
@@ -512,16 +505,20 @@
         #   nix = addDebug inputs.nix.defaultPackage.${prev.stdenv.hostPlatform.system};
         # };
 
-        variants.dev.isDev = true;
+        variants.forDevShell.isForDevShell = true;
         # Take the devShells from the dev variant
-        flake.devShells = lib.mkIf (!config.isDev) (lib.mkForce (config.variants.dev.flake.devShells));
+        flake.devShells = lib.mkIf (!config.isForDevShell) (
+          lib.mkOverride ((lib.mkForce { }).priority - 1) (
+            config.variants.forDevShell.flake.devShells
+          )
+        );
       };
       options = {
         # Set by variants
         extraOverlay = lib.mkOption {
           default = _: _: { };
         };
-        isDev = lib.mkOption {
+        isForDevShell = lib.mkOption {
           default = false;
           description = ''
             Whether we're producing a development attribute.
