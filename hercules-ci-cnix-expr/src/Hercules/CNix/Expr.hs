@@ -319,7 +319,13 @@ evalFile evalState filename = do
   mkRawValue
     =<< [C.throwBlock| Value* {
       Value value;
-      $(EvalState *evalState)->evalFile($(const char *filename'), value);
+      auto cstr = $(const char *filename');
+#if NIX_IS_AT_LEAST(2,16,0)
+      SourcePath path = CanonPath(cstr);
+#else
+      std::string path = cstr;
+#endif
+      $(EvalState *evalState)->evalFile(path, value);
       return new (NoGC) Value(value);
     }|]
 
@@ -516,7 +522,13 @@ valueFromExpressionString evalState s basePath = do
   mkRawValue
     =<< [C.throwBlock| Value *{
       EvalState &evalState = *$(EvalState *evalState);
-      Expr *expr = evalState.parseExprFromString(std::string($bs-ptr:s, $bs-len:s), std::string($bs-ptr:basePath, $bs-len:basePath));
+      std::string basePathStr = std::string($bs-ptr:basePath, $bs-len:basePath);
+#if NIX_IS_AT_LEAST(2,16,0)
+      SourcePath basePath = CanonPath(basePathStr);
+#else
+      auto & basePath = basePathStr;
+#endif
+      Expr *expr = evalState.parseExprFromString(std::string($bs-ptr:s, $bs-len:s), basePath);
       Value *r = new (NoGC) Value();
       evalState.eval(expr, *r);
       return r;
