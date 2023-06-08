@@ -463,6 +463,27 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                       [&](DerivationOutputCAFixed dof) -> void {
                         typ = 1;
                         path = new StorePath(dof.path(store, $fptr-ptr:(Derivation *derivation)->name, nameString));
+#if NIX_IS_AT_LEAST(2, 16, 0)
+                        std::visit(overloaded {
+                          [&](nix::FileIngestionMethod fim_) -> void {
+                            switch (fim_) {
+                              case nix::FileIngestionMethod::Flat:
+                                fim = 0;
+                                break;
+                              case nix::FileIngestionMethod::Recursive:
+                                fim = 1;
+                                break;
+                              default:
+                                fim = -1;
+                                break;
+                            }
+                          },
+                          [&](nix::TextIngestionMethod) -> void {
+                            // FIXME (RFC 92)
+                            fim = -1;
+                          }
+                        }, dof.ca.getMethod().raw);
+#else
                         switch (dof.hash.method) {
                           case nix::FileIngestionMethod::Flat:
                             fim = 0;
@@ -474,7 +495,14 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                             fim = -1;
                             break;
                         }
-                        switch (dof.hash.hash.type) {
+#endif
+
+#if NIX_IS_AT_LEAST(2, 16, 0)
+                        const Hash & hash = dof.ca.getHash();
+#else
+                        const Hash & hash = dof.hash.hash;
+#endif
+                        switch (hash.type) {
                           case htMD5: 
                             hashType = 0;
                             break;
@@ -491,14 +519,35 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                             hashType = -1;
                             break;
                         }
-                        hashSize = dof.hash.hash.hashSize;
+                        hashSize = hash.hashSize;
                         hashValue = (char*)malloc(hashSize);
                         std::memcpy((void*)(hashValue),
-                                    (void*)(dof.hash.hash.hash),
+                                    (void*)(hash.hash),
                                     hashSize);
                       },
                       [&](DerivationOutputCAFloating dof) -> void {
                         typ = 2;
+#if NIX_IS_AT_LEAST(2, 16, 0)
+                        std::visit(overloaded {
+                          [&](nix::FileIngestionMethod fim_) -> void {
+                            switch (fim_) {
+                              case nix::FileIngestionMethod::Flat:
+                                fim = 0;
+                                break;
+                              case nix::FileIngestionMethod::Recursive:
+                                fim = 1;
+                                break;
+                              default:
+                                fim = -1;
+                                break;
+                            }
+                          },
+                          [&](nix::TextIngestionMethod) -> void {
+                            // FIXME (RFC 92)
+                            fim = -1;
+                          }
+                        }, dof.method.raw);
+#else
                         switch (dof.method) {
                           case nix::FileIngestionMethod::Flat:
                             fim = 0;
@@ -510,6 +559,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                             fim = -1;
                             break;
                         }
+#endif
                         switch (dof.hashType) {
                           case htMD5: 
                             hashType = 0;
