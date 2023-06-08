@@ -290,12 +290,30 @@
               haskellProjects = {
                 internal = {
 
-                  devShell.extraLibraries = hp: { inherit (hp) releaser; };
+                  devShell.extraLibraries = hp: {
+                    inherit (hp) releaser;
+                    # Cachix deps (cachix was excluded because of its dependency on cnix-store)
+                  } //
+                  lib.listToAttrs (
+                    map
+                      (p: lib.nameValuePair p.pname p)
+                      (lib.filter
+                        (p: p?pname && p.pname != "hercules-ci-cnix-store")
+                        hp.cachix_saved.getCabalDeps.libraryHaskellDepends
+                      )
+                  );
 
                   overrides = self: super: {
 
+                    cachix_saved = super.cachix;
+
                     cachix =
-                      if builtins.compareVersions super.cachix.version "1.5" >= 0
+                      if flakeArgs.config.isForDevShell
+                      then
+                      # For the shell we omit cachix from the dependency search
+                      # so as not to introduce a nix-built dependency on cnix-store
+                        null
+                      else if builtins.compareVersions super.cachix.version "1.5" >= 0
                       then
                         super.cachix.override
                           (o: {
