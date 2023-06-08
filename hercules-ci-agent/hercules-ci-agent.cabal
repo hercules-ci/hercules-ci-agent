@@ -246,7 +246,7 @@ executable hercules-ci-agent
       -- hercules-ci-agent will upgrade its dependency when either the solution
       -- matures, or a better solution is implemented: new Nix libstore bindings
       -- that support static linking, as they require.
-    , cachix <1.4
+    , cachix <1.4 || >=1.5
     , cachix-api
     , hercules-ci-cnix-store
     , conduit

@@ -3,7 +3,7 @@
 module Hercules.Agent.Cachix.Env where
 
 import Cachix.Client.Push qualified as Cachix
-#if MIN_VERSION_cachix(1,4,0)
+#if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
 import Cachix.Client.Store qualified
 
 #else
@@ -14,7 +14,7 @@ import Hercules.Formats.CachixCache (CachixCache)
 import Protolude
 import Servant.Client (ClientEnv)
 
-#if MIN_VERSION_cachix(1,4,0)
+#if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
 type CachixStore = Cachix.Client.Store.Store
 
 #else
