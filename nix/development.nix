@@ -1,3 +1,4 @@
+toplevel@{ config, inputs, withSystem, ... }:
 {
   perSystem = { config, pkgs, ... }: {
     checks.stack-yaml-ghc-matches = pkgs.runCommand "stack-yaml-ghc-matches" { } ''
@@ -48,6 +49,36 @@
     flakes = {
       "." = { };
       "dev/private" = { };
+    };
+  };
+  herculesCI = { config, ... }: {
+    onSchedule."nix-updates" = {
+      when = {
+        hour = 4;
+        dayOfWeek = "Thu";
+      };
+      outputs.effects.update = withSystem toplevel.config.defaultEffectSystem ({ hci-effects, pkgs, ... }:
+        hci-effects.modularEffect {
+          imports = [
+            # FIXME create flake output attr on hercules-ci-effects
+            (inputs.hercules-ci-effects + "/effects/modules/git-update.nix")
+          ];
+          inputs = [ pkgs.nix ];
+          secretsMap.token = { type = "GitToken"; };
+          git.checkout.remote.url = config.repo.remoteHttpUrl;
+          git.checkout.forgeType = config.repo.forgeType;
+          git.update.branch = "nix-updates";
+          git.update.pullRequest.enable = false;
+          git.update.script = ''
+            (
+              set -x
+              git merge origin/master
+              nix flake lock --update-input nix \
+                --extra-experimental-features 'nix-command flakes'
+            )
+          '';
+        }
+      );
     };
   };
 }
