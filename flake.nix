@@ -291,6 +291,9 @@
                   inherit system;
                 };
 
+              apps.hci = config.apps.internal-hci;
+              apps.hercules-ci-agent = config.apps.internal-hercules-ci-agent;
+
               haskellProjects = {
                 internal = {
 
