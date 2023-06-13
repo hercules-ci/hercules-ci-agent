@@ -4,7 +4,7 @@
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
-  inputs.haskell-flake.url = "github:srid/haskell-flake/0.2.0";
+  inputs.haskell-flake.url = "github:srid/haskell-flake/0.3.0";
 
   # Optional. Omit to use nixpkgs' nix
   # inputs.nix = {
@@ -290,6 +290,9 @@
                   config = { };
                   inherit system;
                 };
+
+              apps.hci = config.apps.internal-hci;
+              apps.hercules-ci-agent = config.apps.internal-hercules-ci-agent;
 
               haskellProjects = {
                 internal = {
