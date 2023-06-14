@@ -38,9 +38,6 @@ import Hercules.Agent.AgentSocket (withAgentSocket)
 import Hercules.Agent.Build qualified as Build
 import Hercules.Agent.CabalInfo (herculesAgentVersion)
 import Hercules.Agent.Cache qualified as Cache
-#if ! MIN_VERSION_cachix(1, 4, 0) || MIN_VERSION_cachix(1, 5, 0)
-import Hercules.Agent.Cachix.Env qualified as Cachix.Env
-#endif
 import Hercules.Agent.Client
   ( lifeCycleClient,
     tasksClient,
