@@ -60,8 +60,7 @@ toplevel@{ config, inputs, withSystem, ... }:
       outputs.effects.update = withSystem toplevel.config.defaultEffectSystem ({ hci-effects, pkgs, ... }:
         hci-effects.modularEffect {
           imports = [
-            # FIXME create flake output attr on hercules-ci-effects
-            (inputs.hercules-ci-effects + "/effects/modules/git-update.nix")
+            hci-effects.modules.git-update
           ];
           inputs = [ pkgs.nix ];
           secretsMap.token = { type = "GitToken"; };
@@ -74,6 +73,7 @@ toplevel@{ config, inputs, withSystem, ... }:
               set -x
               git merge origin/master
               nix flake lock --update-input nix \
+                --commit-lock-file \
                 --extra-experimental-features 'nix-command flakes'
             )
           '';
