@@ -259,7 +259,7 @@ executable hercules-ci-agent
     , hercules-ci-agent
     , hercules-ci-api
     , hercules-ci-api-core == 0.1.5.1
-    , hercules-ci-api-agent == 0.5.0.0
+    , hercules-ci-api-agent == 0.5.0.1
     , hostname
     , http-client
     , http-client-tls
