@@ -5,6 +5,16 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.3.4.0 - 2023-06-28
+
+### Added
+
+ - Nix 2.16 support
+
+ - Nix 2.15 support
+
+ - `getUseSQLiteWAL` low level function. (Use of Nix sqlite files is not recommended)
+
 ## 0.3.3.5 - 2023-03-06
 
 ### Added
