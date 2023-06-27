@@ -1,5 +1,7 @@
 toplevel@{ config, inputs, withSystem, ... }:
 {
+  imports = [ ./flake-cachix-dev.nix ];
+
   perSystem = { config, pkgs, ... }: {
     checks.stack-yaml-ghc-matches = pkgs.runCommand "stack-yaml-ghc-matches" { } ''
       stack_version="$(grep -oP '(?<=resolver: ghc-)[0-9.]+' ${../stack.yaml})"
