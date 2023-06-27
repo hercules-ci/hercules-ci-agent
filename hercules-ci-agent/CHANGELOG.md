@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.12] - 2022-06-28
+
+### Added
+
+ - Nix 2.16 support
+
+ - Nix 2.15 support
+
+### Fixed
+
+ - Do not `chdir` the build worker. This functionality of the `process` package appears unreliable, but is not needed.
+
 ## [0.9.11] - 2022-03-06
 
 ### BREAKING
