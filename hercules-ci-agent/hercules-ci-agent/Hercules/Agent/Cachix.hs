@@ -12,6 +12,7 @@ import Cachix.Types.BinaryCache (CompressionMethod(XZ))
 import qualified Cachix.Client.Store
 import qualified Cachix.Client.Store as Cachix
 #endif
+import qualified Data.Conduit as Conduit
 import Control.Monad.IO.Unlift
 import qualified Data.Map as M
 import qualified Hercules.Agent.Cachix.Env as Agent.Cachix
@@ -43,6 +44,9 @@ push nixStore cache paths workers = withNamedContext "cache" cache $ do
           { pushParamsName = Agent.Cachix.pushCacheName pushCache,
             pushParamsSecret = Agent.Cachix.pushCacheSecret pushCache,
             pushParamsStore = cachixStore,
+#if MIN_VERSION_cachix(1,6,0)
+            pushOnClosureAttempt = \_ missing -> return missing,
+#endif
             pushParamsClientEnv = clientEnv,
             pushParamsStrategy = \storePath ->
 #if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
@@ -69,6 +73,9 @@ push nixStore cache paths workers = withNamedContext "cache" cache $ do
                       compressionLevel = 2,
 #else
                       withXzipCompressor = Cachix.Push.defaultWithXzipCompressor,
+#endif
+#if MIN_VERSION_cachix(1,6,0)
+                      onUncompressedNARStream = \_ _ -> Conduit.awaitForever Conduit.yield,
 #endif
                       omitDeriver = False
                     }
