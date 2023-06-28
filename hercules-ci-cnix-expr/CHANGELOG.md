@@ -5,6 +5,16 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.3.6.0 - 2023-06-28
+
+### Added
+
+ - `allowThreads`, `runInGcSafeThread`
+
+ - Nix 2.15 support
+
+ - Nix 2.16 support
+
 ## 0.3.5.1 - 2023-03-06
 
 ### Added
