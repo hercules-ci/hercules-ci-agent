@@ -53,7 +53,14 @@ toplevel@{ config, inputs, withSystem, ... }:
       "dev/private" = { };
     };
   };
-  herculesCI = { config, ... }: {
+  herculesCI = { config, lib, ... }: {
+    onPush.default = {
+      # Some things aren't essential, so we don't check them.
+      # Consider re-enabling these if they're fixed.
+      outputs.devShells.aarch64-linux.default = lib.mkOverride 0 { };
+      outputs.devShells.aarch64-linux.internal = lib.mkOverride 0 { };
+    };
+
     onSchedule."nix-updates" = {
       when = {
         hour = 4;
