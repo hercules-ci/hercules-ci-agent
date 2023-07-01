@@ -227,20 +227,6 @@
             dev-and-test-overlay = self: pkgs:
               {
                 testSuitePkgs = pkgs; # TODO: reuse pkgs via self so we don't build a variant
-                devTools =
-                  {
-                    # haskell-flake: finalPackages?
-                    inherit (pkgs.haskellPackages)
-                      ghc
-                      ghcid
-                      # TODO Use wrapped pkgs.cabal2nix, currently broken on darwin
-                      cabal2nix
-                      ;
-                    inherit (pkgs)
-                      jq
-                      nix-prefetch-git
-                      ;
-                  };
                 nix =
                   if inputs?nix
                   then
@@ -252,14 +238,6 @@
                   else
                     pkgs.nix;
               };
-
-            isDevVariant =
-              # eval error (FIXME)
-              system != "aarch64-darwin"
-              &&
-              # shellcheck was broken https://hercules-ci.com/github/hercules-ci/hercules-ci-agent/jobs/826
-              system != "aarch64-linux"
-            ;
 
             h = pkgs.haskell.lib.compose;
 
@@ -474,7 +452,6 @@
                     nativeBuildInputs =
                       o.nativeBuildInputs or [ ] ++ [
                         pkgs.jq
-                        pkgs.devTools.cabal2nix
                         pkgs.nix-prefetch-git
                         pkgs.nixpkgs-fmt
                         # pkgs.haskell.packages.ghc8107.stack
@@ -494,7 +471,7 @@
                     '';
                   });
                 in
-                if isDevVariant then shell else pkgs.mkShell { name = "unsupported-shell"; };
+                shell;
 
               checks = config.checkSet
                 # // suffixAttrs "-nixUnstable" config.variants.nixUnstable.checkSet
@@ -519,9 +496,6 @@
                   nix-darwin-example =
                     pkgs.callPackage ./tests/nix-darwin-example.nix { flake = self // { inherit inputs; }; };
                 }
-                // lib.optionalAttrs isDevVariant pkgs.devTools
-                # only check pre-commit on development capable systems
-                // lib.optionalAttrs (!isDevVariant) { pre-commit = lib.mkForce pkgs.emptyFile; }
                 // lib.optionalAttrs (system == "x86_64-linux") {
                   evalTests =
                     (import ./tests/default-herculesCI-for-flake-test.nix
