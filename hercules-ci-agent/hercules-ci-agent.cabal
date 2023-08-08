@@ -128,6 +128,7 @@ library
       Hercules.Agent.WorkerProtocol.Event.AttributeIFD
       Hercules.Agent.WorkerProtocol.Event.BuildResult
       Hercules.Agent.WorkerProtocol.Orphans
+      Hercules.Agent.WorkerProtocol.OutputInfo
       Hercules.Agent.WorkerProtocol.WorkerConfig
       Hercules.Effect
       Hercules.Effect.Container

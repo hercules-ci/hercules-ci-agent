@@ -9,10 +9,10 @@ import Data.Map qualified as M
 import Data.Vector (Vector)
 import Hercules.API.Agent.Build qualified as API.Build
 import Hercules.API.Agent.Build.BuildEvent qualified as BuildEvent
-import Hercules.API.Agent.Build.BuildEvent.OutputInfo
+import Hercules.API.Agent.OutputInfo
   ( OutputInfo,
   )
-import Hercules.API.Agent.Build.BuildEvent.OutputInfo qualified as OutputInfo
+import Hercules.API.Agent.OutputInfo qualified as OutputInfo
 import Hercules.API.Agent.Build.BuildEvent.Pushed qualified as Pushed
 import Hercules.API.Agent.Build.BuildTask
   ( BuildTask,
@@ -43,6 +43,7 @@ import Hercules.CNix.Store qualified as CNix
 import Hercules.Error (defaultRetry)
 import Protolude
 import System.Process
+import qualified Hercules.Agent.WorkerProtocol.OutputInfo as Proto
 
 performBuild :: (Vector LogEntry -> IO ()) -> BuildTask.BuildTask -> App TaskStatus
 performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath" buildTask.derivationPath) $ do
@@ -115,15 +116,16 @@ performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath"
         pure $ TaskStatus.Terminated ()
     Nothing -> pure $ TaskStatus.Exceptional "Build did not complete"
 
-convertOutputs :: Text -> [BuildResult.OutputInfo] -> Map Text OutputInfo
+convertOutputs :: Text -> [Proto.OutputInfo] -> Map Text OutputInfo
 convertOutputs deriver = foldMap $ \oi ->
-  M.singleton (decodeUtf8With lenientDecode $ BuildResult.name oi) $
+  M.singleton (decodeUtf8With lenientDecode oi.name) $
     OutputInfo.OutputInfo
       { OutputInfo.deriver = deriver,
-        name = decodeUtf8With lenientDecode $ BuildResult.name oi,
-        path = decodeUtf8With lenientDecode $ BuildResult.path oi,
-        size = fromIntegral $ BuildResult.size oi,
-        hash = decodeUtf8With lenientDecode $ BuildResult.hash oi
+        name = decodeUtf8With lenientDecode oi.name,
+        path = decodeUtf8With lenientDecode oi.path,
+        size = fromIntegral oi.size,
+        hash = decodeUtf8With lenientDecode oi.hash,
+        references = Just (decodeUtf8With lenientDecode <$> oi.references)
       }
 
 push :: CNix.Store -> BuildTask -> Map Text OutputInfo -> App ()
