@@ -8,9 +8,10 @@ module Hercules.Agent.Evaluate
 where
 
 import Conduit
+import Control.Concurrent.Async (waitSTM)
 import Control.Concurrent.Async.Lifted qualified as Async.Lifted
 import Control.Concurrent.Chan.Lifted
-import Control.Exception.Lifted (finally)
+import Control.Concurrent.STM.TVar (TVar, newTVarIO)
 import Control.Exception.Safe qualified as Safe
 import Control.Lens (at, (^?))
 import Control.Monad.IO.Unlift (askUnliftIO, unliftIO)
@@ -22,11 +23,10 @@ import Data.Conduit.Process (sourceProcessWithStreams)
 import Data.IORef
   ( atomicModifyIORef,
     newIORef,
-    readIORef,
   )
 import Data.Map qualified as M
-import Data.Set qualified as S
 import Data.Text qualified as T
+import Data.Time (getCurrentTime)
 import Data.UUID (UUID)
 import Data.Vector (Vector)
 import Hercules.API (Id)
@@ -45,7 +45,7 @@ import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired qualified as Buil
 import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo qualified as DerivationInfo
 import Hercules.API.Agent.Evaluate.EvaluateEvent.JobConfig qualified as JobConfig
 import Hercules.API.Agent.Evaluate.EvaluateEvent.Message qualified as Message
-import Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll qualified as PushedAll
+import Hercules.API.Agent.Evaluate.EvaluateEvent.SubstitutionQueryResult qualified as SubstitutionQueryResult
 import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
 import Hercules.API.Agent.Evaluate.ImmutableGitInput (ImmutableGitInput)
 import Hercules.API.Agent.Evaluate.ImmutableGitInput qualified as ImmutableGitInput
@@ -53,16 +53,18 @@ import Hercules.API.Agent.Evaluate.ImmutableInput qualified as ImmutableInput
 import Hercules.API.Logs.LogEntry (LogEntry)
 import Hercules.API.Servant (noContent)
 import Hercules.API.Task (Task)
+import Hercules.Agent.Build (convertOutputInfo)
+import Hercules.Agent.Cache (getConfiguredSubstituters)
 import Hercules.Agent.Cache qualified as Agent.Cache
 import Hercules.Agent.Client qualified
 import Hercules.Agent.Config qualified as Config
 import Hercules.Agent.Env
 import Hercules.Agent.Env qualified as Env
-import Hercules.Agent.Evaluate.TraversalQueue (Queue)
-import Hercules.Agent.Evaluate.TraversalQueue qualified as TraversalQueue
 import Hercules.Agent.Files
 import Hercules.Agent.InitWorkerConfig qualified as WorkerConfig
 import Hercules.Agent.Log
+import Hercules.Agent.Memo (Memo, newMemo)
+import Hercules.Agent.Memo qualified as Memo
 import Hercules.Agent.Netrc qualified as Netrc
 import Hercules.Agent.Nix qualified as Nix
 import Hercules.Agent.Nix.RetrieveDerivationInfo
@@ -74,6 +76,7 @@ import Hercules.Agent.NixPath
   ( renderSubPath,
   )
 import Hercules.Agent.Producer
+import Hercules.Agent.Store (toDrvInfo)
 import Hercules.Agent.WorkerProcess qualified as WorkerProcess
 import Hercules.Agent.WorkerProtocol.Command qualified as Command
 import Hercules.Agent.WorkerProtocol.Command.BuildResult qualified as BuildResult
@@ -84,20 +87,20 @@ import Hercules.Agent.WorkerProtocol.Event.AttributeError qualified as WorkerAtt
 import Hercules.Agent.WorkerProtocol.Event.AttributeIFD qualified as AttributeIFD
 import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON))
 import Hercules.Agent.WorkerProtocol.ViaJSON qualified
-import Hercules.CNix.Store (Store, StorePath, parseStorePath)
+import Hercules.CNix.Store (Store, StorePath, getStorePathBaseName, parseStorePath)
 import Hercules.CNix.Store qualified as CNix
 import Hercules.Effect (parseDrvSecretsMap)
 import Hercules.Error (defaultRetry, quickRetry)
 import Network.HTTP.Client.Conduit qualified as HTTP.Conduit
 import Network.HTTP.Simple qualified as HTTP.Simple
 import Network.URI qualified
-import Protolude hiding (finally, newChan, writeChan)
+import Protolude hiding (async, atomically, concurrently, finally, newChan, writeChan)
 import Servant.Client qualified
 import Servant.Client.Core (showBaseUrl)
 import System.Directory qualified as Dir
 import System.FilePath
 import System.Process
-import UnliftIO (atomicModifyIORef')
+import UnliftIO (async, atomicModifyIORef', atomically, concurrently, concurrently_, forConcurrently, forConcurrently_, modifyTVar, readTVar, writeTVar)
 import UnliftIO qualified
 
 eventLimit :: Int
@@ -174,16 +177,172 @@ makeEventEmitter writeToBatch = do
         emitSingle =<< fixIndex update
   pure emit
 
+-- | @waitAllSink (\addWait -> m ...)@ waits for any number of concurrent operations,
+-- which are registered during the execution of @m@ using @addWait@.
+waitAllSink :: MonadUnliftIO m => ((STM x -> STM ()) -> m a) -> m a
+waitAllSink driver = do
+  -- Signals that `driver` is done. Prevents exiting before work builds up.
+  driverDone :: TVar (STM ()) <- liftIO (newTVarIO retry)
+
+  -- Collection of work that needs to complete before returning, including the `driver` itself.
+  -- It's a list so that wait conditions that have completed can be removed; not checked again.
+  done :: TVar [STM ()] <- liftIO (newTVarIO [join $ readTVar driverDone])
+
+  let blockOn :: STM a -> STM ()
+      blockOn stm = do
+        modifyTVar done (void stm :)
+
+      waitDone =
+        atomically isDone >>= \case
+          True -> pass
+          False -> waitDone
+
+      isDone :: STM Bool
+      isDone = do
+        readTVar done >>= \case
+          [] -> pure True
+          (c : cs) -> do
+            c
+            writeTVar done cs
+            pure False
+
+      claimDriverDone = writeTVar driverDone pass
+
+  fst <$> concurrently (driver blockOn `UnliftIO.finally` atomically claimDriverDone) waitDone
+
+withStores :: [Text] -> (Map Text Store -> App r) -> App r
+withStores storeURIs f =
+  let sorted = ordNub storeURIs
+   in foldr
+        ( \uri f2 stores -> do
+            CNix.withStoreFromURI uri \store ->
+              f2 (stores <> M.singleton uri store)
+        )
+        f
+        sorted
+        mempty
+
+withSubstituters :: (Map Text Store -> App r) -> App r
+withSubstituters f = do
+  substituterURIs <- getConfiguredSubstituters
+  withStores substituterURIs f
+
 produceEvaluationTaskEvents ::
   (Vector LogEntry -> IO ()) ->
   Store ->
   EvaluateTask.EvaluateTask ->
   (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
   App ()
-produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.handle (\AbortMessageAlreadySent -> pass) $ withWorkDir "eval" $ \tmpdir -> do
+produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.handle (\AbortMessageAlreadySent -> pass) $ withSubstituters \substituters -> withWorkDir "eval" $ \tmpdir -> do
   let sync = syncer writeToBatch
-  topDerivationPaths <- liftIO $ newIORef mempty
   emit <- makeEventEmitter writeToBatch
+
+  derivationInfoUpload :: Memo ByteString () <- newMemo
+  derivationSubstitutable :: Memo (Text, ByteString) Bool <- newMemo
+  derivationBuildRequest :: Memo Text () <- newMemo
+  derivationCache :: Memo ByteString CNix.Derivation <- newMemo
+
+  let emitDrvInfoRaw :: StorePath -> App ()
+      emitDrvInfoRaw drvPath = do
+        drvInfo <- retrieveDerivationInfo store drvPath
+        forConcurrently_ (M.keys $ DerivationInfo.inputDerivations drvInfo) \inp -> do
+          inputStorePath <- liftIO $ parseStorePath store (encodeUtf8 inp)
+          emitDrvInfo inputStorePath
+        emit $ EvaluateEvent.DerivationInfo drvInfo
+
+      getDerivationCached :: StorePath -> App CNix.Derivation
+      getDerivationCached drvPath = do
+        bs <- liftIO do getStorePathBaseName drvPath
+        Memo.query derivationCache (\_ -> liftIO $ CNix.getDerivation store drvPath) bs
+
+      emitDrvInfo :: StorePath -> App ()
+      emitDrvInfo sp = do
+        bs <- liftIO (CNix.getStorePathBaseName sp)
+        Memo.query derivationInfoUpload (\_bs -> emitDrvInfoRaw sp) bs
+
+      rawQuerySubstitutableOutput :: StorePath -> CNix.Derivation -> Text -> ByteString -> App Bool
+      rawQuerySubstitutableOutput drvPath drv drvPathText outputName = do
+        drvName <- liftIO $ CNix.getDerivationNameFromPath drvPath
+        outputs <- liftIO $ CNix.getDerivationOutputs store drvName drv
+        output <- case find (\o -> o.derivationOutputName == outputName) outputs of
+          Nothing -> panic $ "derivation " <> drvPathText <> " does not have output " <> show outputName
+          Just x -> pure x
+        querySubstitutableOutput' drvPathText outputName output
+
+      querySubstitutableOutput' drvPathText outputName output = do
+        Memo.query
+          derivationSubstitutable
+          (\_ -> rawQuerySubstitutableOutput' drvPathText outputName output)
+          (drvPathText, outputName)
+      rawQuerySubstitutableOutput' drvPathText outputName output = do
+        outputPath <- case output.derivationOutputPath of
+          Nothing -> panic $ "derivation " <> drvPathText <> " does not have a predetermined path. Content addressed derivations are not supported yet."
+          Just x -> pure x
+        -- TODO waitAny
+        any identity <$> forConcurrently (M.toList substituters) \(uri, substituter) -> do
+          exists <- liftIO (CNix.isValidPath substituter outputPath)
+          if exists
+            then do
+              drvInfo <- liftIO (toDrvInfo substituter output)
+              emit $
+                EvaluateEvent.SubstitutionQueryResult
+                  SubstitutionQueryResult.SubstitutionQueryResult
+                    { storeURI = uri,
+                      derivation = drvPathText,
+                      outputName = decodeUtf8With lenientDecode outputName,
+                      outputInfo = Just (convertOutputInfo drvPathText drvInfo)
+                    }
+            else do
+              emit $
+                EvaluateEvent.SubstitutionQueryResult
+                  SubstitutionQueryResult.SubstitutionQueryResult
+                    { storeURI = uri,
+                      derivation = drvPathText,
+                      outputName = decodeUtf8With lenientDecode outputName,
+                      outputInfo = Nothing
+                    }
+
+          pure exists
+
+      planAllOutputs :: StorePath -> App ()
+      planAllOutputs drvPath = do
+        drvPathBytes <- liftIO (CNix.storePathToPath store drvPath)
+        let drvPathText = decodeUtf8With lenientDecode drvPathBytes
+        drv <- getDerivationCached drvPath
+        drvName <- liftIO $ CNix.getDerivationNameFromPath drvPath
+        outputs <- liftIO $ CNix.getDerivationOutputs store drvName drv
+        outputsSubstitutable <-
+          all identity <$> forConcurrently outputs \output ->
+            querySubstitutableOutput' drvPathText output.derivationOutputName output
+
+        when (not outputsSubstitutable) do
+          planInputs drv
+          requestBuild drvPathText
+
+      planInputs drv = do
+        inputs <- liftIO (CNix.getDerivationInputs' drv)
+        for_ inputs \(inputDrvPath, outputs) -> do
+          inputDrvPathText <- decodeUtf8With lenientDecode <$> liftIO (CNix.storePathToPath store inputDrvPath)
+          inputDrv <- getDerivationCached inputDrvPath
+          for outputs \outputName -> do
+            planOutput inputDrvPath inputDrv outputName inputDrvPathText
+
+        pass
+
+      planOutput :: StorePath -> CNix.Derivation -> ByteString -> Text -> App ()
+      planOutput drvPath drv outputName drvPathText = do
+        isSubstitutable <- rawQuerySubstitutableOutput drvPath drv drvPathText outputName
+        if isSubstitutable
+          then pass
+          else requestBuild drvPathText
+
+      requestBuild drvPathText =
+        Memo.query
+          derivationBuildRequest
+          ( \_ ->
+              emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest {derivationPath = drvPathText, forceRebuild = False}
+          )
+          drvPathText
 
   let isFlakeJob = EvaluateTask.isFlakeJob task
   nonFlakeStuff <- for (guard (not isFlakeJob)) \() -> do
@@ -292,20 +451,23 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
         Nothing -> "" -- unused
         Just (_, _, _, _, _, file_) -> file_
 
-  TraversalQueue.with $ \(derivationQueue :: Queue StorePath) ->
-    let doIt =
-          ( do
-              Async.Lifted.concurrently_ evaluation emitDrvs
-              -- derivationInfo upload has finished
-              -- allAttrPaths :: IORef has been populated
-          )
-            `finally` pushDrvs
+  let uploadDrvs paths = do
+        caches <- activePushCaches
+        forM_ caches $ \cache -> do
+          withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations"
+          Agent.Cache.push store cache (toList paths) pushEvalWorkers
+
+  waitAllSink \addToWait ->
+    let addAsync = addToWait . waitSTM
         uploadDrvInfos drvPath = do
-          TraversalQueue.enqueue derivationQueue drvPath
-          TraversalQueue.waitUntilDone derivationQueue
+          emitDrvInfo drvPath
+          uploadDrvs [drvPath]
         addTopDerivation drvPath = do
-          TraversalQueue.enqueue derivationQueue drvPath
-          liftIO $ atomicModifyIORef topDerivationPaths ((,()) . S.insert drvPath)
+          atomically . addAsync =<< async do
+            concurrently_
+              (emitDrvInfo drvPath)
+              (uploadDrvs [drvPath])
+            planAllOutputs drvPath
         extraOpts = [("system", T.strip s) | Just s <- [adHocSystem]]
         evaluation = do
           let evalProc =
@@ -322,17 +484,7 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
                     sync
                     task
                     allowedPaths
-          evalProc `finally` do
-            -- Always upload drv infos, even in case of a crash in the worker
-            TraversalQueue.waitUntilDone derivationQueue
-              `finally` TraversalQueue.close derivationQueue
-        pushDrvs = do
-          caches <- activePushCaches
-          paths <- liftIO $ readIORef topDerivationPaths
-          forM_ caches $ \cache -> do
-            withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations"
-            Agent.Cache.push store cache (toList paths) pushEvalWorkers
-            emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll {cache = cache}
+          evalProc
         captureAttrDrvAndEmit msg = do
           case msg of
             EvaluateEvent.Attribute ae -> do
@@ -343,14 +495,7 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
               addTopDerivation storePath
             _ -> pass
           emit msg
-        emitDrvs =
-          TraversalQueue.work derivationQueue $ \recurse drvPath -> do
-            drvInfo <- retrieveDerivationInfo store drvPath
-            for_ (M.keys $ DerivationInfo.inputDerivations drvInfo) \inp -> do
-              inputStorePath <- liftIO $ parseStorePath store (encodeUtf8 inp)
-              recurse inputStorePath -- asynchronously
-            emit $ EvaluateEvent.DerivationInfo drvInfo
-     in doIt
+     in evaluation
 
 isValidName :: FilePath -> Bool
 isValidName "" = False

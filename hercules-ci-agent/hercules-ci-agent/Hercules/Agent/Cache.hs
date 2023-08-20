@@ -38,6 +38,13 @@ withCaches m = do
     ]
     m
 
+getConfiguredSubstituters :: App [Text]
+getConfiguredSubstituters = do
+  nixCaches <- asks (Config.nixCaches . Env.binaryCaches)
+  let substs = nixCaches & toList <&> NixCache.storeURI
+  csubsts <- Cachix.getSubstituters
+  pure (substs <> csubsts)
+
 push ::
   -- | Nix Store
   CNix.Store ->
