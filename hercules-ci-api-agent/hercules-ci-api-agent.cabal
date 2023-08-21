@@ -23,7 +23,6 @@ library
     Hercules.API.Agent
     Hercules.API.Agent.Build
     Hercules.API.Agent.Build.BuildEvent
-    Hercules.API.Agent.Build.BuildEvent.OutputInfo
     Hercules.API.Agent.Build.BuildEvent.Pushed
     Hercules.API.Agent.Build.BuildTask
     Hercules.API.Agent.Effect.EffectTask
@@ -54,6 +53,7 @@ library
     Hercules.API.Agent.LifeCycle.CreateAgentSession_V2
     Hercules.API.Agent.LifeCycle.ServiceInfo
     Hercules.API.Agent.LifeCycle.StartInfo
+    Hercules.API.Agent.OutputInfo
     Hercules.API.Agent.Socket.AgentPayload
     Hercules.API.Agent.Socket.Frame
     Hercules.API.Agent.Socket.ServicePayload

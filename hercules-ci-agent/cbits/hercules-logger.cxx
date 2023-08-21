@@ -6,18 +6,11 @@ void HerculesLogger::push(std::unique_ptr<LogEntry> entry) {
   wakeup.notify_one();
 }
 
-uint64_t HerculesLogger::getMs() {
-  auto t = std::chrono::steady_clock::now();
-  auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(t - t_zero).count();
-  return millis;
-}
-
 #if NIX_IS_AT_LEAST(2, 15, 0)
 void HerculesLogger::log(nix::Verbosity lvl, std::string_view s) {
   push(std::make_unique<LogEntry>(LogEntry {
     .entryType = 1,
     .level = lvl,
-    .ms = getMs(),
     .text = std::string(s)
   }));
 }
@@ -26,7 +19,6 @@ void HerculesLogger::log(nix::Verbosity lvl, const nix::FormatOrString & fs) {
   push(std::make_unique<LogEntry>(LogEntry {
     .entryType = 1,
     .level = lvl,
-    .ms = getMs(),
     .text = fs.s
   }));
 }
@@ -46,7 +38,6 @@ void HerculesLogger::startActivity(nix::ActivityId act, nix::Verbosity lvl, nix:
   push(std::make_unique<LogEntry>(LogEntry {
     .entryType = 2,
     .level = lvl,
-    .ms = getMs(),
     .text = s,
     .activityId = act,
     .type = type,
@@ -58,7 +49,6 @@ void HerculesLogger::startActivity(nix::ActivityId act, nix::Verbosity lvl, nix:
 void HerculesLogger::stopActivity(nix::ActivityId act) {
   push(std::make_unique<LogEntry>(LogEntry {
     .entryType = 3,
-    .ms = getMs(),
     .activityId = act
   }));
 }
@@ -66,7 +56,6 @@ void HerculesLogger::stopActivity(nix::ActivityId act) {
 void HerculesLogger::result(nix::ActivityId act, nix::ResultType type, const Fields & fields) {
   push(std::make_unique<LogEntry>(LogEntry {
     .entryType = 4,
-    .ms = getMs(),
     .activityId = act,
     .type = type,
     .fields = fields

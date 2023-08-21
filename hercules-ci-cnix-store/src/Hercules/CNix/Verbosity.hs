@@ -7,6 +7,7 @@ module Hercules.CNix.Verbosity
     getVerbosity,
     setShowTrace,
     getShowTrace,
+    both,
   )
 where
 
@@ -77,3 +78,13 @@ setShowTrace :: Bool -> IO ()
 setShowTrace b =
   let b' = fromBool b
    in [C.throwBlock| void { nix::loggerSettings.showTrace.assign($(bool b')); }|]
+
+-- | Combine two Verbosity values for greater message volume. E.g.
+--
+-- >>> both Warn Notice
+-- Notice
+both :: Verbosity -> Verbosity -> Verbosity
+both =
+  -- Priority ordering is inversely related to message quantity, so this is
+  -- min and not max; see test.
+  max

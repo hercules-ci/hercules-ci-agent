@@ -24,7 +24,8 @@ import Cachix.Client.Secrets qualified as Cachix.Secrets
 import Cachix.Client.URI (defaultCachixBaseUrl)
 import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Data.Map qualified as M
-import Hercules.Agent.Cachix.Env as Env
+import Hercules.Agent.Cachix.Env (PushCache (PushCache))
+import Hercules.Agent.Cachix.Env qualified as Env
 import Hercules.Agent.Config qualified as Config
 import Hercules.Error
 import Hercules.Formats.CachixCache qualified as CachixCache

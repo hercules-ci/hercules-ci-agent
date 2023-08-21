@@ -30,3 +30,7 @@ nix:
   enable: false
   packages: []
   shell-file: ./shell.nix
+
+build:
+  # this makes the stack repl-based lsp logic work for tests
+  test: true

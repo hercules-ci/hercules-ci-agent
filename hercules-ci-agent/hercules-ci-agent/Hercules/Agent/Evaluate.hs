@@ -28,6 +28,7 @@ import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.UUID (UUID)
+import Data.Vector (Vector)
 import Hercules.API (Id)
 import Hercules.API.Agent.Evaluate
   ( getDerivationStatus2,
@@ -49,6 +50,7 @@ import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
 import Hercules.API.Agent.Evaluate.ImmutableGitInput (ImmutableGitInput)
 import Hercules.API.Agent.Evaluate.ImmutableGitInput qualified as ImmutableGitInput
 import Hercules.API.Agent.Evaluate.ImmutableInput qualified as ImmutableInput
+import Hercules.API.Logs.LogEntry (LogEntry)
 import Hercules.API.Servant (noContent)
 import Hercules.API.Task (Task)
 import Hercules.Agent.Cache qualified as Agent.Cache
@@ -59,6 +61,7 @@ import Hercules.Agent.Env qualified as Env
 import Hercules.Agent.Evaluate.TraversalQueue (Queue)
 import Hercules.Agent.Evaluate.TraversalQueue qualified as TraversalQueue
 import Hercules.Agent.Files
+import Hercules.Agent.InitWorkerConfig qualified as WorkerConfig
 import Hercules.Agent.Log
 import Hercules.Agent.Netrc qualified as Netrc
 import Hercules.Agent.Nix qualified as Nix
@@ -71,9 +74,6 @@ import Hercules.Agent.NixPath
   ( renderSubPath,
   )
 import Hercules.Agent.Producer
-import Hercules.Agent.Sensitive (Sensitive (Sensitive))
-import Hercules.Agent.ServiceInfo qualified as ServiceInfo
-import Hercules.Agent.WorkerProcess ()
 import Hercules.Agent.WorkerProcess qualified as WorkerProcess
 import Hercules.Agent.WorkerProtocol.Command qualified as Command
 import Hercules.Agent.WorkerProtocol.Command.BuildResult qualified as BuildResult
@@ -82,8 +82,8 @@ import Hercules.Agent.WorkerProtocol.Event qualified as Event
 import Hercules.Agent.WorkerProtocol.Event.Attribute qualified as WorkerAttribute
 import Hercules.Agent.WorkerProtocol.Event.AttributeError qualified as WorkerAttributeError
 import Hercules.Agent.WorkerProtocol.Event.AttributeIFD qualified as AttributeIFD
-import Hercules.Agent.WorkerProtocol.LogSettings qualified as LogSettings
-import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON), fromViaJSON)
+import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON))
+import Hercules.Agent.WorkerProtocol.ViaJSON qualified
 import Hercules.CNix.Store (Store, StorePath, parseStorePath)
 import Hercules.CNix.Store qualified as CNix
 import Hercules.Effect (parseDrvSecretsMap)
@@ -98,6 +98,7 @@ import System.Directory qualified as Dir
 import System.FilePath
 import System.Process
 import UnliftIO (atomicModifyIORef')
+import UnliftIO qualified
 
 eventLimit :: Int
 eventLimit = 50000
@@ -105,9 +106,9 @@ eventLimit = 50000
 pushEvalWorkers :: Int
 pushEvalWorkers = 16
 
-performEvaluation :: Store -> EvaluateTask.EvaluateTask -> App ()
-performEvaluation store task' =
-  withProducer (produceEvaluationTaskEvents store task') $ \producer ->
+performEvaluation :: (Vector LogEntry -> IO ()) -> Store -> EvaluateTask.EvaluateTask -> App ()
+performEvaluation sendLogItems store task' =
+  withProducer (produceEvaluationTaskEvents sendLogItems store task') $ \producer ->
     withBoundedDelayBatchProducer (1000 * 1000) 1000 producer $ \batchProducer ->
       fix $ \continue ->
         joinSTM $ listen batchProducer (\b -> withSync b (postBatch task' . catMaybes) *> continue) pure
@@ -120,6 +121,8 @@ getSrcInput task = case M.lookup "src" (EvaluateTask.inputs task) of
     throwIO $ FatalError $ "No src input provided" <> show task
   Just {} -> do
     pure Nothing
+
+data AbortMessageAlreadySent = AbortMessageAlreadySent deriving (Show, Exception)
 
 makeEventEmitter ::
   (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
@@ -172,16 +175,122 @@ makeEventEmitter writeToBatch = do
   pure emit
 
 produceEvaluationTaskEvents ::
+  (Vector LogEntry -> IO ()) ->
   Store ->
   EvaluateTask.EvaluateTask ->
   (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
   App ()
-produceEvaluationTaskEvents store task writeToBatch | EvaluateTask.isFlakeJob task = withWorkDir "eval" $ \tmpdir -> do
-  logLocM DebugS "Retrieving evaluation task (flake)"
+produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.handle (\AbortMessageAlreadySent -> pass) $ withWorkDir "eval" $ \tmpdir -> do
   let sync = syncer writeToBatch
   topDerivationPaths <- liftIO $ newIORef mempty
   emit <- makeEventEmitter writeToBatch
-  let allowedPaths = []
+
+  let isFlakeJob = EvaluateTask.isFlakeJob task
+  nonFlakeStuff <- for (guard (not isFlakeJob)) \() -> do
+    inputLocations <-
+      EvaluateTask.otherInputs task
+        & M.traverseWithKey \k src -> do
+          let fetchName = tmpdir </> ("fetch-" <> toS k)
+              argName = tmpdir </> ("arg-" <> toS k)
+              metaName = do
+                meta <- EvaluateTask.inputMetadata task & M.lookup k
+                nameValue <- meta & M.lookup "name"
+                name <- case A.fromJSON nameValue of
+                  A.Success a -> pure a
+                  _ -> Nothing
+                guard (isValidName name)
+                pure name
+              destName
+                | Just sourceName <- metaName = argName </> sourceName
+                | otherwise = argName
+          fetched <- fetchSource fetchName src
+          liftIO do
+            Dir.createDirectoryIfMissing True (takeDirectory destName)
+            renamePathTryHarder fetched destName
+          pure destName
+    projectDir <- case M.lookup "src" inputLocations of
+      Nothing -> panic "No primary source provided"
+      Just x -> pure x
+    nixPath <-
+      EvaluateTask.nixPath task
+        & ( traverse
+              . traverse
+              . traverse
+              $ \identifier -> case M.lookup identifier inputLocations of
+                Just x -> pure x
+                Nothing ->
+                  throwIO $
+                    FatalError $
+                      "Nix path references undefined input "
+                        <> identifier
+          )
+    autoArguments' <-
+      EvaluateTask.autoArguments task
+        & (traverse . traverse)
+          ( \identifier -> case M.lookup identifier inputLocations of
+              Just x | "/" `isPrefixOf` x -> pure x
+              Just x ->
+                throwIO $
+                  FatalError $
+                    "input "
+                      <> identifier
+                      <> " was not resolved to an absolute path: "
+                      <> toS x
+              Nothing ->
+                throwIO $
+                  FatalError $
+                    "auto argument references undefined input "
+                      <> identifier
+          )
+    let autoArguments =
+          autoArguments'
+            & M.mapWithKey \k sp ->
+              let argPath = encodeUtf8 $ renderSubPath $ toS <$> sp
+               in case do
+                    inputId <- EvaluateTask.autoArguments task & M.lookup k
+                    EvaluateTask.inputMetadata task & M.lookup (EvaluateTask.path inputId) of
+                    Nothing -> Eval.ExprArg argPath
+                    Just attrs ->
+                      Eval.ExprArg $
+                        -- TODO pass directly to avoid having to escape (or just escape properly)
+                        "builtins.fromJSON ''" <> BL.toStrict (A.encode attrs) <> "'' // { outPath = " <> argPath <> "; }"
+    adHocSystem <-
+      readFileMaybe (projectDir </> "ci-default-system.txt")
+
+    file <-
+      liftIO (findNixFile projectDir) >>= \case
+        Left e -> do
+          emit $
+            EvaluateEvent.Message
+              Message.Message
+                { Message.index = -1, -- will be set by emit
+                  Message.typ = Message.Error,
+                  Message.message = e
+                }
+          throwIO AbortMessageAlreadySent
+        Right file ->
+          pure file
+
+    pure (nixPath, autoArguments, inputLocations, adHocSystem, projectDir, file)
+
+  let nixPath = case nonFlakeStuff of
+        Nothing -> mempty
+        Just (np, _, _, _, _, _) -> np
+      autoArgs = case nonFlakeStuff of
+        Nothing -> mempty
+        Just (_, aa, _, _, _, _) -> aa
+      allowedPaths = case nonFlakeStuff of
+        Nothing -> []
+        Just (_, _, inputLocations, _, _, _) -> toList inputLocations <&> toS <&> encodeUtf8
+      adHocSystem = case nonFlakeStuff of
+        Nothing -> Nothing
+        Just (_, _, _, a, _, _) -> a
+      projectDir = case nonFlakeStuff of
+        Nothing -> tmpdir -- unused
+        Just (_, _, _, _, pd, _) -> pd
+      file = case nonFlakeStuff of
+        Nothing -> "" -- unused
+        Just (_, _, _, _, _, file_) -> file_
 
   TraversalQueue.with $ \(derivationQueue :: Queue StorePath) ->
     let doIt =
@@ -197,19 +306,22 @@ produceEvaluationTaskEvents store task writeToBatch | EvaluateTask.isFlakeJob ta
         addTopDerivation drvPath = do
           TraversalQueue.enqueue derivationQueue drvPath
           liftIO $ atomicModifyIORef topDerivationPaths ((,()) . S.insert drvPath)
+        extraOpts = [("system", T.strip s) | Just s <- [adHocSystem]]
         evaluation = do
           let evalProc =
-                do runEvalProcess
-                  store
-                  tmpdir -- unused
-                  ""
-                  mempty
-                  mempty
-                  captureAttrDrvAndEmit
-                  uploadDrvInfos
-                  sync
-                  task
-                  allowedPaths
+                Nix.withExtraOptions extraOpts do
+                  runEvalProcess
+                    sendLogItems
+                    store
+                    projectDir
+                    file
+                    autoArgs
+                    nixPath
+                    captureAttrDrvAndEmit
+                    uploadDrvInfos
+                    sync
+                    task
+                    allowedPaths
           evalProc `finally` do
             -- Always upload drv infos, even in case of a crash in the worker
             TraversalQueue.waitUntilDone derivationQueue
@@ -239,150 +351,6 @@ produceEvaluationTaskEvents store task writeToBatch | EvaluateTask.isFlakeJob ta
               recurse inputStorePath -- asynchronously
             emit $ EvaluateEvent.DerivationInfo drvInfo
      in doIt
-produceEvaluationTaskEvents store task writeToBatch = withWorkDir "eval" $ \tmpdir -> do
-  logLocM DebugS "Retrieving evaluation task"
-  let sync = syncer writeToBatch
-  inputLocations <-
-    EvaluateTask.otherInputs task
-      & M.traverseWithKey \k src -> do
-        let fetchName = tmpdir </> ("fetch-" <> toS k)
-            argName = tmpdir </> ("arg-" <> toS k)
-            metaName = do
-              meta <- EvaluateTask.inputMetadata task & M.lookup k
-              nameValue <- meta & M.lookup "name"
-              name <- case A.fromJSON nameValue of
-                A.Success a -> pure a
-                _ -> Nothing
-              guard (isValidName name)
-              pure name
-            destName
-              | Just sourceName <- metaName = argName </> sourceName
-              | otherwise = argName
-        fetched <- fetchSource fetchName src
-        liftIO do
-          Dir.createDirectoryIfMissing True (takeDirectory destName)
-          renamePathTryHarder fetched destName
-        pure destName
-  projectDir <- case M.lookup "src" inputLocations of
-    Nothing -> panic "No primary source provided"
-    Just x -> pure x
-  nixPath <-
-    EvaluateTask.nixPath task
-      & ( traverse
-            . traverse
-            . traverse
-            $ \identifier -> case M.lookup identifier inputLocations of
-              Just x -> pure x
-              Nothing ->
-                throwIO $
-                  FatalError $
-                    "Nix path references undefined input "
-                      <> identifier
-        )
-  autoArguments' <-
-    EvaluateTask.autoArguments task
-      & (traverse . traverse)
-        ( \identifier -> case M.lookup identifier inputLocations of
-            Just x | "/" `isPrefixOf` x -> pure x
-            Just x ->
-              throwIO $
-                FatalError $
-                  "input "
-                    <> identifier
-                    <> " was not resolved to an absolute path: "
-                    <> toS x
-            Nothing ->
-              throwIO $
-                FatalError $
-                  "auto argument references undefined input "
-                    <> identifier
-        )
-  let autoArguments =
-        autoArguments'
-          & M.mapWithKey \k sp ->
-            let argPath = encodeUtf8 $ renderSubPath $ toS <$> sp
-             in case do
-                  inputId <- EvaluateTask.autoArguments task & M.lookup k
-                  EvaluateTask.inputMetadata task & M.lookup (EvaluateTask.path inputId) of
-                  Nothing -> Eval.ExprArg argPath
-                  Just attrs ->
-                    Eval.ExprArg $
-                      -- TODO pass directly to avoid having to escape (or just escape properly)
-                      "builtins.fromJSON ''" <> BL.toStrict (A.encode attrs) <> "'' // { outPath = " <> argPath <> "; }"
-
-  topDerivationPaths <- liftIO $ newIORef mempty
-
-  emit <- makeEventEmitter writeToBatch
-
-  let allowedPaths = toList inputLocations <&> toS <&> encodeUtf8
-  adHocSystem <-
-    readFileMaybe (projectDir </> "ci-default-system.txt")
-  liftIO (findNixFile projectDir) >>= \case
-    Left e ->
-      emit $
-        EvaluateEvent.Message
-          Message.Message
-            { Message.index = -1, -- will be set by emit
-              Message.typ = Message.Error,
-              Message.message = e
-            }
-    Right file -> TraversalQueue.with $ \(derivationQueue :: Queue StorePath) ->
-      let doIt =
-            ( do
-                Async.Lifted.concurrently_ evaluation emitDrvs
-                -- derivationInfo upload has finished
-                -- allAttrPaths :: IORef has been populated
-            )
-              `finally` pushDrvs
-          uploadDrvInfos drvPath = do
-            TraversalQueue.enqueue derivationQueue drvPath
-            TraversalQueue.waitUntilDone derivationQueue
-          addTopDerivation drvPath = do
-            TraversalQueue.enqueue derivationQueue drvPath
-            liftIO $ atomicModifyIORef topDerivationPaths ((,()) . S.insert drvPath)
-          evaluation = do
-            Nix.withExtraOptions [("system", T.strip s) | Just s <- [adHocSystem]] do
-              let evalProc =
-                    do runEvalProcess
-                      store
-                      projectDir
-                      file
-                      autoArguments
-                      nixPath
-                      captureAttrDrvAndEmit
-                      uploadDrvInfos
-                      sync
-                      task
-                      allowedPaths
-              evalProc `finally` do
-                -- Always upload drv infos, even in case of a crash in the worker
-                TraversalQueue.waitUntilDone derivationQueue
-                  `finally` TraversalQueue.close derivationQueue
-          pushDrvs = do
-            caches <- activePushCaches
-            paths <- liftIO $ readIORef topDerivationPaths
-            forM_ caches $ \cache -> do
-              withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations"
-              Agent.Cache.push store cache (toList paths) pushEvalWorkers
-              emit $ EvaluateEvent.PushedAll $ PushedAll.PushedAll {cache = cache}
-          captureAttrDrvAndEmit msg = do
-            case msg of
-              EvaluateEvent.Attribute ae -> do
-                storePath <- liftIO $ parseStorePath store (encodeUtf8 $ AttributeEvent.derivationPath ae)
-                addTopDerivation storePath
-              EvaluateEvent.AttributeEffect ae -> do
-                storePath <- liftIO $ parseStorePath store (encodeUtf8 $ AttributeEffectEvent.derivationPath ae)
-                addTopDerivation storePath
-              _ -> pass
-            emit msg
-          emitDrvs =
-            TraversalQueue.work derivationQueue $ \recurse drvPath -> do
-              drvInfo <- retrieveDerivationInfo store drvPath
-              for_ (M.keys $ DerivationInfo.inputDerivations drvInfo) \inp -> do
-                inputStorePath <- liftIO $ parseStorePath store (encodeUtf8 inp)
-                recurse inputStorePath -- asynchronously
-              emit $ EvaluateEvent.DerivationInfo drvInfo
-       in doIt
 
 isValidName :: FilePath -> Bool
 isValidName "" = False
@@ -399,6 +367,7 @@ checkNonEmptyText "" = Nothing
 checkNonEmptyText t = Just t
 
 runEvalProcess ::
+  (Vector LogEntry -> IO ()) ->
   CNix.Store ->
   FilePath ->
   FilePath ->
@@ -413,9 +382,8 @@ runEvalProcess ::
   EvaluateTask.EvaluateTask ->
   [ByteString] ->
   App ()
-runEvalProcess store projectDir file autoArguments nixPath emit uploadDerivationInfos flush task allowedPaths = do
+runEvalProcess sendLogItems store projectDir file autoArguments nixPath emit uploadDerivationInfos flush task allowedPaths = do
   extraOpts <- Nix.askExtraOptions
-  bulkBaseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   apiBaseUrl <- asks (toS . showBaseUrl . Env.herculesBaseUrl)
   cfg <- asks Env.config
   srcInput <- getSrcInput task
@@ -466,12 +434,6 @@ runEvalProcess store projectDir file autoArguments nixPath emit uploadDerivation
             Eval.file = toS file,
             Eval.autoArguments = autoArguments,
             Eval.extraNixOptions = extraOpts,
-            Eval.logSettings =
-              LogSettings.LogSettings
-                { token = Sensitive $ EvaluateTask.logToken task,
-                  path = "/api/v1/logs/build/socket",
-                  baseURL = toS $ Network.URI.uriToString identity bulkBaseURL ""
-                },
             Eval.gitSource = ViaJSON gitSource,
             Eval.srcInput = ViaJSON <$> srcInput,
             Eval.apiBaseUrl = apiBaseUrl,
@@ -518,7 +480,7 @@ runEvalProcess store projectDir file autoArguments nixPath emit uploadDerivation
                   ("protocol.file.allow", "always")
                 ]
           }
-  withProducer (produceWorkerEvents (EvaluateTask.id task) eval envSettings commandChan) $
+  withProducer (produceWorkerEvents sendLogItems (EvaluateTask.id task) eval envSettings commandChan) $
     \workerEventsP -> fix $ \continue ->
       joinSTM $
         listen
@@ -644,6 +606,9 @@ runEvalProcess store projectDir file autoArguments nixPath emit uploadDerivation
                       uio <- askUnliftIO
                       liftIO $ forkIO $ unliftIO uio doPoll
                 continue
+              Event.LogItems (ViaJSON e) -> do
+                liftIO (sendLogItems e)
+                continue
               Event.OnPushHandler (ViaJSON e) -> do
                 emit $ EvaluateEvent.OnPushHandlerEvent e
                 continue
@@ -682,17 +647,16 @@ hostFromUrl t = do
   pure $ toS $ Network.URI.uriRegName a
 
 produceWorkerEvents ::
-  Id (Task a) ->
+  (Vector LogEntry -> IO ()) ->
+  Id (Task EvaluateTask.EvaluateTask) ->
   Eval.Eval ->
   WorkerProcess.WorkerEnvSettings ->
   Chan (Maybe Command.Command) ->
   (Event.Event -> App ()) ->
   App ExitCode
-produceWorkerEvents taskId eval envSettings commandChan writeEvent = do
+produceWorkerEvents sendLogEntries taskId eval envSettings commandChan writeEvent = do
   workerExe <- WorkerProcess.getWorkerExe
-  let opts = [show $ Eval.extraNixOptions eval]
-  -- NiceToHave: replace renderNixPath by something structured like -I
-  -- to support = and : in paths
+  let opts = ["eval", fromMaybe "" eval.gitSource.fromViaJSON.webUrl, eval.gitSource.fromViaJSON.rev] <&> T.unpack
   workerEnv <- liftIO $ WorkerProcess.prepareEnv envSettings
   let wps =
         (System.Process.proc workerExe opts)
@@ -702,13 +666,15 @@ produceWorkerEvents taskId eval envSettings commandChan writeEvent = do
           }
       stderrHandler =
         stderrLineHandler
+          sendLogEntries
           ( M.fromList
               [ ("taskId", A.toJSON taskId),
-                ("evalRev", A.toJSON (eval & Eval.gitSource & fromViaJSON & GitSource.rev))
+                ("evalRev", A.toJSON (eval.gitSource.fromViaJSON.rev))
               ]
           )
           "Effect worker"
-  WorkerProcess.runWorker wps stderrHandler commandChan writeEvent
+  cfg <- WorkerConfig.getWorkerConfig
+  WorkerProcess.runWorker cfg wps stderrHandler commandChan writeEvent
 
 drvPoller :: Maybe UUID -> Text -> App (UUID, BuildResult.BuildStatus)
 drvPoller notAttempt drvPath = do

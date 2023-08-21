@@ -5,8 +5,10 @@ module Hercules.Agent.WorkerProtocol.Event where
 
 import Data.Binary (Binary)
 import Data.UUID (UUID)
+import Data.Vector (Vector)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent (OnScheduleHandlerEvent)
+import Hercules.API.Logs.LogEntry (LogEntry)
 import Hercules.Agent.WorkerProtocol.Event.Attribute (Attribute)
 import Hercules.Agent.WorkerProtocol.Event.AttributeError (AttributeError)
 import Hercules.Agent.WorkerProtocol.Event.AttributeIFD (AttributeIFD)
@@ -27,4 +29,5 @@ data Event
   | OnPushHandler (ViaJSON OnPushHandlerEvent)
   | OnScheduleHandler (ViaJSON OnScheduleHandlerEvent)
   | Exception Text
+  | LogItems (ViaJSON (Vector LogEntry))
   deriving (Generic, Binary, Show, Eq)

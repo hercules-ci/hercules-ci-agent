@@ -1,11 +1,11 @@
 {-# LANGUAGE BlockArguments #-}
 
-module Hercules.Agent.Worker.ConduitSpec where
+module Hercules.Agent.ConduitSpec where
 
 import Data.Conduit
 import Data.Conduit.Combinators (sinkList)
 import Data.Conduit.List (sourceList)
-import Hercules.Agent.Worker.Conduit (tailC, takeCWhileStopEarly, withMessageLimit)
+import Hercules.Agent.Conduit (tailC, takeCWhileStopEarly, withMessageLimit)
 import Protolude hiding (yield)
 import Test.Hspec
 

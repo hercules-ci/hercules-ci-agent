@@ -15,7 +15,7 @@
         it = pkgs.runCommand "one" { t = builtins.currentTime; } ''
           echo 1>&2 hello on stderr
           echo hello on stdout
-          echo 1 >$out
+          echo ${builtins.toFile "the-src" "hi"} >$out
         '';
       };
   };

@@ -7,7 +7,6 @@
 #include <nix/logging.hh>
 #include <queue>
 #include <string>
-#include <chrono>
 
 class HerculesLogger final : public nix::Logger {
 
@@ -16,8 +15,6 @@ public:
 
 private:
 
-  std::chrono::time_point<std::chrono::steady_clock> t_zero = std::chrono::steady_clock::now();
-
   struct State {
     std::queue<std::unique_ptr<LogEntry>> queue;
   };
@@ -25,7 +22,6 @@ private:
   std::condition_variable wakeup;
 
   void push(std::unique_ptr<LogEntry> entry);
-  uint64_t getMs();
 
  public:
   inline HerculesLogger() {};
@@ -33,7 +29,6 @@ private:
   struct LogEntry {
     int entryType;
     int level;
-    uint64_t ms;
     std::string text;
     uint64_t activityId;
     uint64_t type;

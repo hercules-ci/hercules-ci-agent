@@ -51,7 +51,7 @@ import Hercules.Agent.WorkerProtocol.Event.AttributeError qualified as Attribute
 import Hercules.Agent.WorkerProtocol.Event.AttributeIFD qualified as Event.AttributeIFD
 import Hercules.Agent.WorkerProtocol.ViaJSON qualified as ViaJSON
 import Hercules.CNix as CNix
-import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, initThread, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, toValue, withEvalStateConduit)
+import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, toValue, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
 import Hercules.CNix.Expr.Raw qualified
 import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, provenance, requireDict, traverseArray, (#.), (#?), (#?!), (#??), ($?), (|!), type (->?), type (.))
@@ -169,10 +169,11 @@ runEval ::
   HerculesState ->
   Eval ->
   ConduitM i Event m ()
-runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan, drvsCompleted = drvsCompl} eval = do
+runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eval = do
+  -- TODO: redundant as these have already been set?
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setGlobalOption
   for_ (Eval.extraNixOptions eval) $ liftIO . uncurry setOption
-  liftIO initThread
+
   let store = nixStore hStore
       isFlake = Eval.isFlakeJob eval
   s <- storeUri store
@@ -211,12 +212,12 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                 then do
                   logLocM DebugS "Output already valid"
                   -- Report IFD
-                  liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing False
+                  liftIO $ st.sendEvents $ pure $ Event.Build drvPath (decode outputName) Nothing False
                 else do
                   don'tBlock <- liftIO (readIORef isNonBlocking)
                   let doBlock = not don'tBlock
 
-                  liftIO $ writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) Nothing doBlock
+                  liftIO $ st.sendEvents $ pure $ Event.Build drvPath (decode outputName) Nothing doBlock
 
                   buildAsync <- liftIO $ asyncInTVarMap (drvStorePath, outputName) (drvOutputSubstituteAsyncs st) do
                     ensurePath (wrappedStore st) outputPath
@@ -232,7 +233,7 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
                         clearSubstituterCaches
                         clearPathInfoCache store
                         ensurePath (wrappedStore st) outputPath `catch` \(_e1 :: SomeException) -> do
-                          writeChan shortcutChan $ Just $ Event.Build drvPath (decode outputName) (Just attempt0) doBlock
+                          st.sendEvents $ pure $ Event.Build drvPath (decode outputName) (Just attempt0) doBlock
 
                           (_, result') <-
                             wait =<< asyncInTVarMap drvStorePath (drvRebuildAsyncs st) do

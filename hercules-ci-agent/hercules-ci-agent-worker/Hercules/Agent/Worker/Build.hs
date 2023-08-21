@@ -11,17 +11,20 @@ import Hercules.Agent.WorkerProtocol.Command.Build qualified as Command.Build
 import Hercules.Agent.WorkerProtocol.Event (Event)
 import Hercules.Agent.WorkerProtocol.Event qualified as Event
 import Hercules.Agent.WorkerProtocol.Event.BuildResult qualified as Event.BuildResult
+import Hercules.Agent.WorkerProtocol.OutputInfo (OutputInfo (OutputInfo))
+import Hercules.Agent.WorkerProtocol.OutputInfo qualified
 import Hercules.CNix
   ( DerivationOutput (derivationOutputName, derivationOutputPath),
     getDerivationOutputs,
   )
 import Hercules.CNix qualified as CNix
-import Hercules.CNix.Store (Store, queryPathInfo, validPathInfoNarHash32, validPathInfoNarSize)
+import Hercules.CNix.Store (Store, getStorePathBaseName, queryPathInfo, validPathInfoNarHash32, validPathInfoNarSize, validPathInfoReferences')
 import Katip
 import Protolude hiding (yield)
 
 runBuild :: (KatipContext m) => Store -> Command.Build.Build -> ConduitT i Event m ()
-runBuild store build = do
+runBuild store build = katipAddContext (sl "derivationPath" build.drvPath) do
+  logLocM DebugS "runBuild"
   let extraPaths = Command.Build.inputDerivationOutputPaths build
       drvPath = encodeUtf8 $ Command.Build.drvPath build
   drvStorePath <- liftIO $ CNix.parseStorePath store drvPath
@@ -60,11 +63,13 @@ enrichResult store drvName derivation _ = do
     hash_ <- traverse validPathInfoNarHash32 vpi
     path <- traverse (CNix.storePathToPath store) (derivationOutputPath drvOut)
     let size = fmap validPathInfoNarSize vpi
+    refs <- traverse (traverse getStorePathBaseName <=< validPathInfoReferences') vpi
     pure
-      Event.BuildResult.OutputInfo
+      OutputInfo
         { name = derivationOutputName drvOut,
           path = fromMaybe "" path,
           hash = fromMaybe "" hash_,
-          size = fromMaybe 0 size
+          size = fromMaybe 0 size,
+          references = fromMaybe [] refs
         }
   pure $ Event.BuildResult.BuildSuccess outputInfos

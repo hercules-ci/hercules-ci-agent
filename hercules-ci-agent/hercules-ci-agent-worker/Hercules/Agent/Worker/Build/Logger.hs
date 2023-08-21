@@ -3,28 +3,30 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Hercules.Agent.Worker.Build.Logger (initLogger, withLoggerConduit, tapper, withTappedStderr, batch, unbatch, filterProgress, nubProgress) where
+module Hercules.Agent.Worker.Build.Logger
+  ( initLogger,
+    withLoggerConduit,
+    nubProgress,
+    plumbWorkerStd,
+    Handles (..),
+  )
+where
 
-import Conduit (MonadUnliftIO, filterC)
-import Data.ByteString.Char8 qualified as BSC
+import Conduit (MonadUnliftIO)
 import Data.ByteString.Unsafe (unsafePackMallocCString)
-import Data.Conduit (ConduitT, Flush (..), await, awaitForever, yield)
+import Data.Conduit (ConduitT, Flush (..), await, yield)
 import Data.Vector (Vector)
 import Data.Vector qualified as V
 import Foreign (alloca, nullPtr, peek)
+import GHC.IO.Handle (hDuplicate, hDuplicateTo)
 import Hercules.API.Logs.LogEntry (LogEntry)
 import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Hercules.Agent.Worker.Build.Logger.Context (Fields, HerculesLoggerEntry, context)
 import Hercules.CNix.Store.Context (unsafeMallocBS)
-import Katip
 import Language.C.Inline.Cpp qualified as C
 import Language.C.Inline.Cpp.Exception qualified as C
 import Protolude hiding (bracket, finally, mask_, onException, tryJust, wait, withAsync, yield)
-import System.IO (BufferMode (LineBuffering), hSetBuffering)
-import System.IO.Error (isEOFError)
-import System.Posix.IO (closeFd, createPipe, dup, dupTo, fdToHandle, stdError)
-import System.Posix.Internals (setNonBlockingFD)
-import System.Posix.Types (Fd)
+import System.IO (BufferMode (LineBuffering, NoBuffering), hSetBuffering)
 import System.Timeout (timeout)
 import UnliftIO.Async
 import UnliftIO.Exception
@@ -121,13 +123,15 @@ forNonNull :: Ptr a -> (Ptr a -> IO b) -> IO (Maybe b)
 forNonNull p f = if p == nullPtr then pure Nothing else Just <$> f p
 
 -- popping multiple lines into an array would be nice
-convertEntry :: Ptr HerculesLoggerEntry -> IO LogEntry
-convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \levelPtr -> alloca \activityIdPtr -> alloca \typePtr -> alloca \parentPtr -> alloca \fieldsPtrPtr ->
+convertEntry ::
+  Ptr HerculesLoggerEntry ->
+  -- | 'LogEntry' without timestamp
+  IO LogEntry
+convertEntry logEntryPtr = alloca \textStrPtr -> alloca \levelPtr -> alloca \activityIdPtr -> alloca \typePtr -> alloca \parentPtr -> alloca \fieldsPtrPtr ->
   do
     r <-
       [C.throwBlock| int {
         const HerculesLogger::LogEntry &ln = *$(HerculesLoggerEntry *logEntryPtr);
-        *$(uint64_t *millisPtr) = ln.ms;
         switch (ln.entryType) {
           case 1:
             *$(const char **textStrPtr) = strdup(ln.text.c_str());
@@ -153,8 +157,9 @@ convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \le
             return 0;
         }
       }|]
-    ms_ <- peek millisPtr
+    -- Real timestamps and index number are set by the log monitoring process instead
     let i_ = 0
+        ms_ = 0
     case r of
       1 -> do
         textStr <- peek textStrPtr
@@ -259,15 +264,6 @@ withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
           yield lns
           popper
 
--- TODO: Use 'nubProgress' instead?
-
--- | Remove spammy progress results.
-filterProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
-filterProgress = filterC \case
-  Chunk LogEntry.Result {rtype = LogEntry.ResultTypeProgress} -> False
-  Chunk LogEntry.Result {rtype = LogEntry.ResultTypeSetExpected} -> False
-  _ -> True
-
 nubProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 nubProgress = nubSubset (toChunk >=> toProgressKey)
   where
@@ -275,24 +271,6 @@ nubProgress = nubSubset (toChunk >=> toProgressKey)
     toProgressKey _ = Nothing
     toChunk (Chunk a) = Just a
     toChunk Flush = Nothing
-
-unbatch :: (Monad m, Foldable l) => ConduitT (l a) (Flush a) m ()
-unbatch = awaitForever $ \l -> do
-  for_ l $ \a -> yield $ Chunk a
-  yield Flush
-
-batch :: Monad m => ConduitT (Flush a) [a] m ()
-batch = go []
-  where
-    go acc =
-      await >>= \case
-        Nothing -> do
-          unless (null acc) (yield $ reverse acc)
-        Just Flush -> do
-          unless (null acc) (yield $ reverse acc)
-          go []
-        Just (Chunk c) -> do
-          go (c : acc)
 
 nubSubset :: (Eq k, Monad m) => (a -> Maybe k) -> ConduitT a a m ()
 nubSubset toKey =
@@ -317,71 +295,63 @@ nubSubset1 toKey prevKey =
           yield a
         nubSubset1 toKey ak
 
-tryReadLine :: MonadUnliftIO m => Handle -> m (Either () ByteString)
-tryReadLine s = tryJust (guard . isEOFError) (liftIO (BSC.hGetLine s))
+data Handles = Handles {commands :: Handle, events :: Handle}
 
-tapper :: (KatipContext m, MonadUnliftIO m) => TapState -> m ()
-tapper s = do
-  tryReadLine (readableStderrEnd s) >>= \case
-    Left _ -> pass
-    Right "__%%hercules terminate log%%__" -> pass
-    Right ln -> do
-      liftIO
-        [C.throwBlock| void {
-          std::string s = $bs-cstr:ln;
-          herculesLogger->log(nix::lvlInfo, s);
-        }|]
-      tapper s
-
--- | Like 'withTappableStderr' but takes care of the forking and waiting of
--- the tapper thread.
-withTappedStderr :: (KatipContext m, MonadUnliftIO m) => (TapState -> m ()) -> m a -> m a
-withTappedStderr tapperFunction m = do
-  (r, tapperDone) <-
-    withTappableStderr
-      ( \tapState -> do
-          tapperDone <- UnliftIO.Async.async (tapperFunction tapState)
-          r <- m
-          -- EOF doesn't seem to reach tapperFunction, so we simulate it with a magic line
-          -- The preceding newline clears any unfinished lines but also introduces a needless newline in the final log
-          hPutStrLn stderr ("\n__%%hercules terminate log%%__" :: ByteString)
-          pure (r, tapperDone)
-      )
-  liftIO (timeout 30_000_000 $ wait tapperDone) >>= \case
-    Just x -> pure x
-    Nothing -> logLocM ErrorS "stderr thread did not finish in time"
-  pure r
-
-data TapState = TapState {originalStderrCopy :: Fd, readableStderrEnd :: Handle}
-
--- | WARNING: Invoke only once. It leaks probably leaks a file descriptor or two.
+-- | Reassign file descriptors according to the scheme for the worker process.
 --
--- @withTappedStderr tapper mainAction@
+-- __Before__
 --
--- 'readableStderrEnd' receives EOF when your action terminates (unless you 'dup' the write end, aka 'stdError')
-withTappableStderr :: MonadUnliftIO m => (TapState -> m a) -> m a
-withTappableStderr = bracket (liftIO tapStderrPipe) (liftIO . revertTap)
+-- These are the roles assigned by the parent process:
+--
+--     * stdin: commands
+--
+--     * stdout: events
+--
+--     * stderr: arbitrary logs
+--
+-- __After__
+--
+--  Code in the child process can assume a pretty normal environment:
+--
+--     * stdin: empty
+--
+--     * stdout: arbitrary logs
+--
+--     * stderr: arbitrary logs
+--
+-- __Return__
+--
+-- The special handles that let us do structured communication with the parent process:
+--
+--    * commands
+--
+--    * events
+--
+-- __Output Buffering__
+--
+-- The standard handles are set to line buffering. The events handle is set to no buffering.
+--
+-- __Note__
+--
+-- This function is not interruptible and not thread-safe.
+plumbWorkerStd :: IO Handles
+plumbWorkerStd =
+  Protolude.uninterruptibleMask \_unmask -> do
+    -- in
+    commandsHandle <- hDuplicate stdin
+    devNull <- openFile "/dev/null" ReadMode
+    hDuplicateTo devNull stdin
 
-revertTap :: TapState -> IO ()
-revertTap s = do
-  void $ dupTo (originalStderrCopy s) stdError
-  closeFd (originalStderrCopy s)
+    -- out
+    eventsHandle <- hDuplicate stdout
+    hDuplicateTo stderr stdout
 
-tapStderrPipe :: IO TapState
-tapStderrPipe = do
-  oldStdError <- dup stdError
-  (readable, writable) <- createPipe
-  -- fd 2 := writable pipe
-  void $ dupTo writable stdError
-  -- Make sure all fds are set up correctly for the RTS's IO manager
-  [oldStdError, readable, writable] & traverse_ \fd -> setNonBlockingFD (fromIntegral fd) True
-  let mkHandle fd = do
-        h <- fdToHandle fd
-        hSetBuffering h LineBuffering
-        pure h
-  readableHandle <- mkHandle readable
-  pure
-    TapState
-      { originalStderrCopy = oldStdError,
-        readableStderrEnd = readableHandle
-      }
+    -- err: unchanged
+
+    -- buffering
+    hSetBuffering stdout LineBuffering
+    hSetBuffering stderr LineBuffering
+
+    hSetBuffering eventsHandle NoBuffering
+
+    pure Handles {commands = commandsHandle, events = eventsHandle}

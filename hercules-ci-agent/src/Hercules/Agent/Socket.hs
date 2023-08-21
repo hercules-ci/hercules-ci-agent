@@ -64,7 +64,7 @@ requiredServiceVersion = (2, 0)
 ackTimeout :: NominalDiffTime
 ackTimeout = 60 -- seconds
 
-withReliableSocket :: (A.FromJSON sp, A.ToJSON ap, MonadIO m, MonadUnliftIO m, KatipContext m) => SocketConfig ap sp m -> (Socket sp ap -> m a) -> m a
+withReliableSocket :: (A.FromJSON sp, A.ToJSON ap, MonadUnliftIO m, KatipContext m) => SocketConfig ap sp m -> (Socket sp ap -> m a) -> m a
 withReliableSocket socketConfig f = do
   writeQueue <- atomically $ newTBQueue 100
   agentMessageNextN <- newTVarIO 0
@@ -281,7 +281,7 @@ withConnection' socketConfig m = do
 slash :: [Char] -> [Char] -> [Char]
 a `slash` b = dropWhileEnd (== '/') a <> "/" <> dropWhile (== '/') b
 
-withTimeout :: (Exception e, MonadIO m, MonadUnliftIO m) => NominalDiffTime -> e -> m a -> m a
+withTimeout :: (Exception e, MonadUnliftIO m) => NominalDiffTime -> e -> m a -> m a
 withTimeout t e _ | t <= 0 = throwIO e
 withTimeout t e m =
   timeout (ceiling $ t * 1_000_000) m >>= \case

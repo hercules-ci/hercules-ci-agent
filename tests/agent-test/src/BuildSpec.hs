@@ -9,7 +9,6 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.UUID.V4 qualified as UUID
 import Hercules.API.Agent.Build.BuildEvent qualified as BuildEvent
-import Hercules.API.Agent.Build.BuildEvent.OutputInfo qualified as OutputInfo
 import Hercules.API.Agent.Build.BuildTask qualified as BuildTask
 import Hercules.API.Agent.Evaluate.EvaluateEvent
   ( EvaluateEvent,
@@ -19,6 +18,7 @@ import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEvent qualified as Att
 import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
 import Hercules.API.Agent.Evaluate.EvaluateTask.OnPush qualified as EvaluateTask.OnPush
 import Hercules.API.Agent.Evaluate.ImmutableInput qualified as ImmutableInput
+import Hercules.API.Agent.OutputInfo qualified as OutputInfo
 import Hercules.API.Id (Id (Id))
 import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Hercules.API.TaskStatus qualified as TaskStatus
@@ -119,7 +119,7 @@ spec = describe "Build" do
         )
     s2 `shouldBe` TaskStatus.Successful ()
     case be of
-      [BuildEvent.OutputInfo OutputInfo.OutputInfo {deriver = drvp, name = n, path = p, hash = h, size = sz}, BuildEvent.Done True] ->
+      [BuildEvent.OutputInfo OutputInfo.OutputInfo {deriver = drvp, name = n, path = p, hash = h, size = sz, references = Just ["bds7yh0gp12880ilk66rq77p4881izcv-the-src"]}, BuildEvent.Done True] ->
         do
           toS drvp `shouldContain` "/nix/store"
           toS drvp `shouldContain` "one.drv"
@@ -127,8 +127,8 @@ spec = describe "Build" do
           toS p `shouldContain` "/nix/store"
           toS p `shouldContain` "-one"
           h
-            `shouldBe` "sha256:15apcm9ksmd22hmxkmnncndgx1mx55nfan199rvbam8ygycr671b"
-          sz `shouldBe` 120
+            `shouldBe` "sha256:10n8hp369w047c07j0fgx2d3kp2ia7r8bxr23z7cn4bzwi9c5b11"
+          sz `shouldBe` 168
       _ -> failWith $ "Didn't expect this: " <> show be
     x <- timeout 30_000_000 do
       atomically do

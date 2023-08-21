@@ -84,6 +84,7 @@ push nixStore cache paths workers = withNamedContext "cache" cache $ do
   paths' <- paths & traverse (convertPath nixStore)
 #else
   let paths' = paths
+      _ = nixStore -- silence unused warning
 #endif
   void $
     Cachix.Push.pushClosure
