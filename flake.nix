@@ -327,7 +327,9 @@
 
                     inline-c-cpp =
                       # https://github.com/fpco/inline-c/pull/132
-                      assert lib.any
+                      assert
+                      lib.versionAtLeast super.ghc.version "9.4"
+                      || lib.any
                         (patch: lib.hasSuffix "inline-c-cpp-pr-132-1.patch" (baseNameOf patch))
                         super.inline-c-cpp.patches;
                       super.inline-c-cpp;
