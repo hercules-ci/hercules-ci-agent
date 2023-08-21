@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased 0.10
+
+### Changed
+
+ - More concurrency is utilized during evaluation, including binary cache lookups and (more) build dispatch. This results in a speedup.
+
+ - Dependencies of build dependencies are not scheduled eagerly anymore. This reduces the scope of all jobs created with agent 0.10 and up.
+   It is no longer guaranteed that everything (all the way up to the bootstrap binaries) is buildable or substitutable.
+   Notably this unblocks certain Nixpkgs/darwin's derivations that were neither buildable nor substitutable.
+
+### Fixed
+
+ - Low level crashes are now reported in the log as expected.
+
+ - An interaction between the Nix GC and threads has been fixed, solving such a crash.
+
 ## [0.9.12] - 2022-06-28
 
 ### Added
