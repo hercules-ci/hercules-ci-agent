@@ -276,7 +276,7 @@
                 internal = {
 
                   devShell.extraLibraries = hp: {
-                    inherit (hp) releaser;
+                    # FIXME inherit (hp) releaser;
                     # Cachix deps (cachix was excluded because of its dependency on cnix-store)
                   } //
                   lib.listToAttrs (
