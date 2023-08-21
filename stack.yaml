@@ -1,4 +1,4 @@
-resolver: ghc-9.2.8
+resolver: ghc-9.4.7
 
 packages:
   - ./cabal-pkg-config-version-hook
