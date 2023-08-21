@@ -269,34 +269,37 @@ logInfo t = do
     printInfo($bs-cstr:bstr);
   }|]
 
+-- | (private) Make an EvalState and leak it.
+newEvalState :: MonadIO m => Store -> m (Ptr EvalState)
+newEvalState (Store store) = liftIO
+#if NIX_IS_AT_LEAST(2,17,0)
+  [C.throwBlock| EvalState* {
+    nix::SearchPath searchPaths;
+    return new EvalState(searchPaths, *$(refStore* store));
+  } |]
+#else
+  [C.throwBlock| EvalState* {
+    Strings searchPaths;
+    return new EvalState(searchPaths, *$(refStore* store));
+  } |]
+#endif
+
+-- | (private) Don't leak it.
+deleteEvalState :: MonadIO m => (Ptr EvalState) -> m ()
+deleteEvalState st = liftIO [C.throwBlock| void { delete $(EvalState* st); } |]
+
 withEvalState ::
   Store ->
   (Ptr EvalState -> IO a) ->
   IO a
-withEvalState (Store store) =
-  bracket
-    ( liftIO
-        [C.throwBlock| EvalState* {
-          Strings searchPaths;
-          return new EvalState(searchPaths, *$(refStore* store));
-        } |]
-    )
-    (\x -> liftIO [C.throwBlock| void { delete $(EvalState* x); } |])
+withEvalState store = bracket (newEvalState store) deleteEvalState
 
 withEvalStateConduit ::
   MonadResource m =>
   Store ->
   (Ptr EvalState -> ConduitT i o m r) ->
   ConduitT i o m r
-withEvalStateConduit (Store store) =
-  bracketP
-    ( liftIO
-        [C.throwBlock| EvalState* {
-          Strings searchPaths;
-          return new EvalState(searchPaths, *$(refStore* store));
-        } |]
-    )
-    (\x -> liftIO [C.throwBlock| void { delete $(EvalState* x); } |])
+withEvalStateConduit store = bracketP (newEvalState store) deleteEvalState
 
 -- | Insert an allowed path. Only has an effect when in restricted or pure mode.
 addAllowedPath :: Ptr EvalState -> ByteString -> IO ()
