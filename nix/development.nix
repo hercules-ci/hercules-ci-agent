@@ -1,6 +1,7 @@
 toplevel@{ config, inputs, withSystem, ... }:
 {
-  imports = [ ./flake-cachix-dev.nix ];
+  # cachix dev version build currently doesn't eval; skip it
+  # imports = [ ./flake-cachix-dev.nix ];
 
   perSystem = { config, pkgs, ... }: {
     checks.stack-yaml-ghc-matches = pkgs.runCommand "stack-yaml-ghc-matches" { } ''
