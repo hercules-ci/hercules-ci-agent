@@ -108,10 +108,10 @@ data NixException
   = MissingAttribute Provenance Text
   | TypeError
       Provenance
+      -- | actual
       RawValueType
-      -- ^ actual
+      -- | expected
       [RawValueType]
-      -- ^ expected
   | InvalidText Provenance UnicodeException
   | StringContextNotAllowed Provenance
   | InvalidValue Provenance Text
@@ -312,14 +312,14 @@ as #?! p = do
     Nothing -> throwIO $ MissingAttribute (provenance as) (T.pack (symbolVal p))
     Just x -> pure x
 
-lookupDictBS :: MonadEval m => ByteString -> PSObject (Attrs' as w) -> m (Maybe (PSObject w))
+lookupDictBS :: (MonadEval m) => ByteString -> PSObject (Attrs' as w) -> m (Maybe (PSObject w))
 lookupDictBS name as = do
   evalState <- ask
   v <- check as
   liftIO (getAttr evalState v name)
     <&> fmap (\b -> PSObject {value = b, provenance = Attribute (provenance as) (decodeUtf8With lenientDecode name)})
 
-lookupDict :: MonadEval m => Text -> PSObject (Attrs' as w) -> m (Maybe (PSObject w))
+lookupDict :: (MonadEval m) => Text -> PSObject (Attrs' as w) -> m (Maybe (PSObject w))
 lookupDict name as = do
   evalState <- ask
   v <- check as
@@ -327,20 +327,20 @@ lookupDict name as = do
     <&> fmap (\b -> PSObject {value = b, provenance = Attribute (provenance as) name})
 
 -- | Like '#?!'. Throws an acceptable but not great error message.
-requireDictBS :: MonadEval m => ByteString -> PSObject (Attrs' as w) -> m (PSObject w)
+requireDictBS :: (MonadEval m) => ByteString -> PSObject (Attrs' as w) -> m (PSObject w)
 requireDictBS name as = do
   lookupDictBS name as >>= \case
     Nothing -> throwIO $ MissingAttribute (provenance as) (decodeUtf8With lenientDecode name)
     Just r -> pure r
 
 -- | Like '#?!'. Throws an acceptable but not great error message.
-requireDict :: MonadEval m => Text -> PSObject (Attrs' as w) -> m (PSObject w)
+requireDict :: (MonadEval m) => Text -> PSObject (Attrs' as w) -> m (PSObject w)
 requireDict name as = do
   lookupDict name as >>= \case
     Nothing -> throwIO $ MissingAttribute (provenance as) name
     Just r -> pure r
 
-dictionaryToMap :: MonadEval m => PSObject (Dictionary w) -> m (Map ByteString (PSObject w))
+dictionaryToMap :: (MonadEval m) => PSObject (Dictionary w) -> m (Map ByteString (PSObject w))
 dictionaryToMap dict = do
   es <- ask
   (liftIO . Expr.getAttrs es =<< check dict)
@@ -362,7 +362,7 @@ type family NixTypeForSchema s where
 
 class PossibleTypesForSchema s where
   typesForSchema :: Proxy s -> [RawValueType]
-  default typesForSchema :: HasRawValueType (NixTypeForSchema s) => Proxy s -> [RawValueType]
+  default typesForSchema :: (HasRawValueType (NixTypeForSchema s)) => Proxy s -> [RawValueType]
   typesForSchema _ = [getRawValueType (Proxy @(NixTypeForSchema s))]
 
 instance PossibleTypesForSchema (Attrs' as w)
@@ -483,12 +483,12 @@ getText_ ::
   m Text
 getText_ = validateE getByteString_ decodeUtf8' InvalidText
 
-validate :: Monad m => (PSObject s -> m a) -> (Provenance -> a -> m b) -> PSObject s -> m b
+validate :: (Monad m) => (PSObject s -> m a) -> (Provenance -> a -> m b) -> PSObject s -> m b
 validate basicParse validator o = do
   a <- basicParse o
   validator (provenance o) a
 
-validateE :: MonadIO m => (PSObject s -> m a) -> (a -> Either e b) -> (Provenance -> e -> NixException) -> PSObject s -> m b
+validateE :: (MonadIO m) => (PSObject s -> m a) -> (a -> Either e b) -> (Provenance -> e -> NixException) -> PSObject s -> m b
 validateE basicParse validator thrower =
   validate basicParse \prov a ->
     case validator a of
@@ -530,7 +530,7 @@ uncheckedCast = coerce
 class FromPSObject schema a where
   -- | Parse an object assumed to be in schema @schema@ into a value of type @a@
   -- or throw a 'NixException'.
-  fromPSObject :: MonadEval m => PSObject schema -> m a
+  fromPSObject :: (MonadEval m) => PSObject schema -> m a
 
 instance FromPSObject StringWithoutContext ByteString where
   fromPSObject o = do
@@ -560,7 +560,7 @@ instance FromPSObject Int64 Int64 where
     v <- check o
     liftIO (Expr.fromValue v)
 
-instance forall a b. FromPSObject a b => FromPSObject [a] [b] where
+instance forall a b. (FromPSObject a b) => FromPSObject [a] [b] where
   fromPSObject o = do
     traverseArray fromPSObject o
 

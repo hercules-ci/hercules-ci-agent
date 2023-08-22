@@ -101,7 +101,7 @@ rawValueType (RawValue v) =
     f 11 = Thunk
     f _ = Other
 
-forceValue :: Exception a => Ptr EvalState -> RawValue -> IO (Either a ())
+forceValue :: (Exception a) => Ptr EvalState -> RawValue -> IO (Either a ())
 forceValue evalState (RawValue v) =
   try
     [C.catchBlock|  {

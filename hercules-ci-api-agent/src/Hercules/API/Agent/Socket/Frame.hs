@@ -25,7 +25,7 @@ mapOob _ (Msg a b) = Msg a b
 mapOob _ (Ack a) = Ack a
 mapOob _ (Exception e) = Exception e
 
-removeOob :: Alternative f => Frame o a -> f (Frame Void a)
+removeOob :: (Alternative f) => Frame o a -> f (Frame Void a)
 removeOob (Msg a b) = pure $ Msg a b
 removeOob (Ack a) = pure $ Ack a
 removeOob Oob {} = empty

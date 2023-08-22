@@ -12,7 +12,7 @@ import Hercules.CNix
 import Protolude
 
 retrieveDerivationInfo ::
-  MonadIO m =>
+  (MonadIO m) =>
   Store ->
   StorePath ->
   m DerivationInfo

@@ -202,9 +202,9 @@ spec = describe "Build" do
                 | "cycle detected"
                     `T.isInfixOf` m
                     && "outputOne"
-                    `T.isInfixOf` m
+                      `T.isInfixOf` m
                     && "outputTwo"
-                    `T.isInfixOf` m ->
+                      `T.isInfixOf` m ->
                     True
               _ -> False
 

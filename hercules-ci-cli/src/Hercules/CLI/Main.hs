@@ -41,7 +41,7 @@ initNix = do
   Hercules.CNix.init
   Hercules.CNix.Util.installDefaultSigINTHandler
 
-addNix :: Functor f => f (IO a) -> f (IO a)
+addNix :: (Functor f) => f (IO a) -> f (IO a)
 addNix = fmap (initNix *>)
 
 prettyPrintErrors :: IO a -> IO a

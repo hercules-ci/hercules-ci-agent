@@ -70,36 +70,36 @@ tomlCodec :: TomlCodec (Config 'Input)
 tomlCodec =
   Config
     <$> dioptional (Toml.text "apiBaseUrl")
-    .= herculesApiBaseURL
+      .= herculesApiBaseURL
     <*> dioptional (Toml.bool "nixUserIsTrusted")
-    .= nixUserIsTrusted
+      .= nixUserIsTrusted
     <*> dioptional
       ( Toml.dimatch matchRight Right (Toml.int "concurrentTasks")
           <|> Toml.dimatch matchLeft Left (Toml.textBy (\() -> "auto") isAuto "concurrentTasks")
       )
-    .= concurrentTasks
+      .= concurrentTasks
     <*> dioptional (Toml.string keyBaseDirectory)
-    .= baseDirectory
+      .= baseDirectory
     <*> dioptional (Toml.string "staticSecretsDirectory")
-    .= staticSecretsDirectory
+      .= staticSecretsDirectory
     <*> dioptional (Toml.string "workDirectory")
-    .= workDirectory
+      .= workDirectory
     <*> dioptional (Toml.string keyClusterJoinTokenPath)
-    .= clusterJoinTokenPath
+      .= clusterJoinTokenPath
     <*> dioptional (Toml.string "binaryCachesPath")
-    .= binaryCachesPath
+      .= binaryCachesPath
     <*> dioptional (Toml.string "secretsJsonPath")
-    .= secretsJsonPath
+      .= secretsJsonPath
     <*> dioptional (Toml.enumBounded "logLevel")
-    .= logLevel
+      .= logLevel
     <*> dioptional (Toml.enumBounded "nixVerbosity")
-    .= nixVerbosity
+      .= nixVerbosity
     <*> dioptional (Toml.tableMap _KeyText embedJson "labels")
-    .= labels
+      .= labels
     <*> dioptional (Toml.bool "allowInsecureBuiltinFetchers")
-    .= allowInsecureBuiltinFetchers
+      .= allowInsecureBuiltinFetchers
     <*> dioptional (Toml.arrayOf Toml._Text "remotePlatformsWithSameFeatures")
-    .= remotePlatformsWithSameFeatures
+      .= remotePlatformsWithSameFeatures
 
 embedJson :: Key -> TomlCodec A.Value
 embedJson key =

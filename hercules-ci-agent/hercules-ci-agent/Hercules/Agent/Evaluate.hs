@@ -115,7 +115,7 @@ performEvaluation sendLogItems store task' =
       fix $ \continue ->
         joinSTM $ listen batchProducer (\b -> withSync b (postBatch task' . catMaybes) *> continue) pure
 
-getSrcInput :: MonadIO m => EvaluateTask.EvaluateTask -> m (Maybe ImmutableGitInput)
+getSrcInput :: (MonadIO m) => EvaluateTask.EvaluateTask -> m (Maybe ImmutableGitInput)
 getSrcInput task = case M.lookup "src" (EvaluateTask.inputs task) of
   Just (ImmutableInput.Git x) ->
     purer x
@@ -126,7 +126,7 @@ getSrcInput task = case M.lookup "src" (EvaluateTask.inputs task) of
 
 data AbortMessageAlreadySent = AbortMessageAlreadySent deriving (Show, Exception)
 
-getWithStoreLimiter :: MonadUnliftIO m => (Env -> Memo Text ResourceLimiter) -> Text -> App (m a -> m a)
+getWithStoreLimiter :: (MonadUnliftIO m) => (Env -> Memo Text ResourceLimiter) -> Text -> App (m a -> m a)
 getWithStoreLimiter getLimiterMap store = do
   memo <- asks getLimiterMap
   limiter <- doOnce memo store do
@@ -155,7 +155,7 @@ makeEventEmitter writeToBatch = do
   msgCounter <- liftIO $ newIORef 0
 
   let fixIndex ::
-        MonadIO m =>
+        (MonadIO m) =>
         EvaluateEvent.EvaluateEvent ->
         m EvaluateEvent.EvaluateEvent
       fixIndex (EvaluateEvent.Message m) = do
@@ -199,7 +199,7 @@ makeEventEmitter writeToBatch = do
 -- which are registered during the execution of @m@ using @addWait@.
 --
 -- The @addWait@ function enqueues an 'STM' transaction that will be dequeued only when the transaction completes successfully.
-withDynamicBarrier :: MonadUnliftIO m => ((STM x -> STM ()) -> m a) -> m a
+withDynamicBarrier :: (MonadUnliftIO m) => ((STM x -> STM ()) -> m a) -> m a
 withDynamicBarrier driver = do
   -- Signals that `driver` is done. Prevents exiting before work builds up.
   driverDone :: TVar (STM ()) <- liftIO (newTVarIO retry)

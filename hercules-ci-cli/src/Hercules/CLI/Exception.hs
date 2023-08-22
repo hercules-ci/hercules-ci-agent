@@ -16,5 +16,5 @@ handleUserException =
         exitFailure
     )
 
-exitMsg :: MonadIO m => Text -> m a
+exitMsg :: (MonadIO m) => Text -> m a
 exitMsg = liftIO . throwIO . UserException

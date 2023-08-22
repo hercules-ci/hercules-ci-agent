@@ -15,4 +15,4 @@ data PagedResponse a = PagedResponse
   }
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
-deriving instance ToSchema a => ToSchema (PagedResponse a)
+deriving instance (ToSchema a) => ToSchema (PagedResponse a)

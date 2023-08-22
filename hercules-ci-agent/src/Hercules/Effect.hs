@@ -222,7 +222,7 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
               ("TMP", "/build"),
               ("TEMP", "/build")
             ]
-        (//) :: Ord k => Map k a -> Map k a -> Map k a
+        (//) :: (Ord k) => Map k a -> Map k a -> Map k a
         (//) = flip M.union
     let (withNixDaemonProxyPerhaps, forwardedSocketPath) =
           if runEffectUseNixDaemonProxy p
@@ -280,7 +280,7 @@ withNixDaemonProxy extraNixOptions socketPath wrappedAction = do
       -- TODO kill process _group_?
       `finally` destroyProcess_1s processHandle
 
-forPid :: Num pid => ProcessHandle -> (pid -> IO ()) -> IO ()
+forPid :: (Num pid) => ProcessHandle -> (pid -> IO ()) -> IO ()
 forPid ph f = Process.Internal.withProcessHandle ph \case
   Process.Internal.OpenHandle {phdlProcessHandle = pid} -> f (fromIntegral pid)
   Process.Internal.OpenExtHandle {phdlProcessHandle = pid} -> f (fromIntegral pid)

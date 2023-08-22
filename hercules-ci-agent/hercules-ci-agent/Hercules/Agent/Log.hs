@@ -29,7 +29,7 @@ withContext :: (KatipContext m, LogItem a) => a -> m b -> m b
 withContext = katipAddContext
 
 -- TODO: Support context for all exceptions and use plain @panic@ instead.
-panicWithLog :: KatipContext m => Text -> m a
+panicWithLog :: (KatipContext m) => Text -> m a
 panicWithLog msg = do
   logLocM ErrorS $ logStr msg
   panic msg
@@ -37,7 +37,7 @@ panicWithLog msg = do
 makeStderrLogItem :: ByteString -> LogEntry
 makeStderrLogItem msg = LogEntry.Msg {msg = decodeUtf8With lenientDecode msg, i = 0, ms = 0, level = 0}
 
-stderrLineHandler :: KatipContext m => (Vector LogEntry -> IO ()) -> Map Text Value -> Text -> Int -> ByteString -> m ()
+stderrLineHandler :: (KatipContext m) => (Vector LogEntry -> IO ()) -> Map Text Value -> Text -> Int -> ByteString -> m ()
 stderrLineHandler _sendLogItems callerContext _processRole _ ln
   | "@katip " `BS.isPrefixOf` ln,
     Just item <- A.decode (LBS.fromStrict $ BS.drop 7 ln) =
