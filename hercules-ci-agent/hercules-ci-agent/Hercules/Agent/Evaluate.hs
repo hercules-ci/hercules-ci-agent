@@ -26,7 +26,6 @@ import Data.IORef
   )
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Data.Time (getCurrentTime)
 import Data.UUID (UUID)
 import Data.Vector (Vector)
 import Hercules.API (Id)
