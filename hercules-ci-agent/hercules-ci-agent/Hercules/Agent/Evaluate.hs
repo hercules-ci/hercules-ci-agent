@@ -303,10 +303,13 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
 
           pure exists
 
+      storePathToText :: StorePath -> App Text
+      storePathToText sp = do
+        liftIO (CNix.storePathToPath store sp) <&> decodeUtf8With lenientDecode
+
       planAllOutputs :: StorePath -> App ()
       planAllOutputs drvPath = do
-        drvPathBytes <- liftIO (CNix.storePathToPath store drvPath)
-        let drvPathText = decodeUtf8With lenientDecode drvPathBytes
+        drvPathText <- storePathToText drvPath
         drv <- getDerivationCached drvPath
         drvName <- liftIO $ CNix.getDerivationNameFromPath drvPath
         outputs <- liftIO $ CNix.getDerivationOutputs store drvName drv
@@ -317,6 +320,15 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
         when (not outputsSubstitutable) do
           planInputs drv
           requestBuild drvPathText
+
+      -- Like 'planInputs' but do assume we need to build all of them.
+      planInputsForced drvPath = do
+        drv <- getDerivationCached drvPath
+        inputs <- liftIO (CNix.getDerivationInputs' drv)
+        for_ inputs \(inputDrvPath, _outputs) -> do
+          inputDrv <- getDerivationCached inputDrvPath
+          planInputs inputDrv
+          requestBuild =<< storePathToText inputDrvPath
 
       planInputs drv = do
         inputs <- liftIO (CNix.getDerivationInputs' drv)
@@ -467,6 +479,25 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
               (emitDrvInfo drvPath)
               (uploadDrvs [drvPath])
             planAllOutputs drvPath
+            -- In theory we should be done now
+            -- but we want derivation events for these for the backend, and
+            -- potentially for inspecting the nix-support directory (TBD).
+            -- FIXME: this realises build inputs even if output was substitutable
+            --        (but only for top level derivations)
+            planInputs =<< getDerivationCached drvPath
+            requestBuild =<< storePathToText drvPath
+
+        addTopDerivationInputs drvPath = do
+          atomically . addAsync =<< async do
+            concurrently_
+              (emitDrvInfo drvPath)
+              (uploadDrvs [drvPath])
+            -- In theory we should be done (as in addTopDerivation) but we want
+            -- derivation events for the inputs, so we force them.
+            -- FIXME: this realises build inputs even if output was substitutable
+            --        (but only for top level deps-only derivations' inputs)
+            planInputsForced drvPath
+
         extraOpts = [("system", T.strip s) | Just s <- [adHocSystem]]
         evaluation = do
           let evalProc =
@@ -488,10 +519,15 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
           case msg of
             EvaluateEvent.Attribute ae -> do
               storePath <- liftIO $ parseStorePath store (encodeUtf8 $ AttributeEvent.derivationPath ae)
-              addTopDerivation storePath
+              case ae.typ of
+                AttributeEvent.Regular -> addTopDerivation storePath
+                AttributeEvent.MustFail -> addTopDerivation storePath
+                AttributeEvent.MayFail -> addTopDerivation storePath
+                AttributeEvent.DependenciesOnly -> addTopDerivationInputs storePath
+                AttributeEvent.Effect -> addTopDerivationInputs storePath
             EvaluateEvent.AttributeEffect ae -> do
               storePath <- liftIO $ parseStorePath store (encodeUtf8 $ AttributeEffectEvent.derivationPath ae)
-              addTopDerivation storePath
+              addTopDerivationInputs storePath
             _ -> pass
           emit msg
      in evaluation
