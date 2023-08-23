@@ -228,6 +228,7 @@ executable hercules-ci-agent
       Hercules.Agent.Nix.Init
       Hercules.Agent.Nix.RetrieveDerivationInfo
       Hercules.Agent.Options
+      Hercules.Agent.ResourceLimiter
       Hercules.Agent.SecureDirectory
       Hercules.Agent.ServiceInfo
       Hercules.Agent.Token
