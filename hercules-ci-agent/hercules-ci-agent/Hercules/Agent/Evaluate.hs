@@ -75,6 +75,7 @@ import Hercules.Agent.NixPath
   ( renderSubPath,
   )
 import Hercules.Agent.Producer
+import Hercules.Agent.ResourceLimiter (ResourceLimiter, newResourceLimiter, withResource)
 import Hercules.Agent.Store (toDrvInfo)
 import Hercules.Agent.WorkerProcess qualified as WorkerProcess
 import Hercules.Agent.WorkerProtocol.Command qualified as Command
@@ -125,6 +126,24 @@ getSrcInput task = case M.lookup "src" (EvaluateTask.inputs task) of
     pure Nothing
 
 data AbortMessageAlreadySent = AbortMessageAlreadySent deriving (Show, Exception)
+
+withStoreLimiter' :: MonadUnliftIO m => (Env -> Memo Text ResourceLimiter) -> Text -> App (m a -> m a)
+withStoreLimiter' getLimiterMap store = do
+  memo <- asks getLimiterMap
+  limiter <- Memo.query memo (\_storeURI -> newResourceLimiter 32) store
+  pure (withResource limiter)
+
+-- | Apply concurreny limit
+withStoreQuery :: Text -> App a -> App a
+withStoreQuery storeURI m = do
+  l <- withStoreLimiter' Env.concurrentStoreQueries storeURI
+  l m
+
+-- | Apply concurreny limit
+withStorePush :: Text -> App a -> App a
+withStorePush storeURI m = do
+  l <- withStoreLimiter' Env.concurrentStorePushes storeURI
+  l m
 
 makeEventEmitter ::
   (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
@@ -281,7 +300,8 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
           Just x -> pure x
         -- TODO waitAny
         any identity <$> forConcurrently (M.toList substituters) \(uri, substituter) -> do
-          exists <- liftIO (CNix.isValidPath substituter outputPath)
+          exists <- withStoreQuery uri do
+            liftIO (CNix.isValidPath substituter outputPath)
           if exists
             then do
               drvInfo <- liftIO (toDrvInfo substituter output)
@@ -468,7 +488,10 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
         caches <- activePushCaches
         forM_ caches $ \cache -> do
           withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations"
-          Agent.Cache.push store cache (toList paths) pushEvalWorkers
+
+          -- TODO: Make it fine grained? withStorePush here and now is a limit on concurrent closures.
+          withStorePush cache do
+            Agent.Cache.push store cache (toList paths) pushEvalWorkers
 
   withDynamicBarrier \addToWait ->
     let addAsync = addToWait . waitSTM
@@ -766,7 +789,8 @@ runEvalProcess sendLogItems store projectDir file autoArguments nixPath emit upl
                         caches <- activePushCaches
                         forM_ caches $ \cache -> do
                           withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations for import from derivation"
-                          Agent.Cache.push store cache [storePath] pushEvalWorkers
+                          withStorePush cache do
+                            Agent.Cache.push store cache [storePath] pushEvalWorkers
                   Async.Lifted.concurrently_
                     (uploadDerivationInfos storePath)
                     pushDerivations
