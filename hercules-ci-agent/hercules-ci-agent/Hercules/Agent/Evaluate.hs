@@ -176,10 +176,12 @@ makeEventEmitter writeToBatch = do
         emitSingle =<< fixIndex update
   pure emit
 
--- | @waitAllSink (\addWait -> m ...)@ waits for any number of concurrent operations,
+-- | @withDynamicBarrier (\addWait -> m ...)@ waits for any number of concurrent operations,
 -- which are registered during the execution of @m@ using @addWait@.
-waitAllSink :: MonadUnliftIO m => ((STM x -> STM ()) -> m a) -> m a
-waitAllSink driver = do
+--
+-- The @addWait@ function enqueues an 'STM' transaction that will be dequeued only when the transaction completes successfully.
+withDynamicBarrier :: MonadUnliftIO m => ((STM x -> STM ()) -> m a) -> m a
+withDynamicBarrier driver = do
   -- Signals that `driver` is done. Prevents exiting before work builds up.
   driverDone :: TVar (STM ()) <- liftIO (newTVarIO retry)
 
@@ -468,7 +470,7 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
           withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations"
           Agent.Cache.push store cache (toList paths) pushEvalWorkers
 
-  waitAllSink \addToWait ->
+  withDynamicBarrier \addToWait ->
     let addAsync = addToWait . waitSTM
         uploadDrvInfos drvPath = do
           emitDrvInfo drvPath
