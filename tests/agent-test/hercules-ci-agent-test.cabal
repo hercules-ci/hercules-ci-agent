@@ -38,7 +38,7 @@ executable hercules-ci-agent-test
       -- via stack repl, which is then merged
       -DNIX_IS_AT_LEAST(a,b,c)=1
 
-  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators ImportQualifiedPost
+  default-extensions: DeriveGeneric DeriveTraversable DisambiguateRecordFields FlexibleContexts InstanceSigs LambdaCase MultiParamTypeClasses NoImplicitPrelude OverloadedStrings RankNTypes TupleSections TypeApplications TypeOperators ImportQualifiedPost OverloadedRecordDot
   ghc-options: -Wall -fwarn-tabs -fwarn-unused-imports -fwarn-missing-signatures -fwarn-name-shadowing -fwarn-incomplete-patterns -threaded -rtsopts -with-rtsopts=-N -O0
     -- a hacky way of disambiguating optparse applicative modules
     -- TODO PackageImports?

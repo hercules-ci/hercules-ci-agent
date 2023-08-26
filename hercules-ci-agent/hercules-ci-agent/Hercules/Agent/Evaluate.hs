@@ -261,6 +261,7 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
   derivationSubstitutable :: Memo (Text, ByteString) Bool <- newMemo
   derivationBuildRequest :: Memo Text () <- newMemo
   derivationCache :: Memo ByteString CNix.Derivation <- newMemo
+  planBuild_ <- newMemo
 
   let emitDrvInfoRaw :: StorePath -> App ()
       emitDrvInfoRaw drvPath = do
@@ -367,9 +368,14 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
             planBuild drv drvPathText
 
       -- Plan a build, when it has been determined that a build task is necessary.
-      planBuild drv drvPathText = do
-        planInputs drv
-        requestBuild drvPathText
+      planBuild drv drvPathText =
+        Memo.query
+          planBuild_
+          ( \_ -> do
+              planInputs drv
+              requestBuild drvPathText
+          )
+          drvPathText
 
       requestBuild drvPathText =
         Memo.query
