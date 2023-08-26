@@ -11,7 +11,9 @@ let
 
   agentStartTimeoutSec = 5 * 60;
 
-  runnerArgs = '''';
+  # e.g. --match 'something'
+  # runnerArgs = '' --match 'can refer to nixpkgs' '';
+  runnerArgs = "";
 
   inherit (pkgs.lib) optionalString;
 
