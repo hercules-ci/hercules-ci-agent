@@ -340,8 +340,7 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
             querySubstitutableOutput' drvPathText output.derivationOutputName output
 
         when (not outputsSubstitutable) do
-          planInputs drv
-          requestBuild drvPathText
+          planBuild drv drvPathText
 
       -- Like 'planInputs' but do assume we need to build all of them.
       planInputsForced drvPath = do
@@ -349,8 +348,7 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
         inputs <- liftIO (CNix.getDerivationInputs' drv)
         for_ inputs \(inputDrvPath, _outputs) -> do
           inputDrv <- getDerivationCached inputDrvPath
-          planInputs inputDrv
-          requestBuild =<< storePathToText inputDrvPath
+          planBuild inputDrv =<< storePathToText inputDrvPath
 
       planInputs drv = do
         inputs <- liftIO (CNix.getDerivationInputs' drv)
@@ -360,14 +358,18 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
           for outputs \outputName -> do
             planOutput inputDrvPath inputDrv outputName inputDrvPathText
 
-        pass
-
       planOutput :: StorePath -> CNix.Derivation -> ByteString -> Text -> App ()
       planOutput drvPath drv outputName drvPathText = do
         isSubstitutable <- rawQuerySubstitutableOutput drvPath drv drvPathText outputName
         if isSubstitutable
           then pass
-          else requestBuild drvPathText
+          else do
+            planBuild drv drvPathText
+
+      -- Plan a build, when it has been determined that a build task is necessary.
+      planBuild drv drvPathText = do
+        planInputs drv
+        requestBuild drvPathText
 
       requestBuild drvPathText =
         Memo.query
