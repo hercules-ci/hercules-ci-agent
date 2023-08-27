@@ -4,6 +4,7 @@ module Hercules.Agent.Memo
   ( Memo,
     newMemo,
     query,
+    doOnce,
     multiQuery,
   )
 where
@@ -29,17 +30,21 @@ data Entry v
   = Result v
   | Promise (STM (Either SomeException v))
 
--- | An unbounded cache
+-- | An unbounded cache. No coherent function/action - passed by callers instead. Use with care.
 --
 -- * 'MonadUnliftIO'
 -- * process multiple keys at once
 -- * anti dogpiling
--- * input not restricted to key, for efficiency
+-- * input not restricted to key, for efficiency and practicality
 newtype Memo k v = Memo (TVar (Map k (Entry v)))
 
 newMemo :: MonadIO m => m (Memo k v)
 newMemo = liftIO do
   Memo <$> newTVarIO M.empty
+
+-- | Like 'query' but you pass the key through the lexical scope.
+doOnce :: (Show k, Ord k, MonadUnliftIO m) => Memo k v -> k -> m v -> m v
+doOnce memo key action = query memo (const action) key
 
 query :: (Show k, Ord k, MonadUnliftIO m) => Memo k v -> (k -> m v) -> k -> m v
 query memo handler k = do

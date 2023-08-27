@@ -62,8 +62,7 @@ import Hercules.Agent.Env qualified as Env
 import Hercules.Agent.Files
 import Hercules.Agent.InitWorkerConfig qualified as WorkerConfig
 import Hercules.Agent.Log
-import Hercules.Agent.Memo (Memo, newMemo)
-import Hercules.Agent.Memo qualified as Memo
+import Hercules.Agent.Memo (Memo, doOnce, newMemo)
 import Hercules.Agent.Netrc qualified as Netrc
 import Hercules.Agent.Nix qualified as Nix
 import Hercules.Agent.Nix.RetrieveDerivationInfo
@@ -130,7 +129,8 @@ data AbortMessageAlreadySent = AbortMessageAlreadySent deriving (Show, Exception
 withStoreLimiter' :: MonadUnliftIO m => (Env -> Memo Text ResourceLimiter) -> Text -> App (m a -> m a)
 withStoreLimiter' getLimiterMap store = do
   memo <- asks getLimiterMap
-  limiter <- Memo.query memo (\_storeURI -> newResourceLimiter 32) store
+  limiter <- doOnce memo store do
+    newResourceLimiter 32
   pure (withResource limiter)
 
 -- | Apply concurreny limit
@@ -274,12 +274,14 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
       getDerivationCached :: StorePath -> App CNix.Derivation
       getDerivationCached drvPath = do
         bs <- liftIO do getStorePathBaseName drvPath
-        Memo.query derivationCache (\_ -> liftIO $ CNix.getDerivation store drvPath) bs
+        doOnce derivationCache bs do
+          liftIO $ CNix.getDerivation store drvPath
 
       emitDrvInfo :: StorePath -> App ()
       emitDrvInfo sp = do
         bs <- liftIO (CNix.getStorePathBaseName sp)
-        Memo.query derivationInfoUpload (\_bs -> emitDrvInfoRaw sp) bs
+        doOnce derivationInfoUpload bs do
+          emitDrvInfoRaw sp
 
       rawQuerySubstitutableOutput :: StorePath -> CNix.Derivation -> Text -> ByteString -> App Bool
       rawQuerySubstitutableOutput drvPath drv drvPathText outputName = do
@@ -291,10 +293,9 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
         querySubstitutableOutput' drvPathText outputName output
 
       querySubstitutableOutput' drvPathText outputName output = do
-        Memo.query
-          derivationSubstitutable
-          (\_ -> rawQuerySubstitutableOutput' drvPathText outputName output)
-          (drvPathText, outputName)
+        doOnce derivationSubstitutable (drvPathText, outputName) do
+          rawQuerySubstitutableOutput' drvPathText outputName output
+
       rawQuerySubstitutableOutput' drvPathText outputName output = do
         outputPath <- case output.derivationOutputPath of
           Nothing -> panic $ "derivation " <> drvPathText <> " does not have a predetermined path. Content addressed derivations are not supported yet."
@@ -369,21 +370,13 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
 
       -- Plan a build, when it has been determined that a build task is necessary.
       planBuild drv drvPathText =
-        Memo.query
-          planBuild_
-          ( \_ -> do
-              planInputs drv
-              requestBuild drvPathText
-          )
-          drvPathText
+        doOnce planBuild_ drvPathText do
+          planInputs drv
+          requestBuild drvPathText
 
       requestBuild drvPathText =
-        Memo.query
-          derivationBuildRequest
-          ( \_ ->
-              emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest {derivationPath = drvPathText, forceRebuild = False}
-          )
-          drvPathText
+        doOnce derivationBuildRequest drvPathText do
+          emit $ EvaluateEvent.BuildRequest BuildRequest.BuildRequest {derivationPath = drvPathText, forceRebuild = False}
 
   let isFlakeJob = EvaluateTask.isFlakeJob task
   nonFlakeStuff <- for (guard (not isFlakeJob)) \() -> do
