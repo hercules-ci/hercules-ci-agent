@@ -126,8 +126,8 @@ getSrcInput task = case M.lookup "src" (EvaluateTask.inputs task) of
 
 data AbortMessageAlreadySent = AbortMessageAlreadySent deriving (Show, Exception)
 
-withStoreLimiter' :: MonadUnliftIO m => (Env -> Memo Text ResourceLimiter) -> Text -> App (m a -> m a)
-withStoreLimiter' getLimiterMap store = do
+getWithStoreLimiter :: MonadUnliftIO m => (Env -> Memo Text ResourceLimiter) -> Text -> App (m a -> m a)
+getWithStoreLimiter getLimiterMap store = do
   memo <- asks getLimiterMap
   limiter <- doOnce memo store do
     newResourceLimiter 32
@@ -136,14 +136,14 @@ withStoreLimiter' getLimiterMap store = do
 -- | Apply concurreny limit
 withStoreQuery :: Text -> App a -> App a
 withStoreQuery storeURI m = do
-  l <- withStoreLimiter' Env.concurrentStoreQueries storeURI
-  l m
+  withLimit <- getWithStoreLimiter Env.concurrentStoreQueries storeURI
+  withLimit m
 
 -- | Apply concurreny limit
 withStorePush :: Text -> App a -> App a
 withStorePush storeURI m = do
-  l <- withStoreLimiter' Env.concurrentStorePushes storeURI
-  l m
+  withLimit <- getWithStoreLimiter Env.concurrentStorePushes storeURI
+  withLimit m
 
 makeEventEmitter ::
   (Syncing EvaluateEvent.EvaluateEvent -> App ()) ->
