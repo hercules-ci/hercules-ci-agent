@@ -9,15 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
- - More concurrency is utilized during evaluation, including binary cache lookups and (more) build dispatch. This results in a speedup.
+ - More work is performed concurrently during evaluation, including binary cache lookups and (more) build dispatch. This results in a speedup.
 
- - Dependencies of build dependencies are not scheduled eagerly anymore. This reduces the scope of all jobs created with agent 0.10 and up.
-   It is no longer guaranteed that everything (all the way up to the bootstrap binaries) is buildable or substitutable.
-   Notably this unblocks certain Nixpkgs/darwin's derivations that were neither buildable nor substitutable.
+ - Dependencies of build dependencies are not scheduled eagerly anymore.
+   This reduces the scope of all jobs that are evaluated by agents since this release, resulting in a speedup.
+   This resolves a noticable slowdown when first evaluating significant Nixpkgs updates when its `staging` branch is merged.
+
+   Strictly speaking, a job success no longer guarantees that absolutely everything (all the way up to the bootstrap binaries) is realisable on your agents.
+   This property is generally not your responsibility, and enforcing it had the effect of excluding less reproducible platforms such as darwin.
+   Instead, a weaker property is provided: *your* derivations are realisable, as well as the immediate build dependencies. "Your derivations" is defined as those whose outputs are not already cached.
+
+   CI setups based on the Nix command line interface (almost all CIs) also behave this way.
 
 ### Fixed
 
- - Low level crashes are now reported in the log as expected.
+ - Low level crash details are now reported in the log as expected.
 
  - An interaction between the Nix GC and threads has been fixed, solving such a crash.
 
