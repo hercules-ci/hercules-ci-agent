@@ -13,6 +13,7 @@ import Hercules.Agent.Env as Env
 import Hercules.Agent.Log
 import Hercules.CNix qualified as CNix
 import Hercules.CNix.Settings qualified as Settings
+import Hercules.CNix.Store (withStoreFromURI)
 import Hercules.CNix.Store qualified as Store
 import Network.HostName (getHostName)
 import Protolude hiding (to)
@@ -67,17 +68,19 @@ getNixInfo = do
   trustedPublicKeys <- Settings.getTrustedPublicKeys
   narinfoCacheNegativeTTL <- Settings.getNarinfoCacheNegativeTtl
   netrcFile <- Settings.getNetrcFile
+  cleanSubstituters <- ordNub <$> traverse cleanUrl substituters
   pure
     NixInfo
       { nixLibVersion = T.dropAround isSpace (fromUtf8Lenient CNix.nixVersion),
         nixPlatforms = toList (S.singleton system <> extraPlatforms),
         nixSystemFeatures = toList systemFeatures,
-        nixSubstituters = map cleanUrl substituters,
+        nixSubstituters = cleanSubstituters,
         nixTrustedPublicKeys = trustedPublicKeys,
         nixNarinfoCacheNegativeTTL = narinfoCacheNegativeTTL,
         nixNetrcFile = guard (netrcFile /= "") $> netrcFile
       }
 
-cleanUrl :: ByteString -> ByteString
-cleanUrl t | "@" `BS.isInfixOf` t = "<URI censored; might contain secret>"
-cleanUrl t = t
+cleanUrl :: ByteString -> IO ByteString
+cleanUrl t | "@" `BS.isInfixOf` t = pure "<URI censored; might contain secret>"
+cleanUrl t = do
+  withStoreFromURI (decodeUtf8With lenientDecode t) Store.storeUri

@@ -119,7 +119,11 @@ performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath"
 convertOutputs :: Text -> [Proto.OutputInfo] -> Map Text OutputInfo
 convertOutputs deriver = foldMap $ \oi ->
   M.singleton (decodeUtf8With lenientDecode oi.name) $
-    OutputInfo.OutputInfo
+    convertOutputInfo deriver oi
+
+convertOutputInfo :: Text -> Proto.OutputInfo -> OutputInfo
+convertOutputInfo deriver oi =
+  OutputInfo.OutputInfo
       { OutputInfo.deriver = deriver,
         name = decodeUtf8With lenientDecode oi.name,
         path = decodeUtf8With lenientDecode oi.path,

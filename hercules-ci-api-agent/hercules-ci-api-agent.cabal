@@ -37,6 +37,7 @@ library
     Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired
     Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo
     Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration
+    Hercules.API.Agent.Evaluate.EvaluateEvent.SubstitutionQueryResult
     Hercules.API.Agent.Evaluate.EvaluateEvent.JobConfig
     Hercules.API.Agent.Evaluate.EvaluateEvent.Message
     Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent

@@ -18,6 +18,11 @@ packages:
 
 system-ghc: true
 
+extra-deps:
+  - ascii-progress-0.3.3.0@sha256:bdcdfabdd2f3e8de0cec4ea058810a77dd8b79506fc0cf90efb93ee9f99ff8e3,4168
+  - concurrent-output-1.10.17@sha256:5b5d8d384dda22283b49c9ed35ca4f02a96f5cfed12b28160a341708d1177bf3,1678
+  - terminal-size-0.3.4@sha256:f0318c54273d04afb65109683b442792dcb67af1ad01ab5ec64423a28bb97715,1291
+
 flags:
   hercules-ci-cnix-store:
     ide: true

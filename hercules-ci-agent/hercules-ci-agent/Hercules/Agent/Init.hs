@@ -8,6 +8,7 @@ import Hercules.Agent.Config qualified as Config
 import Hercules.Agent.Config.BinaryCaches qualified as BC
 import Hercules.Agent.Env (Env (Env))
 import Hercules.Agent.Env qualified as Env
+import Hercules.Agent.Memo (newMemo)
 import Hercules.Agent.Netrc.Env qualified as Netrc
 import Hercules.Agent.Nix.Init qualified
 import Hercules.Agent.SecureDirectory qualified as SecureDirectory
@@ -36,6 +37,8 @@ withEnv config logEnv f = do
   let clientEnv :: Servant.Client.ClientEnv
       clientEnv = Servant.Client.mkClientEnv manager baseUrl
   token <- Token.readTokenFile $ toS $ Config.clusterJoinTokenPath config
+  concPushes <- newMemo
+  concQueries <- newMemo
   withLogging $ Hercules.Agent.Cachix.Init.withEnv config (BC.cachixCaches bcs) \cachix -> liftIO do
     nix <- Hercules.Agent.Nix.Init.newEnv
     serviceInfo <- ServiceInfo.newEnv clientEnv
@@ -54,7 +57,9 @@ withEnv config logEnv f = do
               kContext = mempty,
               kLogEnv = logEnv,
               nixEnv = nix,
-              netrcEnv = Netrc.Env Nothing
+              netrcEnv = Netrc.Env Nothing,
+              concurrentStorePushes = concPushes,
+              concurrentStoreQueries = concQueries
             }
     f env
 

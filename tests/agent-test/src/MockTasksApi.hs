@@ -40,11 +40,13 @@ import Data.Conduit.Zlib (gzip)
 import Data.IORef
   ( IORef,
     atomicModifyIORef,
+    modifyIORef,
     newIORef,
     readIORef,
   )
 import Data.List qualified as L
 import Data.Map qualified as M
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.UUID (UUID)
 import Data.UUID.V4 qualified as UUID
@@ -58,6 +60,7 @@ import Hercules.API.Agent.Evaluate.DerivationStatus (DerivationStatus)
 import Hercules.API.Agent.Evaluate.DerivationStatus qualified as DerivationStatus
 import Hercules.API.Agent.Evaluate.EvaluateEvent qualified as EvaluateEvent
 import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequest qualified as BuildRequest
+import Hercules.API.Agent.Evaluate.EvaluateEvent.BuildRequired qualified as BuildRequired
 import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo (DerivationInfo)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfo qualified as DerivationInfo
 import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
@@ -115,6 +118,7 @@ data ServerState = ServerState
         ),
     derivationInfos ::
       IORef (Map Text DerivationInfo),
+    ifdDerivations :: IORef (Set Text),
     buildTasks ::
       IORef
         ( Map
@@ -213,6 +217,17 @@ fixupBuildTask (ServerHandle st) t = do
         ]
   pure $ t {BuildTask.inputDerivationOutputPaths = inouts}
 
+printState :: ServerState -> IO ()
+printState st = do
+  putErrText "-----"
+  putErrText "Mock Server Diagnostic"
+  putErrText "-----"
+  putErrText . ("queue: " <>) . show <=< tryReadMVar $ st.queue
+  done <- readTVarIO st.done
+  for_ (M.toList done) \(key, value) -> do
+    putErrText ("task " <> show key <> ": " <> show value)
+  putErrText "-----"
+
 withServer :: (ServerHandle -> IO ()) -> IO ()
 withServer doIt = do
   env <- getEnvironment
@@ -226,6 +241,7 @@ withServer doIt = do
   d <- newTVarIO mempty
   le <- newTVarIO mempty
   dis <- newIORef mempty
+  ifdDrvs <- newIORef mempty
   let st =
         ServerState
           { queue = q,
@@ -236,7 +252,8 @@ withServer doIt = do
             buildTasks = bt,
             drvTasks = dt,
             done = d,
-            logEntries = le
+            logEntries = le,
+            ifdDerivations = ifdDrvs
           }
       runServer =
         Control.Exception.Safe.handleAny
@@ -248,7 +265,12 @@ withServer doIt = do
                   <> show (e :: SomeException)
               throwIO e
           )
-          $ run port (app st)
+          $ do
+            _ <- forkIO do
+              forever do
+                threadDelay (60 * 1000 * 1000)
+                printState st
+            run port (app st)
   withAsync runServer $ \a -> do
     doIt $ ServerHandle st
     cancel a
@@ -468,17 +490,24 @@ handleTasksUpdate st id body _authResult = do
     atomicModifyIORef_ (derivationInfos st) $
       M.union (M.fromList newDrvInfos)
   for_ body $ \case
-    EvaluateEvent.BuildRequest BuildRequest.BuildRequest {derivationPath = drvPath} -> liftIO do
-      buildId <- randomId
-      enqueue (ServerHandle st)
-        . AgentTask.Build
-        <=< fixupBuildTask (ServerHandle st)
-        $ BuildTask.BuildTask
-          { BuildTask.id = buildId,
-            BuildTask.derivationPath = drvPath,
-            BuildTask.logToken = "eyBlurb=",
-            inputDerivationOutputPaths = []
-          }
+    EvaluateEvent.BuildRequired BuildRequired.BuildRequired {derivationPath = drvPath} -> liftIO do
+      modifyIORef st.ifdDerivations (<> S.singleton drvPath)
+    EvaluateEvent.BuildRequest BuildRequest.BuildRequest {derivationPath = drvPath} ->
+      liftIO do
+        ifds <- readIORef st.ifdDerivations
+        -- TODO: Remove this `when`. Make it so that it's feasible to treat non-ifd builds realistically as well.
+        --       For now doing the non-ifd builds is too much logs.
+        when (S.member drvPath ifds) do
+          buildId <- randomId
+          enqueue (ServerHandle st)
+            . AgentTask.Build
+            <=< fixupBuildTask (ServerHandle st)
+            $ BuildTask.BuildTask
+              { BuildTask.id = buildId,
+                BuildTask.derivationPath = drvPath,
+                BuildTask.logToken = "eyBlurb=",
+                inputDerivationOutputPaths = []
+              }
     _ -> pass
   pure NoContent
 

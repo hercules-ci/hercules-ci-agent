@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           hercules-ci-agent
-version:        0.9.12
+version:        0.10.0
 synopsis:       Runs Continuous Integration tasks on your machines
 category:       Nix, CI, Testing, DevOps
 homepage:       https://docs.hercules-ci.com
@@ -115,6 +115,7 @@ library
       Hercules.Agent.Sensitive
       Hercules.Agent.Socket
       Hercules.Agent.STM
+      Hercules.Agent.Store
       Hercules.Agent.WorkerProcess
       Hercules.Agent.WorkerProtocol.ViaJSON
       Hercules.Agent.WorkerProtocol.Command
@@ -219,6 +220,7 @@ executable hercules-ci-agent
       Hercules.Agent.InitWorkerConfig
       Hercules.Agent.Log
       Hercules.Agent.LogSocket
+      Hercules.Agent.Memo
       Hercules.Agent.Netrc
       Hercules.Agent.Netrc.Env
       Hercules.Agent.Nix
@@ -226,6 +228,7 @@ executable hercules-ci-agent
       Hercules.Agent.Nix.Init
       Hercules.Agent.Nix.RetrieveDerivationInfo
       Hercules.Agent.Options
+      Hercules.Agent.ResourceLimiter
       Hercules.Agent.SecureDirectory
       Hercules.Agent.ServiceInfo
       Hercules.Agent.Token

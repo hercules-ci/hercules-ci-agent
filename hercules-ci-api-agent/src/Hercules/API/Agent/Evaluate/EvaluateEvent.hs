@@ -14,6 +14,7 @@ import Hercules.API.Agent.Evaluate.EvaluateEvent.Message (Message)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent (OnScheduleHandlerEvent)
 import Hercules.API.Agent.Evaluate.EvaluateEvent.PushedAll (PushedAll)
+import Hercules.API.Agent.Evaluate.EvaluateEvent.SubstitutionQueryResult (SubstitutionQueryResult)
 import Hercules.API.Prelude
 
 data EvaluateEvent
@@ -25,6 +26,7 @@ data EvaluateEvent
   | DerivationInfo DerivationInfo
   | PushedAll PushedAll
   | BuildRequired BuildRequired
+  | SubstitutionQueryResult SubstitutionQueryResult
   | BuildRequest BuildRequest
   | JobConfig JobConfig
   | OnPushHandlerEvent OnPushHandlerEvent
