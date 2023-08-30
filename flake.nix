@@ -36,7 +36,7 @@
           settings.labels.agent.revision =
             mkIfNotNull (
               if (self?rev
-                && opts.package.highestPrio == lib.modules.defaultPriority
+                && opts.package.highestPrio == lib.modules.defaultOverridePriority or lib.modules.defaultPriority
               )
               then self.rev
               else if cfg.package ? rev
