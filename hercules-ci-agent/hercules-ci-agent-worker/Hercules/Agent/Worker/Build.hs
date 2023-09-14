@@ -29,7 +29,7 @@ runBuild store build = katipAddContext (sl "derivationPath" build.drvPath) do
   x <- for extraPaths $ \input -> liftIO $ do
     storePath <- CNix.parseStorePath store input
     try $ CNix.ensurePath store storePath
-  materialize <- case sequenceA x of
+  materialize0 <- case sequenceA x of
     Right _ ->
       -- no error, proceed with requested materialization setting
       pure $ Command.Build.materializeDerivation build
@@ -42,6 +42,9 @@ runBuild store build = katipAddContext (sl "derivationPath" build.drvPath) do
   derivation <- case derivationMaybe of
     Just drv -> pure drv
     Nothing -> panic $ "Could not retrieve derivation " <> show drvStorePath <> " from local store or binary caches."
+  drvPlatform <- liftIO $ CNix.getDerivationPlatform derivation
+  let mayNeedRemoteBuild = drvPlatform `elem` Command.Build.materializePlatforms build
+      materialize = materialize0 || mayNeedRemoteBuild
   nixBuildResult <- liftIO $ buildDerivation store drvStorePath derivation (extraPaths <$ guard (not materialize))
   katipAddContext (sl "result" (show nixBuildResult :: Text)) $
     logLocM DebugS "Build result"
