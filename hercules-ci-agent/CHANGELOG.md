@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
    CI setups based on the Nix command line interface (almost all CIs) also behave this way.
 
+### Added
+
+ - New configuration option `remotePlatformsWithSameFeatures`, allowing a remote build to be used before more elaborate remote builder support is implemented.
+   The recommended method for running a cluster is still to install `hercules-ci-agent` on each machine, as that is more efficient and accurate.
+
 ### Fixed
 
  - Low level crash details are now reported in the log as expected.

@@ -89,6 +89,8 @@ Example: `remotePlatformsWithSameFeatures = ["aarch64-linux"]`
 
 A list of extra platforms to advertize to the scheduler. This is like configuring `extra-platforms` in Nix, except builds may be dispatched to a remote builder.
 
+The recommended method for running a cluster is to install `hercules-ci-agent` on each machine, instead of using this option.
+
 Although the more efficient and recommended method for configuring builders is by installing `hercules-ci-agent` on each, this option can be used to make the agent accept builds for other platforms.
 
 Note that this is a stop gap solution as it does not provide a mechanism to configure `systemFeatures` for these extra platforms; they match the Nix configuration.
