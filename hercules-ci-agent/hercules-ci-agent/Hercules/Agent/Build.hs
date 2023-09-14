@@ -75,8 +75,8 @@ performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath"
           panic e
         _ -> pass
   materialize <- asks (not . Config.nixUserIsTrusted . Env.config)
-  -- These may need to run remotely, so we need a drv closure.
-  materializePlatforms <- asks (Config.extraPlatformsWithSameFeatures . Env.config)
+  -- Remote builds need a whole drv closure.
+  materializePlatforms <- asks (Config.remotePlatformsWithSameFeatures . Env.config)
   liftIO $
     writeChan commandChan $
       Just $
