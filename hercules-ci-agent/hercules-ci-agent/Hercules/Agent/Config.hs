@@ -59,7 +59,8 @@ data Config purpose = Config
     logLevel :: Item purpose 'Required Severity,
     nixVerbosity :: Item purpose 'Required Verbosity,
     labels :: Item purpose 'Required (Map Text A.Value),
-    allowInsecureBuiltinFetchers :: Item purpose 'Required Bool
+    allowInsecureBuiltinFetchers :: Item purpose 'Required Bool,
+    extraPlatformsWithSameFeatures :: Item purpose 'Optional [Text]
   }
   deriving (Generic)
 
@@ -97,6 +98,8 @@ tomlCodec =
     .= labels
     <*> dioptional (Toml.bool "allowInsecureBuiltinFetchers")
     .= allowInsecureBuiltinFetchers
+    <*> dioptional (Toml.arrayOf Toml._Text "extraPlatformsWithSameFeatures")
+    .= extraPlatformsWithSameFeatures
 
 embedJson :: Key -> TomlCodec A.Value
 embedJson key =
@@ -220,5 +223,6 @@ finalizeConfig loc input = do
         logLevel = logLevel input & fromMaybe InfoS,
         nixVerbosity = nixVerbosity input & fromMaybe Talkative,
         labels = fromMaybe mempty $ labels input,
-        allowInsecureBuiltinFetchers = fromMaybe False $ allowInsecureBuiltinFetchers input
+        allowInsecureBuiltinFetchers = fromMaybe False $ allowInsecureBuiltinFetchers input,
+        extraPlatformsWithSameFeatures = extraPlatformsWithSameFeatures input
       }
