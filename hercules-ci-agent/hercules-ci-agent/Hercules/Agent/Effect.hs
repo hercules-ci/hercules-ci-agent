@@ -56,7 +56,6 @@ performEffect sendLogEntries effectTask = withWorkDir "effect" $ \workDir -> do
           panic e
         _ -> pass
   config <- asks Env.config
-  let materialize = not (Config.nixUserIsTrusted config)
   liftIO $
     writeChan commandChan $
       Just $
@@ -64,7 +63,6 @@ performEffect sendLogEntries effectTask = withWorkDir "effect" $ \workDir -> do
           Command.Effect.Effect
             { drvPath = EffectTask.derivationPath effectTask,
               inputDerivationOutputPaths = encodeUtf8 <$> EffectTask.inputDerivationOutputPaths effectTask,
-              materializeDerivation = materialize,
               secretsPath = toS $ Config.secretsJsonPath config,
               serverSecrets = Sensitive $ ViaJSON (EffectTask.serverSecrets effectTask),
               token = Sensitive (EffectTask.token effectTask),
