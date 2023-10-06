@@ -364,7 +364,13 @@
                         (h.overrideCabal (o: {
                           isLibrary = true;
                           isExecutable = false;
+                          postInstall = "";
                           postFixup = "";
+                          enableSharedExecutables = false;
+                          buildTarget = "lib:hercules-ci-agent hercules-ci-agent-unit-tests";
+                          configureFlags = o.configureFlags or [ ] ++ [
+                            "--bindir=${pkgs.emptyDirectory}/hercules-ci-built-without-binaries/no-bin"
+                          ];
                         }))
                       ])
                     ;
