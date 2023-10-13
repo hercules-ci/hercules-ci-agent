@@ -8,6 +8,7 @@ import Protolude
 data Build = Build
   { drvPath :: Text,
     inputDerivationOutputPaths :: [ByteString],
-    materializeDerivation :: Bool
+    materializeDerivation :: Bool,
+    materializePlatforms :: [ByteString]
   }
   deriving (Generic, Binary, Show, Eq)

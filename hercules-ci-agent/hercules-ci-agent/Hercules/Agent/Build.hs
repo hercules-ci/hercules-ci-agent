@@ -75,6 +75,8 @@ performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath"
           panic e
         _ -> pass
   materialize <- asks (not . Config.nixUserIsTrusted . Env.config)
+  -- Remote builds need a whole drv closure.
+  materializePlatforms <- asks (Config.remotePlatformsWithSameFeatures . Env.config)
   liftIO $
     writeChan commandChan $
       Just $
@@ -82,7 +84,8 @@ performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath"
           Command.Build.Build
             { drvPath = BuildTask.derivationPath buildTask,
               inputDerivationOutputPaths = encodeUtf8 <$> BuildTask.inputDerivationOutputPaths buildTask,
-              materializeDerivation = materialize
+              materializeDerivation = materialize,
+              materializePlatforms = materializePlatforms & fromMaybe [] <&> encodeUtf8
             }
   let stderrHandler =
         stderrLineHandler

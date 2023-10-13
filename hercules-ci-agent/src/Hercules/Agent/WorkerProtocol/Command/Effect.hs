@@ -16,7 +16,6 @@ data Effect = Effect
   { drvPath :: Text,
     apiBaseURL :: Text,
     inputDerivationOutputPaths :: [ByteString],
-    materializeDerivation :: Bool,
     secretsPath :: FilePath,
     serverSecrets :: Sensitive (ViaJSON (Map Text (Map Text A.Value))),
     token :: Sensitive Text,

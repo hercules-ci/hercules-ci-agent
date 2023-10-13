@@ -60,7 +60,7 @@ data Config purpose = Config
     nixVerbosity :: Item purpose 'Required Verbosity,
     labels :: Item purpose 'Required (Map Text A.Value),
     allowInsecureBuiltinFetchers :: Item purpose 'Required Bool,
-    extraPlatformsWithSameFeatures :: Item purpose 'Optional [Text]
+    remotePlatformsWithSameFeatures :: Item purpose 'Optional [Text]
   }
   deriving (Generic)
 
@@ -98,8 +98,8 @@ tomlCodec =
     .= labels
     <*> dioptional (Toml.bool "allowInsecureBuiltinFetchers")
     .= allowInsecureBuiltinFetchers
-    <*> dioptional (Toml.arrayOf Toml._Text "extraPlatformsWithSameFeatures")
-    .= extraPlatformsWithSameFeatures
+    <*> dioptional (Toml.arrayOf Toml._Text "remotePlatformsWithSameFeatures")
+    .= remotePlatformsWithSameFeatures
 
 embedJson :: Key -> TomlCodec A.Value
 embedJson key =
@@ -224,5 +224,5 @@ finalizeConfig loc input = do
         nixVerbosity = nixVerbosity input & fromMaybe Talkative,
         labels = fromMaybe mempty $ labels input,
         allowInsecureBuiltinFetchers = fromMaybe False $ allowInsecureBuiltinFetchers input,
-        extraPlatformsWithSameFeatures = extraPlatformsWithSameFeatures input
+        remotePlatformsWithSameFeatures = remotePlatformsWithSameFeatures input
       }
