@@ -20,7 +20,8 @@ data Derivation = Derivation
   deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data DerivationStatus
-  = Waiting
+  = NotPlanned
+  | Waiting
   | Building
   | BuildFailure
   | DependencyFailure
