@@ -126,7 +126,7 @@ swagger =
       .~ "v1"
     & info
       . description
-      ?~ "You have reached the Hercules Continuous Integration Application Programming Interface. This user interface provides human friendly access to the various endpoints. To get started with Hercules CI, see hercules-ci.com. Happy building! —the Hercules team"
+      ?~ "You have reached the Hercules Continuous Integration Application Programming Interface. This user interface provides human friendly access to the various endpoints. To get a personal access token, use the `hci login` command and inspect `~/.config/hercules-ci/credentials.json`. Unquote the token and put it in a header as `Authorization: Bearer eyJ...`. To get started with Hercules CI, see hercules-ci.com. Happy building! —the Hercules team"
     & withTags clientProjects "project" "Project and job operations"
     & withTags clientBuild "build" "Build related operations"
     & withTags clientEffects "effect" "Effect related operations"
