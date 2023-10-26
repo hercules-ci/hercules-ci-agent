@@ -590,7 +590,8 @@ simpleWalk evalEnv initialThunk = do
                 then walkDerivation store evalState False path attrValue
                 else do
                   attrs <- liftIO $ getAttrs evalState attrValue
-                  void $
+                  recurse <- shouldWalkIntoAttrsAndLog path evalState attrs
+                  when recurse . void $
                     flip M.traverseWithKey attrs $
                       \name value ->
                         if depthRemaining > 0
@@ -620,6 +621,23 @@ simpleWalk evalEnv initialThunk = do
           treeWorkRemainingDepth = 10,
           treeWorkThunk = initialThunk
         }
+
+shouldWalkIntoAttrsAndLog :: (MonadIO m, KatipContext m) => [ByteString] -> Ptr EvalState -> Map ByteString RawValue -> m Bool
+shouldWalkIntoAttrsAndLog path evalState attrs =
+  case M.lookup "_type" attrs of
+    Just v -> do
+      -- `_type` value should be cheap, so let's log it
+      liftIO (match evalState v) >>= \case
+        Right (IsString sv) -> do
+          s <- liftIO $ getStringIgnoreContext sv
+          logLocM DebugS $ logStr ("Ignoring " <> show path <> " : _type = " <> show s :: Text)
+        Right _ -> do
+          logLocM DebugS $ logStr ("Ignoring " <> show path <> " : _type is not a string" :: Text)
+        Left _ -> do
+          logLocM DebugS $ logStr ("Ignoring " <> show path <> " : _type contains error" :: Text)
+      pure False
+    Nothing -> do
+      pure True
 
 withIFDQueue ::
   MonadUnliftIO m =>

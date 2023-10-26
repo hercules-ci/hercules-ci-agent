@@ -7,6 +7,11 @@
         builder = "foo";
         system = "x86_64-linux";
       };
+      skipMe = {
+        _type = "configuration";
+        ignoreMe = self.defaultPackage.x86_64-linux;
+        ignoreMeToo = throw "should not be evaluated";
+      };
       inherit (self) defaultPackage;
     };
 
