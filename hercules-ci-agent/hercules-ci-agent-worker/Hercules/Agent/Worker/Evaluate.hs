@@ -602,7 +602,7 @@ simpleWalk evalEnv initialThunk = do
                                   treeWorkAttrPath = path ++ [name],
                                   treeWorkThunk = value
                                 }
-                          else yield (Event.Error $ "Max recursion depth reached at path " <> show path)
+                          else yield (Event.Error $ "Max recursion depth reached at path " <> show (path ++ [name]))
             _any -> do
               vt <- liftIO $ rawValueType v
               unless
