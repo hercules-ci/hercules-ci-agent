@@ -163,7 +163,8 @@ These "output" attributes can be
  * derivations,
  * effects IF added in `onPush.<name>.outputs.effects`,
  * attribute sets containing further "outputs", in a nested manner,
- * other types, which will be ignored.
+ * attribute sets with a `_type` attribute, which will be ignored,
+ * other types, which will also be ignored.
 
 During the execution of the job, first, all derivations will be built. If the build went well, all effects will run, concurrently with effects in the same job, but only after preceding jobs have either completed or failed to build.
 
