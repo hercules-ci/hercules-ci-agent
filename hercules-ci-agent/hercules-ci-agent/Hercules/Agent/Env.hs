@@ -16,10 +16,12 @@ import Hercules.Agent.Cachix.Env qualified as Cachix
   )
 import Hercules.Agent.Config (FinalConfig)
 import Hercules.Agent.Config.BinaryCaches qualified as Config.BinaryCaches
+import Hercules.Agent.Memo (Memo)
 import Hercules.Agent.Netrc.Env qualified as Netrc
 import Hercules.Agent.Nix.Env qualified as Nix
   ( Env,
   )
+import Hercules.Agent.ResourceLimiter (ResourceLimiter)
 import Hercules.Agent.ServiceInfo qualified as ServiceInfo
 import Hercules.Agent.Socket (Socket)
 import Hercules.Error
@@ -48,7 +50,16 @@ data Env = Env
     -- katip
     kNamespace :: K.Namespace,
     kContext :: K.LogContexts,
-    kLogEnv :: K.LogEnv
+    kLogEnv :: K.LogEnv,
+    -- | Limits concurrent store operations during evaluation. For use with caches.
+    --
+    -- May overlap with 'concurrentStorePushes' in practice, but the excess
+    -- shouldn't be a problem. By having two counters we avoid starving either task.
+    concurrentStoreQueries :: Memo Text ResourceLimiter,
+    -- | Limits concurrent store operations during evaluation. For use with caches.
+    --
+    -- See 'concurrentStoreQueries'.
+    concurrentStorePushes :: Memo Text ResourceLimiter
   }
 
 activePushCaches :: App [Text]

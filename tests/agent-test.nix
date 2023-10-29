@@ -11,7 +11,9 @@ let
 
   agentStartTimeoutSec = 5 * 60;
 
-  runnerArgs = '''';
+  # e.g. --match 'something'
+  # runnerArgs = '' --match 'can refer to nixpkgs' '';
+  runnerArgs = "";
 
   inherit (pkgs.lib) optionalString;
 
@@ -61,7 +63,7 @@ in
         systemd.services.hercules-ci-agent.serviceConfig.StartLimitBurst = lib.mkForce (agentStartTimeoutSec * 10);
         systemd.services.hercules-ci-agent.serviceConfig.RestartSec = lib.mkForce ("100ms");
         virtualisation.diskSize = 10 * 1024;
-        virtualisation.memorySize = 1024;
+        virtualisation.memorySize = 2048;
       };
     };
     api = { pkgs, ... }: {

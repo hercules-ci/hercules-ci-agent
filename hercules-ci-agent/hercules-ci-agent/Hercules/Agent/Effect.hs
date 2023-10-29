@@ -3,35 +3,34 @@ module Hercules.Agent.Effect where
 import Data.Aeson qualified as A
 import Data.IORef
 import Data.Map qualified as M
+import Data.Vector (Vector)
 import Hercules.API.Agent.Effect.EffectTask qualified as EffectTask
+import Hercules.API.Logs.LogEntry (LogEntry)
 import Hercules.API.TaskStatus (TaskStatus)
 import Hercules.API.TaskStatus qualified as TaskStatus
 import Hercules.Agent.Config qualified as Config
 import Hercules.Agent.Env hiding (config)
 import Hercules.Agent.Env qualified as Env
 import Hercules.Agent.Files
+import Hercules.Agent.InitWorkerConfig qualified as InitWorkerConfig
 import Hercules.Agent.Log
-import Hercules.Agent.Nix qualified as Nix
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
-import Hercules.Agent.ServiceInfo qualified as ServiceInfo
 import Hercules.Agent.WorkerProcess
 import Hercules.Agent.WorkerProcess qualified as WorkerProcess
 import Hercules.Agent.WorkerProtocol.Command qualified as Command
 import Hercules.Agent.WorkerProtocol.Command.Effect qualified as Command.Effect
 import Hercules.Agent.WorkerProtocol.Event qualified as Event
-import Hercules.Agent.WorkerProtocol.LogSettings qualified as LogSettings
 import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON))
 import Hercules.Secrets qualified as Secrets
-import Network.URI qualified
 import Protolude
 import System.Posix.Signals qualified as PS
 import System.Process
 
-performEffect :: EffectTask.EffectTask -> App TaskStatus
-performEffect effectTask = withWorkDir "effect" $ \workDir -> do
+performEffect :: (Vector LogEntry -> IO ()) -> EffectTask.EffectTask -> App TaskStatus
+performEffect sendLogEntries effectTask = withWorkDir "effect" $ \workDir -> do
   workerExe <- getWorkerExe
   commandChan <- liftIO newChan
-  extraNixOptions <- Nix.askExtraOptions
+  workerConfig <- InitWorkerConfig.getWorkerConfig
   workerEnv <-
     liftIO $
       WorkerProcess.prepareEnv
@@ -41,23 +40,22 @@ performEffect effectTask = withWorkDir "effect" $ \workDir -> do
             }
         )
   effectResult <- liftIO $ newIORef Nothing
-  let opts = [show extraNixOptions]
-      procSpec =
-        (System.Process.proc workerExe opts)
+  let procSpec =
+        (System.Process.proc workerExe ["effect", toS effectTask.derivationPath])
           { env = Just workerEnv,
             close_fds = True,
             cwd = Just workDir
           }
       writeEvent :: Event.Event -> App ()
       writeEvent event = case event of
+        Event.LogItems (ViaJSON e) -> do
+          liftIO (sendLogEntries e)
         Event.EffectResult e -> do
           liftIO $ writeIORef effectResult (Just e)
         Event.Exception e -> do
           panic e
         _ -> pass
   config <- asks Env.config
-  let materialize = not (Config.nixUserIsTrusted config)
-  baseURL <- asks (ServiceInfo.bulkSocketBaseURL . Env.serviceInfo)
   liftIO $
     writeChan commandChan $
       Just $
@@ -65,13 +63,6 @@ performEffect effectTask = withWorkDir "effect" $ \workDir -> do
           Command.Effect.Effect
             { drvPath = EffectTask.derivationPath effectTask,
               inputDerivationOutputPaths = encodeUtf8 <$> EffectTask.inputDerivationOutputPaths effectTask,
-              logSettings =
-                LogSettings.LogSettings
-                  { token = Sensitive $ EffectTask.logToken effectTask,
-                    path = "/api/v1/logs/build/socket",
-                    baseURL = toS $ Network.URI.uriToString identity baseURL ""
-                  },
-              materializeDerivation = materialize,
               secretsPath = toS $ Config.secretsJsonPath config,
               serverSecrets = Sensitive $ ViaJSON (EffectTask.serverSecrets effectTask),
               token = Sensitive (EffectTask.token effectTask),
@@ -88,13 +79,14 @@ performEffect effectTask = withWorkDir "effect" $ \workDir -> do
             }
   let stderrHandler =
         stderrLineHandler
+          sendLogEntries
           ( M.fromList
               [ ("taskId", A.toJSON (EffectTask.id effectTask)),
                 ("derivationPath", A.toJSON (EffectTask.derivationPath effectTask))
               ]
           )
           "Effect worker"
-  exitCode <- runWorker procSpec stderrHandler commandChan writeEvent
+  exitCode <- runWorker workerConfig procSpec stderrHandler commandChan writeEvent
   logLocM DebugS $ "Worker exit: " <> logStr (show exitCode :: Text)
   let showSig n | n == PS.sigABRT = " (Aborted)"
       showSig n | n == PS.sigBUS = " (Bus)"

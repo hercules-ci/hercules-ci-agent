@@ -4,6 +4,8 @@
 
 module Hercules.Effect where
 
+import Control.Concurrent.Async (AsyncCancelled (AsyncCancelled))
+import Control.Exception.Safe (isAsyncException)
 import Control.Monad.Catch (MonadThrow)
 import Data.Aeson qualified as A
 import Data.Aeson.KeyMap qualified as AK
@@ -26,7 +28,11 @@ import Katip (KatipContext, Severity (..), logLocM, logStr)
 import Network.Socket (Family (AF_UNIX), SockAddr (SockAddrUnix), SocketType (Stream), bind, listen, socket, withFdSocket)
 import Protolude
 import System.FilePath
+import System.IO.Error (isDoesNotExistError)
 import System.Posix (dup, fdToHandle)
+import System.Posix.Signals (killProcess, signalProcess)
+import System.Process (ProcessHandle)
+import System.Process.Internals qualified as Process.Internal
 import UnliftIO.Directory (createDirectory, createDirectoryIfMissing)
 import UnliftIO.Process (withCreateProcess)
 import UnliftIO.Process qualified as Process
@@ -269,5 +275,43 @@ withNixDaemonProxy extraNixOptions socketPath wrappedAction = do
             Process.std_err = Process.Inherit,
             Process.std_out = Process.UseHandle stderr
           }
-  withCreateProcess procSpec $ \_in _out _err _processHandle -> do
+  withCreateProcess procSpec $ \_in _out _err processHandle -> do
     wrappedAction
+      -- TODO kill process _group_?
+      `finally` destroyProcess_1s processHandle
+
+forPid :: Num pid => ProcessHandle -> (pid -> IO ()) -> IO ()
+forPid ph f = Process.Internal.withProcessHandle ph \case
+  Process.Internal.OpenHandle {phdlProcessHandle = pid} -> f (fromIntegral pid)
+  Process.Internal.OpenExtHandle {phdlProcessHandle = pid} -> f (fromIntegral pid)
+  Process.Internal.ClosedHandle {} -> pure ()
+
+-- | Make sure a process is terminated, in about 1s or less.
+destroyProcess_1s :: ProcessHandle -> IO ()
+destroyProcess_1s ph = do
+  Process.terminateProcess ph
+  let waitp = Process.waitForProcess ph
+      killp = do
+        threadDelay 500_000
+        Process.terminateProcess ph
+        threadDelay 500_000
+        forPid ph \pid ->
+          signalProcess killProcess pid
+      handleKillException =
+        handleJust
+          ( \e -> case fromException e of
+              -- completely ignore when cancelled by waitp completing early
+              Just AsyncCancelled -> Nothing
+              -- completely ignore asynchronous exceptions
+              Nothing | isAsyncException e -> Nothing
+              -- process may not exist anymore when sending a second signal (or more)
+              -- in which case usually waitp will catch that during our threadDelay,
+              -- but we shouldn't rely on that, as we don't want to raise false positives.
+              Nothing | Just e' <- fromException e, isDoesNotExistError e' -> Nothing
+              Nothing -> Just e
+          )
+          ( \e -> do
+              -- TODO katip
+              putErrLn ("hercules-ci-agent: Ignoring exception while stopping nix-daemon proxy " <> displayException e)
+          )
+  race_ waitp (killp & handleKillException)

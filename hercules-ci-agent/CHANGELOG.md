@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased 0.10
+
+### Changed
+
+ - More work is performed concurrently during evaluation, including binary cache lookups and (more) build dispatch. This results in a speedup.
+
+ - Dependencies of build dependencies are not scheduled eagerly anymore.
+   This reduces the scope of all jobs that are evaluated by agents since this release, resulting in a speedup.
+   This resolves a noticable slowdown when first evaluating significant Nixpkgs updates when its `staging` branch is merged.
+
+   Strictly speaking, a job success no longer guarantees that absolutely everything (all the way up to the bootstrap binaries) is realisable on your agents.
+   This property is generally not your responsibility, and enforcing it had the effect of excluding less reproducible platforms such as darwin.
+   Instead, a weaker property is provided: *your* derivations are realisable, as well as the immediate build dependencies. "Your derivations" is defined as those whose outputs are not already cached.
+
+   CI setups based on the Nix command line interface (almost all CIs) also behave this way.
+
+### Added
+
+ - New configuration option `remotePlatformsWithSameFeatures`, allowing a remote build to be used before more elaborate remote builder support is implemented.
+   The recommended method for running a cluster is still to install `hercules-ci-agent` on each machine, as that is more efficient and accurate.
+
+### Fixed
+
+ - Low level crash details are now reported in the log as expected.
+
+ - An interaction between the Nix GC and threads has been fixed, solving such a crash.
+
 ## [0.9.12] - 2022-06-28
 
 ### Added
@@ -716,6 +743,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Initial release
 
+[0.9.12]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.11...hercules-ci-agent-0.9.12
 [0.9.11]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.10...hercules-ci-agent-0.9.11
 [0.9.10]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.9...hercules-ci-agent-0.9.10
 [0.9.9]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.8...hercules-ci-agent-0.9.9

@@ -1,6 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 
-module Hercules.Agent.Worker.Conduit where
+module Hercules.Agent.Conduit where
 
 import Data.Conduit (ConduitT, await, awaitForever, yield, (.|))
 import Data.IORef (IORef, modifyIORef, newIORef, readIORef)
