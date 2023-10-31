@@ -82,7 +82,7 @@ genCondition =
 text :: Gen Text
 text = TE.decodeUtf8 . TE.encodeUtf8 . T.pack <$> resize 4 arbitrary
 
-liftArbitraryMap :: Ord k => Gen k -> Gen a -> Gen (M.Map k a)
+liftArbitraryMap :: (Ord k) => Gen k -> Gen a -> Gen (M.Map k a)
 liftArbitraryMap k v = M.fromList <$> liftArbitrary ((,) <$> k <*> v)
 
 genValue :: Gen A.Value

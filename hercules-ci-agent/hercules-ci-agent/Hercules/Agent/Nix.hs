@@ -18,7 +18,7 @@ withExtraOptions extraOpts = local $ \env ->
           }
     }
 
-askExtraOptions :: MonadReader Agent.Env.Env m => m [(Text, Text)]
+askExtraOptions :: (MonadReader Agent.Env.Env m) => m [(Text, Text)]
 askExtraOptions = asks (extraOptions . nixEnv)
 
 getNetrcLines :: App [Text]

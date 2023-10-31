@@ -63,11 +63,11 @@ prepareEnv workerEnvSettings = do
   envMap <- M.fromList <$> getEnvironment
   pure $ M.toList $ modifyEnv workerEnvSettings envMap
 
-getWorkerExe :: MonadIO m => m [Char]
+getWorkerExe :: (MonadIO m) => m [Char]
 getWorkerExe = do
   liftIO getBinDir <&> (</> "hercules-ci-agent-worker")
 
-getDaemonExe :: MonadIO m => m [Char]
+getDaemonExe :: (MonadIO m) => m [Char]
 getDaemonExe = do
   liftIO getBinDir <&> (</> "hercules-ci-nix-daemon")
 

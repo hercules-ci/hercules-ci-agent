@@ -18,7 +18,7 @@ data SimpleAttribute a = SimpleAttribute
   deriving (Generic, Show, Eq)
   deriving anyclass (NFData, FromJSON, ToJSON)
 
-deriving instance ToSchema a => ToSchema (SimpleAttribute a)
+deriving instance (ToSchema a) => ToSchema (SimpleAttribute a)
 
 deriving instance Functor SimpleAttribute
 

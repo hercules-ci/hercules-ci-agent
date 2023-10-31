@@ -14,6 +14,6 @@ class HasEncapsulation a b | b -> a where
   -- collectable.
   moveToForeignPtrWrapper :: Ptr a -> IO b
 
-nullableMoveToForeignPtrWrapper :: HasEncapsulation a b => Ptr a -> IO (Maybe b)
+nullableMoveToForeignPtrWrapper :: (HasEncapsulation a b) => Ptr a -> IO (Maybe b)
 nullableMoveToForeignPtrWrapper rawPtr | rawPtr == nullPtr = pure Nothing
 nullableMoveToForeignPtrWrapper rawPtr = Just <$> moveToForeignPtrWrapper rawPtr

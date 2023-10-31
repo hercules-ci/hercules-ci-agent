@@ -38,6 +38,8 @@ herculesStoreContext :: C.Context
 herculesStoreContext =
   mempty
     { C.ctxTypesTable =
-        C.TypeName "refHerculesStore" =: [t|Ref HerculesStore|]
-          <> C.TypeName "exception_ptr" =: [t|ExceptionPtr|]
+        C.TypeName "refHerculesStore"
+          =: [t|Ref HerculesStore|]
+          <> C.TypeName "exception_ptr"
+          =: [t|ExceptionPtr|]
     }

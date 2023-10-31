@@ -30,11 +30,11 @@ instance ToJSON NixCache where
       ( "kind"
           .= String "NixCache"
           <> "storeURI"
-          .= storeURI a
+            .= storeURI a
           <> "signingKeys"
-          .= signingKeys a
+            .= signingKeys a
           <> "publicKeys"
-          .= publicKeys a
+            .= publicKeys a
       )
 
 instance FromJSON NixCache where

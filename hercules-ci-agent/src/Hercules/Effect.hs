@@ -216,7 +216,7 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
               ("TMP", "/build"),
               ("TEMP", "/build")
             ]
-        (//) :: Ord k => Map k a -> Map k a -> Map k a
+        (//) :: (Ord k) => Map k a -> Map k a -> Map k a
         (//) = flip M.union
     let (withNixDaemonProxyPerhaps, forwardedSocketPath) =
           if runEffectUseNixDaemonProxy p

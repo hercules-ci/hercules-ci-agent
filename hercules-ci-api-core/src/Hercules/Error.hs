@@ -16,16 +16,16 @@ escalate = escalateAs id
 escalateAs :: (Exception exc, MonadThrow m) => (l -> exc) -> Either l a -> m a
 escalateAs f = either (throwM . f) pure
 
-safeLiftedCatch :: MonadBaseControl IO m => m a -> (SomeException -> m a) -> m a
+safeLiftedCatch :: (MonadBaseControl IO m) => m a -> (SomeException -> m a) -> m a
 safeLiftedCatch m h =
-  Control.Exception.Lifted.catch m $
-    \e ->
+  Control.Exception.Lifted.catch m
+    $ \e ->
       if Control.Exception.Safe.isSyncException (e :: SomeException)
         then h e
         else Control.Exception.Lifted.throw e
 
 safeLiftedHandle ::
-  MonadBaseControl IO m =>
+  (MonadBaseControl IO m) =>
   (SomeException -> m a) ->
   m a ->
   m a
@@ -34,7 +34,7 @@ safeLiftedHandle = flip safeLiftedCatch
 exponential :: (Enum a, Floating a) => [a]
 exponential = map exp [1, 2 ..]
 
-cap :: Ord a => a -> [a] -> [a]
+cap :: (Ord a) => a -> [a] -> [a]
 cap v = map (min v)
 
 retry ::
@@ -48,10 +48,10 @@ retry delaysSeconds io = loop delaysSeconds
     loop [] = io
     loop (delay : delays) = safeLiftedCatch io $ \e -> do
       logLocM WarningS $ "Retrying on exception: " <> logStr (show e)
-      when (delay >= 0.000001) $
-        liftIO $
-          threadDelay
-            (floor $ delay * 1000 * 1000)
+      when (delay >= 0.000001)
+        $ liftIO
+        $ threadDelay
+          (floor $ delay * 1000 * 1000)
       loop delays
 
 -- | ~5 minute exponential backoff

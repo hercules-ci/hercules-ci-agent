@@ -37,7 +37,7 @@ runEffect extraNixOptions store command = do
         runEffectFriendly = False
       }
 
-prepareDerivation :: MonadIO m => Store -> Command.Effect.Effect -> m Derivation
+prepareDerivation :: (MonadIO m) => Store -> Command.Effect.Effect -> m Derivation
 prepareDerivation store command = do
   let extraPaths = Command.Effect.inputDerivationOutputPaths command
       drvPath = encodeUtf8 $ Command.Effect.drvPath command

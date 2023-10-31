@@ -67,7 +67,7 @@ instance Applicative (Partitioner a) where
 newtype WithKey k v = WithKey (k, v)
 
 partWithKey ::
-  Ord k =>
+  (Ord k) =>
   (k -> v -> Maybe a) ->
   Partitioner (WithKey k v) (Map k a)
 partWithKey f =

@@ -57,7 +57,7 @@ stdSetCtx = C.cppCtx `mappend` C.cppTypePairs [("std::set", [t|CStdSet|])]
 
 newtype StdSet a = StdSet (ForeignPtr (CStdSet a))
 
-instance HasStdSet a => HasEncapsulation (CStdSet a) (StdSet a) where
+instance (HasStdSet a) => HasEncapsulation (CStdSet a) (StdSet a) where
   moveToForeignPtrWrapper = fmap StdSet . newForeignPtr cDelete
 
 class HasStdSet a where
@@ -67,7 +67,7 @@ class HasStdSet a where
   cInsertByPtr :: Ptr a -> Ptr (CStdSet a) -> IO ()
   cCopies :: Ptr (CStdSet a) -> Ptr (Ptr a) -> IO ()
 
-class HasStdSet a => HasStdSetCopyable a where
+class (HasStdSet a) => HasStdSetCopyable a where
   cCopyTo :: Ptr (CStdSet a) -> Ptr a -> IO ()
   cInsert :: a -> Ptr (CStdSet a) -> IO ()
 
@@ -122,20 +122,20 @@ instanceStdSetCopyable cType =
         |]
       |]
 
-new :: forall a. HasStdSet a => IO (StdSet a)
+new :: forall a. (HasStdSet a) => IO (StdSet a)
 new = mask_ $ do
   moveToForeignPtrWrapper =<< cNew @a
 
-size :: HasStdSet a => StdSet a -> IO Int
+size :: (HasStdSet a) => StdSet a -> IO Int
 size (StdSet fptr) = fromIntegral <$> withForeignPtr fptr cSize
 
-fromList :: HasStdSetCopyable a => [a] -> IO (StdSet a)
+fromList :: (HasStdSetCopyable a) => [a] -> IO (StdSet a)
 fromList as = do
   set <- new
   for_ as $ insert set
   pure set
 
-fromListP :: HasStdSet a => [Ptr a] -> IO (StdSet a)
+fromListP :: (HasStdSet a) => [Ptr a] -> IO (StdSet a)
 fromListP as = do
   set <- new
   for_ as $ insertP set
@@ -180,10 +180,10 @@ toListFP vec = mask_ $ do
   ptrs <- toListP vec
   for ptrs moveToForeignPtrWrapper
 
-insert :: HasStdSetCopyable a => StdSet a -> a -> IO ()
+insert :: (HasStdSetCopyable a) => StdSet a -> a -> IO ()
 insert (StdSet fptr) value = withForeignPtr fptr (cInsert value)
 
-insertP :: HasStdSet a => StdSet a -> Ptr a -> IO ()
+insertP :: (HasStdSet a) => StdSet a -> Ptr a -> IO ()
 insertP (StdSet fptr) ptr = withForeignPtr fptr (cInsertByPtr ptr)
 
 insertFP :: (Coercible a' (ForeignPtr a), HasStdSet a) => StdSet a -> a' -> IO ()
