@@ -144,5 +144,5 @@ clientApiProxy _ = Proxy
 -- compiler that rightfully warns about throwing away a do notation
 -- result. By specialising, we make sure that we still get warnings
 -- if the result type changes in the future. (We'll get an error)
-noContent :: Functor m => m Servant.API.NoContent -> m ()
+noContent :: (Functor m) => m Servant.API.NoContent -> m ()
 noContent = void

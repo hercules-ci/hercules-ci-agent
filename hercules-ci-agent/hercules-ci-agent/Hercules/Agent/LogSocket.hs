@@ -60,7 +60,7 @@ withLoggerNoFlush label storeProtocolVersion settings f = do
   (loggr, stop) <- forkLogger label storeProtocolVersion settings
   f (loggr <=< setLogEntriesTime start) `finally` liftIO stop
 
-setLogEntriesTime :: Functor l => UTCTime -> l LogEntry -> IO (l LogEntry)
+setLogEntriesTime :: (Functor l) => UTCTime -> l LogEntry -> IO (l LogEntry)
 setLogEntriesTime start l = do
   now <- getCurrentTime
   let diffMs = floor $ 1000 * diffUTCTime now start
@@ -160,7 +160,7 @@ logger logSettings_ storeProtocolVersionValue entriesSource = do
       Nothing -> panic "Could not push logs within 10 minutes after completion"
     logLocM DebugS "Logger done"
 
-makeSocketConfig :: MonadIO m => LogSettings -> Int -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
+makeSocketConfig :: (MonadIO m) => LogSettings -> Int -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
 makeSocketConfig l storeProtocolVersionValue = do
   clientProtocolVersionValue <- liftIO getClientProtocolVersion
   baseURL_ <- case Network.URI.parseURI $ toS l.baseURL of
@@ -181,7 +181,7 @@ makeSocketConfig l storeProtocolVersionValue = do
         token = encodeUtf8 l.token
       }
 
-batch :: Monad m => ConduitT (Flush a) [a] m ()
+batch :: (Monad m) => ConduitT (Flush a) [a] m ()
 batch = go []
   where
     go acc =
@@ -205,14 +205,14 @@ richLogLimit = 40_000
 textOnlyLogLimit = 49_900
 tailLimit = 10_000
 
-dropMiddle :: MonadIO m => ConduitM (Flush LogEntry) (Flush LogEntry) m ()
+dropMiddle :: (MonadIO m) => ConduitM (Flush LogEntry) (Flush LogEntry) m ()
 dropMiddle = do
   -- rich logging
   _ <- takeCWhileStopEarly isChunk richLogLimit
   -- degrade to text logging (in case rich logging produces excessive non-textual data)
   visibleLinesOnly .| withMessageLimit isChunk textOnlyLogLimit tailLimit snipStart snip snipped
 
-snipStart :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+snipStart :: (Monad m) => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 snipStart =
   yield $
     Chunk $
@@ -223,7 +223,7 @@ snipStart =
           msg = "hercules-ci-agent: Soft log limit has been reached. Final log lines will appear when done."
         }
 
-snipped :: Monad m => Int -> ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+snipped :: (Monad m) => Int -> ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 snipped n =
   yield $
     Chunk $
@@ -234,7 +234,7 @@ snipped n =
           msg = "hercules-ci-agent: " <> show n <> " log lines were omitted before the last " <> show tailLimit <> "."
         }
 
-snip :: Monad m => Int -> ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+snip :: (Monad m) => Int -> ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 snip n =
   yield $
     Chunk $
@@ -245,7 +245,7 @@ snip n =
           msg = "hercules-ci-agent: skipping " <> show n <> " log lines."
         }
 
-visibleLinesOnly :: Monad m => ConduitM (Flush LogEntry) (Flush LogEntry) m ()
+visibleLinesOnly :: (Monad m) => ConduitM (Flush LogEntry) (Flush LogEntry) m ()
 visibleLinesOnly =
   filterC isVisible
 
@@ -260,7 +260,7 @@ isChunk :: Flush LogEntry -> Bool
 isChunk Chunk {} = True
 isChunk _ = False
 
-socketSink :: MonadIO m => Socket.Socket r w -> ConduitT w o m ()
+socketSink :: (MonadIO m) => Socket.Socket r w -> ConduitT w o m ()
 socketSink socket = awaitForever $ liftIO . atomically . Socket.write socket
 
 -- | Perform a foldMap while yielding the original values ("tap").
@@ -279,7 +279,7 @@ foldMapTap f = go mempty
 -- TODO: Use 'nubProgress' instead?
 
 -- | Remove spammy progress results.
-filterProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+filterProgress :: (Monad m) => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 filterProgress = filterC \case
   Chunk LogEntry.Result {rtype = LogEntry.ResultTypeProgress} -> False
   Chunk LogEntry.Result {rtype = LogEntry.ResultTypeSetExpected} -> False
@@ -290,7 +290,7 @@ filterProgress = filterC \case
 -- | Captures the whole logging context, by providing the capability to reduce @KatipContextT m@ to a plain @m@.
 newtype UnliftKatipContextT = UnliftKatipContextT {unliftKatipContextT :: forall a m. KatipContextT m a -> m a}
 
-askUnliftKatipContextT :: KatipContext m => m UnliftKatipContextT
+askUnliftKatipContextT :: (KatipContext m) => m UnliftKatipContextT
 askUnliftKatipContextT = do
   le <- getLogEnv
   ctx <- getKatipContext

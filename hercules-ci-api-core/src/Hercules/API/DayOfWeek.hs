@@ -52,7 +52,7 @@ fromTime Data.Time.Saturday = Sat
 fromTime Data.Time.Sunday = Sun
 
 -- | Conversion to integers where 'Mon' -> 1, 'Sun' -> 7
-toNum :: Num n => DayOfWeek -> n
+toNum :: (Num n) => DayOfWeek -> n
 toNum Mon = 1
 toNum Tue = 2
 toNum Wed = 3

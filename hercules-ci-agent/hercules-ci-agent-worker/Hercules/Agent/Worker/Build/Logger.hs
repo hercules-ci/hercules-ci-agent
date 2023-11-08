@@ -264,7 +264,7 @@ withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
           yield lns
           popper
 
-nubProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+nubProgress :: (Monad m) => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 nubProgress = nubSubset (toChunk >=> toProgressKey)
   where
     toProgressKey k@LogEntry.Result {rtype = LogEntry.ResultTypeProgress} = Just k {LogEntry.i = 0}

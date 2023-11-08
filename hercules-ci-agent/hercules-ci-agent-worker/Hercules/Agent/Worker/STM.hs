@@ -25,7 +25,7 @@ asyncIfSTM cond io = mfix \lazyAsync ->
     Right b -> do
       async (io b)
 
-ensureTVarMapItem :: Ord k => k -> STM v -> TVar (Map k v) -> STM (Bool, v)
+ensureTVarMapItem :: (Ord k) => k -> STM v -> TVar (Map k v) -> STM (Bool, v)
 ensureTVarMapItem key mkValue mapVar = do
   map0 <- readTVar mapVar
   case M.lookup key map0 of
@@ -36,7 +36,7 @@ ensureTVarMapItem key mkValue mapVar = do
     Just value0 -> do
       pure (True, value0)
 
-asyncInTVarMap :: Ord k => k -> TVar (Map k (Async a)) -> IO a -> IO (Async a)
+asyncInTVarMap :: (Ord k) => k -> TVar (Map k (Async a)) -> IO a -> IO (Async a)
 asyncInTVarMap key mapVar action =
   asyncIfSTM
     ( \asy -> do

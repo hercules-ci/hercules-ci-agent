@@ -43,13 +43,13 @@ data Attribute a = Attribute
   deriving (Generic, Show, Eq)
   deriving anyclass (NFData, ToJSON)
 
-instance FromJSON a => FromJSON (Attribute a) where
+instance (FromJSON a) => FromJSON (Attribute a) where
   parseJSON v = A.parseJSON (fixup v)
     where
       fixup :: A.Value -> A.Value
       fixup = _Object . at "typ" %~ (<|> Just (A.String "Regular"))
 
-deriving instance ToSchema a => ToSchema (Attribute a)
+deriving instance (ToSchema a) => ToSchema (Attribute a)
 
 deriving instance Functor Attribute
 
@@ -91,7 +91,8 @@ isNixSimpleId t
       ( let h = T.head t
          in (h >= 'a' && h <= 'z')
               || (h >= 'A' && h <= 'Z')
-              || h == '_'
+              || h
+              == '_'
       ) =
       False
 isNixSimpleId t =
@@ -100,9 +101,12 @@ isNixSimpleId t =
         (c >= 'a' && c <= 'z')
           || (c >= 'A' && c <= 'Z')
           || (c >= '0' && c <= '9')
-          || c == '_'
-          || c == '\''
-          || c == '-'
+          || c
+          == '_'
+          || c
+          == '\''
+          || c
+          == '-'
     )
     t
 

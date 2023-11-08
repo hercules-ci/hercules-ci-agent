@@ -11,7 +11,7 @@ import Prelude
 
 -- | Decode a value from a 'Handle'. Returning 'Left' on failure and 'Right' on success.
 -- In case of failure, the unconsumed input and a human-readable error message will be returned.
-decodeBinaryFromHandle :: Binary a => Handle -> IO (Either (BS.ByteString, ByteOffset, String) a)
+decodeBinaryFromHandle :: (Binary a) => Handle -> IO (Either (BS.ByteString, ByteOffset, String) a)
 decodeBinaryFromHandle = feed (runGetIncremental get)
   where
     feed (Done _ _ x) _ = pure (Right x)

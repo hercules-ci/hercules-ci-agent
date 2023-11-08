@@ -32,7 +32,7 @@ data Diff a = Diff {before :: Maybe a, after :: Maybe a}
   deriving (Generic, Show, Eq)
   deriving anyclass (NFData, ToJSON, FromJSON)
 
-deriving instance ToSchema a => ToSchema (Diff a)
+deriving instance (ToSchema a) => ToSchema (Diff a)
 
 newtype AttributeDiff = AttributeDiff (SimpleAttribute AttributeValueDiff)
   deriving (Generic, Show, Eq)

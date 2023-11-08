@@ -93,7 +93,7 @@ evalConditionTrace = evalCondition'
 class MonadMiniWriter w m | m -> w where
   tell :: w -> m ()
 
-instance Monoid w => MonadMiniWriter w ((,) w) where
+instance (Monoid w) => MonadMiniWriter w ((,) w) where
   tell = Control.Monad.Writer.tell
 
 instance MonadMiniWriter w (Tagged w) where

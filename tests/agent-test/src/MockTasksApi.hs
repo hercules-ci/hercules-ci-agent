@@ -323,7 +323,7 @@ endpoints server =
 
 logSocket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
 logSocket server conn = do
-  let send :: MonadIO m => [Frame SI.ServiceInfo SI.ServiceInfo] -> m ()
+  let send :: (MonadIO m) => [Frame SI.ServiceInfo SI.ServiceInfo] -> m ()
       send = send' conn
       -- FIXME
       recv :: Handler (Frame LogMessage LogMessage)
@@ -351,9 +351,9 @@ processLogPayload _ _ =
 
 socket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
 socket server conn = do
-  let send :: MonadIO m => [Frame ServicePayload ServicePayload] -> m ()
+  let send :: (MonadIO m) => [Frame ServicePayload ServicePayload] -> m ()
       send = send' conn
-      recv :: MonadIO m => m (Frame AgentPayload AgentPayload)
+      recv :: (MonadIO m) => m (Frame AgentPayload AgentPayload)
       recv = recv' conn
   si <- liftIO serviceInfo
   send [Frame.Oob {o = SP.ServiceInfo si}]
@@ -413,7 +413,7 @@ relativePathConduit = do
 --   - If it fails the absolute path WILL be used. This will break your app
 --     leak information about your paths!
 makeRelative ::
-  Monad m =>
+  (Monad m) =>
   FilePath ->
   Conduit.ConduitM
     (Either Tar.FileInfo ByteString)

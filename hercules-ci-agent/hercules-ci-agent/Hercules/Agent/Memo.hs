@@ -38,7 +38,7 @@ data Entry v
 -- * input not restricted to key, for efficiency and practicality
 newtype Memo k v = Memo (TVar (Map k (Entry v)))
 
-newMemo :: MonadIO m => m (Memo k v)
+newMemo :: (MonadIO m) => m (Memo k v)
 newMemo = liftIO do
   Memo <$> newTVarIO M.empty
 

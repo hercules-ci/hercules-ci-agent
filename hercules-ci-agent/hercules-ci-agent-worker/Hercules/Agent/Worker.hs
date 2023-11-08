@@ -181,7 +181,7 @@ taskWorker commandsHandle sendEvents_ cfg = do
                  )
         .| awaitForever \x -> liftIO do sendEvents_ (pure x)
 
-printCommands :: KatipContext m => ConduitT Command Command m ()
+printCommands :: (KatipContext m) => ConduitT Command Command m ()
 printCommands =
   mapMC
     ( \x -> do

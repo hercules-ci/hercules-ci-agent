@@ -66,5 +66,5 @@ context =
             <> M.singleton (C.TypeName "SecretKey") [t|SecretKey|]
       }
 
-unsafeMallocBS :: MonadIO m => IO Foreign.C.String.CString -> m ByteString
+unsafeMallocBS :: (MonadIO m) => IO Foreign.C.String.CString -> m ByteString
 unsafeMallocBS m = liftIO (unsafePackMallocCString =<< m)

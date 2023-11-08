@@ -36,23 +36,23 @@ data Queue a = Queue
     size :: TVar Int
   }
 
-with :: MonadBaseControl IO m => (Queue a -> m ()) -> m ()
+with :: (MonadBaseControl IO m) => (Queue a -> m ()) -> m ()
 with = Control.Exception.Lifted.bracket new close
 
-new :: MonadBase IO m => m (Queue a)
+new :: (MonadBase IO m) => m (Queue a)
 new = Queue <$> newChan <*> newIORef Set.empty <*> liftBase (newTVarIO 0)
 
-close :: MonadBase IO m => Queue a -> m ()
+close :: (MonadBase IO m) => Queue a -> m ()
 close env = writeChan (chan env) Nothing
 
-enqueue :: MonadBase IO m => Queue a -> a -> m ()
+enqueue :: (MonadBase IO m) => Queue a -> a -> m ()
 enqueue env msg = do
   liftBase $ atomically $ modifyTVar (size env) (+ 1)
   -- Not transactional but shouldn't hurt much since we fail the whole thing
   -- in erlang style anyway using the async library.
   writeChan (chan env) (Just msg)
 
-waitUntilDone :: MonadBase IO m => Queue a -> m ()
+waitUntilDone :: (MonadBase IO m) => Queue a -> m ()
 waitUntilDone env = liftBase $
   atomically $ do
     n <- readTVar (size env)

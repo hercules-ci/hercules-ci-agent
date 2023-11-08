@@ -482,7 +482,11 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                             // FIXME (RFC 92)
                             fim = -1;
                           }
+#  if NIX_IS_AT_LEAST(2, 17, 0)
+                        }, dof.ca.method.raw);
+#  else
                         }, dof.ca.getMethod().raw);
+#  endif
 #else
                         switch (dof.hash.method) {
                           case nix::FileIngestionMethod::Flat:
@@ -497,7 +501,9 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                         }
 #endif
 
-#if NIX_IS_AT_LEAST(2, 16, 0)
+#if NIX_IS_AT_LEAST(2, 17, 0)
+                        const Hash & hash = dof.ca.hash;
+#elif NIX_IS_AT_LEAST(2, 16, 0)
                         const Hash & hash = dof.ca.getHash();
 #else
                         const Hash & hash = dof.hash.hash;
