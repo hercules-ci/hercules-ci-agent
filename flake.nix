@@ -418,10 +418,6 @@
                       }))
                     ];
 
-                    # Permission denied error in tests. Might be a system configuration error on the machine?
-                    # TODO: see if rio builds on hydra.nixos.org after https://github.com/NixOS/nixpkgs/pull/160733
-                    rio = h.dontCheck super.rio;
-
                     hie-bios = h.appendPatch ./nix/hie-bios.patch super.hie-bios;
 
                     # Dodge build failures of components we don't need.
