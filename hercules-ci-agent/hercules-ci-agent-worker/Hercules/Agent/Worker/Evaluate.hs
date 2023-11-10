@@ -189,13 +189,20 @@ runEval st@HerculesState {herculesStore = hStore, shortcutChannel = shortcutChan
       drvPath <- liftIO $ CNix.storePathToPath store drvStorePath
       cachingBuilt drvPath do
         let pathText = decode drvPath
-        outputs <- liftIO $ getOutputs storePathWithOutputs
+        outputs0 <- liftIO $ getOutputs storePathWithOutputs
+        derivation <- liftIO $ getDerivation store drvStorePath
+        drvName <- liftIO $ getDerivationNameFromPath drvStorePath
+        drvOutputs <- liftIO $ getDerivationOutputs store drvName derivation
+        let outputs =
+              -- Empty outputs suggests that the intent was to build all outputs
+              -- Tests do not confirm, but better be sure.
+              -- TODO: move away from StorePathWithOutputs; feasible since 2.4?
+              if null outputs0
+                then map (.derivationOutputName) drvOutputs
+                else outputs0
         katipAddContext (sl "fullpath" pathText) $
           for_ outputs $ \outputName -> do
             withDrvInProgress st drvStorePath $ do
-              derivation <- liftIO $ getDerivation store drvStorePath
-              drvName <- liftIO $ getDerivationNameFromPath drvStorePath
-              drvOutputs <- liftIO $ getDerivationOutputs store drvName derivation
               outputPath <-
                 case find (\o -> derivationOutputName o == outputName) drvOutputs of
                   Nothing -> panic $ "output " <> show outputName <> " does not exist on " <> pathText
