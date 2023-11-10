@@ -13,7 +13,7 @@ let
 
   # e.g. --match 'something'
   # runnerArgs = '' --match 'can refer to nixpkgs' '';
-  runnerArgs = "";
+  runnerArgs = '''';
 
   inherit (pkgs.lib) optionalString;
 

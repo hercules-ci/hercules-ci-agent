@@ -308,9 +308,39 @@ void HerculesStore::buildPaths(const std::vector<DerivedPath> & derivedPaths, Bu
 
   // TODO: don't ignore the Opaques
   for (auto & derivedPath : derivedPaths) {
-#if NIX_IS_AT_LEAST(2,13,0)
+#if NIX_IS_AT_LEAST(2,18,0)
+    std::visit(overloaded {
+        [&](const DerivedPathBuilt & b) {
+            // TODO (RFC 92)
+            // for now, we only support the non-inductive case
+            std::visit(overloaded {
+                [&](SingleDerivedPath::Opaque opaque) {
+                    std::visit(overloaded {
+                        [&](const OutputsSpec::All &) {
+                            paths.emplace_back(StorePathWithOutputs {
+                                .path = opaque.path,
+                                .outputs = {}
+                            });
+                        },
+                        [&](const OutputsSpec::Names & outs) {
+                            paths.emplace_back(StorePathWithOutputs {
+                                .path = opaque.path,
+                                .outputs = outs
+                            });
+                        },
+                    }, b.outputs.raw);
+                },
+                [&](SingleDerivedPath::Built built) {
+                    throw nix::Error("hercules-ci-agent/buildPaths does not yet support dynamic derivation builds (outputOf)");
+                },
+            }, *b.drvPath);
+        },
+        [&](const DerivedPathOpaque & drvPath) {
+            // should this be substituted?
+        },
+    }, derivedPath);
+#elif NIX_IS_AT_LEAST(2,13,0)
     auto sOrDrvPath = StorePathWithOutputs::tryFromDerivedPath(derivedPath);
-    std::set<std::string> outputs;
     std::visit(overloaded {
         [&](const StorePathWithOutputs & s) {
             // paths.push_back(StorePathWithOutputs { built.drvPath, built.outputs });
