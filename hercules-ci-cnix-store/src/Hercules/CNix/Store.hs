@@ -456,6 +456,107 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                     name = strdup(nameString.c_str());
                     path = nullptr;
                     std::visit(overloaded {
+#if NIX_IS_AT_LEAST(2, 18, 0)
+                      [&](DerivationOutput::InputAddressed doi) -> void {
+                        typ = 0;
+                        path = new StorePath(doi.path);
+                      },
+                      [&](DerivationOutput::CAFixed dof) -> void {
+                        typ = 1;
+                        path = new StorePath(dof.path(store, $fptr-ptr:(Derivation *derivation)->name, nameString));
+                        std::visit(overloaded {
+                          [&](nix::FileIngestionMethod fim_) -> void {
+                            switch (fim_) {
+                              case nix::FileIngestionMethod::Flat:
+                                fim = 0;
+                                break;
+                              case nix::FileIngestionMethod::Recursive:
+                                fim = 1;
+                                break;
+                              default:
+                                fim = -1;
+                                break;
+                            }
+                          },
+                          [&](nix::TextIngestionMethod) -> void {
+                            // FIXME (RFC 92)
+                            fim = -1;
+                          }
+                        }, dof.ca.method.raw);
+
+                        const Hash & hash = dof.ca.hash;
+
+                        switch (hash.type) {
+                          case htMD5:
+                            hashType = 0;
+                            break;
+                          case htSHA1:
+                            hashType = 1;
+                            break;
+                          case htSHA256:
+                            hashType = 2;
+                            break;
+                          case htSHA512:
+                            hashType = 3;
+                            break;
+                          default:
+                            hashType = -1;
+                            break;
+                        }
+                        hashSize = hash.hashSize;
+                        hashValue = (char*)malloc(hashSize);
+                        std::memcpy((void*)(hashValue),
+                                    (void*)(hash.hash),
+                                    hashSize);
+                      },
+                      [&](DerivationOutput::CAFloating dof) -> void {
+                        typ = 2;
+                        std::visit(overloaded {
+                          [&](nix::FileIngestionMethod fim_) -> void {
+                            switch (fim_) {
+                              case nix::FileIngestionMethod::Flat:
+                                fim = 0;
+                                break;
+                              case nix::FileIngestionMethod::Recursive:
+                                fim = 1;
+                                break;
+                              default:
+                                fim = -1;
+                                break;
+                            }
+                          },
+                          [&](nix::TextIngestionMethod) -> void {
+                            // FIXME (RFC 92)
+                            fim = -1;
+                          }
+                        }, dof.method.raw);
+                        switch (dof.hashType) {
+                          case htMD5:
+                            hashType = 0;
+                            break;
+                          case htSHA1:
+                            hashType = 1;
+                            break;
+                          case htSHA256:
+                            hashType = 2;
+                            break;
+                          case htSHA512:
+                            hashType = 3;
+                            break;
+                          default:
+                            hashType = -1;
+                            break;
+                        }
+                      },
+                      [&](DerivationOutput::Deferred) -> void {
+                        typ = 3;
+                      },
+                      [&](DerivationOutput::Impure) -> void {
+                        typ = 4;
+                      },
+                    },
+                    i->second.raw
+#else
                       [&](DerivationOutputInputAddressed doi) -> void {
                         typ = 0;
                         path = new StorePath(doi.path);
@@ -598,6 +699,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
 #else
                       i->second.output
 #endif
+#endif
                     );
                     i++;
                   }|]
@@ -688,7 +790,45 @@ getDerivationSources' derivation = mask_ do
 getDerivationInputs :: Store -> Derivation -> IO [(StorePath, [ByteString])]
 getDerivationInputs _ = getDerivationInputs'
 
+-- | Get the inputs of a derivation, ignoring dependencies on outputs of outputs (RFC 92 inputs).
 getDerivationInputs' :: Derivation -> IO [(StorePath, [ByteString])]
+#if NIX_IS_AT_LEAST(2, 18, 0)
+getDerivationInputs' derivation =
+  bracket
+    [C.exp| DerivationInputsIterator* {
+      new DerivationInputsIterator($fptr-ptr:(Derivation *derivation)->inputDrvs.map.begin())
+    }|]
+    deleteDerivationInputsIterator
+    $ \i -> fix $ \continue -> do
+      isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationInputsIterator *i) == $fptr-ptr:(Derivation *derivation)->inputDrvs.map.end() }|]
+      if isEnd
+        then pure []
+        else do
+          name <-
+            [C.throwBlock| nix::StorePath *{
+              return new StorePath((*$(DerivationInputsIterator *i))->first);
+            }|]
+              >>= moveStorePath
+          outs <-
+            bracket
+              [C.block| Strings* {
+                Strings *r = new Strings();
+
+                for (const auto & i : (*$(DerivationInputsIterator *i))->second.value) {
+                  r->push_back(i);
+                }
+
+                // for (const auto &i : (*$(DerivationInputsIterator *i))->second.childMap) {
+                // TODO (RFC 92)
+                //}
+
+                return r;
+              }|]
+              deleteStrings
+              toByteStrings
+          [C.block| void { (*$(DerivationInputsIterator *i))++; }|]
+          ((name, outs) :) <$> continue
+#else
 getDerivationInputs' derivation =
   bracket
     [C.exp| DerivationInputsIterator* {
@@ -718,6 +858,7 @@ getDerivationInputs' derivation =
               toByteStrings
           [C.block| void { (*$(DerivationInputsIterator *i))++; }|]
           ((name, outs) :) <$> continue
+#endif
 
 deleteDerivationInputsIterator :: Ptr DerivationInputsIterator -> IO ()
 deleteDerivationInputsIterator a = [C.block| void { delete $(DerivationInputsIterator *a); }|]
