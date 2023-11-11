@@ -8,7 +8,7 @@
 
   # Optional. Omit to use nixpkgs' nix
   inputs.nix = {
-    url = "github:NixOS/nix/2.18.1";
+    url = "github:NixOS/nix/master";
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
