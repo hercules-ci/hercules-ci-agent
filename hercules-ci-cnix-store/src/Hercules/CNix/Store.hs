@@ -80,6 +80,14 @@ C.include "<nix/path-with-outputs.hh>"
 
 C.include "hercules-ci-cnix/store.hxx"
 
+#if NIX_IS_AT_LEAST(2,19,0)
+
+C.include "<nix/signals.hh>"
+
+C.include "<nix/hash.hh>"
+
+#endif
+
 C.using "namespace nix"
 
 forNonNull :: Applicative m => Ptr a -> (Ptr a -> m b) -> m (Maybe b)
@@ -1077,7 +1085,7 @@ validPathInfoNarHash32 :: ForeignPtr (Ref ValidPathInfo) -> IO ByteString
 validPathInfoNarHash32 vpi =
   unsafePackMallocCString
     =<< [C.block| const char *{ 
-      std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::Base32, true));
+      std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::HashFormat::Base32, true));
       return strdup(s.c_str()); }
     |]
 

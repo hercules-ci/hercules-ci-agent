@@ -162,7 +162,11 @@ getStringIgnoreContext :: Value NixString -> IO ByteString
 getStringIgnoreContext (Value (RawValue v)) =
   unsafeMallocBS
     [C.exp| const char *{
+#if NIX_IS_AT_LEAST(2,19,0)
+    strdup($(Value *v)->c_str())
+#else
     strdup($(Value *v)->string.s)
+#endif
   }|]
 
 hasContext :: Value NixString -> IO Bool

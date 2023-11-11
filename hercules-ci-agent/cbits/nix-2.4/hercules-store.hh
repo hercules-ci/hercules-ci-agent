@@ -14,6 +14,10 @@
 #endif
 #include "HsFFI.h"
 
+#if NIX_IS_AT_LEAST(2,19,0)
+using FSAccessor = nix::SourceAccessor;
+#endif
+
 using namespace nix;
 
 class WrappingStore : public Store {
@@ -127,7 +131,11 @@ public:
 
   virtual bool verifyStore(bool checkContents, RepairFlag repair = NoRepair) override;
 
+#if NIX_IS_AT_LEAST(2,19,0)
+  virtual ref<FSAccessor> getFSAccessor(bool requireValidPath) override;
+#else
   virtual ref<FSAccessor> getFSAccessor() override;
+#endif
 
   virtual void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 

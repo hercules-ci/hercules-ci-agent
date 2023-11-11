@@ -29,6 +29,10 @@ C.include "<nix/config.h>"
 
 C.include "<nix/util.hh>"
 
+#if NIX_IS_AT_LEAST(2,19,0)
+C.include "<nix/signals.hh>"
+#endif
+
 C.using "namespace nix"
 
 setInterruptThrown :: IO ()
