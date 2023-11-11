@@ -43,7 +43,12 @@ C.include "<nix/derivations.hh>"
 
 C.include "<nix/globals.hh>"
 
+#if NIX_IS_AT_LEAST(2,19,0)
+C.include "<nix/signals.hh>"
+#else
+-- redundant?
 C.include "<nix/fs-accessor.hh>"
+#endif
 
 #if NIX_IS_AT_LEAST(2,7,0)
 C.include "<nix/build-result.hh>"

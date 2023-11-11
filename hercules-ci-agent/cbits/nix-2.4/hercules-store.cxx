@@ -191,9 +191,15 @@ bool WrappingStore::verifyStore(bool checkContents, RepairFlag repair) {
   return wrappedStore->verifyStore(checkContents, repair);
 };
 
+#if NIX_IS_AT_LEAST(2,19,0)
+ref<FSAccessor> WrappingStore::getFSAccessor(bool requireValidPath) {
+  return wrappedStore->getFSAccessor(requireValidPath);
+}
+#else
 ref<FSAccessor> WrappingStore::getFSAccessor() {
   return wrappedStore->getFSAccessor();
 }
+#endif
 
 void WrappingStore::addSignatures(const StorePath& storePath,
                                   const StringSet& sigs) {

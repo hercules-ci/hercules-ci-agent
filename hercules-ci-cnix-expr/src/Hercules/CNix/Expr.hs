@@ -127,6 +127,10 @@ C.include "<nix/flake/flake.hh>"
 
 C.include "<nix/flake/flakeref.hh>"
 
+#if NIX_IS_AT_LEAST(2,19,0)
+C.include "<nix/args/root.hh>"
+#endif
+
 C.include "hercules-ci-cnix/expr.hxx"
 
 C.include "<gc/gc.h>"
@@ -321,14 +325,17 @@ evalFile evalState filename = do
   filename' <- Foreign.C.String.newCString filename
   mkRawValue
     =<< [C.throwBlock| Value* {
+      EvalState & state = *$(EvalState *evalState);
       Value value;
       auto cstr = $(const char *filename');
-#if NIX_IS_AT_LEAST(2,16,0)
+#if NIX_IS_AT_LEAST(2,19,0)
+      SourcePath path {state.rootPath(CanonPath(cstr))};
+#elif NIX_IS_AT_LEAST(2,16,0)
       SourcePath path = CanonPath(cstr);
 #else
       std::string path = cstr;
 #endif
-      $(EvalState *evalState)->evalFile(path, value);
+      state.evalFile(path, value);
       return new (NoGC) Value(value);
     }|]
 
@@ -342,6 +349,12 @@ appendString ss s =
     $(Strings *ss)->push_back(std::string($bs-ptr:s, $bs-len:s));
   }|]
 
+#if NIX_IS_AT_LEAST(2,19,0)
+C.verbatim "struct EvalArgs : nix::RootArgs, nix::MixEvalArgs { };"
+#else
+C.verbatim "struct EvalArgs : nix::MixEvalArgs { };"
+#endif
+
 evalArgs :: Ptr EvalState -> [ByteString] -> IO (Value NixAttrs)
 evalArgs evalState args = do
   argsStrings <- newStrings
@@ -349,7 +362,7 @@ evalArgs evalState args = do
   fmap unsafeAssertType . mkRawValue
     =<< [C.throwBlock| Value * {
       Strings *args = $(Strings *argsStrings);
-      struct MixEvalArgs evalArgs;
+      struct EvalArgs evalArgs;
       Bindings *autoArgs;
       EvalState &state = *$(EvalState *evalState);
 
@@ -526,7 +539,9 @@ valueFromExpressionString evalState s basePath = do
     =<< [C.throwBlock| Value *{
       EvalState &evalState = *$(EvalState *evalState);
       std::string basePathStr = std::string($bs-ptr:basePath, $bs-len:basePath);
-#if NIX_IS_AT_LEAST(2,16,0)
+#if NIX_IS_AT_LEAST(2,19,0)
+      SourcePath basePath {evalState.rootPath(CanonPath(basePathStr))};
+#elif NIX_IS_AT_LEAST(2,16,0)
       SourcePath basePath = CanonPath(basePathStr);
 #else
       auto & basePath = basePathStr;
@@ -557,14 +572,19 @@ apply (RawValue f) (RawValue a) = do
       return r;
     }|]
 
-mkPath :: ByteString -> IO (Value NixPath)
-mkPath path =
+mkPath :: Ptr EvalState -> ByteString -> IO (Value NixPath)
+mkPath evalState path =
   Value
     <$> ( mkRawValue
             =<< [C.throwBlock| Value *{
+      EvalState & state = *$(EvalState *evalState);
       Value *r = new (NoGC) Value();
       std::string s($bs-ptr:path, $bs-len:path);
+#if NIX_IS_AT_LEAST(2,19,0)
+      r->mkPath(state.rootPath(CanonPath(s)));
+#else
       r->mkPath(s.c_str());
+#endif
       return r;
   }|]
         )

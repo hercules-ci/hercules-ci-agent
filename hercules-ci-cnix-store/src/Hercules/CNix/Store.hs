@@ -78,7 +78,17 @@ C.include "<nix/worker-protocol.hh>"
 
 C.include "<nix/path-with-outputs.hh>"
 
+C.include "<nix/hash.hh>"
+
 C.include "hercules-ci-cnix/store.hxx"
+
+#if NIX_IS_AT_LEAST(2,19,0)
+
+C.include "<nix/signals.hh>"
+
+C.include "<nix/hash.hh>"
+
+#endif
 
 C.using "namespace nix"
 
@@ -1076,8 +1086,12 @@ validPathInfoNarSize vpi =
 validPathInfoNarHash32 :: ForeignPtr (Ref ValidPathInfo) -> IO ByteString
 validPathInfoNarHash32 vpi =
   unsafePackMallocCString
-    =<< [C.block| const char *{ 
+    =<< [C.block| const char *{
+#if NIX_IS_AT_LEAST(2,19,0)
+      std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::HashFormat::Base32, true));
+#else
       std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::Base32, true));
+#endif
       return strdup(s.c_str()); }
     |]
 
