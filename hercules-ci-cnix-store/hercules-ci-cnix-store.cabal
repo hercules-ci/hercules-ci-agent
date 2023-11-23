@@ -92,8 +92,8 @@ library
   include-dirs:
       include
   pkgconfig-depends:
-      nix-store >= 2.4 && < 2.19
-    , nix-main >= 2.4 && < 2.19
+      nix-store >= 2.4 && < 2.21
+    , nix-main >= 2.4 && < 2.21
   install-includes:
       hercules-ci-cnix/store.hxx
   hs-source-dirs: src
