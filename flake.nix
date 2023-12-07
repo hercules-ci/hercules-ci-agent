@@ -236,7 +236,10 @@
                         pkgs.nix
                     )
                   else
-                    pkgs.nix;
+                  # blocked on restrict-eval issue
+                    if lib.versionAtLeast "2.19" pkgs.nix.version
+                    then pkgs.nixVersions.nix_2_18
+                    else pkgs.nix;
               };
 
             h = pkgs.haskell.lib.compose;
