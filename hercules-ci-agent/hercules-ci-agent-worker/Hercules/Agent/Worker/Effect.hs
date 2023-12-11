@@ -42,12 +42,15 @@ prepareDerivation store command = do
   let extraPaths = Command.Effect.inputDerivationOutputPaths command
       drvPath = encodeUtf8 $ Command.Effect.drvPath command
       ensureDeps = for_ extraPaths $ \input -> liftIO $ do
-        CNix.ensurePath store =<< CNix.parseStorePath store input
+        p <- CNix.parseStorePath store input
+        CNix.addTemporaryRoot store p
+        CNix.ensurePath store p
   drvStorePath <- liftIO $ CNix.parseStorePath store drvPath
   liftIO $ do
     ensureDeps `catch` \e -> do
       CNix.logInfo $ "while retrieving dependencies: " <> toS (displayException (e :: SomeException))
       CNix.logInfo "unable to retrieve dependency; attempting fallback to local build"
+      -- TODO read directly from cache?
       CNix.ensurePath store drvStorePath
       derivation <- CNix.getDerivation store drvStorePath
       depDrvPaths <- CNix.getDerivationInputs store derivation
@@ -60,6 +63,7 @@ prepareDerivation store command = do
       Just drv -> pure drv
       Nothing -> panic $ "Could not retrieve derivation " <> show drvPath <> " from local store or binary caches."
   sources <- liftIO $ CNix.getDerivationSources store derivation
-  for_ sources \src -> do
-    liftIO $ CNix.ensurePath store src
+  for_ sources \src -> liftIO do
+    CNix.addTemporaryRoot store src
+    CNix.ensurePath store src
   pure derivation

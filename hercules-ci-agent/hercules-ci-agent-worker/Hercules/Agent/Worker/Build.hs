@@ -28,6 +28,7 @@ runBuild store build = katipAddContext (sl "derivationPath" build.drvPath) do
   drvStorePath <- liftIO $ CNix.parseStorePath store drvPath
   x <- for extraPaths $ \input -> liftIO $ do
     storePath <- CNix.parseStorePath store input
+    CNix.addTemporaryRoot store storePath
     try $ CNix.ensurePath store storePath
   materialize0 <- case sequenceA x of
     Right _ ->

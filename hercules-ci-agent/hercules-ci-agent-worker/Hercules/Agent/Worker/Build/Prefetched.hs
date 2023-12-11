@@ -150,6 +150,7 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
       StorePath derivationPath = *$fptr-ptr:(nix::StorePath *derivationPath);
 
       if ($(bool materializeDerivation)) {
+        store.addTempRoot(derivationPath);
         store.ensurePath(derivationPath);
         auto derivation = store.derivationFromPath(derivationPath);
         StorePathWithOutputs storePathWithOutputs { .path = derivationPath, .outputs = derivation.outputNames() };
