@@ -18,7 +18,6 @@ source-repository head
 common defaults
   default-language:   Haskell2010
   default-extensions:
-    NoImplicitPrelude
     DeriveGeneric
     DeriveTraversable
     DerivingStrategies
@@ -28,6 +27,7 @@ common defaults
     InstanceSigs
     LambdaCase
     MultiParamTypeClasses
+    NoImplicitPrelude
     OverloadedStrings
     RankNTypes
     TupleSections
