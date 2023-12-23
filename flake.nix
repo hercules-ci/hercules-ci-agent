@@ -87,6 +87,7 @@
         inputs.haskell-flake.flakeModule
         ./nix/variants.nix
         ./nix/flake-private-dev-inputs.nix
+        ./docs/flake-docs-render.nix
       ];
       config = {
         privateDevInputSubflakePath = "dev/private";

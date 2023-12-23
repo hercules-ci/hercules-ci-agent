@@ -3,6 +3,7 @@
 ** xref:binary-caches-json.adoc[`binary-caches.json`]
 ** xref:secrets-json.adoc[`secrets.json`]
 ** xref:netrc.adoc[Netrc]
+* xref:nixos-module.adoc[NixOS Module]
 * xref:deployment-requirements.adoc[Deployment Requirements]
 * xref:job-definition.adoc[Job Definition]
 ** xref:evaluation.adoc[Evaluation]

@@ -143,6 +143,17 @@ in
         modules = [ submodule ];
       });
       default = { };
+      description = ''
+        Multiple instances of hercules-ci-agent can be specified.
+
+        If you specify an instance named `""`, it will behave just as the `services.hercules-ci-agent` options did.
+        - User: `hercules-ci-agent`
+        - Default base directory: `/var/lib/hercules-ci-agent`
+
+        Otherwise:
+        - User: `hci-''${name}`
+        - Default base directory: `/var/lib/hercules-ci-agent-''${name}`
+      '';
     };
   };
 
