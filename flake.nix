@@ -46,7 +46,7 @@
         };
 
       agentFromFlakeModule = { config, lib, options, pkgs, ... }: {
-        _file = "${toString ./flake.nix}##flakeModule";
+        _file = "${toString ./flake.nix}";
         config.services.hercules-ci-agent =
           agentFromFlakeConfig
             config.services.hercules-ci-agent
@@ -56,7 +56,7 @@
       };
 
       agentFromFlakeModule_multi = { config, lib, options, pkgs, ... }: {
-        _file = "${toString ./flake.nix}##flakeModule_multi";
+        _file = "${toString ./flake.nix}";
         options =
           let
             mkIfNotNull = x: lib.mkIf (x != null) x;
@@ -87,6 +87,7 @@
         inputs.haskell-flake.flakeModule
         ./nix/variants.nix
         ./nix/flake-private-dev-inputs.nix
+        ./docs/flake-docs-render.nix
       ];
       config = {
         privateDevInputSubflakePath = "dev/private";

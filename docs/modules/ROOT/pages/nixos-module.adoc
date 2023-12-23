@@ -1,0 +1,24 @@
+= NixOS Module
+
+Hercules CI Agent can be deployed using NixOS, using either the module that is distributed with NixOS, or the `hercules-ci-agent` flake.
+
+A minimal configuration looks as follows:
+
+```nix
+# NixOS configuration module
+{
+  imports = [
+    inputs.hercules-ci-agent.nixosModules.multi-agent-service
+  ];
+  services.hercules-ci-agents."" = {
+    # See https://docs.hercules-ci.com/hercules-ci-agent/nixos-module
+  };
+}
+```
+
+
+== Options
+
+The `hercules-ci-agent` flake provides an attribute `nixosModules.multi-agent-service` with the following options.
+
+include::partial$options/nixos-options.adoc[leveloffset=0]

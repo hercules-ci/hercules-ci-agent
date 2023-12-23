@@ -33,11 +33,11 @@ let
         };
         settings = mkOption {
           description = ''
-            These settings are written to the <literal>agent.toml</literal> file.
+            These settings are written to the `agent.toml` file.
 
             Not all settings are listed as options, can be set nonetheless.
 
-            For the exhaustive list of settings, see <link xlink:href="https://docs.hercules-ci.com/hercules-ci/reference/agent-config/"/>.
+            For the exhaustive list of settings, see <https://docs.hercules-ci.com/hercules-ci/reference/agent-config/>.
           '';
           type = types.submoduleWith { modules = [ settingsModule ]; };
         };
@@ -143,6 +143,17 @@ in
         modules = [ submodule ];
       });
       default = { };
+      description = ''
+        Multiple instances of hercules-ci-agent can be specified.
+
+        If you specify an instance named `""`, it will behave just as the `services.hercules-ci-agent` options did.
+        - User: `hercules-ci-agent`
+        - Default base directory: `/var/lib/hercules-ci-agent`
+
+        Otherwise:
+        - User: `hci-''${name}`
+        - Default base directory: `/var/lib/hercules-ci-agent-''${name}`
+      '';
     };
   };
 

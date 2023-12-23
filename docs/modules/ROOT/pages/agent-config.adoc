@@ -138,3 +138,8 @@ Optional. Defaults to `<<baseDirectory,_baseDirectory_>>/work`.
 
 The directory in which temporary subdirectories are created for task state.
 This includes sources for Nix evaluation.
+
+== See Also
+
+- xref:hercules-ci:ROOT:getting-started/index.adoc#deploy-agent[Agent setup guide]
+- xref:nixos-module.adoc[NixOS Module]
