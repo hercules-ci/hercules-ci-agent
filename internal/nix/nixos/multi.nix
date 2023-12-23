@@ -33,11 +33,11 @@ let
         };
         settings = mkOption {
           description = ''
-            These settings are written to the <literal>agent.toml</literal> file.
+            These settings are written to the `agent.toml` file.
 
             Not all settings are listed as options, can be set nonetheless.
 
-            For the exhaustive list of settings, see <link xlink:href="https://docs.hercules-ci.com/hercules-ci/reference/agent-config/"/>.
+            For the exhaustive list of settings, see <https://docs.hercules-ci.com/hercules-ci/reference/agent-config/>.
           '';
           type = types.submoduleWith { modules = [ settingsModule ]; };
         };
