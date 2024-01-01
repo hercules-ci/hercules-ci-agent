@@ -139,7 +139,8 @@ data ProjectsAPI auth f = ProjectsAPI
           :> Post '[JSON] CreateUserEffectTokenResponse,
     findJobs ::
       f
-        :- Summary "Find jobs"
+        :- Summary "Find jobs in multiple projects at once"
+          :> Description "For a more powerful single project endpoint, see /api/v1/site/{site}/account/{account}/project/{project}/jobs"
           :> "jobs"
           :> QueryParam' '[Optional, Description "Currently only \"github\" or omit entirely"] "site" (Name Forge)
           :> QueryParam' '[Optional, Description "Account name filter"] "account" (Name Account)
