@@ -22,6 +22,7 @@ import Hercules.API.Projects.CreateProject
 import Hercules.API.Projects.CreateUserEffectTokenResponse (CreateUserEffectTokenResponse)
 import Hercules.API.Projects.Job
   ( Job,
+    JobType,
     ProjectAndJobs,
   )
 import Hercules.API.Projects.JobHandlers (JobHandlers)
@@ -58,6 +59,9 @@ data ProjectResourceGroup auth f = ProjectResourceGroup
         :- Summary "Retrieve information about jobs"
           :> "jobs"
           :> QueryParam' '[Optional, Description "Constrain the results by git ref, such as refs/heads/my-branch or HEAD"] "ref" Text
+          :> QueryParam' '[Optional, Description "Git commit hash (from which to load the job handler definition)"] "rev" (Name "Rev")
+          :> QueryParam' '[Optional, Description "Job handler type, such as onPush or onSchedule"] "handler" JobType
+          :> QueryParam' '[Optional, Description "Job handler name, such as <name> in onPush.<name>"] "name" (Name "JobName")
           :> QueryParam' '[Optional, Description "Only return successful jobs, or only failed ones"] "success" Bool
           :> QueryParam' '[Optional, Description "Return jobs that come \"after\" the provided id in the response order."] "offsetId" (Id Job)
           :> QueryParam' '[Optional, Description "Return jobs that come \"after\" the provided index in the response order."] "offsetIndex" Int64
