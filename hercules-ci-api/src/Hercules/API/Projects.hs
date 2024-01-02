@@ -5,6 +5,7 @@
 module Hercules.API.Projects where
 
 import Data.OpenApi qualified as O3
+import GHC.Records (HasField (getField))
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Build.EvaluationDetail
   ( EvaluationDetail,
@@ -253,3 +254,5 @@ data ProjectsAPI auth f = ProjectsAPI
 newtype PagedJobs = PagedJobs (PagedResponse Job)
   deriving (Generic, Show, Eq)
   deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
+
+instance HasField "get" PagedJobs (PagedResponse Job) where getField (PagedJobs a) = a
