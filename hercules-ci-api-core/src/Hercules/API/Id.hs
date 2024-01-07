@@ -99,3 +99,9 @@ instance forall k (a :: k). (Typeable a, Typeable k) => O3.ToSchema (Id a) where
         mempty
           & O3.type_ ?~ O3.OpenApiString
           & O3.format ?~ "uuid"
+
+instance O3.ToParamSchema (Id a) where
+  toParamSchema _ =
+    mempty
+      & O3.type_ ?~ O3.OpenApiString
+      & O3.format ?~ "uuid"
