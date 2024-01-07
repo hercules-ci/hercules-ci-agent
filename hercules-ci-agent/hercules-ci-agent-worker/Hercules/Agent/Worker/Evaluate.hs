@@ -21,6 +21,7 @@ import Data.IORef
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Data.Type.Equality (type (~))
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent (OnPushHandlerEvent (OnPushHandlerEvent))
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnPushHandlerEvent qualified
 import Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent (OnScheduleHandlerEvent (OnScheduleHandlerEvent), TimeConstraints (TimeConstraints))
@@ -632,7 +633,7 @@ simpleWalk evalEnv initialThunk = do
           treeWorkThunk = initialThunk
         }
 
-shouldWalkIntoAttrsAndLog :: (MonadIO m, KatipContext m) => [ByteString] -> Ptr EvalState -> Map ByteString RawValue -> m Bool
+shouldWalkIntoAttrsAndLog :: (KatipContext m) => [ByteString] -> Ptr EvalState -> Map ByteString RawValue -> m Bool
 shouldWalkIntoAttrsAndLog path evalState attrs =
   case M.lookup "_type" attrs of
     Just v -> do

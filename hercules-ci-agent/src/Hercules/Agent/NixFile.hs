@@ -33,6 +33,7 @@ where
 
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
 import Data.Map qualified as M
+import Data.Type.Equality (type (~))
 import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration (InputDeclaration (SiblingInput), SiblingInput (MkSiblingInput))
 import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration qualified
 import Hercules.Agent.NixFile.CiNixArgs (CiNixArgs (CiNixArgs))
