@@ -15,8 +15,10 @@ import Hercules.API.Projects (ProjectsAPI)
 import Hercules.API.Repos (ReposAPI)
 import Hercules.API.State (ContentDisposition, ContentLength, RawBytes, StateAPI)
 import Hercules.Error
+import qualified Network.HTTP.Client as HTTP
 import qualified Network.HTTP.Client.TLS
-import Network.HTTP.Types.Status
+import Network.HTTP.Types.Status (Status (statusCode, statusMessage))
+import qualified Network.TLS as TLS
 import Protolude
 import RIO (RIO)
 import Servant.API
@@ -88,7 +90,7 @@ runHerculesClientStream ::
 runHerculesClientStream f g = do
   HerculesClientToken token <- asks getter
   HerculesClientEnv clientEnv <- asks getter
-  liftIO $ Servant.Client.Streaming.withClientM (f token) clientEnv g
+  liftIO $ convertInternalError $ Servant.Client.Streaming.withClientM (f token) clientEnv g
 
 runHerculesClient' :: (NFData a, Has HerculesClientEnv r) => Servant.Client.Streaming.ClientM a -> RIO r a
 runHerculesClient' = runHerculesClientEither' >=> escalate
@@ -96,7 +98,7 @@ runHerculesClient' = runHerculesClientEither' >=> escalate
 runHerculesClientEither' :: (NFData a, Has HerculesClientEnv r) => Servant.Client.Streaming.ClientM a -> RIO r (Either Servant.Client.Streaming.ClientError a)
 runHerculesClientEither' m = do
   HerculesClientEnv clientEnv <- asks getter
-  liftIO (Servant.Client.Streaming.runClientM m clientEnv)
+  liftIO $ convertInternalError $ Servant.Client.Streaming.runClientM m clientEnv
 
 init :: IO HerculesClientEnv
 init = do
@@ -151,6 +153,42 @@ shouldRetryClientError (ClientError.UnsupportedContentType _ _) = False
 shouldRetryClientError (ClientError.InvalidContentTypeHeader _) = False
 shouldRetryClientError (ClientError.ConnectionError _) = True
 shouldRetryClientError _ = False
+
+-- | A custom exception type for HTTP exceptions that we consider retryable.
+data HTTPInternalException = HTTPInternalException HTTP.Request SomeException
+  deriving (Exception, Show)
+
+-- | Convert a missed HTTP exception into a ClientError.
+-- This is useful for retrying.
+convertInternalError :: IO a -> IO a
+convertInternalError = deescalateInternalError >=> escalate
+
+deescalateInternalError :: IO a -> IO (Either ClientError a)
+deescalateInternalError m = handleJust matchClientException (pure . Left) (Right <$> m)
+  where
+    matchClientException =
+      fromException >=> \case
+        HTTP.HttpExceptionRequest req (HTTP.InternalException e)
+          | isJust (isRetryableHTTPInternalException e) ->
+              Just $ ClientError.ConnectionError $ toException $ HTTPInternalException req $ toException e
+        _ -> Nothing
+    isRetryableHTTPInternalException =
+      fromException >=> \e -> case e of
+        TLS.Terminated _mysteryBool _msg tlsError
+          | isRetryableTLSError tlsError ->
+              pass
+        _ -> Nothing
+    -- Error_Protocol has been observed. Most others are probably also worth retrying.
+    -- https://hackage.haskell.org/package/tls-1.9.0/docs/Network-TLS.html#t:TLSError
+    -- real world example: Error_Protocol ("remote side fatal error",True,BadRecordMac))
+    isRetryableTLSError =
+      \case
+        TLS.Error_Protocol {} -> True
+        TLS.Error_EOF {} -> True
+        TLS.Error_Packet {} -> True
+        TLS.Error_Packet_unexpected {} -> True
+        TLS.Error_Packet_Parsing {} -> True
+        _ -> False
 
 -- | ClientError printer that won't leak sensitive info.
 clientErrorSummary :: ClientError -> Text
