@@ -8,6 +8,7 @@ module Hercules.API
     servantApi,
     servantClientApi,
     swagger,
+    openapi3,
     useApi,
     enterApiE,
     API,
@@ -30,6 +31,7 @@ where
 
 import Control.Lens
 import Control.Monad
+import Data.OpenApi qualified as O3
 import Data.Proxy (Proxy (..))
 import Data.Swagger hiding (Header)
 import Hercules.API.Accounts (AccountsAPI)
@@ -53,6 +55,7 @@ import Hercules.API.State (StateAPI)
 import Servant.API
 import Servant.Auth
 import Servant.Auth.Swagger ()
+import Servant.OpenApi qualified as SO3
 import Servant.Swagger
 import Servant.Swagger.UI.Core (SwaggerSchemaUI)
 
@@ -112,7 +115,7 @@ api = Proxy
 
 swagger :: Swagger
 swagger =
-  toSwagger api'
+  toSwagger apiWithJWT
     & info
       . title
       .~ "Hercules CI API"
@@ -134,8 +137,13 @@ swagger =
     & withTags clientOrganizations "organization" "Organizations and billing operations"
     & withTags clientClientInfo "client" "Ad hoc endpoints for the frontend and perhaps some client-side use cases"
   where
-    api' = (servantClientApi @(Auth '[JWT] ()))
-    withTags f tag desc = applyTagsFor (subOperations (clientApiProxy f) api') [tag & description ?~ desc]
+    withTags f tag desc = applyTagsFor (subOperations (clientApiProxy f) apiWithJWT) [tag & description ?~ desc]
+
+apiWithJWT :: Proxy (ClientServantAPI (Auth '[JWT] ()))
+apiWithJWT = servantClientApi @(Auth '[JWT] ())
+
+openapi3 :: O3.OpenApi
+openapi3 = SO3.toOpenApi apiWithJWT
 
 clientApiProxy :: (ClientAPI (Auth '[JWT] ()) AsApi -> a) -> Proxy ("api" :> "v1" :> a)
 clientApiProxy _ = Proxy

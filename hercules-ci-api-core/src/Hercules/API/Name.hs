@@ -11,19 +11,21 @@ where
 import Control.DeepSeq (NFData)
 import Data.Aeson
 import Data.Hashable (Hashable (..))
+import qualified Data.OpenApi as O3
 import Data.Proxy
 import Data.Swagger
   ( ToParamSchema (..),
     ToSchema (..),
   )
 import Data.Text (Text)
+import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Web.HttpApiData
 import Prelude
 
 -- | A slug. Display names are simply 'Text'.
 newtype Name (a :: k) = Name {nameText :: Text}
-  deriving (Generic, Eq, Ord)
+  deriving (Generic, Eq, Ord, Typeable)
   deriving newtype (NFData)
 
 instance Hashable (Name a)
@@ -56,3 +58,8 @@ instance ToParamSchema (Name a) where
 
 invmap :: (a -> b) -> proxy a -> Proxy b
 invmap _ _ = Proxy
+
+-- OpenAPI 3
+
+instance forall k (a :: k). (Typeable a, Typeable k) => O3.ToSchema (Name a) where
+  declareNamedSchema = O3.declareNamedSchema . invmap nameText

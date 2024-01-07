@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PolyKinds #-}
 
@@ -14,6 +15,7 @@ import Data.Aeson
 import Data.Aeson.Types (toJSONKeyText)
 import Data.Function ((&))
 import Data.Hashable (Hashable (..))
+import qualified Data.OpenApi as O3
 import Data.Swagger
   ( NamedSchema (NamedSchema),
     ParamSchema,
@@ -25,6 +27,7 @@ import Data.Swagger
     type_,
   )
 import Data.Text (Text)
+import Data.Typeable (Typeable)
 import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 import GHC.Generics (Generic)
@@ -32,7 +35,8 @@ import Web.HttpApiData
 import Prelude
 
 newtype Id (a :: k) = Id {idUUID :: UUID}
-  deriving (Generic, Eq, Ord, NFData)
+  deriving (Generic, Eq, Ord, Typeable)
+  deriving newtype (NFData)
 
 instance Hashable (Id a) where
   hashWithSalt s (Id uuid) =
@@ -75,6 +79,8 @@ instance ToHttpApiData (Id a) where
 instance FromHttpApiData (Id a) where
   parseUrlPiece = fmap Id . parseUrlPiece
 
+-- Swagger 2
+
 instance ToSchema (Id a) where
   declareNamedSchema = pure . NamedSchema Nothing . paramSchemaToSchema
 
@@ -83,3 +89,13 @@ instance ToParamSchema (Id a) where
     (mempty :: ParamSchema t)
       & type_ ?~ SwaggerString
       & format ?~ "uuid"
+
+-- OpenAPI 3
+
+instance forall k (a :: k). (Typeable a, Typeable k) => O3.ToSchema (Id a) where
+  declareNamedSchema _ =
+    pure $
+      O3.NamedSchema (Just "Id") $
+        mempty
+          & O3.type_ ?~ O3.OpenApiString
+          & O3.format ?~ "uuid"

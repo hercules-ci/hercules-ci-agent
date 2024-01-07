@@ -47,7 +47,9 @@ library
     , memory
     , lifted-base
     , monad-control
+    , openapi3
     , servant >=0.14.1
+    , servant-openapi3
     , servant-auth
     , servant-auth-swagger
     , servant-swagger

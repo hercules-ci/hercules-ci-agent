@@ -14,6 +14,7 @@ module Hercules.API.Prelude
 
     -- * Type classes
     Generic,
+    Typeable,
     NFData (..),
     ToJSON,
     FromJSON,
@@ -39,6 +40,7 @@ import Data.Set (Set)
 import Data.Swagger (ToSchema)
 import Data.Text (Text)
 import Data.Time (UTCTime)
+import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Hercules.API.Id (Id)
 import Hercules.API.Name (Name)
