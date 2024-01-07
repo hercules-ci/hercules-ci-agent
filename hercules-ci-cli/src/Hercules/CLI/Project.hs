@@ -15,7 +15,7 @@ import Hercules.API.Projects.Project (Project)
 import qualified Hercules.API.Projects.Project as Project
 import qualified Hercules.API.Repos as Repos
 import qualified Hercules.API.Repos.RepoKey as RepoKey
-import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, projectsClient, reposClient, retryOnFail, runHerculesClient)
+import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, projectsClient, reposClient, retryOnFail)
 import Hercules.CLI.Common (exitMsg)
 import qualified Hercules.CLI.Git as Git
 import Hercules.CLI.Options (attoparsecReader, packSome)
@@ -87,7 +87,8 @@ getProjectIdAndPath maybeProjectPathParam = do
 
 findProjectByKey :: (Has HerculesClientToken r, Has HerculesClientEnv r) => ProjectPath -> RIO r (Maybe Project.Project)
 findProjectByKey path =
-  runHerculesClient
+  retryOnFail
+    "find project"
     ( Projects.findProjects
         projectsClient
         (Just $ Name $ projectPathSite path)
@@ -127,7 +128,8 @@ findProjectByCurrentRepo = do
 findProject :: (Has HerculesClientToken r, Has HerculesClientEnv r) => ProjectPath -> RIO r Project.Project
 findProject project = do
   rs <-
-    runHerculesClient
+    retryOnFail
+      "find project"
       ( findProjects
           projectsClient
           (Just $ Name $ projectPathSite project)

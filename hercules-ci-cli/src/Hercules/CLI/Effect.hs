@@ -19,7 +19,7 @@ import Hercules.Agent.NixFile (getVirtualValueByPath)
 import qualified Hercules.Agent.NixFile.GitSource as GitSource
 import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
-import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDefaultApiBaseUrl, projectsClient, runHerculesClient)
+import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDefaultApiBaseUrl, projectsClient, retryOnFail)
 import Hercules.CLI.Common (runAuthenticatedOrDummy)
 import Hercules.CLI.Exception (exitMsg)
 import Hercules.CLI.Git (getAllBranches, getHypotheticalRefs)
@@ -221,7 +221,7 @@ getProjectEffectData maybeProjectPathParam requireToken = do
         Just x -> pure x
         Nothing -> do
           exitMsg $ "Can not access " <> show path <> ". Make sure you have installed Hercules CI on the organization and repository and that you have access to it."
-      response <- runHerculesClient (Projects.createUserEffectToken projectsClient projectId)
+      response <- retryOnFail "create user effect token" (Projects.createUserEffectToken projectsClient projectId)
       let token = Sensitive (CreateUserEffectTokenResponse.token response)
       pure ProjectData {pdProjectPath = Just path, pdProjectId = Just $ Id $ idUUID projectId, pdToken = Just token}
     else

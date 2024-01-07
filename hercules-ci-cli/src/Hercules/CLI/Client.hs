@@ -13,13 +13,11 @@ module Hercules.CLI.Client
     -- * Using the client
     HerculesClientToken (..),
     HerculesClientEnv,
-    runHerculesClient,
-    runHerculesClientStream,
-
-    -- * Error handling
     retryOnFail,
     retryOnFailAnon,
     retryStreamOnFail,
+
+    -- * Error handling
     shouldRetryClientError,
     clientErrorSummary,
     shouldRetryResponse,
