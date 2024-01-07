@@ -13,14 +13,11 @@ module Hercules.CLI.Client
     -- * Using the client
     HerculesClientToken (..),
     HerculesClientEnv,
-    runHerculesClient,
-    runHerculesClient',
-    runHerculesClientEither,
-    runHerculesClientStream,
+    retryOnFail,
+    retryOnFailAnon,
+    retryStreamOnFail,
 
     -- * Error handling
-    retryOnFail,
-    retryStreamOnFail,
     shouldRetryClientError,
     clientErrorSummary,
     shouldRetryResponse,
@@ -127,6 +124,9 @@ runHerculesClientStream f g = do
 
 runHerculesClient' :: (NFData a, Has HerculesClientEnv r) => Servant.Client.Streaming.ClientM a -> RIO r a
 runHerculesClient' = runHerculesClientEither' >=> escalate
+
+retryOnFailAnon :: (NFData b, Has HerculesClientEnv r) => Text -> ClientM b -> RIO r b
+retryOnFailAnon shortDesc m = retryOnFailEither shortDesc (UnliftIO.try $ runHerculesClient' m) >>= escalate
 
 runHerculesClientEither' :: (NFData a, Has HerculesClientEnv r) => Servant.Client.Streaming.ClientM a -> RIO r (Either Servant.Client.Streaming.ClientError a)
 runHerculesClientEither' m = do

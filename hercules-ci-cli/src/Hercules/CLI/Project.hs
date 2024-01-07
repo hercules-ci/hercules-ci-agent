@@ -1,3 +1,4 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Hercules.CLI.Project where
@@ -14,7 +15,7 @@ import Hercules.API.Projects.Project (Project)
 import qualified Hercules.API.Projects.Project as Project
 import qualified Hercules.API.Repos as Repos
 import qualified Hercules.API.Repos.RepoKey as RepoKey
-import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, projectsClient, reposClient, runHerculesClient, runHerculesClientEither)
+import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, projectsClient, reposClient, retryOnFail)
 import Hercules.CLI.Common (exitMsg)
 import qualified Hercules.CLI.Git as Git
 import Hercules.CLI.Options (attoparsecReader, packSome)
@@ -28,6 +29,7 @@ import Servant.Client.Core (ClientError (FailureResponse), ResponseF (responseSt
 import Servant.Client.Core.Response (ResponseF (Response))
 import Servant.Client.Generic (AsClientT)
 import Servant.Client.Streaming (ClientM)
+import UnliftIO (catch)
 import UnliftIO.Environment (lookupEnv)
 import qualified Prelude
 
@@ -85,7 +87,8 @@ getProjectIdAndPath maybeProjectPathParam = do
 
 findProjectByKey :: (Has HerculesClientToken r, Has HerculesClientEnv r) => ProjectPath -> RIO r (Maybe Project.Project)
 findProjectByKey path =
-  runHerculesClient
+  retryOnFail
+    "find project"
     ( Projects.findProjects
         projectsClient
         (Just $ Name $ projectPathSite path)
@@ -108,25 +111,25 @@ findProjectContextually = do
 findProjectByCurrentRepo :: (Has HerculesClientToken r, Has HerculesClientEnv r) => RIO r (Maybe (Id Project), ProjectPath)
 findProjectByCurrentRepo = do
   url <- liftIO Git.getUpstreamURL
-  rs <- runHerculesClientEither (Repos.parseGitURL reposClient url)
-  case rs of
-    Left (FailureResponse _req Response {responseStatusCode = Status {statusCode = 404}}) -> do
-      exitMsg "Repository not recognized by Hercules CI. Make sure you're in the right repository, and if you're running Hercules CI Enterprise, make sure you're using the right HERCULES_CI_API_BASE_URL. Alternatively, use the --project option."
-    Left e -> throwIO e
-    Right r ->
-      pure
-        ( RepoKey.projectId r,
-          ProjectPath
-            { projectPathSite = RepoKey.siteName r,
-              projectPathOwner = RepoKey.ownerName r,
-              projectPathProject = RepoKey.repoName r
-            }
-        )
+  r <-
+    retryOnFail "parse-git-url" (Repos.parseGitURL reposClient url) `UnliftIO.catch` \case
+      (FailureResponse _req Response {responseStatusCode = Status {statusCode = 404}}) -> do
+        exitMsg "Repository not recognized by Hercules CI. Make sure you're in the right repository, and if you're running Hercules CI Enterprise, make sure you're using the right HERCULES_CI_API_BASE_URL. Alternatively, use the --project option."
+      e -> throwIO e
+  pure
+    ( RepoKey.projectId r,
+      ProjectPath
+        { projectPathSite = RepoKey.siteName r,
+          projectPathOwner = RepoKey.ownerName r,
+          projectPathProject = RepoKey.repoName r
+        }
+    )
 
 findProject :: (Has HerculesClientToken r, Has HerculesClientEnv r) => ProjectPath -> RIO r Project.Project
 findProject project = do
   rs <-
-    runHerculesClient
+    retryOnFail
+      "find project"
       ( findProjects
           projectsClient
           (Just $ Name $ projectPathSite project)
