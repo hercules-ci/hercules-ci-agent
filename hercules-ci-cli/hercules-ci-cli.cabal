@@ -84,6 +84,7 @@ library
     , servant-client-core
     , temporary
     , text
+    , tls
     , transformers
     , transformers-base
     , unix

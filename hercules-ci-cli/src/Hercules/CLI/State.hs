@@ -1,11 +1,16 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Hercules.CLI.State (commandParser, getProjectAndClient) where
 
-import Conduit (ConduitT, mapC, runConduitRes, sinkFile, sourceHandle, stdinC, stdoutC, (.|))
+import Conduit (mapC, runConduitRes, sinkLazyBuilder, (.|))
+import qualified Data.ByteString.Builder as BB
+import qualified Data.ByteString.Lazy as BL
 import Data.Has (Has)
-import Hercules.API (ClientAuth, enterApiE)
+import Hercules.API (ClientAuth, NoContent, enterApiE)
 import Hercules.API.Name (Name (Name))
 import Hercules.API.State
 import Hercules.CLI.Client
@@ -15,11 +20,14 @@ import Hercules.CLI.Project (ProjectPath (projectPathOwner, projectPathProject, 
 import Options.Applicative (auto, bashCompleter, completer, help, long, metavar, option, strOption)
 import qualified Options.Applicative as Optparse
 import Protolude
-import RIO (RIO, runRIO, withBinaryFile)
-import Servant.API (Headers (Headers), fromSourceIO, toSourceIO)
+import RIO (RIO)
+import qualified RIO.ByteString as BS
+import Servant.API (HList (HCons), Headers (Headers), ResponseHeader (Header), fromSourceIO)
+import Servant.Client (ClientError (ConnectionError))
 import Servant.Client.Generic (AsClientT)
 import Servant.Client.Internal.HttpClient.Streaming (ClientM)
 import Servant.Conduit ()
+import qualified Servant.Types.SourceT as Servant
 
 commandParser, getCommandParser, putCommandParser :: Optparse.Parser (IO ())
 commandParser =
@@ -42,13 +50,22 @@ getCommandParser = do
     runAuthenticated do
       projectStateClient <- getProjectAndClient projectMaybe
       -- TODO: version
-      runHerculesClientStream (getStateData projectStateClient name versionMaybe) \case
-        Left e -> dieWithHttpError e
-        Right (Headers r _) -> do
-          runConduitRes $
-            fromSourceIO r .| mapC fromRawBytes .| case file of
-              "-" -> stdoutC
-              _ -> sinkFile file
+      bytes <- retryStreamOnFail "state get" (\token -> getStateData projectStateClient name versionMaybe token) \case
+        Left e -> throwIO e
+        Right (Headers stream headers) -> do
+          bl <- runConduitRes $ fromSourceIO stream .| mapC (BB.byteString . fromRawBytes) .| sinkLazyBuilder
+          let lenH :: ResponseHeader "Content-Length" Integer
+              lenH `HCons` _ = headers
+              actual = fromIntegral $ BL.length bl
+          case lenH of
+            Header expected ->
+              when (actual /= expected) do
+                throwIO $ ConnectionError $ toException $ FatalError $ "Expected " <> show expected <> " bytes, but got " <> show actual
+            _ -> pass
+          pure (BL.toStrict bl)
+      case file of
+        "-" -> BS.putStr bytes
+        _ -> BS.writeFile file bytes
 putCommandParser = do
   projectMaybe <- optional projectOption
   name <- nameOption
@@ -56,17 +73,12 @@ putCommandParser = do
   pure do
     runAuthenticated do
       projectStateClient <- getProjectAndClient projectMaybe
-      let withStream :: (ConduitT a RawBytes IO () -> RIO r b) -> RIO r b
-          withStream = case file of
-            "-" -> ($ (stdinC .| mapC RawBytes))
-            _ -> \f -> do
-              r <- ask
-              liftIO $ withBinaryFile file ReadMode \h ->
-                runRIO r $ f (sourceHandle h .| mapC RawBytes)
-      withStream \stream -> do
-        _noContent <- runHerculesClient (putStateData projectStateClient name (toSourceIO stream))
-        pass
-    putErrText $ "hci: State file upload successful for " <> name
+      bytes <- case file of
+        "-" -> BS.getContents
+        _ -> BS.readFile file
+      _ :: NoContent <- retryOnFail "state put" do
+        putStateData projectStateClient name (Servant.source [RawBytes bytes])
+      putErrText $ "hci: State file upload successful for " <> name
 
 nameOption :: Optparse.Parser Text
 nameOption = strOption $ long "name" <> metavar "NAME" <> help "Name of the state file"

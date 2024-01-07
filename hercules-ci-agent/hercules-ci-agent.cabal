@@ -177,6 +177,7 @@ library
     , tagged
     , temporary
     , text
+    , tls
     , time
     , transformers
     , transformers-base

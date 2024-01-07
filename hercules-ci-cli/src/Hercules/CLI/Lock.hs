@@ -6,7 +6,7 @@
 module Hercules.CLI.Lock (commandParser) where
 
 import Control.Monad.IO.Unlift (UnliftIO (UnliftIO), askUnliftIO)
-import Control.Retry (RetryPolicyM, RetryStatus, capDelay, fullJitterBackoff, retrying, rsIterNumber)
+import Control.Retry (retrying)
 import Data.Aeson.Encode.Pretty (encodePretty)
 import Data.Has (Has)
 import Data.IORef (IORef)
@@ -25,12 +25,11 @@ import Hercules.API.State.StateLockAcquireResponse (StateLockAcquireResponse (Ac
 import qualified Hercules.API.State.StateLockAcquireResponse as StateLockAcquireResponse
 import qualified Hercules.API.State.StateLockLease as StateLockLease
 import qualified Hercules.API.State.StateLockUpdateRequest as StateLockUpdateRequest
-import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, clientErrorSummary, determineDefaultApiBaseUrl, runHerculesClientEither, shouldRetryClientError, shouldRetryResponse, stateClient)
+import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDefaultApiBaseUrl, retryOnFail, stateClient, waitRetryPolicy)
 import Hercules.CLI.Common (runAuthenticated)
 import Hercules.CLI.Options (mkCommand)
 import Hercules.CLI.Project (projectOption)
 import Hercules.CLI.State (getProjectAndClient)
-import Hercules.Error (escalate)
 import Hercules.Frontend (mkLinks)
 import qualified Hercules.Frontend
 import qualified Network.URI
@@ -39,7 +38,6 @@ import qualified Options.Applicative as Optparse
 import Protolude
 import RIO (RIO)
 import Servant.Auth.Client (Token)
-import Servant.Client.Core (ClientError)
 import Servant.Client.Internal.HttpClient.Streaming (ClientM)
 import qualified System.Environment
 import qualified System.Process
@@ -173,44 +171,6 @@ runCommandParser = do
             (_ :: NoContent) <- retryOnFail "lock release" (deleteLockLease stateClient leaseId)
             putErrText "hci: lock released"
       liftIO $ exitWith exitCode
-
-simpleRetryPredicate :: (Applicative m) => (r -> Bool) -> RetryStatus -> r -> m Bool
-simpleRetryPredicate f _rs r = pure (f r)
-
-retryOnFail ::
-  (NFData b, Has HerculesClientToken r, Has HerculesClientEnv r) =>
-  Text ->
-  (Token -> ClientM b) ->
-  RIO r b
-retryOnFail shortDesc req = escalate =<< retryOnFailEither shortDesc req
-
-retryOnFailEither ::
-  (NFData a, Has HerculesClientToken r, Has HerculesClientEnv r) =>
-  Text ->
-  (Token -> ClientM a) ->
-  RIO r (Either ClientError a)
-retryOnFailEither shortDesc req =
-  retrying
-    failureRetryPolicy
-    (simpleRetryPredicate shouldRetryResponse)
-    ( \rs -> do
-        when (rsIterNumber rs /= 0) do
-          liftIO $ putErrText $ "hci: " <> shortDesc <> " retrying."
-        r <- runHerculesClientEither req
-        for_ (leftToMaybe r) \e -> do
-          liftIO $ putErrText $ "hci: " <> shortDesc <> " encountered " <> clientErrorSummary e <> "."
-          when (shouldRetryClientError e) do
-            liftIO $ putErrText $ "hci: " <> shortDesc <> " will retry."
-        pure r
-    )
-
--- NB: fullJitterBackoff is broken, https://github.com/Soostone/retry/issues/46
-failureRetryPolicy :: (MonadIO m) => RetryPolicyM m
-failureRetryPolicy = capDelay (120 * 1000 * 1000) (fullJitterBackoff 100000)
-
--- NB: fullJitterBackoff is broken, https://github.com/Soostone/retry/issues/46
-waitRetryPolicy :: (MonadIO m) => RetryPolicyM m
-waitRetryPolicy = capDelay (10 * 1000 * 1000) (fullJitterBackoff 500000)
 
 tryAcquire ::
   (Has HerculesClientToken r, Has HerculesClientEnv r) =>
