@@ -14,7 +14,6 @@ module Hercules.CLI.Client
     HerculesClientToken (..),
     HerculesClientEnv,
     runHerculesClient,
-    runHerculesClientEither,
     runHerculesClientStream,
 
     -- * Error handling
