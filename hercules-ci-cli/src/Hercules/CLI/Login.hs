@@ -26,7 +26,7 @@ commandParser = pure do
   username <- getLoginName
   clientEnv <- Hercules.CLI.Client.init
   runRIO ((), clientEnv) do
-    r <- runHerculesClient' do
+    r <- retryOnFailAnon "get authorization request" do
       Accounts.postCLIAuthorizationRequest
         accountsClient
         CLIAuthorizationRequestCreate
@@ -38,7 +38,7 @@ commandParser = pure do
     let tmpTok = CLIAuthorizationRequestCreateResponse.temporaryCLIToken r
         -- TODO do something pretty with 404
         pollLoop = do
-          s <- runHerculesClient' do
+          s <- retryOnFailAnon "check authorization request status" do
             Accounts.getCLIAuthorizationRequestStatus accountsClient tmpTok
           case CLIAuthorizationRequestStatus.status s of
             CLIAuthorizationRequestStatus.Pending {} -> do
