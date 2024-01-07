@@ -1,5 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -O0 #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -19,6 +20,7 @@ module Hercules.CLI.Client
 
     -- * Error handling
     retryOnFail,
+    retryStreamOnFail,
     shouldRetryClientError,
     clientErrorSummary,
     shouldRetryResponse,
@@ -60,6 +62,7 @@ import Servant.Client.Generic (AsClientT)
 import Servant.Client.Streaming (ClientM, responseStatusCode, showBaseUrl)
 import qualified Servant.Client.Streaming
 import qualified System.Environment
+import qualified UnliftIO
 import UnliftIO.Retry (RetryPolicyM, RetryStatus, capDelay, fullJitterBackoff, retrying, rsIterNumber)
 
 -- | Bad instance to make it the client for State api compile. GHC seems to pick
@@ -231,17 +234,24 @@ clientErrorSummary (ClientError.ConnectionError e) = "connection error: " <> sho
 simpleRetryPredicate :: (Applicative m) => (r -> Bool) -> RetryStatus -> r -> m Bool
 simpleRetryPredicate f _rs r = pure (f r)
 
+retryStreamOnFail ::
+  (Has HerculesClientToken r, Has HerculesClientEnv r) =>
+  Text ->
+  (Token -> ClientM b) ->
+  (Either ClientError b -> IO c) ->
+  RIO r c
+retryStreamOnFail shortDesc req handler = escalate =<< retryOnFailEither shortDesc (UnliftIO.try (runHerculesClientStream req handler))
+
 retryOnFail ::
   (NFData b, Has HerculesClientToken r, Has HerculesClientEnv r) =>
   Text ->
   (Token -> ClientM b) ->
   RIO r b
-retryOnFail shortDesc req = escalate =<< retryOnFailEither shortDesc req
+retryOnFail shortDesc req = escalate =<< retryOnFailEither shortDesc (runHerculesClientEither req)
 
 retryOnFailEither ::
-  (NFData a, Has HerculesClientToken r, Has HerculesClientEnv r) =>
   Text ->
-  (Token -> ClientM a) ->
+  RIO r (Either ClientError a) ->
   RIO r (Either ClientError a)
 retryOnFailEither shortDesc req =
   retrying
@@ -250,7 +260,7 @@ retryOnFailEither shortDesc req =
     ( \rs -> do
         when (rsIterNumber rs /= 0) do
           liftIO $ putErrText $ "hci: " <> shortDesc <> " retrying."
-        r <- runHerculesClientEither req
+        r <- req
         for_ (leftToMaybe r) \e -> do
           liftIO $ putErrText $ "hci: " <> shortDesc <> " encountered " <> clientErrorSummary e <> "."
           when (shouldRetryClientError e) do
