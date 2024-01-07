@@ -1,9 +1,38 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -O0 #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Hercules.CLI.Client where
+module Hercules.CLI.Client
+  ( -- * Setup
+    determineDefaultApiBaseUrl,
+    init,
+
+    -- * Using the client
+    HerculesClientToken (..),
+    HerculesClientEnv,
+    runHerculesClient,
+    runHerculesClient',
+    runHerculesClientEither,
+    runHerculesClientStream,
+
+    -- * Error handling
+    retryOnFail,
+    shouldRetryClientError,
+    clientErrorSummary,
+    shouldRetryResponse,
+    waitRetryPolicy,
+    dieWithHttpError,
+    prettyPrintHttpErrors,
+
+    -- * Client function groups
+    accountsClient,
+    projectsClient,
+    reposClient,
+    stateClient,
+  )
+where
 
 -- TODO https://github.com/haskell-servant/servant/issues/986
 
@@ -31,6 +60,7 @@ import Servant.Client.Generic (AsClientT)
 import Servant.Client.Streaming (ClientM, responseStatusCode, showBaseUrl)
 import qualified Servant.Client.Streaming
 import qualified System.Environment
+import UnliftIO.Retry (RetryPolicyM, RetryStatus, capDelay, fullJitterBackoff, retrying, rsIterNumber)
 
 -- | Bad instance to make it the client for State api compile. GHC seems to pick
 -- the wrong overlappable instance.
@@ -197,3 +227,41 @@ clientErrorSummary ClientError.DecodeFailure {} = "decode failure"
 clientErrorSummary ClientError.UnsupportedContentType {} = "unsupported content type"
 clientErrorSummary ClientError.InvalidContentTypeHeader {} = "invalid content type header"
 clientErrorSummary (ClientError.ConnectionError e) = "connection error: " <> show e
+
+simpleRetryPredicate :: (Applicative m) => (r -> Bool) -> RetryStatus -> r -> m Bool
+simpleRetryPredicate f _rs r = pure (f r)
+
+retryOnFail ::
+  (NFData b, Has HerculesClientToken r, Has HerculesClientEnv r) =>
+  Text ->
+  (Token -> ClientM b) ->
+  RIO r b
+retryOnFail shortDesc req = escalate =<< retryOnFailEither shortDesc req
+
+retryOnFailEither ::
+  (NFData a, Has HerculesClientToken r, Has HerculesClientEnv r) =>
+  Text ->
+  (Token -> ClientM a) ->
+  RIO r (Either ClientError a)
+retryOnFailEither shortDesc req =
+  retrying
+    failureRetryPolicy
+    (simpleRetryPredicate shouldRetryResponse)
+    ( \rs -> do
+        when (rsIterNumber rs /= 0) do
+          liftIO $ putErrText $ "hci: " <> shortDesc <> " retrying."
+        r <- runHerculesClientEither req
+        for_ (leftToMaybe r) \e -> do
+          liftIO $ putErrText $ "hci: " <> shortDesc <> " encountered " <> clientErrorSummary e <> "."
+          when (shouldRetryClientError e) do
+            liftIO $ putErrText $ "hci: " <> shortDesc <> " will retry."
+        pure r
+    )
+
+-- NB: fullJitterBackoff is not what it says it is: https://github.com/Soostone/retry/issues/46
+failureRetryPolicy :: (MonadIO m) => RetryPolicyM m
+failureRetryPolicy = capDelay (120 * 1000 * 1000) (fullJitterBackoff 100000)
+
+-- NB: fullJitterBackoff is not what it says it is: https://github.com/Soostone/retry/issues/46
+waitRetryPolicy :: (MonadIO m) => RetryPolicyM m
+waitRetryPolicy = capDelay (10 * 1000 * 1000) (fullJitterBackoff 500000)
