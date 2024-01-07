@@ -16,7 +16,7 @@ import Hercules.Agent.NixFile (getVirtualValueByPath)
 import qualified Hercules.Agent.NixFile.GitSource as GitSource
 import Hercules.Agent.NixFile.HerculesCIArgs (CISystems (CISystems), HerculesCIArgs)
 import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
-import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDefaultApiBaseUrl, runHerculesClient)
+import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDefaultApiBaseUrl, retryOnFail)
 import Hercules.CLI.Common (runAuthenticated)
 import Hercules.CLI.Git (getGitRoot, getRef, getRev, getUpstreamURL, guessForgeTypeFromURL)
 import Hercules.CLI.Options (scanOption)
@@ -75,7 +75,7 @@ resolveInputs uio evalState projectMaybe inputs = do
       resolveInput _name (SiblingInput input) = unliftIO uio do
         let resourceClient = projectResourceClientByPath (projectPath {projectPathProject = InputDeclaration.project input})
             jobNames = []
-        immutableGitInput <- runHerculesClient (getJobSource resourceClient (InputDeclaration.ref input) jobNames)
+        immutableGitInput <- retryOnFail "get job source" (getJobSource resourceClient (InputDeclaration.ref input) jobNames)
         liftIO $ mkImmutableGitInputFlakeThunk evalState immutableGitInput
       resolveInput _name InputDeclaration.BogusInput {} = panic "resolveInput: not implemented yet"
   inputs
