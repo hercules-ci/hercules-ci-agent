@@ -9,13 +9,14 @@ import Data.Aeson
     genericToEncoding,
     genericToJSON,
   )
+import Data.OpenApi qualified as O3
 import Hercules.API.Inputs.ImmutableGitInput
 import Hercules.API.Prelude
 
 data ImmutableInput
   = GitInput ImmutableGitInput
   | IgnoreMe ()
-  deriving (Generic, Show, Eq, NFData, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToSchema, O3.ToSchema)
 
 instance FromJSON ImmutableInput where
   parseJSON = genericParseJSON schemaCompatibleOptions

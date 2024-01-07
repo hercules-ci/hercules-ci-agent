@@ -16,7 +16,7 @@ data EffectEvent
   | Failed EffectEventFailed
   | Succeeded EffectEventSucceeded
   | Cancelled EffectEventCancelled
-  deriving (Generic, Show, Eq, NFData, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToSchema, O3.ToSchema)
 
 instance FromJSON EffectEvent where
   parseJSON = genericParseJSON schemaCompatibleOptions

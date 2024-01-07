@@ -63,3 +63,6 @@ invmap _ _ = Proxy
 
 instance forall k (a :: k). (Typeable a, Typeable k) => O3.ToSchema (Name a) where
   declareNamedSchema = O3.declareNamedSchema . invmap nameText
+
+instance O3.ToParamSchema (Name a) where
+  toParamSchema = O3.toParamSchema . invmap nameText

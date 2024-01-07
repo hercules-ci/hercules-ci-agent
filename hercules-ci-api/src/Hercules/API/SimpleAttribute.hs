@@ -7,6 +7,7 @@ module Hercules.API.SimpleAttribute
   )
 where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Prelude
 import Prelude ()
 
@@ -19,6 +20,8 @@ data SimpleAttribute a = SimpleAttribute
   deriving anyclass (NFData, FromJSON, ToJSON)
 
 deriving instance (ToSchema a) => ToSchema (SimpleAttribute a)
+
+deriving instance (O3.ToSchema a) => O3.ToSchema (SimpleAttribute a)
 
 deriving instance Functor SimpleAttribute
 

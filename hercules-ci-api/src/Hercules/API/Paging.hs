@@ -3,6 +3,7 @@
 
 module Hercules.API.Paging where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Prelude
 
 -- To be used in newtypes only; otherwise the schema will have colliding
@@ -16,3 +17,5 @@ data PagedResponse a = PagedResponse
   deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON)
 
 deriving instance (ToSchema a) => ToSchema (PagedResponse a)
+
+deriving instance (O3.ToSchema a) => O3.ToSchema (PagedResponse a)

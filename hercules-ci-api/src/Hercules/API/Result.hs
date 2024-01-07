@@ -16,6 +16,7 @@ import Data.Aeson
     genericToEncoding,
     genericToJSON,
   )
+import Data.OpenApi qualified as O3
 import Data.Profunctor
   ( Profunctor,
     dimap,
@@ -29,6 +30,8 @@ data Result e a
   deriving (Generic, Show, Read, Eq, Ord, NFData, Functor, Foldable, Traversable)
 
 deriving instance (ToSchema e, ToSchema a) => ToSchema (Result e a)
+
+deriving instance (O3.ToSchema e, O3.ToSchema a) => O3.ToSchema (Result e a)
 
 -- many more typeclasses can be implemented
 instance (FromJSON e, FromJSON a) => FromJSON (Result e a) where

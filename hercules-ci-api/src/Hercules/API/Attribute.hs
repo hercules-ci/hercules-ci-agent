@@ -52,6 +52,8 @@ instance (FromJSON a) => FromJSON (Attribute a) where
 
 deriving instance (ToSchema a) => ToSchema (Attribute a)
 
+deriving instance (O3.ToSchema a) => O3.ToSchema (Attribute a)
+
 deriving instance Functor Attribute
 
 deriving instance Foldable Attribute
@@ -72,6 +74,9 @@ instance ToParamSchema AttributePath where
 
 instance ToHttpApiData AttributePath where
   toUrlPiece = toUrlPiece . attributePathToString . fromAttributePath
+
+instance O3.ToParamSchema AttributePath where
+  toParamSchema _ = O3.toParamSchema (Proxy :: Proxy Text)
 
 ----------------------------------------
 

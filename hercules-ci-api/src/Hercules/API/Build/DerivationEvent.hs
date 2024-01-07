@@ -24,7 +24,7 @@ data DerivationEvent
   | Built DerivationEventBuilt
   | HasCancelled DerivationEventHasCancelled
   | HasCancelledForReset DerivationEventHasCancelledForReset
-  deriving (Generic, Show, Eq, NFData, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToSchema, O3.ToSchema)
 
 instance FromJSON DerivationEvent where
   parseJSON = genericParseJSON schemaCompatibleOptions

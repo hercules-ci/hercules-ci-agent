@@ -22,6 +22,7 @@ where
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Maybe (fromJust)
+import qualified Data.OpenApi as O3
 import Data.Swagger (ToSchema)
 import qualified Data.Time
 import GHC.Generics (Generic)
@@ -29,7 +30,7 @@ import Prelude (Eq, Integral, Maybe (..), Num (..), Show, mod)
 
 -- | Day of week representation used in the API.
 data DayOfWeek = Mon | Tue | Wed | Thu | Fri | Sat | Sun
-  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 -- | Conversion to @time@ package representation.
 toTime :: DayOfWeek -> Data.Time.DayOfWeek
