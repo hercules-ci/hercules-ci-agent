@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE PolyKinds #-}
 
@@ -22,7 +23,8 @@ import Prelude
 
 -- | A slug. Display names are simply 'Text'.
 newtype Name (a :: k) = Name {nameText :: Text}
-  deriving (Generic, Eq, Ord, NFData)
+  deriving (Generic, Eq, Ord)
+  deriving newtype (NFData)
 
 instance Hashable (Name a)
 

@@ -102,11 +102,6 @@ newtype HerculesClientEnv = HerculesClientEnv Servant.Client.ClientEnv
 
 newtype HerculesClientToken = HerculesClientToken Token
 
-runHerculesClient :: (NFData a, Has HerculesClientToken r, Has HerculesClientEnv r) => (Token -> Servant.Client.Streaming.ClientM a) -> RIO r a
-runHerculesClient f = do
-  HerculesClientToken token <- asks getter
-  runHerculesClient' $ f token
-
 runHerculesClientEither :: (NFData a, Has HerculesClientToken r, Has HerculesClientEnv r) => (Token -> Servant.Client.Streaming.ClientM a) -> RIO r (Either Servant.Client.Streaming.ClientError a)
 runHerculesClientEither f = do
   HerculesClientToken token <- asks getter
