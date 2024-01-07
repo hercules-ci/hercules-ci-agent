@@ -1,9 +1,14 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Hercules.CLI.State (commandParser, getProjectAndClient) where
 
-import Conduit (mapC, runConduitRes, sinkFile, stdoutC, (.|))
+import Conduit (mapC, runConduitRes, sinkLazyBuilder, (.|))
+import qualified Data.ByteString.Builder as BB
+import qualified Data.ByteString.Lazy as BL
 import Data.Has (Has)
 import Hercules.API (ClientAuth, NoContent, enterApiE)
 import Hercules.API.Name (Name (Name))
@@ -17,7 +22,8 @@ import qualified Options.Applicative as Optparse
 import Protolude
 import RIO (RIO)
 import qualified RIO.ByteString as BS
-import Servant.API (Headers (Headers), fromSourceIO, toSourceIO)
+import Servant.API (HList (HCons), Headers (Headers), ResponseHeader (Header), fromSourceIO)
+import Servant.Client (ClientError (ConnectionError))
 import Servant.Client.Generic (AsClientT)
 import Servant.Client.Internal.HttpClient.Streaming (ClientM)
 import Servant.Conduit ()
@@ -44,13 +50,22 @@ getCommandParser = do
     runAuthenticated do
       projectStateClient <- getProjectAndClient projectMaybe
       -- TODO: version
-      runHerculesClientStream (getStateData projectStateClient name versionMaybe) \case
-        Left e -> dieWithHttpError e
-        Right (Headers r _) -> do
-          runConduitRes $
-            fromSourceIO r .| mapC fromRawBytes .| case file of
-              "-" -> stdoutC
-              _ -> sinkFile file
+      bytes <- retryStreamOnFail "state get" (\token -> getStateData projectStateClient name versionMaybe token) \case
+        Left e -> throwIO e
+        Right (Headers stream headers) -> do
+          bl <- runConduitRes $ fromSourceIO stream .| mapC (BB.byteString . fromRawBytes) .| sinkLazyBuilder
+          let lenH :: ResponseHeader "Content-Length" Integer
+              lenH `HCons` _ = headers
+              actual = fromIntegral $ BL.length bl
+          case lenH of
+            Header expected ->
+              when (actual /= expected) do
+                throwIO $ ConnectionError $ toException $ FatalError $ "Expected " <> show expected <> " bytes, but got " <> show actual
+            _ -> pass
+          pure (BL.toStrict bl)
+      case file of
+        "-" -> BS.putStr bytes
+        _ -> BS.writeFile file bytes
 putCommandParser = do
   projectMaybe <- optional projectOption
   name <- nameOption
