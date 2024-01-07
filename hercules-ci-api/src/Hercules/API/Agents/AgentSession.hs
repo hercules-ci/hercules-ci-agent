@@ -3,6 +3,7 @@
 
 module Hercules.API.Agents.AgentSession where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Agents.ClusterJoinToken
   ( ClusterJoinToken,
   )
@@ -29,4 +30,4 @@ data AgentSession = AgentSession
     labels :: Labels
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

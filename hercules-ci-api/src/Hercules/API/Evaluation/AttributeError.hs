@@ -3,6 +3,7 @@
 
 module Hercules.API.Evaluation.AttributeError where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Prelude
 
 data AttributeError = AttributeError
@@ -14,4 +15,4 @@ data AttributeError = AttributeError
     trace :: Maybe Text
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

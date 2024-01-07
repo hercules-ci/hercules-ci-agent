@@ -3,6 +3,7 @@
 
 module Hercules.API.State.StateVersion where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Prelude
 import Hercules.API.Projects.Job (Job)
@@ -22,4 +23,4 @@ data StateVersion = StateVersion
     size :: Maybe Int
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

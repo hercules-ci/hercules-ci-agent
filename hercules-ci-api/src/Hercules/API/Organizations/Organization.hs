@@ -3,6 +3,7 @@
 
 module Hercules.API.Organizations.Organization where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.BillingStatus qualified as BillingStatus
 import Hercules.API.Prelude
 
@@ -17,4 +18,4 @@ data Organization = Organization
     subscriptionUpdateUrl :: Maybe Text
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

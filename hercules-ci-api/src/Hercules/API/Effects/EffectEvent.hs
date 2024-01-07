@@ -6,6 +6,7 @@
 module Hercules.API.Effects.EffectEvent where
 
 import Data.Aeson.Types (FromJSON (..), ToJSON (..), genericParseJSON, genericToEncoding, genericToJSON)
+import Data.OpenApi qualified as O3
 import Hercules.API.Prelude
 
 data EffectEvent
@@ -37,13 +38,13 @@ data EffectEventQueued = EffectEventQueued
   { time :: UTCTime
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data EffectEventDependencyFailed = EffectEventDependencyFailed
   { time :: UTCTime
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data EffectEventStarted = EffectEventStarted
   { time :: UTCTime,
@@ -52,29 +53,29 @@ data EffectEventStarted = EffectEventStarted
     agentVersion :: Text
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data EffectEventReset = EffectEventReset
   { time :: UTCTime
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data EffectEventFailed = EffectEventFailed
   { time :: UTCTime,
     technicalError :: Maybe Text
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data EffectEventSucceeded = EffectEventSucceeded
   { time :: UTCTime
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data EffectEventCancelled = EffectEventCancelled
   { time :: UTCTime
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

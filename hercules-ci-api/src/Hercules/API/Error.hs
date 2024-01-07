@@ -3,6 +3,7 @@
 
 module Hercules.API.Error where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Prelude
 
 -- | General error type used in (some) HTTP error response bodies and in some
@@ -15,4 +16,4 @@ data Error = Error
     message :: Text
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

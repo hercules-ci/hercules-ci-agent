@@ -3,6 +3,7 @@
 
 module Hercules.API.Build.DerivationInfo where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Build.DerivationEvent (DerivationEvent)
 import Hercules.API.Build.DerivationInfo.DerivationInput (DerivationInput)
 import Hercules.API.Build.DerivationInfo.DerivationOutput (DerivationOutput)
@@ -26,4 +27,4 @@ data DerivationInfo = DerivationInfo
     dummy :: Maybe DerivationEvent -- TODO: remove and update/fix codegen
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

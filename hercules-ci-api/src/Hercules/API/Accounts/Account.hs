@@ -3,17 +3,18 @@
 
 module Hercules.API.Accounts.Account where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Forge.Forge (Forge)
 import Hercules.API.Organizations.Organization qualified as Organization
 import Hercules.API.Prelude
 
 data AccountType = User | Organization
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data MembershipRole = Member | Admin
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data Account = Account
   { id :: Id Account,
@@ -43,4 +44,4 @@ data Account = Account
     installationIsSelection :: Maybe Bool
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

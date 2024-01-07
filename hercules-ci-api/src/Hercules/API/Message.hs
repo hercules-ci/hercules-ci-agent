@@ -3,6 +3,7 @@
 
 module Hercules.API.Message where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Prelude
 
 data Message = Message
@@ -11,7 +12,7 @@ data Message = Message
     message :: Text
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data Type
   = -- | Something went wrong, inform user about possible
@@ -27,4 +28,4 @@ data Type
     -- abstraction.
     Trace
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

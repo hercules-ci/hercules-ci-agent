@@ -11,6 +11,7 @@ module Hercules.API.Build.EvaluationDiff
   )
 where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Attribute (Attribute)
 import Hercules.API.Derivation (Derivation)
 import Hercules.API.Evaluation.AttributeError (AttributeError)
@@ -36,22 +37,22 @@ deriving instance (ToSchema a) => ToSchema (Diff a)
 
 newtype AttributeDiff = AttributeDiff (SimpleAttribute AttributeValueDiff)
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 newtype AttributeValueDiff = AttributeValueDiff (Diff (Attribute (Result AttributeError Derivation)))
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 newtype IFDDiff = IFDDiff (Diff DerivationOutputNamePair)
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data DerivationOutputNamePair = DerivationOutputNamePair
   { derivation :: Derivation,
     outputName :: Text
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data EvaluationDiff = EvaluationDiff
   { beforeId :: Id Evaluation,
@@ -60,4 +61,4 @@ data EvaluationDiff = EvaluationDiff
     ifds :: [IFDDiff]
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

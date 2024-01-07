@@ -16,6 +16,7 @@ import Control.Lens (at, (%~))
 import Data.Aeson qualified as A
 import Data.Aeson.Lens
 import Data.Function ((&))
+import Data.OpenApi qualified as O3
 import Data.Proxy (Proxy (Proxy))
 import Data.Swagger (ToParamSchema (..))
 import Data.Text qualified as T
@@ -30,7 +31,7 @@ data AttributeType
   | DependenciesOnly
   | Effect
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 -- | An arbitrary ordering
 deriving instance Ord AttributeType

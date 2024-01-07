@@ -3,6 +3,7 @@
 
 module Hercules.API.Projects.Project where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Accounts.SimpleAccount (SimpleAccount)
 import Hercules.API.Forge.Forge (Forge)
@@ -27,4 +28,4 @@ data Project = Project
     isPublic :: Bool
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

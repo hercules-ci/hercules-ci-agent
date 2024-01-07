@@ -3,6 +3,7 @@
 
 module Hercules.API.Repos.SimpleRepo where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Accounts.SimpleAccount (SimpleAccount)
 import Hercules.API.Prelude
 import Hercules.API.Repos.Repo (Repo)
@@ -16,4 +17,4 @@ data SimpleRepo = SimpleRepo
     isPublic :: Bool
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
