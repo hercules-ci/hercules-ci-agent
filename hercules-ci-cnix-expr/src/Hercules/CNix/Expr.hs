@@ -311,9 +311,13 @@ addAllowedPath evalState path =
   [C.throwBlock| void {
     std::string path = std::string($bs-ptr:path, $bs-len:path);
     EvalState &evalState = *$(EvalState *evalState);
+#if NIX_IS_AT_LEAST(2,20,0)
+    evalState.allowPath(path);
+#else
     if (evalState.allowedPaths) {
       evalState.allowedPaths->insert(path);
     }
+#endif
   }|]
 
 addInternalAllowedPaths :: Ptr EvalState -> IO ()

@@ -64,6 +64,28 @@ public:
   virtual void addToStore(const ValidPathInfo & info, Source & narSource,
       RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs) override;
 
+#if NIX_IS_AT_LEAST(2,20,0)
+
+    virtual StorePath addToStore(
+        std::string_view name,
+        SourceAccessor & accessor,
+        const CanonPath & path,
+        ContentAddressMethod method = FileIngestionMethod::Recursive,
+        HashAlgorithm hashAlgo = HashAlgorithm::SHA256,
+        const StorePathSet & references = StorePathSet(),
+        PathFilter & filter = defaultPathFilter,
+        RepairFlag repair = NoRepair) override;
+
+    virtual StorePath addToStoreFromDump(
+        Source & dump,
+        std::string_view name,
+        ContentAddressMethod method = FileIngestionMethod::Recursive,
+        HashAlgorithm hashAlgo = HashAlgorithm::SHA256,
+        const StorePathSet & references = StorePathSet(),
+        RepairFlag repair = NoRepair) override;
+
+
+#else // < 2.20
   virtual StorePath addToStore(
 #if NIX_IS_AT_LEAST(2,7,0)
       std::string_view name,
@@ -100,6 +122,8 @@ public:
     const std::string & name, const std::string & s,
 #endif
     const StorePathSet & references, RepairFlag repair = NoRepair) override;
+
+#endif // < 2.20
 
   virtual void narFromPath(const StorePath & path, Sink & sink) override;
 
