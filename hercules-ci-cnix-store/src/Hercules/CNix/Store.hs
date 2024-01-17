@@ -496,6 +496,21 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
 
                         const Hash & hash = dof.ca.hash;
 
+#if NIX_IS_AT_LEAST(2, 20, 0)
+                        switch (hash.algo) {
+                          case HashAlgorithm::MD5:
+                            hashType = 0;
+                            break;
+                          case HashAlgorithm::SHA1:
+                            hashType = 1;
+                            break;
+                          case HashAlgorithm::SHA256:
+                            hashType = 2;
+                            break;
+                          case HashAlgorithm::SHA512:
+                            hashType = 3;
+                            break;
+#else
                         switch (hash.type) {
                           case htMD5:
                             hashType = 0;
@@ -509,6 +524,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                           case htSHA512:
                             hashType = 3;
                             break;
+#endif
                           default:
                             hashType = -1;
                             break;
@@ -540,6 +556,21 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                             fim = -1;
                           }
                         }, dof.method.raw);
+#if NIX_IS_AT_LEAST(2, 20, 0)
+                        switch (dof.hashAlgo) {
+                          case HashAlgorithm::MD5:
+                            hashType = 0;
+                            break;
+                          case HashAlgorithm::SHA1:
+                            hashType = 1;
+                            break;
+                          case HashAlgorithm::SHA256:
+                            hashType = 2;
+                            break;
+                          case HashAlgorithm::SHA512:
+                            hashType = 3;
+                            break;
+#else
                         switch (dof.hashType) {
                           case htMD5:
                             hashType = 0;
@@ -553,6 +584,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                           case htSHA512:
                             hashType = 3;
                             break;
+#endif
                           default:
                             hashType = -1;
                             break;
@@ -1014,7 +1046,14 @@ signPath (Store store) secretKey (StorePath path) =
 
     auto info2(*currentInfo);
     info2.sigs.clear();
+#if NIX_IS_AT_LEAST(2, 20, 0)
+    {
+      auto signer = std::make_unique<LocalSigner>(SecretKey { secretKey });
+      info2.sign(*store, *signer);
+    }
+#else
     info2.sign(*store, secretKey);
+#endif
     assert(!info2.sigs.empty());
     auto sig = *info2.sigs.begin();
 
@@ -1087,7 +1126,9 @@ validPathInfoNarHash32 :: ForeignPtr (Ref ValidPathInfo) -> IO ByteString
 validPathInfoNarHash32 vpi =
   unsafePackMallocCString
     =<< [C.block| const char *{
-#if NIX_IS_AT_LEAST(2,19,0)
+#if NIX_IS_AT_LEAST(2,20,0)
+      std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::HashFormat::Nix32, true));
+#elif NIX_IS_AT_LEAST(2,19,0)
       std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::HashFormat::Base32, true));
 #else
       std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::Base32, true));
