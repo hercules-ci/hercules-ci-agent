@@ -1092,8 +1092,8 @@ validPathInfoNarHash32 vpi =
 #else
       std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::Base32, true));
 #endif
-      return strdup(s.c_str()); }
-    |]
+      return strdup(s.c_str());
+    }|]
 
 -- | Deriver field of a ValidPathInfo struct. Source: store-api.hh
 validPathInfoDeriver :: Store -> ForeignPtr (Ref ValidPathInfo) -> IO (Maybe StorePath)
