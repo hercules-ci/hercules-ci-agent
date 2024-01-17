@@ -7,10 +7,10 @@
   inputs.haskell-flake.url = "github:srid/haskell-flake/0.3.0";
 
   # Optional. Omit to use nixpkgs' nix
-  # inputs.nix = {
-  #   url = "github:NixOS/nix/master";
-  #   inputs.nixpkgs.follows = "nixpkgs";
-  # };
+  inputs.nix = {
+    url = "github:NixOS/nix/master";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
 
   outputs = inputs@{ self, nixpkgs, flake-parts, ... }:
     let
