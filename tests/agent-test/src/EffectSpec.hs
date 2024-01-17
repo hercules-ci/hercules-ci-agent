@@ -195,6 +195,61 @@ spec = describe "Effect" do
     -- void $ shouldBeJust $ entries & find \case LogEntry.Result { msg = m } | m == "log line without newline\r" -> True; _noMatch -> False
     pass
 
+  it "alternate effect works" $ \srv -> do
+    -- Setup: put the drv in the agent's store
+    id <- randomId
+    (s, r) <-
+      runEval
+        srv
+        ( fixupInputs
+            defaultEvalTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/effect-alternate" <> "n" =: "/tarball/nixpkgs",
+                EvaluateTask.autoArguments =
+                  M.singleton
+                    "nixpkgs"
+                    (EvaluateTask.SubPathOf "n" Nothing),
+                EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                EvaluateTask.selector = EvaluateTask.OnPush $ EvaluateTask.OnPush.MkOnPush {name = "cd", inputs = "nixpkgs" =: ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")}
+              }
+        )
+    s `shouldBe` TaskStatus.Successful ()
+    drvPath <-
+      case attrLike r of
+        [EvaluateEvent.AttributeEffect ev] -> do
+          let drvPath = AttributeEffectEvent.derivationPath ev
+          AttributeEffectEvent.expressionPath ev `shouldBe` ["effects", "launchIt"]
+          toS drvPath `shouldContain` "/nix/store"
+          pure drvPath
+        attrEvs -> do
+          putText "All events:"
+          printErrItems r
+          failWith $ "Events should be a single attribute, not: " <> show attrEvs
+    -- Test: launch it
+    id2 <- randomId
+    entries <-
+      runEffectSucceed
+        srv
+        "effect-alternate"
+        ( EffectTask.EffectTask
+            { id = id2,
+              derivationPath = drvPath,
+              logToken = "will-be-replaced",
+              inputDerivationOutputPaths = [],
+              token = "dummy-jwt",
+              projectId = Id $ Prelude.read "00000000-0000-0000-0000-000000001234",
+              projectPath = "github/test-fake-owner/test-fake-repo",
+              serverSecrets = mempty,
+              siteName = "test-fake-site",
+              ownerName = "test-fake-owner",
+              repoName = "repo-with-shared-data",
+              ref = "refs/heads/test-fake-branch",
+              isDefaultBranch = True
+            }
+        )
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "all good.\r" -> True; _noMatch -> False
+    pass
+
 shouldBeJust :: (HasCallStack) => Maybe a -> IO a
 shouldBeJust = withFrozenCallStack \case
   Nothing -> do

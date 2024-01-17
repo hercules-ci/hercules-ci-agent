@@ -39,7 +39,11 @@ data Config = Config
     environment :: Map Text Text,
     workingDirectory :: Text,
     hostname :: Text,
-    rootReadOnly :: Bool
+    rootReadOnly :: Bool,
+    virtualUID :: Int,
+    virtualGID :: Int,
+    hostUID :: Int,
+    hostGID :: Int
   }
 
 effectToOCIRuntimeSpec :: Config -> Value -> Value
@@ -67,6 +71,26 @@ effectToOCIRuntimeSpec config spec =
         & key "process" . key "terminal" .~ toJSON True
         & key "process" . key "env" .~ toJSON (config & environment & M.toList <&> \(k, v) -> k <> "=" <> v)
         & key "process" . key "cwd" .~ toJSON (config & workingDirectory)
+        & key "process" . key "user" . key "uid" .~ toJSON (virtualUID config)
+        & key "process" . key "user" . key "gid" .~ toJSON (virtualGID config)
+        & key "process" . key "user" . key "umask" .~ toJSON (0o077 :: Int)
+        & key "process" . key "user" . key "additionalGids" . _Array .~ V.fromList []
+        & key "linux" . _Object . at "uidMappings"
+          ?~ toJSON
+            [ object
+                [ ("containerID", toJSON (virtualUID config)),
+                  ("hostID", toJSON (hostUID config)),
+                  ("size", toJSON (1 :: Int))
+                ]
+            ]
+        & key "linux" . _Object . at "gidMappings"
+          ?~ toJSON
+            [ object
+                [ ("containerID", toJSON (virtualGID config)),
+                  ("hostID", toJSON (hostGID config)),
+                  ("size", toJSON (1 :: Int))
+                ]
+            ]
         & key "hostname" .~ toJSON (config & hostname)
         & key "root" . key "readonly" .~ toJSON (config & rootReadOnly)
         -- TODO Use slirp? e.g. https://github.com/rootless-containers/slirp4netns or might kernel offer bridging (in the future?)

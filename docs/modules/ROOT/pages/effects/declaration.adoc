@@ -26,6 +26,26 @@ Example:
 { "/etc/hosts": "hosts" }
 ```
 
+[[__hci_effect_virtual_uid]]
+=== `__hci_effect_virtual_uid`
+
+_Since hercules-ci-agent 0.10.1_
+
+Default: 0.
+
+The user id number presented to the effect process. This does not change the user id of the process on the host system.
+
+Some programs, including Nix, behave differently when run as UID 0. Set this attribute to a non-zero value to avoid that problem.
+
+[[__hci_effect_virtual_gid]]
+=== `__hci_effect_virtual_gid`
+
+_Since hercules-ci-agent 0.10.1_
+
+Default: 0.
+
+The group id, analogous to <<__hci_effect_virtual_uid>>.
+
 [[secretsMap]]
 === `secretsMap`
 
