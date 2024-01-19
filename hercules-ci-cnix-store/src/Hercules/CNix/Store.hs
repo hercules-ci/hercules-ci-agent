@@ -1103,6 +1103,45 @@ queryPathInfo (Store store) (StorePath path) = do
     }|]
   newForeignPtr finalizeRefValidPathInfo vpi
 
+-- | Query only the local client cache ("narinfo cache") - does not query the actual store or daemon.
+--
+-- Returns 'Nothing' if nothing is known about the path, or Nix < 2.20.
+-- Returns 'Just Nothing' if the path is known to not exist.
+-- Returns 'Just (Just vpi)' if the path is known to exist, with the given 'ValidPathInfo'.
+queryPathInfoFromClientCache ::
+  Store ->
+  StorePath ->
+  IO (Maybe (Maybe (ForeignPtr (Ref ValidPathInfo))))
+queryPathInfoFromClientCache (Store store) (StorePath path) =
+#if NIX_IS_AT_LEAST(2, 20, 0)
+  alloca \isKnownP -> do
+    mvpi <- [C.throwBlock| refValidPathInfo* {
+        ReceiveInterrupts _;
+        Store &store = **$(refStore* store);
+        StorePath &path = *$fptr-ptr:(nix::StorePath *path);
+        bool &isKnown = *$(bool* isKnownP);
+        std::optional<std::shared_ptr<const ValidPathInfo>> maybeVPI =
+            store.queryPathInfoFromClientCache(path);
+        if (!maybeVPI) {
+          isKnown = false;
+          return nullptr;
+        }
+        else {
+          isKnown = true;
+          std::shared_ptr<const ValidPathInfo> &vpi = *maybeVPI;
+          if (vpi)
+            return new refValidPathInfo(vpi);
+          else
+            return nullptr;
+        }
+      }|]
+    isKnown <- peek isKnownP <&> (/= 0)
+    for (guard isKnown) \_ -> do
+      mvpi & traverseNonNull (newForeignPtr finalizeRefValidPathInfo)
+#else
+  pure Nothing
+#endif
+
 finalizeRefValidPathInfo :: FinalizerPtr (Ref ValidPathInfo)
 {-# NOINLINE finalizeRefValidPathInfo #-}
 finalizeRefValidPathInfo =
