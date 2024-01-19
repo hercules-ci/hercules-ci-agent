@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE CPP #-}
 
 module Hercules.CLI.Options where
 
@@ -6,6 +7,9 @@ import qualified Data.Attoparsec.Text as A
 import qualified Data.Text as T
 import Options.Applicative hiding (helper)
 import qualified Options.Applicative as Optparse
+#if MIN_VERSION_hercules_ci_optparse_applicative(0, 18, 0)
+import Options.Applicative.Extra as Optparse hiding (helper)
+#endif
 import Protolude
 
 -- | Custom execParser that provides help text when input is incomplete.
