@@ -90,6 +90,12 @@ C.include "<nix/hash.hh>"
 
 #endif
 
+#if ! NIX_IS_AT_LEAST(2,20,0)
+
+C.include "<nix/nar-info-disk-cache.hh>"
+
+#endif
+
 C.using "namespace nix"
 
 forNonNull :: Applicative m => Ptr a -> (Ptr a -> m b) -> m (Maybe b)
@@ -1105,7 +1111,7 @@ queryPathInfo (Store store) (StorePath path) = do
 
 -- | Query only the local client cache ("narinfo cache") - does not query the actual store or daemon.
 --
--- Returns 'Nothing' if nothing is known about the path, or Nix < 2.20.
+-- Returns 'Nothing' if nothing is known about the path.
 -- Returns 'Just Nothing' if the path is known to not exist.
 -- Returns 'Just (Just vpi)' if the path is known to exist, with the given 'ValidPathInfo'.
 queryPathInfoFromClientCache ::
@@ -1139,7 +1145,38 @@ queryPathInfoFromClientCache (Store store) (StorePath path) =
     for (guard isKnown) \_ -> do
       mvpi & traverseNonNull (newForeignPtr finalizeRefValidPathInfo)
 #else
-  pure Nothing
+  alloca \isKnownP -> do
+    mvpi <- [C.throwBlock| refValidPathInfo* {
+        ReceiveInterrupts _;
+        Store &store = **$(refStore* store);
+        StorePath &path = *$fptr-ptr:(nix::StorePath *path);
+        bool &isKnown = *$(bool* isKnownP);
+
+        std::string uri = store.getUri();
+        ref<NarInfoDiskCache> cache = nix::getNarInfoDiskCache();
+
+        // std::pair<nix::NarInfoDiskCache::Outcome, std::shared_ptr<NarInfo>>
+        auto [outcome, maybeNarInfo] =
+          cache->lookupNarInfo(uri, std::string(path.hashPart()));
+
+        if (outcome == nix::NarInfoDiskCache::oValid) {
+          assert(maybeNarInfo);
+          isKnown = true;
+          return new refValidPathInfo(maybeNarInfo);
+        }
+        else if (outcome == nix::NarInfoDiskCache::oInvalid) {
+          isKnown = true;
+          return nullptr;
+        }
+        else {
+          // nix::NarInfoDiskCache::oUnknown or unexpected value
+          isKnown = false;
+          return nullptr;
+        }
+      }|]
+    isKnown <- peek isKnownP <&> (/= 0)
+    for (guard isKnown) \_ -> do
+      mvpi & traverseNonNull (newForeignPtr finalizeRefValidPathInfo)  
 #endif
 
 finalizeRefValidPathInfo :: FinalizerPtr (Ref ValidPathInfo)
