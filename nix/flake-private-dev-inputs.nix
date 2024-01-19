@@ -35,7 +35,7 @@ in
           pre-commit.settings.hooks.dev-private-narHash = {
             enable = true;
             description = "dev-private-narHash";
-            entry = "sh -c '${lib.getExe pkgs.nix} --extra-experimental-features nix-command hash path ${config.privateDevInputSubflakePath} >${narHashRelative}'";
+            entry = "sh -c '${lib.getExe' pkgs.nix "nix"} --extra-experimental-features nix-command hash path ${config.privateDevInputSubflakePath} >${narHashRelative}'";
             customStages = [ "flake-update" ];
           };
         };
