@@ -14,6 +14,10 @@
 #endif
 #include "HsFFI.h"
 
+#if NIX_IS_AT_LEAST(2,19,0)
+using FSAccessor = nix::SourceAccessor;
+#endif
+
 using namespace nix;
 
 class WrappingStore : public Store {
@@ -60,6 +64,28 @@ public:
   virtual void addToStore(const ValidPathInfo & info, Source & narSource,
       RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs) override;
 
+#if NIX_IS_AT_LEAST(2,20,0)
+
+    virtual StorePath addToStore(
+        std::string_view name,
+        SourceAccessor & accessor,
+        const CanonPath & path,
+        ContentAddressMethod method = FileIngestionMethod::Recursive,
+        HashAlgorithm hashAlgo = HashAlgorithm::SHA256,
+        const StorePathSet & references = StorePathSet(),
+        PathFilter & filter = defaultPathFilter,
+        RepairFlag repair = NoRepair) override;
+
+    virtual StorePath addToStoreFromDump(
+        Source & dump,
+        std::string_view name,
+        ContentAddressMethod method = FileIngestionMethod::Recursive,
+        HashAlgorithm hashAlgo = HashAlgorithm::SHA256,
+        const StorePathSet & references = StorePathSet(),
+        RepairFlag repair = NoRepair) override;
+
+
+#else // < 2.20
   virtual StorePath addToStore(
 #if NIX_IS_AT_LEAST(2,7,0)
       std::string_view name,
@@ -97,6 +123,8 @@ public:
 #endif
     const StorePathSet & references, RepairFlag repair = NoRepair) override;
 
+#endif // < 2.20
+
   virtual void narFromPath(const StorePath & path, Sink & sink) override;
 
   virtual void buildPaths(
@@ -127,7 +155,11 @@ public:
 
   virtual bool verifyStore(bool checkContents, RepairFlag repair = NoRepair) override;
 
+#if NIX_IS_AT_LEAST(2,19,0)
+  virtual ref<FSAccessor> getFSAccessor(bool requireValidPath) override;
+#else
   virtual ref<FSAccessor> getFSAccessor() override;
+#endif
 
   virtual void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 

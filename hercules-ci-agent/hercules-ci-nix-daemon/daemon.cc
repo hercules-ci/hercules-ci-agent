@@ -15,6 +15,10 @@
 
 using namespace nix;
 
+#if NIX_IS_AT_LEAST(2,19,0)
+#include <nix/signals.hh>
+#endif
+
 #if ! NIX_IS_AT_LEAST(2,15,0)
 using nix::daemon::TrustedFlag;
 using nix::daemon::NotTrusted;

@@ -246,5 +246,5 @@ restrictEval eval = do
       then allSchemes
       else safeSchemes
   where
-    safeSchemes = "ssh:// https://"
+    safeSchemes = "ssh:// https:// github: gitlab: sourcehut:"
     allSchemes = safeSchemes <> " http:// git://"

@@ -300,32 +300,38 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
         outputPath <- case output.derivationOutputPath of
           Nothing -> panic $ "derivation " <> drvPathText <> " does not have a predetermined path. Content addressed derivations are not supported yet."
           Just x -> pure x
-        -- TODO waitAny
-        any identity <$> forConcurrently (M.toList substituters) \(uri, substituter) -> do
-          exists <- withStoreQuery uri do
-            liftIO (CNix.isValidPath substituter outputPath)
-          if exists
-            then do
-              drvInfo <- liftIO (toDrvInfo substituter output)
-              emit $
-                EvaluateEvent.SubstitutionQueryResult
-                  SubstitutionQueryResult.SubstitutionQueryResult
-                    { storeURI = uri,
-                      derivation = drvPathText,
-                      outputName = decodeUtf8With lenientDecode outputName,
-                      outputInfo = Just (convertOutputInfo drvPathText drvInfo)
-                    }
-            else do
-              emit $
-                EvaluateEvent.SubstitutionQueryResult
-                  SubstitutionQueryResult.SubstitutionQueryResult
-                    { storeURI = uri,
-                      derivation = drvPathText,
-                      outputName = decodeUtf8With lenientDecode outputName,
-                      outputInfo = Nothing
-                    }
+        alreadyPositive <-
+          any (isJust . join) <$> for (M.toList substituters) \(uri, substituter) -> liftIO do
+            CNix.queryPathInfoFromClientCache substituter outputPath
+        if alreadyPositive
+          then pure True
+          else do
+            -- TODO waitAny
+            any identity <$> forConcurrently (M.toList substituters) \(uri, substituter) -> do
+              exists <- withStoreQuery uri do
+                liftIO (CNix.isValidPath substituter outputPath)
+              if exists
+                then do
+                  drvInfo <- liftIO (toDrvInfo substituter output)
+                  emit $
+                    EvaluateEvent.SubstitutionQueryResult
+                      SubstitutionQueryResult.SubstitutionQueryResult
+                        { storeURI = uri,
+                          derivation = drvPathText,
+                          outputName = decodeUtf8With lenientDecode outputName,
+                          outputInfo = Just (convertOutputInfo drvPathText drvInfo)
+                        }
+                else do
+                  emit $
+                    EvaluateEvent.SubstitutionQueryResult
+                      SubstitutionQueryResult.SubstitutionQueryResult
+                        { storeURI = uri,
+                          derivation = drvPathText,
+                          outputName = decodeUtf8With lenientDecode outputName,
+                          outputInfo = Nothing
+                        }
 
-          pure exists
+              pure exists
 
       storePathToText :: StorePath -> App Text
       storePathToText sp = do

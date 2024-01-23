@@ -78,7 +78,23 @@ C.include "<nix/worker-protocol.hh>"
 
 C.include "<nix/path-with-outputs.hh>"
 
+C.include "<nix/hash.hh>"
+
 C.include "hercules-ci-cnix/store.hxx"
+
+#if NIX_IS_AT_LEAST(2,19,0)
+
+C.include "<nix/signals.hh>"
+
+C.include "<nix/hash.hh>"
+
+#endif
+
+#if ! NIX_IS_AT_LEAST(2,20,0)
+
+C.include "<nix/nar-info-disk-cache.hh>"
+
+#endif
 
 C.using "namespace nix"
 
@@ -486,6 +502,21 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
 
                         const Hash & hash = dof.ca.hash;
 
+#if NIX_IS_AT_LEAST(2, 20, 0)
+                        switch (hash.algo) {
+                          case HashAlgorithm::MD5:
+                            hashType = 0;
+                            break;
+                          case HashAlgorithm::SHA1:
+                            hashType = 1;
+                            break;
+                          case HashAlgorithm::SHA256:
+                            hashType = 2;
+                            break;
+                          case HashAlgorithm::SHA512:
+                            hashType = 3;
+                            break;
+#else
                         switch (hash.type) {
                           case htMD5:
                             hashType = 0;
@@ -499,6 +530,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                           case htSHA512:
                             hashType = 3;
                             break;
+#endif
                           default:
                             hashType = -1;
                             break;
@@ -530,6 +562,21 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                             fim = -1;
                           }
                         }, dof.method.raw);
+#if NIX_IS_AT_LEAST(2, 20, 0)
+                        switch (dof.hashAlgo) {
+                          case HashAlgorithm::MD5:
+                            hashType = 0;
+                            break;
+                          case HashAlgorithm::SHA1:
+                            hashType = 1;
+                            break;
+                          case HashAlgorithm::SHA256:
+                            hashType = 2;
+                            break;
+                          case HashAlgorithm::SHA512:
+                            hashType = 3;
+                            break;
+#else
                         switch (dof.hashType) {
                           case htMD5:
                             hashType = 0;
@@ -543,6 +590,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                           case htSHA512:
                             hashType = 3;
                             break;
+#endif
                           default:
                             hashType = -1;
                             break;
@@ -1004,7 +1052,14 @@ signPath (Store store) secretKey (StorePath path) =
 
     auto info2(*currentInfo);
     info2.sigs.clear();
+#if NIX_IS_AT_LEAST(2, 20, 0)
+    {
+      auto signer = std::make_unique<LocalSigner>(SecretKey { secretKey });
+      info2.sign(*store, *signer);
+    }
+#else
     info2.sign(*store, secretKey);
+#endif
     assert(!info2.sigs.empty());
     auto sig = *info2.sigs.begin();
 
@@ -1054,6 +1109,76 @@ queryPathInfo (Store store) (StorePath path) = do
     }|]
   newForeignPtr finalizeRefValidPathInfo vpi
 
+-- | Query only the local client cache ("narinfo cache") - does not query the actual store or daemon.
+--
+-- Returns 'Nothing' if nothing is known about the path.
+-- Returns 'Just Nothing' if the path is known to not exist.
+-- Returns 'Just (Just vpi)' if the path is known to exist, with the given 'ValidPathInfo'.
+queryPathInfoFromClientCache ::
+  Store ->
+  StorePath ->
+  IO (Maybe (Maybe (ForeignPtr (Ref ValidPathInfo))))
+queryPathInfoFromClientCache (Store store) (StorePath path) =
+#if NIX_IS_AT_LEAST(2, 20, 0)
+  alloca \isKnownP -> do
+    mvpi <- [C.throwBlock| refValidPathInfo* {
+        ReceiveInterrupts _;
+        Store &store = **$(refStore* store);
+        StorePath &path = *$fptr-ptr:(nix::StorePath *path);
+        bool &isKnown = *$(bool* isKnownP);
+        std::optional<std::shared_ptr<const ValidPathInfo>> maybeVPI =
+            store.queryPathInfoFromClientCache(path);
+        if (!maybeVPI) {
+          isKnown = false;
+          return nullptr;
+        }
+        else {
+          isKnown = true;
+          std::shared_ptr<const ValidPathInfo> &vpi = *maybeVPI;
+          if (vpi)
+            return new refValidPathInfo(vpi);
+          else
+            return nullptr;
+        }
+      }|]
+    isKnown <- peek isKnownP <&> (/= 0)
+    for (guard isKnown) \_ -> do
+      mvpi & traverseNonNull (newForeignPtr finalizeRefValidPathInfo)
+#else
+  alloca \isKnownP -> do
+    mvpi <- [C.throwBlock| refValidPathInfo* {
+        ReceiveInterrupts _;
+        Store &store = **$(refStore* store);
+        StorePath &path = *$fptr-ptr:(nix::StorePath *path);
+        bool &isKnown = *$(bool* isKnownP);
+
+        std::string uri = store.getUri();
+        ref<NarInfoDiskCache> cache = nix::getNarInfoDiskCache();
+
+        // std::pair<nix::NarInfoDiskCache::Outcome, std::shared_ptr<NarInfo>>
+        auto [outcome, maybeNarInfo] =
+          cache->lookupNarInfo(uri, std::string(path.hashPart()));
+
+        if (outcome == nix::NarInfoDiskCache::oValid) {
+          assert(maybeNarInfo);
+          isKnown = true;
+          return new refValidPathInfo(maybeNarInfo);
+        }
+        else if (outcome == nix::NarInfoDiskCache::oInvalid) {
+          isKnown = true;
+          return nullptr;
+        }
+        else {
+          // nix::NarInfoDiskCache::oUnknown or unexpected value
+          isKnown = false;
+          return nullptr;
+        }
+      }|]
+    isKnown <- peek isKnownP <&> (/= 0)
+    for (guard isKnown) \_ -> do
+      mvpi & traverseNonNull (newForeignPtr finalizeRefValidPathInfo)  
+#endif
+
 finalizeRefValidPathInfo :: FinalizerPtr (Ref ValidPathInfo)
 {-# NOINLINE finalizeRefValidPathInfo #-}
 finalizeRefValidPathInfo =
@@ -1076,10 +1201,16 @@ validPathInfoNarSize vpi =
 validPathInfoNarHash32 :: ForeignPtr (Ref ValidPathInfo) -> IO ByteString
 validPathInfoNarHash32 vpi =
   unsafePackMallocCString
-    =<< [C.block| const char *{ 
+    =<< [C.block| const char *{
+#if NIX_IS_AT_LEAST(2,20,0)
+      std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::HashFormat::Nix32, true));
+#elif NIX_IS_AT_LEAST(2,19,0)
+      std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::HashFormat::Base32, true));
+#else
       std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::Base32, true));
-      return strdup(s.c_str()); }
-    |]
+#endif
+      return strdup(s.c_str());
+    }|]
 
 -- | Deriver field of a ValidPathInfo struct. Source: store-api.hh
 validPathInfoDeriver :: Store -> ForeignPtr (Ref ValidPathInfo) -> IO (Maybe StorePath)

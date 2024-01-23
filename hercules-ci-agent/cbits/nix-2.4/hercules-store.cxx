@@ -84,6 +84,34 @@ void WrappingStore::addToStore(const ValidPathInfo & info, Source & narSource,
   wrappedStore->addToStore(info, narSource, repair, checkSigs);
 }
 
+#if NIX_IS_AT_LEAST(2,20,0)
+
+StorePath WrappingStore::addToStore(
+    std::string_view name,
+    SourceAccessor & accessor,
+    const CanonPath & path,
+    ContentAddressMethod method,
+    HashAlgorithm hashAlgo,
+    const StorePathSet & references,
+    PathFilter & filter,
+    RepairFlag repair)
+{
+    return wrappedStore->addToStore(name, accessor, path, method, hashAlgo, references, filter, repair);
+}
+
+StorePath WrappingStore::addToStoreFromDump(
+    Source & dump,
+    std::string_view name,
+    ContentAddressMethod method,
+    HashAlgorithm hashAlgo,
+    const StorePathSet & references,
+    RepairFlag repair)
+{
+    return wrappedStore->addToStoreFromDump(dump, name, method, hashAlgo, references, repair);
+}
+
+#else // < 2.20
+
 StorePath WrappingStore::addToStore(
 #if NIX_IS_AT_LEAST(2,7,0)
       std::string_view name,
@@ -137,6 +165,7 @@ StorePath WrappingStore::addTextToStore(
       const StorePathSet & references, RepairFlag repair) {
   return wrappedStore->addTextToStore(name, s, references, repair);
 }
+#endif // < 2.20
 
 void WrappingStore::narFromPath(const StorePath& path, Sink& sink) {
   wrappedStore->narFromPath(path, sink);
@@ -191,9 +220,15 @@ bool WrappingStore::verifyStore(bool checkContents, RepairFlag repair) {
   return wrappedStore->verifyStore(checkContents, repair);
 };
 
+#if NIX_IS_AT_LEAST(2,19,0)
+ref<FSAccessor> WrappingStore::getFSAccessor(bool requireValidPath) {
+  return wrappedStore->getFSAccessor(requireValidPath);
+}
+#else
 ref<FSAccessor> WrappingStore::getFSAccessor() {
   return wrappedStore->getFSAccessor();
 }
+#endif
 
 void WrappingStore::addSignatures(const StorePath& storePath,
                                   const StringSet& sigs) {
