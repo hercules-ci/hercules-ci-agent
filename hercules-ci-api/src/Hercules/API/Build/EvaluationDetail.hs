@@ -4,6 +4,7 @@
 
 module Hercules.API.Build.EvaluationDetail where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Attribute (Attribute)
 import Hercules.API.Build.AgentRequirements (AgentRequirements)
 import Hercules.API.Build.EvaluationDependency
@@ -40,8 +41,8 @@ data EvaluationDetail = EvaluationDetail
     unmetAgentRequirements :: [AgentRequirements]
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 newtype IFDAttribute = IFDAttribute (Attribute Derivation)
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

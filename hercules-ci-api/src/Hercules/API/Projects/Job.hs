@@ -8,6 +8,7 @@ module Hercules.API.Projects.Job
   )
 where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Evaluation.Evaluation
   ( Evaluation,
@@ -49,7 +50,7 @@ data Job = Job
     mayRerun :: Bool
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data JobType
   = Config
@@ -57,7 +58,7 @@ data JobType
   | OnPush
   | OnSchedule
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data GitCommitSource = GitCommitSource
   { revision :: Text,
@@ -68,11 +69,11 @@ data GitCommitSource = GitCommitSource
     link :: Text
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data ProjectAndJobs = ProjectAndJobs
   { project :: Project,
     jobs :: [Job]
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

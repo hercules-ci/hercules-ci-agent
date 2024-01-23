@@ -4,6 +4,7 @@
 
 module Hercules.API.Projects.LegacySimpleJob where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Prelude
 import Hercules.API.Projects.Project (Project)
 import Hercules.API.Projects.SimpleJob (JobPhase, JobStatus)
@@ -17,4 +18,4 @@ data LegacySimpleJob = LegacySimpleJob
     phase :: JobPhase
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

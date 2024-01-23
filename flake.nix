@@ -294,6 +294,8 @@
 
                   overrides = self: super: {
 
+                    openapi3 = h.dontCheck (h.unmarkBroken super.openapi3);
+
                     cachix_saved = super.cachix;
 
                     cachix =

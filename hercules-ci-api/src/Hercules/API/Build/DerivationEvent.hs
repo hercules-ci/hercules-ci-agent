@@ -6,6 +6,7 @@
 module Hercules.API.Build.DerivationEvent where
 
 import Data.Aeson.Types (FromJSON (..), ToJSON (..), genericParseJSON, genericToEncoding, genericToJSON)
+import Data.OpenApi qualified as O3
 import Hercules.API.Accounts.SimpleAccount (SimpleAccount)
 import Hercules.API.Build.DerivationEvent.BuiltOutput
 import Hercules.API.Prelude
@@ -23,7 +24,7 @@ data DerivationEvent
   | Built DerivationEventBuilt
   | HasCancelled DerivationEventHasCancelled
   | HasCancelledForReset DerivationEventHasCancelledForReset
-  deriving (Generic, Show, Eq, NFData, ToSchema)
+  deriving (Generic, Show, Eq, NFData, ToSchema, O3.ToSchema)
 
 instance FromJSON DerivationEvent where
   parseJSON = genericParseJSON schemaCompatibleOptions
@@ -52,13 +53,13 @@ data DerivationEventQueued = DerivationEventQueued
     requeuedForAgent :: Maybe Text
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data DerivationEventDependencyFailed = DerivationEventDependencyFailed
   { time :: UTCTime
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data DerivationEventStarted = DerivationEventStarted
   { time :: UTCTime,
@@ -67,55 +68,55 @@ data DerivationEventStarted = DerivationEventStarted
     streamable :: Bool
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data DerivationEventReset = DerivationEventReset
   { time :: UTCTime
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data DerivationEventFailed = DerivationEventFailed
   { time :: UTCTime,
     technicalError :: Maybe Text
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data DerivationEventSucceeded = DerivationEventSucceeded
   { time :: UTCTime
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data DerivationEventCancelled = DerivationEventCancelled
   { time :: UTCTime
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data DerivationEventForceCancelled = DerivationEventForceCancelled
   { time :: UTCTime,
     byUser :: Maybe SimpleAccount
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data DerivationEventBuilt = DerivationEventBuilt
   { time :: UTCTime,
     outputs :: [BuiltOutput]
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data DerivationEventHasCancelledForReset = DerivationEventHasCancelledForReset
   { time :: UTCTime
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data DerivationEventHasCancelled = DerivationEventHasCancelled
   { time :: UTCTime
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

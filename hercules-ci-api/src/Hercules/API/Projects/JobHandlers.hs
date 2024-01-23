@@ -6,6 +6,7 @@ module Hercules.API.Projects.JobHandlers
   )
 where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Prelude
 import Hercules.API.Projects.Job (Job)
 import Hercules.API.Projects.JobHandlers.OnPushHandler (OnPushHandler)
@@ -17,4 +18,4 @@ data JobHandlers = JobHandlers
     onSchedule :: Map Text OnScheduleHandler
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

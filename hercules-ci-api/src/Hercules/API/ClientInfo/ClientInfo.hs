@@ -3,6 +3,7 @@
 
 module Hercules.API.ClientInfo.ClientInfo where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Forge.Forge (Forge)
 import Hercules.API.Prelude
@@ -16,4 +17,4 @@ data ClientInfo = ClientInfo
     personalAccounts :: [Account]
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

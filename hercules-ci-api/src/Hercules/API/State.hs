@@ -5,6 +5,7 @@
 module Hercules.API.State where
 
 import Data.ByteString (ByteString)
+import Data.OpenApi qualified as O3
 import Data.Swagger (NamedSchema (NamedSchema), binarySchema)
 import Data.Swagger.Schema (ToSchema (..))
 import Hercules.API.Accounts.Account (Account)
@@ -23,6 +24,9 @@ newtype RawBytes = RawBytes {fromRawBytes :: ByteString}
 
 instance ToSchema RawBytes where
   declareNamedSchema _ = pure $ NamedSchema (Just "RawBytes") binarySchema
+
+instance O3.ToSchema RawBytes where
+  declareNamedSchema _ = pure $ O3.NamedSchema (Just "RawBytes") O3.binarySchema
 
 type ContentLength = Header "Content-Length" Integer
 

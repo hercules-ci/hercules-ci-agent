@@ -6,6 +6,7 @@ module Hercules.API.Projects.JobHandlers.OnPushHandler
   )
 where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Prelude
 
 data OnPushHandler = OnPushHandler
@@ -13,4 +14,4 @@ data OnPushHandler = OnPushHandler
     isFlake :: Bool
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)

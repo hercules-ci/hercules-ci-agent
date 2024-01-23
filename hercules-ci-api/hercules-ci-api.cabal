@@ -155,8 +155,10 @@ library
     , lens-aeson
     , memory
     , network-uri
+    , openapi3
     , profunctors
     , servant                  >=0.14.1
+    , servant-openapi3
     , servant-auth
     , servant-auth-swagger
     , servant-swagger
@@ -185,10 +187,12 @@ executable hercules-gen-swagger
     , lens
     , memory
     , network-uri
+    , openapi3
     , profunctors
     , servant                  >=0.14.1
     , servant-auth
     , servant-auth-swagger
+    , servant-openapi3
     , servant-swagger
     , servant-swagger-ui-core
     , string-conv

@@ -8,6 +8,7 @@ module Hercules.API.BillingStatus
   )
 where
 
+import Data.OpenApi qualified as O3
 import Data.Swagger
 import Hercules.API.Prelude
 
@@ -19,7 +20,7 @@ data BillingStatus
   | External
   | Enterprise
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 toText :: BillingStatus -> Text
 toText Community = "Community"

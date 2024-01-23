@@ -16,6 +16,7 @@ import Control.Lens (at, (%~))
 import Data.Aeson qualified as A
 import Data.Aeson.Lens
 import Data.Function ((&))
+import Data.OpenApi qualified as O3
 import Data.Proxy (Proxy (Proxy))
 import Data.Swagger (ToParamSchema (..))
 import Data.Text qualified as T
@@ -30,7 +31,7 @@ data AttributeType
   | DependenciesOnly
   | Effect
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 -- | An arbitrary ordering
 deriving instance Ord AttributeType
@@ -50,6 +51,8 @@ instance (FromJSON a) => FromJSON (Attribute a) where
       fixup = _Object . at "typ" %~ (<|> Just (A.String "Regular"))
 
 deriving instance (ToSchema a) => ToSchema (Attribute a)
+
+deriving instance (O3.ToSchema a) => O3.ToSchema (Attribute a)
 
 deriving instance Functor Attribute
 
@@ -71,6 +74,9 @@ instance ToParamSchema AttributePath where
 
 instance ToHttpApiData AttributePath where
   toUrlPiece = toUrlPiece . attributePathToString . fromAttributePath
+
+instance O3.ToParamSchema AttributePath where
+  toParamSchema _ = O3.toParamSchema (Proxy :: Proxy Text)
 
 ----------------------------------------
 

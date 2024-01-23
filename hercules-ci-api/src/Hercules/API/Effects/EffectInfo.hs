@@ -3,6 +3,7 @@
 
 module Hercules.API.Effects.EffectInfo where
 
+import Data.OpenApi qualified as O3
 import Hercules.API.Build.DerivationInfo.DerivationInput (DerivationInput)
 import Hercules.API.Effects.EffectEvent (EffectEvent)
 import Hercules.API.Effects.EffectReference (EffectReference)
@@ -19,7 +20,7 @@ data EffectStatus
   | Successful
   | Cancelled
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
 
 data EffectInfo = EffectInfo
   { status :: EffectStatus,
@@ -35,4 +36,4 @@ data EffectInfo = EffectInfo
     dummy :: Maybe EffectEvent -- TODO: remove and update/fix codegen
   }
   deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
