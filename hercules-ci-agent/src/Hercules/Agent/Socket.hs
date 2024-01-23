@@ -87,7 +87,7 @@ withReliableSocket socketConfig f = do
           }
   race socketThread (f socket) <&> either identity identity
 
-checkVersion' :: Applicative m => ServiceInfo -> m (Either Text ())
+checkVersion' :: (Applicative m) => ServiceInfo -> m (Either Text ())
 checkVersion' si =
   if ServiceInfo.version si < requiredServiceVersion
     then pure $ Left $ "Expected service version " <> show requiredServiceVersion

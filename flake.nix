@@ -236,7 +236,7 @@
                         pkgs.nix
                     )
                   else
-                    pkgs.nix;
+                    pkgs.nixVersions.nix_2_16;
               };
 
             h = pkgs.haskell.lib.compose;
@@ -327,10 +327,19 @@
 
                     inline-c-cpp =
                       # https://github.com/fpco/inline-c/pull/132
-                      assert lib.any
+                      assert
+                      lib.versionAtLeast super.ghc.version "9.4"
+                      || lib.any
                         (patch: lib.hasSuffix "inline-c-cpp-pr-132-1.patch" (baseNameOf patch))
                         super.inline-c-cpp.patches;
                       super.inline-c-cpp;
+
+                    servant-auth-server =
+                      if super.servant-auth-server.version == "0.4.8.0" && super.servant-auth-server.meta.broken or true
+                      then
+                      # It's probably fine. We only use it in a test.
+                        h.dontCheck (h.unmarkBroken super.servant-auth-server)
+                      else super.servant-auth-server;
 
                     hercules-ci-agent = lib.pipe super.hercules-ci-agent [
                       h.justStaticExecutables

@@ -6,10 +6,10 @@ import Data.List.NonEmpty qualified as NEL
 import Data.Map qualified as M
 import Protolude hiding (groupBy)
 
-groupOn :: Ord k => (a -> k) -> [a] -> M.Map k [a]
+groupOn :: (Ord k) => (a -> k) -> [a] -> M.Map k [a]
 groupOn f = fmap toList . groupOnNEL f
 
-groupOnNEL :: Ord k => (a -> k) -> [a] -> M.Map k (NEL.NonEmpty a)
+groupOnNEL :: (Ord k) => (a -> k) -> [a] -> M.Map k (NEL.NonEmpty a)
 groupOnNEL f =
   M.fromList
     . map (fst . NEL.head &&& map snd)

@@ -26,12 +26,12 @@ withContext :: (KatipContext m, LogItem a) => a -> m b -> m b
 withContext = katipAddContext
 
 -- TODO: Support context for all exceptions and use plain @panic@ instead.
-panicWithLog :: KatipContext m => Text -> m a
+panicWithLog :: (KatipContext m) => Text -> m a
 panicWithLog msg = do
   logLocM ErrorS $ logStr msg
   panic msg
 
-stderrLineHandler :: KatipContext m => Map Text Value -> Text -> Int -> ByteString -> m ()
+stderrLineHandler :: (KatipContext m) => Map Text Value -> Text -> Int -> ByteString -> m ()
 stderrLineHandler callerContext _processRole _ ln
   | "@katip " `BS.isPrefixOf` ln,
     Just item <- A.decode (LBS.fromStrict $ BS.drop 7 ln) =

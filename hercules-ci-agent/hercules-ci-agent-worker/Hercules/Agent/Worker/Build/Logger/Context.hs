@@ -36,7 +36,10 @@ loggerContext :: C.Context
 loggerContext =
   mempty
     { C.ctxTypesTable =
-        C.TypeName "HerculesLoggerEntry" =: [t|HerculesLoggerEntry|]
-          <> C.TypeName "LogEntryQueue" =: [t|LogEntryQueue|]
-          <> C.TypeName "LoggerFields" =: [t|Fields|]
+        C.TypeName "HerculesLoggerEntry"
+          =: [t|HerculesLoggerEntry|]
+          <> C.TypeName "LogEntryQueue"
+          =: [t|LogEntryQueue|]
+          <> C.TypeName "LoggerFields"
+          =: [t|Fields|]
     }

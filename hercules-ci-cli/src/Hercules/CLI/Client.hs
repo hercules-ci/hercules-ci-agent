@@ -130,7 +130,7 @@ prettyPrintHttpErrors = handle dieWithHttpError
 
 -- | Low indicating the inclusiveness of the boundaries. Low is included. High is excluded.
 -- A pair where `fst` > `snd` forms an empty range.
-inLowRange :: Ord a => a -> (a, a) -> Bool
+inLowRange :: (Ord a) => a -> (a, a) -> Bool
 a `inLowRange` (p, q) = a >= p && a < q
 
 -- In a library, this should support 429 with Retry-After

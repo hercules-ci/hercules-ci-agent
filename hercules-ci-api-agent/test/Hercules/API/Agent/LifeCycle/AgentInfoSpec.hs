@@ -91,7 +91,7 @@ objectV4 =
           ]
     }
 
-($=) :: A.ToJSON b => a -> b -> (a, A.Value)
+($=) :: (A.ToJSON b) => a -> b -> (a, A.Value)
 a $= b = (a, A.toJSON b)
 
 spec :: Spec

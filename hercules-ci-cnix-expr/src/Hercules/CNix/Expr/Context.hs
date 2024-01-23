@@ -43,8 +43,12 @@ evalContext :: C.Context
 evalContext =
   mempty
     { C.ctxTypesTable =
-        C.TypeName "EvalState" =: [t|EvalState|]
-          <> C.TypeName "Value" =: [t|Value'|]
-          <> C.TypeName "Attr" =: [t|Attr'|]
-          <> C.TypeName "BindingsBuilder" =: [t|BindingsBuilder'|]
+        C.TypeName "EvalState"
+          =: [t|EvalState|]
+          <> C.TypeName "Value"
+          =: [t|Value'|]
+          <> C.TypeName "Attr"
+          =: [t|Attr'|]
+          <> C.TypeName "BindingsBuilder"
+          =: [t|BindingsBuilder'|]
     }

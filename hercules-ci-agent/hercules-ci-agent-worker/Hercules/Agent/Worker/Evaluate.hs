@@ -103,7 +103,7 @@ autoArgArgs kvs = do
 --
 -- (It does not happen, but this de-escalates a potential recursion bug to just
 --  an error.)
-withDrvInProgress :: MonadUnliftIO m => HerculesState -> StorePath -> m a -> m a
+withDrvInProgress :: (MonadUnliftIO m) => HerculesState -> StorePath -> m a -> m a
 withDrvInProgress HerculesState {drvsInProgress = ref} drvPath =
   bracket acquire release . const
   where
@@ -122,7 +122,7 @@ withDrvInProgress HerculesState {drvsInProgress = ref} drvPath =
 anyAlternative :: (Foldable l, Alternative f) => l a -> f a
 anyAlternative = getAlt . foldMap (Alt . pure)
 
-yieldAttributeError :: MonadIO m => Store -> [ByteString] -> SomeException -> ConduitT i Event m ()
+yieldAttributeError :: (MonadIO m) => Store -> [ByteString] -> SomeException -> ConduitT i Event m ()
 yieldAttributeError store path e = do
   exceptionText <- liftIO $ renderException e
   drvPath <- liftIO $ traverse (storePathToPath store) (exceptionTextDerivationPath exceptionText)
@@ -136,7 +136,7 @@ yieldAttributeError store path e = do
           AttributeError.trace = exceptionTextTrace exceptionText
         }
 
-maybeThrowBuildException :: MonadIO m => BuildResult.BuildStatus -> StorePath -> m ()
+maybeThrowBuildException :: (MonadIO m) => BuildResult.BuildStatus -> StorePath -> m ()
 maybeThrowBuildException result drv =
   case result of
     BuildResult.Failure -> liftIO $ throwBuildError ("Could not build derivation " <> show drv <> ", which is required during evaluation.") drv
@@ -358,7 +358,7 @@ mkImmutableGitInputFlakeThunk evalState git = do
     (API.ImmutableGitInput.ref git)
     (API.ImmutableGitInput.rev git)
 
-sendConfig :: MonadIO m => Ptr EvalState -> Bool -> PSObject HerculesCISchema -> ConduitT i Event m ()
+sendConfig :: (MonadIO m) => Ptr EvalState -> Bool -> PSObject HerculesCISchema -> ConduitT i Event m ()
 sendConfig evalState isFlake herculesCI = flip runReaderT evalState $ do
   herculesCI #? #onPush >>= traverse_ \onPushes -> do
     attrs <- dictionaryToMap onPushes
@@ -391,7 +391,7 @@ defaultConstraints = noConstraints
 noConstraints :: TimeConstraints
 noConstraints = TimeConstraints Nothing Nothing Nothing Nothing
 
-parseWhen :: MonadEval m => PSObject NixFile.TimeConstraintsSchema -> m Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent.TimeConstraints
+parseWhen :: (MonadEval m) => PSObject NixFile.TimeConstraintsSchema -> m Hercules.API.Agent.Evaluate.EvaluateEvent.OnScheduleHandlerEvent.TimeConstraints
 parseWhen w = do
   minute_ <-
     w #?? #minute >>= traverse \obj -> do
@@ -407,7 +407,8 @@ parseWhen w = do
           else throwIO $ Schema.InvalidValue (provenance obj) $ "hour value " <> show v <> " is out of range [0..23]."
 
   hour_ <-
-    w #?? #hour
+    w
+      #?? #hour
       >>= traverse
         ( (\oneInt -> validateHour oneInt <&> \x -> [x])
             |! ( \hours -> do
@@ -418,7 +419,8 @@ parseWhen w = do
                )
         )
   dayOfWeek <-
-    w #?? #dayOfWeek
+    w
+      #?? #dayOfWeek
       >>= traverse
         ( \dayStringsObject -> do
             days <- traverseArray parseDayOfWeek dayStringsObject
@@ -427,7 +429,8 @@ parseWhen w = do
             pure days
         )
   dayOfMonth <-
-    w #?? #dayOfMonth
+    w
+      #?? #dayOfMonth
       >>= traverse \daysOfMonth -> do
         v <-
           daysOfMonth & traverseArray \obj -> do
@@ -621,7 +624,7 @@ simpleWalk evalEnv initialThunk = do
         }
 
 withIFDQueue ::
-  MonadUnliftIO m =>
+  (MonadUnliftIO m) =>
   EvalEnv ->
   ( ([ByteString] -> AsyncRealisationRequired -> (Either SomeException () -> ConduitT i Event m ()) -> ConduitT i Event m ()) ->
     ConduitT i Event m ()
@@ -629,7 +632,7 @@ withIFDQueue ::
   ConduitT i Event m ()
 withIFDQueue evalEnv doIt = do
   let poller ::
-        MonadIO m =>
+        (MonadIO m) =>
         Map (StorePath, ByteString) x ->
         ConduitT i Event m (Map (StorePath, ByteString) (Either SomeException ()))
       poller q = do
@@ -751,7 +754,7 @@ walk evalEnv autoArgs v0 = withIFDQueue evalEnv \enqueue ->
 
 -- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.
 walkDerivation ::
-  MonadIO m =>
+  (MonadIO m) =>
   Store ->
   Ptr EvalState ->
   Bool ->
@@ -809,7 +812,7 @@ walkDerivation store evalState effectsAnywhere path attrValue = do
     inEffects ("effects" : _) = True
     inEffects _ = False
 
-liftEitherAs :: MonadError e m => (e0 -> e) -> Either e0 a -> m a
+liftEitherAs :: (MonadError e m) => (e0 -> e) -> Either e0 a -> m a
 liftEitherAs f = liftEither . rmap
   where
     rmap (Left e) = Left (f e)

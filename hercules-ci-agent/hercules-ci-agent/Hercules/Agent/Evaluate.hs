@@ -112,7 +112,7 @@ performEvaluation store task' =
       fix $ \continue ->
         joinSTM $ listen batchProducer (\b -> withSync b (postBatch task' . catMaybes) *> continue) pure
 
-getSrcInput :: MonadIO m => EvaluateTask.EvaluateTask -> m (Maybe ImmutableGitInput)
+getSrcInput :: (MonadIO m) => EvaluateTask.EvaluateTask -> m (Maybe ImmutableGitInput)
 getSrcInput task = case M.lookup "src" (EvaluateTask.inputs task) of
   Just (ImmutableInput.Git x) ->
     purer x
@@ -131,7 +131,7 @@ makeEventEmitter writeToBatch = do
   msgCounter <- liftIO $ newIORef 0
 
   let fixIndex ::
-        MonadIO m =>
+        (MonadIO m) =>
         EvaluateEvent.EvaluateEvent ->
         m EvaluateEvent.EvaluateEvent
       fixIndex (EvaluateEvent.Message m) = do

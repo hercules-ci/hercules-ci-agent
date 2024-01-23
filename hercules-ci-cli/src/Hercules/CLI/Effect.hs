@@ -177,7 +177,7 @@ evaluateEffectDerivation evalState store projectOptionMaybe ref attr = do
   drvPath <- getDrvFile evalState (rtValue effectAttrs)
   liftIO $ CNix.getDerivation store drvPath
 
-prepareDerivation :: MonadIO m => Store -> Derivation -> m ()
+prepareDerivation :: (MonadIO m) => Store -> Derivation -> m ()
 prepareDerivation store derivation = do
   inputs <- liftIO $ getDerivationInputs store derivation
   storePathsWithOutputs <- liftIO Std.Vector.new

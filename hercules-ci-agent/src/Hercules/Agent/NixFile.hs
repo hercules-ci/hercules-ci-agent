@@ -127,7 +127,7 @@ loadNixFile evalState projectPath src = runExceptT do
       homeExpr <- liftIO $ autoCallFunction evalState rootValueOrFunction args
       pure (CiNix nixFile homeExpr)
 
-getHomeExprObject :: MonadEval m => HomeExpr -> m (PSObject HomeSchema)
+getHomeExprObject :: (MonadEval m) => HomeExpr -> m (PSObject HomeSchema)
 getHomeExprObject (Flake attrs) = pure PSObject {value = rtValue attrs, provenance = Schema.File "flake.nix"}
 getHomeExprObject (CiNix f obj) = pure PSObject {value = obj, provenance = Schema.File f}
 
@@ -191,19 +191,20 @@ type DefaultHerculesCIHelperSchema =
     '[ "addDefaults" ::. Attrs '[] ->. Attrs '[] ->. HerculesCISchema
      ]
 
-exprString :: forall a m. MonadEval m => ByteString -> m (PSObject a)
+exprString :: forall a m. (MonadEval m) => ByteString -> m (PSObject a)
 exprString bs = do
   evalState <- ask
   value <- liftIO $ valueFromExpressionString evalState bs "/var/lib/empty/hercules-ci-agent-builtin"
   pure PSObject {value = value, provenance = Schema.Other "hercules-ci-agent built-in expression"}
 
-getHerculesCI :: MonadEval m => HomeExpr -> HerculesCIArgs -> m (Maybe (PSObject HerculesCISchema))
+getHerculesCI :: (MonadEval m) => HomeExpr -> HerculesCIArgs -> m (Maybe (PSObject HerculesCISchema))
 getHerculesCI homeExpr args = do
   home <- getHomeExprObject homeExpr
   args' <- Schema.uncheckedCast <$> toPSObject args
   case homeExpr of
     CiNix {} ->
-      home #? #herculesCI
+      home
+        #? #herculesCI
         >>= traverse @Maybe \herculesCI ->
           herculesCI $? args'
     Flake flake ->
@@ -222,10 +223,10 @@ getHerculesCI homeExpr args = do
         hci <- fn .$ flakeObj >>$. pure args''
         pure hci {Schema.provenance = Other "the herculesCI attribute of your flake (after adding defaults)"}
 
-parseExtraInputs :: MonadEval m => PSObject ExtraInputsSchema -> m (Map ByteString InputDeclaration)
+parseExtraInputs :: (MonadEval m) => PSObject ExtraInputsSchema -> m (Map ByteString InputDeclaration)
 parseExtraInputs eis = dictionaryToMap eis >>= traverse parseInputDecl
 
-parseInputDecl :: MonadEval m => PSObject InputDeclSchema -> m InputDeclaration
+parseInputDecl :: (MonadEval m) => PSObject InputDeclSchema -> m InputDeclaration
 parseInputDecl d = do
   project <- d #. #project >>= fromPSObject
   ref <- d #? #ref >>= traverse fromPSObject

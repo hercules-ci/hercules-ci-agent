@@ -44,7 +44,7 @@ data Msg p r
 forkProducer :: forall m p r. (MonadUnliftIO m) => ((p -> m ()) -> m r) -> m (Producer p r)
 forkProducer f = do
   q <- liftIO newTQueueIO
-  let write :: MonadIO m' => Msg p r -> m' ()
+  let write :: (MonadIO m') => Msg p r -> m' ()
       write = liftIO . atomically . writeTQueue q
   f' <- toIO (f (write . Payload))
   t <- liftIO $ forkFinally f' (write . toResult)
@@ -55,7 +55,7 @@ forkProducer f = do
 
 -- | Throws 'ProducerCancelled' as an async exception to the producer thread.
 -- Blocks until exception is raised. See 'throwTo'.
-cancel :: MonadIO m => Producer p r -> m ()
+cancel :: (MonadIO m) => Producer p r -> m ()
 cancel p = liftIO $ throwTo (producerThread p) ProducerCancelled
 
 -- | Perform an computation while @withProducer@ takes care of forking and cleaning up.
@@ -69,7 +69,7 @@ withProducer ::
 withProducer f = bracket (forkProducer f) cancel
 
 listen ::
-  MonadIO m =>
+  (MonadIO m) =>
   Producer p r ->
   (p -> m a) ->
   (r -> m a) ->
@@ -81,7 +81,7 @@ listen p fPayload fResult =
     f (Exception e) = throwIO e
     f (Close r) = fResult r
 
-joinSTM :: MonadIO m => STM (m a) -> m a
+joinSTM :: (MonadIO m) => STM (m a) -> m a
 joinSTM = join . liftIO . atomically
 
 data Syncing a = Syncable a | Syncer (Maybe SomeException -> STM ())
@@ -170,7 +170,7 @@ withBoundedDelayBatchProducer maxDelay maxItems sourceP f = do
       )
     $ \_flusher -> unlift $ withProducer producer f
 
-syncer :: MonadIO m => (Syncing a -> m ()) -> m ()
+syncer :: (MonadIO m) => (Syncing a -> m ()) -> m ()
 syncer writer = do
   v <- liftIO newEmptyTMVarIO
   writer (Syncer $ putTMVar v)

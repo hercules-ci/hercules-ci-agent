@@ -123,10 +123,12 @@ instance ToJSON Secret where
 
 instance FromJSON Secret where
   parseJSON =
-    withKind "Secret" $
-      withVersions
+    withKind "Secret"
+      $ withVersions
         [ noVersion $ \o ->
             Secret
-              <$> o .: "data"
-              <*> o .:? "condition"
+              <$> o
+              .: "data"
+              <*> o
+              .:? "condition"
         ]

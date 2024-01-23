@@ -29,10 +29,10 @@ instance ToJSON CachixCache where
       ( "kind"
           .= String "CachixCache"
           <> "signingKeys"
-          .= signingKeys a
+            .= signingKeys a
           <> foldMap ("authToken" .=) (authToken a)
           <> "publicKeys"
-          .= publicKeys a
+            .= publicKeys a
       )
 
 instance FromJSON CachixCache where

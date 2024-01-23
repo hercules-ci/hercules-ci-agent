@@ -55,8 +55,8 @@ data FrontendRoutes view f = FrontendRoutes
   deriving (Generic)
 
 mkLinks :: URI -> FrontendRoutes Raw (AsLink Text)
-mkLinks base = allFieldLinks' $
-  \link -> shows2Text $ uriToString id $ linkURI link `relativeTo` base
+mkLinks base = allFieldLinks'
+  $ \link -> shows2Text $ uriToString id $ linkURI link `relativeTo` base
   where
     shows2Text :: ShowS -> Text
     shows2Text = T.pack . ($ "")

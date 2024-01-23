@@ -7,7 +7,7 @@
       haskellProjects.internal = {
         overrides = self: super:
           let
-            flake = builtins.getFlake "git+https://github.com/cachix/cachix.git?rev=498f2fa43de8b2fc2e372c275dece0715101cbda&allRefs=true";
+            flake = builtins.getFlake "git+https://github.com/cachix/cachix.git?rev=7279ca4571526edcef16a1717986a70a40ac2b9f&allRefs=true";
             c = flake.lib.customHaskellPackages { inherit pkgs; haskellPackages = self; };
           in
           # If the overrides change, we need to make sure it's not hercules-ci-cnix-store for example
@@ -19,6 +19,6 @@
   perSystem = { system, ... }:
     # Only build with dev version of cachix on x86_64-linux, as it's mostly about the conditional compilation anyway, and we don't distribute this version.
     lib.optionalAttrs (system == "x86_64-linux") {
-      checks.build-with-cachix-1_6 = config.variants.cachix-dev.allSystems.${system}.packages.hercules-ci-agent;
+      checks.build-with-cachix-dev = config.variants.cachix-dev.allSystems.${system}.packages.hercules-ci-agent;
     };
 }

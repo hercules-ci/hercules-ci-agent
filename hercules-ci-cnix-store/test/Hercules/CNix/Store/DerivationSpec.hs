@@ -49,5 +49,5 @@ spec = do
     os <- getDerivationOutputs store drvName d
     show' os `shouldBe` "[DerivationOutput {derivationOutputName = \"out\", derivationOutputPath = Just 8mygch54p7brcqn83xnfa22ik9y3km95-hello-2.10, derivationOutputDetail = DerivationOutputInputAddressed 8mygch54p7brcqn83xnfa22ik9y3km95-hello-2.10}]"
 
-show' :: Show a => a -> Text
+show' :: (Show a) => a -> Text
 show' = show

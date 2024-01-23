@@ -72,14 +72,14 @@ runApp :: Env -> App a -> IO a
 runApp env (App m) = runReaderT m env
 
 runHerculesClient ::
-  NFData a =>
+  (NFData a) =>
   (Servant.Auth.Client.Token -> Servant.Client.Streaming.ClientM a) ->
   App a
 runHerculesClient f = do
   tok <- asks currentToken
   runHerculesClient' (f tok)
 
-runHerculesClient' :: NFData a => Servant.Client.Streaming.ClientM a -> App a
+runHerculesClient' :: (NFData a) => Servant.Client.Streaming.ClientM a -> App a
 runHerculesClient' m = do
   clientEnv <- asks herculesClientEnv
   escalate =<< liftIO (Servant.Client.Streaming.runClientM m clientEnv)
