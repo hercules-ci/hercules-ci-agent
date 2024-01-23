@@ -8,7 +8,6 @@ module Hercules.API
     servantApi,
     servantClientApi,
     swagger,
-    openapi3,
     useApi,
     enterApiE,
     API,
@@ -26,6 +25,9 @@ module Hercules.API
 
     -- * Utilities
     noContent,
+
+    -- * Experimental
+    openapi3,
   )
 where
 
@@ -142,6 +144,7 @@ swagger =
 apiWithJWT :: Proxy (ClientServantAPI (Auth '[JWT] ()))
 apiWithJWT = servantClientApi @(Auth '[JWT] ())
 
+-- | NOTE: this has not been tested yet.
 openapi3 :: O3.OpenApi
 openapi3 = SO3.toOpenApi apiWithJWT
 

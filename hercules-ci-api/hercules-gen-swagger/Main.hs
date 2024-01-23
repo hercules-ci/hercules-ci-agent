@@ -7,12 +7,15 @@ import Data.Aeson (encode)
 import Data.String.Conv (toS)
 import Hercules.API (openapi3, swagger)
 import System.Environment (getArgs)
+import System.IO (hPutStrLn, stderr)
 import Prelude
 
 main :: IO ()
 main = do
   args <- getArgs
   case args of
-    ["--openapi3"] -> putStrLn $ toS $ encode openapi3
+    ["--experimental-openapi3"] -> putStrLn $ toS $ encode openapi3
     [] -> putStrLn $ toS $ encode swagger
-    _ -> error $ "Unknown arguments" <> show args
+    _ -> do
+      hPutStrLn stderr "Usage: hercules-gen-swagger [--experimental-openapi3] > swagger.json"
+      error $ "Unknown arguments" <> show args
