@@ -236,7 +236,7 @@
                         pkgs.nix
                     )
                   else
-                    pkgs.nix;
+                    pkgs.nixVersions.nix_2_16;
               };
 
             h = pkgs.haskell.lib.compose;
