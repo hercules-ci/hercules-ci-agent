@@ -17,7 +17,7 @@ withWorkDir hint f = do
   workDir <- asks (Config.workDirectory . config)
   liftIO $ withTempDirectory workDir (toS hint) $ unlift . f
 
-readFileMaybe :: MonadIO m => FilePath -> m (Maybe Text)
+readFileMaybe :: (MonadIO m) => FilePath -> m (Maybe Text)
 readFileMaybe fp = liftIO do
   exists <- doesFileExist fp
   guard exists & traverse \_ -> readFile fp

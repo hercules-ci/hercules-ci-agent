@@ -50,7 +50,7 @@ stdVectorCtx = C.cppCtx `mappend` C.cppTypePairs [("std::vector", [t|CStdVector|
 
 newtype StdVector a = StdVector (ForeignPtr (CStdVector a))
 
-instance HasStdVector a => HasEncapsulation (CStdVector a) (StdVector a) where
+instance (HasStdVector a) => HasEncapsulation (CStdVector a) (StdVector a) where
   moveToForeignPtrWrapper x = StdVector <$> newForeignPtr cDelete x
 
 class HasStdVector a where
@@ -60,7 +60,7 @@ class HasStdVector a where
   cCopies :: Ptr (CStdVector a) -> Ptr (Ptr a) -> IO ()
   cPushBackByPtr :: Ptr a -> Ptr (CStdVector a) -> IO ()
 
-class HasStdVector a => HasStdVectorCopyable a where
+class (HasStdVector a) => HasStdVectorCopyable a where
   cCopyTo :: Ptr (CStdVector a) -> Ptr a -> IO ()
   cPushBack :: a -> Ptr (CStdVector a) -> IO ()
 
@@ -114,12 +114,12 @@ instanceStdVectorCopyable cType =
         cPushBack value vec = [CU.exp| void { @VEC(vec)->push_back($(@T() value)) } |]
       |]
 
-new :: forall a. HasStdVector a => IO (StdVector a)
+new :: forall a. (HasStdVector a) => IO (StdVector a)
 new = mask_ $ do
   ptr <- cNew @a
   StdVector <$> newForeignPtr cDelete ptr
 
-size :: HasStdVector a => StdVector a -> IO Int
+size :: (HasStdVector a) => StdVector a -> IO Int
 size (StdVector fptr) = fromIntegral <$> withForeignPtr fptr cSize
 
 toVector :: (HasStdVectorCopyable a, Storable a) => StdVector a -> IO (VS.Vector a)
@@ -131,7 +131,7 @@ toVector stdVec@(StdVector stdVecFPtr) = do
       cCopyTo stdVecPtr hsVecPtr
   VS.unsafeFreeze hsVec
 
-toVectorP :: HasStdVector a => StdVector a -> IO (VS.Vector (Ptr a))
+toVectorP :: (HasStdVector a) => StdVector a -> IO (VS.Vector (Ptr a))
 toVectorP stdVec@(StdVector stdVecFPtr) = do
   vecSize <- size stdVec
   hsVec <- VSM.new vecSize
@@ -140,7 +140,7 @@ toVectorP stdVec@(StdVector stdVecFPtr) = do
       cCopies stdVecPtr hsVecPtr
   VS.unsafeFreeze hsVec
 
-fromList :: HasStdVectorCopyable a => [a] -> IO (StdVector a)
+fromList :: (HasStdVectorCopyable a) => [a] -> IO (StdVector a)
 fromList as = do
   vec <- Hercules.CNix.Std.Vector.new
   for_ as $ \a -> pushBack vec a
@@ -161,10 +161,10 @@ toListP vec = VS.toList <$> toVectorP vec
 toListFP :: (HasEncapsulation a b, HasStdVector a) => StdVector a -> IO [b]
 toListFP vec = traverse moveToForeignPtrWrapper =<< toListP vec
 
-pushBack :: HasStdVectorCopyable a => StdVector a -> a -> IO ()
+pushBack :: (HasStdVectorCopyable a) => StdVector a -> a -> IO ()
 pushBack (StdVector fptr) value = withForeignPtr fptr (cPushBack value)
 
-pushBackP :: HasStdVector a => StdVector a -> Ptr a -> IO ()
+pushBackP :: (HasStdVector a) => StdVector a -> Ptr a -> IO ()
 pushBackP (StdVector fptr) valueP = withForeignPtr fptr (cPushBackByPtr valueP)
 
 pushBackFP :: (Coercible a' (ForeignPtr a), HasStdVector a) => StdVector a -> a' -> IO ()

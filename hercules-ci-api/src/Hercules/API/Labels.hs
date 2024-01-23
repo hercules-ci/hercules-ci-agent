@@ -14,8 +14,8 @@ newtype Labels = Labels {fromLabels :: Map Text Value}
 
 instance ToSchema Labels where
   declareNamedSchema _p = do
-    return $
-      NamedSchema (Just "Labels") $
-        mempty
-          & type_ ?~ SwaggerObject
-          & additionalProperties ?~ AdditionalPropertiesAllowed True
+    return
+      $ NamedSchema (Just "Labels")
+      $ mempty
+      & type_ ?~ SwaggerObject
+      & additionalProperties ?~ AdditionalPropertiesAllowed True

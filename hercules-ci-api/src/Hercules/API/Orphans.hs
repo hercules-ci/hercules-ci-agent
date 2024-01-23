@@ -11,5 +11,5 @@ import Servant.API
 -- | Ignores Headers.
 --
 -- FIXME: don't ignore headers
-instance forall a hs. ToSchema a => ToSchema (Headers hs a) where
+instance forall a hs. (ToSchema a) => ToSchema (Headers hs a) where
   declareNamedSchema _ = declareNamedSchema (Proxy @a)

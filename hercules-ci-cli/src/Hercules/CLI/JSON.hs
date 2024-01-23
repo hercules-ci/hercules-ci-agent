@@ -189,25 +189,25 @@ readFileWithKey (key, file) = do
     Left _e -> throwIO $ UserException $ "File " <> show file <> " for key " <> key <> " is not valid UTF-8."
     Right s -> pure (key, s)
 
-readJsonFileWithKey :: FromJSON b => (Text, FilePath) -> IO (Text, b)
+readJsonFileWithKey :: (FromJSON b) => (Text, FilePath) -> IO (Text, b)
 readJsonFileWithKey (key, file) = do
   bs <- BS.readFile file
   case eitherDecode (BL.fromStrict bs) of
     Left e -> throwIO $ UserException $ "File " <> show file <> " for key " <> key <> " is not valid JSON: " <> show e
     Right s -> pure (key, s)
 
-readJsonFile :: FromJSON b => FilePath -> IO b
+readJsonFile :: (FromJSON b) => FilePath -> IO b
 readJsonFile file = do
   bs <- BS.readFile file
   case eitherDecode (BL.fromStrict bs) of
     Left e -> throwIO $ UserException $ "File " <> show file <> " is not valid JSON: " <> show e
     Right s -> pure s
 
-writeJsonFile :: ToJSON a => FilePath -> a -> IO ()
+writeJsonFile :: (ToJSON a) => FilePath -> a -> IO ()
 writeJsonFile filePath v =
   atomicWriteFile filePath $ BL.toStrict $ encodePretty' prettyConf v
 
-printJson :: ToJSON a => a -> IO ()
+printJson :: (ToJSON a) => a -> IO ()
 printJson = BS.putStr . BL.toStrict . (<> "\n") . encodePretty' prettyConf
 
 prettyConf :: Data.Aeson.Encode.Pretty.Config

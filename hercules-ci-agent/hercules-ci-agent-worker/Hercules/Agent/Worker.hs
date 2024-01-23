@@ -167,7 +167,7 @@ taskWorker options = do
         logLocM DebugS "Writer done"
         wait runnerAsync -- include the potential exception
 
-printCommands :: KatipContext m => ConduitT Command Command m ()
+printCommands :: (KatipContext m) => ConduitT Command Command m ()
 printCommands =
   mapMC
     ( \x -> do
@@ -300,7 +300,7 @@ logger logSettings_ storeProtocolVersionValue entriesSource = do
       Nothing -> panic "Could not push logs within 10 minutes after completion"
     logLocM DebugS "Logger done"
 
-dropMiddle :: MonadIO m => ConduitM (Flush LogEntry) (Flush LogEntry) m ()
+dropMiddle :: (MonadIO m) => ConduitM (Flush LogEntry) (Flush LogEntry) m ()
 dropMiddle = do
   -- rich logging
   _ <- takeCWhileStopEarly isChunk richLogLimit
@@ -313,7 +313,7 @@ richLogLimit = 40_000
 textOnlyLogLimit = 49_900
 tailLimit = 10_000
 
-snipStart :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+snipStart :: (Monad m) => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 snipStart =
   yield $
     Chunk $
@@ -324,7 +324,7 @@ snipStart =
           msg = "hercules-ci-agent: Soft log limit has been reached. Final log lines will appear when done."
         }
 
-snipped :: Monad m => Int -> ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+snipped :: (Monad m) => Int -> ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 snipped n =
   yield $
     Chunk $
@@ -335,7 +335,7 @@ snipped n =
           msg = "hercules-ci-agent: " <> show n <> " log lines were omitted before the last " <> show tailLimit <> "."
         }
 
-snip :: Monad m => Int -> ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+snip :: (Monad m) => Int -> ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 snip n =
   yield $
     Chunk $
@@ -346,7 +346,7 @@ snip n =
           msg = "hercules-ci-agent: skipping " <> show n <> " log lines."
         }
 
-visibleLinesOnly :: Monad m => ConduitM (Flush LogEntry) (Flush LogEntry) m ()
+visibleLinesOnly :: (Monad m) => ConduitM (Flush LogEntry) (Flush LogEntry) m ()
 visibleLinesOnly =
   filterC isVisible
 
@@ -361,7 +361,7 @@ isChunk :: Flush LogEntry -> Bool
 isChunk Chunk {} = True
 isChunk _ = False
 
-socketSink :: MonadIO m => Socket.Socket r w -> ConduitT w o m ()
+socketSink :: (MonadIO m) => Socket.Socket r w -> ConduitT w o m ()
 socketSink socket = awaitForever $ liftIO . atomically . Socket.write socket
 
 -- | Perform a foldMap while yielding the original values ("tap").
@@ -377,7 +377,7 @@ foldMapTap f = go mempty
           yield a
           go (b <> f a)
 
-makeSocketConfig :: MonadIO m => LogSettings.LogSettings -> Int -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
+makeSocketConfig :: (MonadIO m) => LogSettings.LogSettings -> Int -> IO (Socket.SocketConfig LogMessage Hercules.API.Agent.LifeCycle.ServiceInfo.ServiceInfo m)
 makeSocketConfig l storeProtocolVersionValue = do
   clientProtocolVersionValue <- liftIO getClientProtocolVersion
   baseURL <- case Network.URI.parseURI $ toS $ LogSettings.baseURL l of

@@ -31,7 +31,7 @@ sinkChan ch =
       awaitForever $ \msg -> liftIO $ writeChan ch (Just msg)
 
 -- | Read a channel until @Nothing@ is encountered
-sourceChan :: MonadIO m => Chan (Maybe a) -> ConduitT i a m ()
+sourceChan :: (MonadIO m) => Chan (Maybe a) -> ConduitT i a m ()
 sourceChan ch = do
   mmsg <- liftIO $ readChan ch
   case mmsg of

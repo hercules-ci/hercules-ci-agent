@@ -174,7 +174,7 @@ runCommandParser = do
             putErrText "hci: lock released"
       liftIO $ exitWith exitCode
 
-simpleRetryPredicate :: Applicative m => (r -> Bool) -> RetryStatus -> r -> m Bool
+simpleRetryPredicate :: (Applicative m) => (r -> Bool) -> RetryStatus -> r -> m Bool
 simpleRetryPredicate f _rs r = pure (f r)
 
 retryOnFail ::
@@ -205,11 +205,11 @@ retryOnFailEither shortDesc req =
     )
 
 -- NB: fullJitterBackoff is broken, https://github.com/Soostone/retry/issues/46
-failureRetryPolicy :: MonadIO m => RetryPolicyM m
+failureRetryPolicy :: (MonadIO m) => RetryPolicyM m
 failureRetryPolicy = capDelay (120 * 1000 * 1000) (fullJitterBackoff 100000)
 
 -- NB: fullJitterBackoff is broken, https://github.com/Soostone/retry/issues/46
-waitRetryPolicy :: MonadIO m => RetryPolicyM m
+waitRetryPolicy :: (MonadIO m) => RetryPolicyM m
 waitRetryPolicy = capDelay (10 * 1000 * 1000) (fullJitterBackoff 500000)
 
 tryAcquire ::
@@ -245,7 +245,7 @@ pollAcquire acquireLockRequest = do
     Acquired s -> pure s
 
 logBlockedMaybe ::
-  MonadIO m =>
+  (MonadIO m) =>
   IORef (Maybe StateLockAcquireResponse.StateLockBlockedResponse) ->
   StateLockAcquireResponse.StateLockBlockedResponse ->
   m ()
@@ -255,7 +255,7 @@ logBlockedMaybe ref resp = do
     writeIORef ref (Just resp)
     logBlocked resp
 
-logBlocked :: MonadIO m => StateLockAcquireResponse.StateLockBlockedResponse -> m ()
+logBlocked :: (MonadIO m) => StateLockAcquireResponse.StateLockBlockedResponse -> m ()
 logBlocked s = do
   putErrText "hci: lock blocked"
   for_ (StateLockAcquireResponse.blockedByLeases s) \lease -> do

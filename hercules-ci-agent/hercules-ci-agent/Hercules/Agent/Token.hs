@@ -29,7 +29,7 @@ writeAgentSessionKey tok = do
   liftIO $ writeFile (dir </> "session.key") (toS tok)
 
 -- | Reads a token file, strips whitespace
-readTokenFile :: MonadIO m => FilePath -> m Text
+readTokenFile :: (MonadIO m) => FilePath -> m Text
 readTokenFile fp = liftIO $ sanitize <$> readFile fp
   where
     sanitize = T.map subst . T.strip

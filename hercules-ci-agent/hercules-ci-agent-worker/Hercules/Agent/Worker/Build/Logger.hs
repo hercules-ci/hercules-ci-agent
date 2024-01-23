@@ -262,13 +262,13 @@ withLoggerConduit logger io = withAsync (logger popper) $ \popperAsync ->
 -- TODO: Use 'nubProgress' instead?
 
 -- | Remove spammy progress results.
-filterProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+filterProgress :: (Monad m) => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 filterProgress = filterC \case
   Chunk LogEntry.Result {rtype = LogEntry.ResultTypeProgress} -> False
   Chunk LogEntry.Result {rtype = LogEntry.ResultTypeSetExpected} -> False
   _ -> True
 
-nubProgress :: Monad m => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
+nubProgress :: (Monad m) => ConduitT (Flush LogEntry) (Flush LogEntry) m ()
 nubProgress = nubSubset (toChunk >=> toProgressKey)
   where
     toProgressKey k@LogEntry.Result {rtype = LogEntry.ResultTypeProgress} = Just k {LogEntry.i = 0}
@@ -281,7 +281,7 @@ unbatch = awaitForever $ \l -> do
   for_ l $ \a -> yield $ Chunk a
   yield Flush
 
-batch :: Monad m => ConduitT (Flush a) [a] m ()
+batch :: (Monad m) => ConduitT (Flush a) [a] m ()
 batch = go []
   where
     go acc =
@@ -317,7 +317,7 @@ nubSubset1 toKey prevKey =
           yield a
         nubSubset1 toKey ak
 
-tryReadLine :: MonadUnliftIO m => Handle -> m (Either () ByteString)
+tryReadLine :: (MonadUnliftIO m) => Handle -> m (Either () ByteString)
 tryReadLine s = tryJust (guard . isEOFError) (liftIO (BSC.hGetLine s))
 
 tapper :: (KatipContext m, MonadUnliftIO m) => TapState -> m ()
@@ -359,7 +359,7 @@ data TapState = TapState {originalStderrCopy :: Fd, readableStderrEnd :: Handle}
 -- @withTappedStderr tapper mainAction@
 --
 -- 'readableStderrEnd' receives EOF when your action terminates (unless you 'dup' the write end, aka 'stdError')
-withTappableStderr :: MonadUnliftIO m => (TapState -> m a) -> m a
+withTappableStderr :: (MonadUnliftIO m) => (TapState -> m a) -> m a
 withTappableStderr = bracket (liftIO tapStderrPipe) (liftIO . revertTap)
 
 revertTap :: TapState -> IO ()

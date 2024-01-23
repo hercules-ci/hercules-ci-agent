@@ -17,5 +17,5 @@ newtype Sensitive a = Sensitive {reveal :: a}
 instance Show (Sensitive a) where
   show _ = "<sensitive>"
 
-revealContainer :: Functor f => Sensitive (f a) -> f (Sensitive a)
+revealContainer :: (Functor f) => Sensitive (f a) -> f (Sensitive a)
 revealContainer (Sensitive fa) = Sensitive <$> fa

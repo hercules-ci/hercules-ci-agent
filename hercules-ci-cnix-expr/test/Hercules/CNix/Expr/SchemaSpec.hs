@@ -15,7 +15,7 @@ import Test.Hspec
 runES :: ReaderT (Ptr EvalState) m a -> m a
 runES m = runReaderT m evalState
 
-displaying :: Exception e => [Char] -> e -> Bool
+displaying :: (Exception e) => [Char] -> e -> Bool
 displaying text e = displayException e == text
 
 spec :: Spec
