@@ -19,6 +19,7 @@ import Data.Aeson.KeyMap qualified as AK
 import Data.Scientific (floatingOrInteger, fromFloatDigits)
 import Data.Vector qualified as V
 import GHC.Conc (getNumProcessors)
+import Hercules.Agent.Json as Json
 import Hercules.CNix.Verbosity (Verbosity (..))
 import Katip (Severity (..))
 import Protolude hiding (to)
@@ -26,7 +27,9 @@ import System.Environment qualified
 import System.FilePath ((</>))
 import Toml
 
-data ConfigPath = TomlPath FilePath
+data ConfigPath
+  = TomlPath FilePath
+  | JsonPath FilePath
 
 nounPhrase :: ConfigPath -> Text
 nounPhrase (TomlPath p) = "your agent.toml file from " <> show p
@@ -152,6 +155,18 @@ matchRight :: Either a1 a2 -> Maybe a2
 matchRight (Right a) = Just a
 matchRight _ = Nothing
 
+jsonCodec :: JsonCodec Config
+jsonCodec =
+  Config
+    <$> dioptional (Json.text "apiBaseUrl")
+      .= herculesApiBaseURL
+    <*> Json.text "clusterJoinTokenPath"
+      .= clusterJoinTokenPath
+    <*> Json.integer "concurrentTasks"
+      .= concurrentTasks
+    <*> (dioptional (Json.text "cacheKeysPath"))
+      .= cacheKeysPath
+
 isAuto :: Text -> Either Text ()
 isAuto "auto" = Right ()
 isAuto _ = Left "The only permissible string value is \"auto\""
@@ -173,6 +188,7 @@ defaultApiBaseUrl = "https://hercules-ci.com"
 
 readConfig :: ConfigPath -> IO (Config 'Input)
 readConfig loc = case loc of
+  JsonPath fp -> Json.decodeFile jsonCodec (toS fp)
   TomlPath fp -> Toml.decodeFile tomlCodec (toS fp)
 
 finalizeConfig :: ConfigPath -> Config 'Input -> IO (Config 'Final)

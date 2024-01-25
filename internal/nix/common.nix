@@ -56,7 +56,7 @@ in
     };
     settings = mkOption {
       description = mdDoc ''
-        These settings are written to the `agent.toml` file.
+        These settings are written to the `agent.json` file.
 
         Not all settings are listed as options, can be set nonetheless.
 
@@ -71,10 +71,10 @@ in
       These are written as options instead of let binding to allow sharing with
       default.nix on both NixOS and nix-darwin.
     */
-    tomlFile = mkOption {
+    jsonFile = mkOption {
       type = types.path;
       internal = true;
-      defaultText = literalMD "generated `hercules-ci-agent.toml`";
+      defaultText = literalMD "generated `hercules-ci-agent.json`";
       description = mdDoc ''
         The fully assembled config file.
       '';
@@ -108,8 +108,8 @@ in
       narinfo-cache-negative-ttl = 0
     '';
     services.hercules-ci-agent = {
-      tomlFile =
-        format.generate "hercules-ci-agent.toml" cfg.settings;
+      jsonFile =
+        format.generate "hercules-ci-agent.json" cfg.settings;
       settings.config._module.args = {
         packageOption = options.services.hercules-ci-agent.package;
         inherit pkgs;

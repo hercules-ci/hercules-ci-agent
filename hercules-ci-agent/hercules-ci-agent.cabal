@@ -218,6 +218,7 @@ executable hercules-ci-agent
       Hercules.Agent.Evaluate.TraversalQueue
       Hercules.Agent.Files
       Hercules.Agent.Init
+      Hercules.Agent.Json
       Hercules.Agent.InitWorkerConfig
       Hercules.Agent.Log
       Hercules.Agent.LogSocket

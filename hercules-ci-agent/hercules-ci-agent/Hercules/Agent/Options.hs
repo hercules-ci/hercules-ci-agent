@@ -38,6 +38,13 @@ parseConfigPath =
           <> help
             "File path to the configuration file (TOML)"
       )
+    <|> JsonPath
+      <$> strOption
+        ( long "config-json"
+            <> metavar "FILE"
+            <> help
+              "File path to the configuration file (JSON)"
+        )
 
 parserInfo :: ParserInfo Options
 parserInfo =
