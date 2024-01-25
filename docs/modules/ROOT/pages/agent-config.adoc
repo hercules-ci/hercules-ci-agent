@@ -1,17 +1,33 @@
 = Configuration file
 
-When deploying with NixOS, NixOps or nix-darwin you should use the module
+When deploying with NixOS, NixOps or nix-darwin, get started with the module
 documentation instead, or skip ahead to read about less frequently used options
 to use with `extraOptions`.
 
-The configuration format for the agent is https://github.com/toml-lang/toml#toml[TOML] markup.
-Its location can be specified by invoking `hercules-ci-agent --config agent.toml`. Alternatively, the NixOS and nix-darwin module can generate this file for you. See also xref:hercules-ci:ROOT:getting-started/index.adoc#deploy-agent[the setup guide].
+If you don't use an existing configuration manager such those previously mentioned,
+you can create a config file directly, in JSON. https://github.com/toml-lang/toml#toml[TOML] is still supported, but not
+recommended because of limitations:
 
-A basic `agent.toml` looks as follows:
+* It does not support `null` in JSON-like fields such as `labels`.
+* The TOML parsing library currently requires that intermediate tables are specified explicitly. If you don't, the subtables are **ignored WITHOUT WARNING**.
 
++
 [source,toml]
 ----
-include::ROOT:partial$agent-small-example.toml[]
+[labels]      # <-- Without this line, labels.foo will be ignored.
+[labels.foo]
+bar = true
+----
+
+Its location can be specified by invoking `hercules-ci-agent --config agent.json`, although using a configuration manager is recommended. See also xref:hercules-ci:ROOT:getting-started/index.adoc#deploy-agent[the setup guide].
+
+A basic `agent.json` looks as follows:
+
+[source,json]
+----
+{
+  "baseDirectory": "/var/lib/hercules-ci-agent"
+}
 ----
 
 NOTE: If you are deploying an agent, the xref:hercules-ci:ROOT:getting-started/index.adoc[guide] is a better starting point.
@@ -19,7 +35,7 @@ NOTE: If you are deploying an agent, the xref:hercules-ci:ROOT:getting-started/i
 [[allowInsecureBuiltinFetchers]]
 == allowInsecureBuiltinFetchers
 
-Optional. Defaults safely to False.
+Optional. Defaults safely to `false`.
 
 Whether to allow the built-in fetchers to access `http://` and other unencrypted URL schemes.
 
@@ -102,19 +118,18 @@ Optional. A key-value map of user data.
 
 This data will be available to organization members in the dashboard and API.
 
-The values can be of any TOML type that corresponds to a JSON type, but arrays
-can not contain tables/objects due to limitations of the TOML library. Values
-involving arrays of non-primitive types may not be representable currently.
+When using the TOML format, the values can be of any TOML type that corresponds to a JSON type, but nested structures (tables, lists) may be problematic due to limitations of the TOML library.
+Values involving arrays of non-primitive types may not be representable currently.
 
 [[logLevel]]
 == logLevel
 
-Optional. Defaults to `InfoS`. More verbose: `DebugS`, less verbose: `WarningS`, `ErrorS`.
+Optional. Defaults to `"InfoS"`. More verbose: `"DebugS"`, less verbose: `"WarningS"`, `"ErrorS"`.
 
 [[nixVerbosity]]
 == nixVerbosity
 
-Optional. Defaults to `Talkative`. More verbose: `Debug`, `Vomit`, less verbose: `Info`, `Warn`, `Error`.
+Optional. Defaults to `"Talkative"`. More verbose: `"Debug"`, `"Vomit"`, less verbose: `"Info"`, `"Warn"`, `"Error"`.
 
 [[secretsJsonPath]]
 == secretsJsonPath

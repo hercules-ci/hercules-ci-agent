@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
    CI setups based on the Nix command line interface (almost all CIs) also behave this way.
 
+ - The recommended configuration format is now **JSON**, preferably generated using a configuration manager such as NixOS or nix-darwin.
+   TOML is still supported, but does not support `null` in labels, and due to library limitations, it requires that intermediate tables be specified. See [the config file documentation](https://docs.hercules-ci.com/hercules-ci-agent/agent-config).
+
 ### Added
 
  - New configuration option `remotePlatformsWithSameFeatures`, allowing a remote build to be used before more elaborate remote builder support is implemented.
