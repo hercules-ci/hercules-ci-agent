@@ -12,7 +12,7 @@ let
     let
       inherit (import ../settings.nix { inherit pkgs lib; }) format settingsModule;
       configFile = format.generate "hercules-ci-agent${suffix}.json" config.settings;
-      command = "${config.package}/bin/hercules-ci-agent --config-json ${configFile}";
+      command = "${config.package}/bin/hercules-ci-agent --config ${configFile}";
       testCommand = "${command} --test-configuration";
       suffix = if name == "" then "" else "-${name}";
       user = if name == "" then "hercules-ci-agent" else "hci-${name}";

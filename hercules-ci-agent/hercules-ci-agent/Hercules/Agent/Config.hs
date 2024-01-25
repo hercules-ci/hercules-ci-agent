@@ -31,13 +31,10 @@ import System.Environment qualified
 import System.FilePath ((</>))
 import Toml
 
-data ConfigPath
-  = TomlPath FilePath
-  | JsonPath FilePath
+newtype ConfigPath = ConfigPath FilePath
 
 nounPhrase :: ConfigPath -> Text
-nounPhrase (TomlPath p) = "your agent.toml file from " <> show p
-nounPhrase (JsonPath p) = "your agent.json file from " <> show p
+nounPhrase (ConfigPath p) = "your agent config file from " <> show p
 
 data Purpose = Input | Final
 
@@ -140,8 +137,8 @@ defaultApiBaseUrl = "https://hercules-ci.com"
 
 readConfig :: ConfigPath -> IO (Config 'Input)
 readConfig loc = case loc of
-  JsonPath fp -> Json.decodeFile (forJson combiCodec) (toS fp)
-  TomlPath fp -> Toml.decodeFile (forToml combiCodec) (toS fp)
+  ConfigPath fp | ".json" `isSuffixOf` fp -> Json.decodeFile (forJson combiCodec) (toS fp)
+  ConfigPath fp -> Toml.decodeFile (forToml combiCodec) (toS fp)
 
 finalizeConfig :: ConfigPath -> Config 'Input -> IO (Config 'Final)
 finalizeConfig loc input = do

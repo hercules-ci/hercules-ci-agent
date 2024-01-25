@@ -21,7 +21,7 @@ in
 
   config = mkIf cfg.enable {
     launchd.daemons.hercules-ci-agent = {
-      script = "exec ${cfg.package}/bin/hercules-ci-agent --config-json ${cfg.jsonFile}";
+      script = "exec ${cfg.package}/bin/hercules-ci-agent --config ${cfg.jsonFile}";
 
       path = [ config.nix.package ];
       environment = {
