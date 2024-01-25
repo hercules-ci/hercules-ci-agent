@@ -210,6 +210,9 @@ executable hercules-ci-agent
       Hercules.Agent.Client
       Hercules.Agent.Config
       Hercules.Agent.Config.BinaryCaches
+      Hercules.Agent.Config.Combined
+      Hercules.Agent.Config.Json
+      Hercules.Agent.Config.Toml
       Hercules.Agent.Compat
       Hercules.Agent.Effect
       Hercules.Agent.Env
@@ -218,7 +221,6 @@ executable hercules-ci-agent
       Hercules.Agent.Evaluate.TraversalQueue
       Hercules.Agent.Files
       Hercules.Agent.Init
-      Hercules.Agent.Json
       Hercules.Agent.InitWorkerConfig
       Hercules.Agent.Log
       Hercules.Agent.LogSocket
@@ -245,6 +247,7 @@ executable hercules-ci-agent
     , attoparsec
     , base
     , base64-bytestring
+    , bifunctors
     , binary
     , binary-conduit
     , bytestring
@@ -282,6 +285,7 @@ executable hercules-ci-agent
     , optparse-applicative
     , process
     , process-extras
+    , profunctors
     , protolude
     , safe-exceptions
     , scientific
@@ -398,6 +402,11 @@ test-suite hercules-ci-agent-unit-tests
       Data.Conduit.Extras
       Hercules.Agent.Conduit
       Hercules.Agent.Log
+      Hercules.Agent.Config
+      Hercules.Agent.Config.Combined
+      Hercules.Agent.Config.Json
+      Hercules.Agent.Config.Toml
+      Hercules.Agent.ConfigSpec
       Hercules.Agent.NixPath
       Hercules.Agent.NixPathSpec
       Hercules.Agent.Nix.RetrieveDerivationInfo
@@ -426,6 +435,7 @@ test-suite hercules-ci-agent-unit-tests
     , async
     , attoparsec
     , base
+    , bifunctors
     , binary
     , binary-conduit
     , bytestring
@@ -440,18 +450,24 @@ test-suite hercules-ci-agent-unit-tests
     , hspec
     , HUnit
     , katip
+    , lens
+    , lens-aeson
     , lifted-async
     , lifted-base
     , monad-control
     , mtl
     , process
+    , profunctors
     , protolude
     , QuickCheck
     , safe-exceptions
+    , scientific
     , stm
     , tagged
     , temporary
     , text
+    , tomland
+    , transformers
     , transformers-base
     , unliftio-core
     , uuid

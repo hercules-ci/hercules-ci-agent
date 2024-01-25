@@ -12,7 +12,7 @@ let
 
   cfg = config.services.hercules-ci-agent;
 
-  command = "${cfg.package}/bin/hercules-ci-agent --config ${cfg.jsonFile}";
+  command = "${cfg.package}/bin/hercules-ci-agent --config-json ${cfg.jsonFile}";
   testCommand = "${command} --test-configuration";
 
 in
