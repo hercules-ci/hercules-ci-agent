@@ -41,5 +41,8 @@ boolAtKey k = Combi (Data.Bifunctor.Product.Pair (Toml.bool k) (Json.bool k))
 opt :: Combi' a -> Combi' (Maybe a)
 opt x = Combi $ Pair (Toml.dioptional (forToml x)) (Json.proOptional (forJson x))
 
+optEmpty :: (Monoid a) => Combi' a -> Combi' a
+optEmpty c = dimap Just (fromMaybe mempty) (opt c)
+
 enumBoundedAtKey :: (Bounded a, Enum a, Show a) => Key -> Combi' a
 enumBoundedAtKey k = Combi (Data.Bifunctor.Product.Pair (Toml.enumBounded k) (Json.enumBounded k))
