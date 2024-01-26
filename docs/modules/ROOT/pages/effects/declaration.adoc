@@ -1,0 +1,32 @@
+= Effect Declaration
+
+Effects are declared by means of a Nix derivation, and just like Nix shells, they are not built normally.
+Instead, they execute in a special sandbox that can be customized with the following derivation attributes. This page explains how the derivation is interpreted by Hercules CI Agent.
+
+For writing your own effects, it is recommended to use xref:hercules-ci-effects:ROOT:reference/effect-modules/core.adoc[the hercules-ci-effects attribute documentation]. The rest of this page is reference documentation for effects interface.
+
+
+[[attributes]]
+== Attributes
+
+Output-related derivation attributes are mostly ignored.
+
+Currently, `__structuredAttributes` must not be used in effects. It can be used in dependencies of the effect just fine.
+
+[[__hci_mounts]]
+=== `__hci_mounts`
+
+_Since hercules-ci-agent 0.10.1_
+
+A JSON object where the field names are paths in the sandbox filesystem, and the values are strings that refer to xref:../agent-config.adoc#effectMountables[effect mountables] configured on the agent.
+
+Example:
+
+```json
+{ "/etc/hosts": "hosts" }
+```
+
+[[secretsMap]]
+=== `secretsMap`
+
+See (low-level) xref:../effects.adoc#secrets[Secrets] or xref:hercules-ci-effects:ROOT:reference/effect-modules/core.adoc[hercules-ci-effects secretsMap option].

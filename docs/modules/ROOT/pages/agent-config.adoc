@@ -96,6 +96,63 @@ NOTE: When scaling, it is generally better to have a double-size machine than tw
 because each split of resources causes inefficiencies; particularly with regards
 to build latency because of extra downloads.
 
+[[effectMountables]]
+== effectMountables
+
+_Since hercules-ci-agent 0.10.1_
+
+Default: `{ }`
+
+A mapping from names to mountable definitions.
+
+Example value:
+```nix
+{
+  "hosts" = {
+    source = "/etc/hosts";
+    readOnly = true;
+    condition = {
+      isRepo = "configurations";
+    };
+  };
+}
+```
+
+Mountables can be mounted into the filesystem of effects that satisfy the condition, and request a mount using xref:effects/declaration.adoc#\__hci_mounts[`__hci_mounts`].
+
+The location in the sandbox is not configured here, but in the field names of xref:effects/declaration.adoc#\__hci_mounts[`__hci_mounts`].
+
+You may visualize the mounting process as the joining of the two maps:
+
+----
+                     effect                    agent
+
+┌──────────────┐  __hci_mounts  ┌──────┐  effectMountables  ┌───────────┐
+│ sandbox path ├───────────────►│ name ├───────────────────►│ mountable │
+└──────────────┘                └──────┘                    └───────────┘
+
+virtual location               convention                   host location
+----
+
+Attributes:
+
+[[effectMountables-source]]
+=== source
+
+The location on the host system that can be mounted into an effect's sandbox.
+Make sure that the system user running hercules-ci-agent is allowed to access this location.
+
+[[effectMountables-readOnly]]
+=== readOnly
+
+If `true`, the mount into the sandbox will be a read-only bind mount.
+If `false`, the mount is not mounted read-only, and it will be writable if it is for the user that runs hercules-ci-agent.
+
+[[effectMountables-condition]]
+=== condition
+
+A xref:secrets-json.adoc#condition[condition expression] that controls under what circumstances an effect is allowed to mount this mountable.
+
 [[remotePlatformsWithSameFeatures]]
 == remotePlatformsWithSameFeatures
 
