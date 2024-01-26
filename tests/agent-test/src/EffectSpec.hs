@@ -76,6 +76,67 @@ printErrItems items = for_ items \item -> putErrText ("  - " <> show item)
 
 spec :: SpecWith ServerHandle
 spec = describe "Effect" do
+  it "fails effect when mountable is denied" $ \srv -> do
+    -- Setup: put the drv in the agent's store
+    id <- randomId
+    (s, r) <-
+      runEval
+        srv
+        ( fixupInputs
+            defaultEvalTask
+              { EvaluateTask.id = id,
+                EvaluateTask.otherInputs = "src" =: "/tarball/effect" <> "n" =: "/tarball/nixpkgs",
+                EvaluateTask.autoArguments =
+                  M.singleton
+                    "nixpkgs"
+                    (EvaluateTask.SubPathOf "n" Nothing),
+                EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                EvaluateTask.selector = EvaluateTask.OnPush $ EvaluateTask.OnPush.MkOnPush {name = "cd", inputs = "nixpkgs" =: ImmutableInput.ArchiveUrl (apiBaseUrl <> "/tarball/nixpkgs")}
+              }
+        )
+    s `shouldBe` TaskStatus.Successful ()
+    drvPath <-
+      case attrLike r of
+        [EvaluateEvent.AttributeEffect ev] -> do
+          let drvPath = AttributeEffectEvent.derivationPath ev
+          AttributeEffectEvent.expressionPath ev `shouldBe` ["effects", "launchIt"]
+          toS drvPath `shouldContain` "/nix/store"
+          pure drvPath
+        attrEvs -> do
+          putText "All events:"
+          printErrItems r
+          failWith $ "Events should be a single attribute, not: " <> show attrEvs
+    -- Test: launch it
+    id2 <- randomId
+    s2 <-
+      runEffect
+        srv
+        ( EffectTask.EffectTask
+            { id = id2,
+              derivationPath = drvPath,
+              logToken = "pretend-jwt-for-log",
+              inputDerivationOutputPaths = [],
+              token = "test-fake-token",
+              projectId = Id $ Prelude.read "00000000-0000-0000-0000-000000001234",
+              projectPath = "github/test-fake-owner/test-fake-repo",
+              serverSecrets = mempty,
+              siteName = "test-fake-site",
+              ownerName = "test-fake-owner",
+              repoName = "test-fake-repo", -- ie not repo-with-shared-data
+              ref = "refs/heads/test-fake-branch",
+              isDefaultBranch = True
+            }
+        )
+    case s2 of
+      TaskStatus.Exceptional msg -> do
+        let msg' = toS msg
+        msg' `shouldContain` "/var/lib/shared-data"
+        msg' `shouldContain` "a mountable with name shared-data has not been configured on agent, or it has been configured, but the condition field does not allow"
+      _ -> failWith ("Unexpected status" <> show s2)
+
+    -- TODO check that it didn't run. Need to add task id to log lines so that we don't get false results from other tests.
+    pass
+
   it "works" $ \srv -> do
     -- Setup: put the drv in the agent's store
     id <- randomId
@@ -122,7 +183,7 @@ spec = describe "Effect" do
               serverSecrets = mempty,
               siteName = "test-fake-site",
               ownerName = "test-fake-owner",
-              repoName = "test-fake-repo",
+              repoName = "repo-with-shared-data",
               ref = "refs/heads/test-fake-branch",
               isDefaultBranch = True
             }
@@ -140,6 +201,12 @@ spec = describe "Effect" do
         guard $
           isJust $
             entries & find \case LogEntry.Msg {msg = m} | m == "hi from src\r" -> True; _noMatch -> False
+        guard $
+          isJust $
+            entries & find \case LogEntry.Msg {msg = m} | m == "hello from forwarded path\r" -> True; _noMatch -> False
+        guard $
+          isJust $
+            entries & find \case LogEntry.Msg {msg = m} | m == "hello from shared-data\r" -> True; _noMatch -> False
       -- FIXME
       -- guard $
       --   isJust $

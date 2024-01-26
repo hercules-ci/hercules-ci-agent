@@ -59,6 +59,23 @@ in
         services.hercules-ci-agent.settings.binaryCachesPath = (pkgs.writeText "binary-caches.json" (builtins.toJSON { })).outPath;
         services.hercules-ci-agent.settings.clusterJoinTokenPath = (pkgs.writeText "pretend-agent-token" "").outPath;
         services.hercules-ci-agent.settings.concurrentTasks = 4; # Decrease on itest memory problems
+        services.hercules-ci-agent.settings.effectMountables = {
+          "forwarded-path" = {
+            source = pkgs.runCommand "forwarded-path" { } ''
+              mkdir -p $out
+              echo "hello from forwarded path" > $out/hello;
+            '';
+            readOnly = true;
+            condition = true;
+          };
+          "shared-data" = {
+            source = "/var/lib/ci-data/shared";
+            readOnly = false;
+            condition = {
+              isRepo = "repo-with-shared-data";
+            };
+          };
+        };
 
         systemd.services.hercules-ci-agent.serviceConfig.StartLimitBurst = lib.mkForce (agentStartTimeoutSec * 10);
         systemd.services.hercules-ci-agent.serviceConfig.RestartSec = lib.mkForce ("100ms");
@@ -83,6 +100,8 @@ in
           echo '{}' > /var/lib/hercules-ci-agent/secrets/secrets.json
           chown -R hercules-ci-agent /var/lib/hercules-ci-agent
           chmod 0700 /var/lib/hercules-ci-agent/secrets
+          mkdir -p /var/lib/ci-data/shared
+          chown -R hercules-ci-agent /var/lib/ci-data/shared
       """)
 
       # Run the test code + api
