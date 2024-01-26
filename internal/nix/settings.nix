@@ -59,11 +59,7 @@ let
         description = mdDoc ''
           A key-value map of user data.
 
-          This data will be available to organization members in the dashboard and API.
-
-          The values can be of any TOML type that corresponds to a JSON type, but arrays
-          can not contain tables/objects due to limitations of the TOML library. Values
-          involving arrays of non-primitive types may not be representable currently.
+          Any Nix type that is representable in JSON is permitted.
         '';
         type = format.type;
         defaultText = literalExpression ''

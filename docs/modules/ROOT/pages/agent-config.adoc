@@ -116,10 +116,10 @@ Note that this is a stop gap solution as it does not provide a mechanism to conf
 
 Optional. A key-value map of user data.
 
-This data will be available to organization members in the dashboard and API.
+This data is made available to organization members in the dashboard and API.
 
 When using the TOML format, the values can be of any TOML type that corresponds to a JSON type, but nested structures (tables, lists) may be problematic due to limitations of the TOML library.
-Values involving arrays of non-primitive types may not be representable currently.
+Values involving arrays of non-primitive types may not be representable currently. The JSON configuration format is recommended, and allows all JSON types.
 
 [[logLevel]]
 == logLevel

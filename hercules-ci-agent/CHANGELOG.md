@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - New configuration option `remotePlatformsWithSameFeatures`, allowing a remote build to be used before more elaborate remote builder support is implemented.
    The recommended method for running a cluster is still to install `hercules-ci-agent` on each machine, as that is more efficient and accurate.
 
+ - Agent [labels](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#labels) can now be `null`, when using the JSON format.
+
 ### Fixed
 
  - Low level crash details are now reported in the log as expected.
