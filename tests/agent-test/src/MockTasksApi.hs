@@ -12,6 +12,7 @@ module MockTasksApi
     serverState,
     logEntries,
     fixupInputs,
+    runEffect,
   )
 where
 
@@ -55,6 +56,7 @@ import Hercules.API.Agent
 import Hercules.API.Agent.Build (BuildAPI (..))
 import Hercules.API.Agent.Build.BuildEvent qualified as BuildEvent
 import Hercules.API.Agent.Build.BuildTask qualified as BuildTask
+import Hercules.API.Agent.Effect.EffectTask qualified as EffectTask
 import Hercules.API.Agent.Evaluate (EvalAPI (..))
 import Hercules.API.Agent.Evaluate.DerivationStatus (DerivationStatus)
 import Hercules.API.Agent.Evaluate.DerivationStatus qualified as DerivationStatus
@@ -132,6 +134,7 @@ data ServerState = ServerState
             [BuildEvent.BuildEvent]
         ),
     drvTasks :: IORef (Map Text (Id (Task BuildTask.BuildTask))),
+    effectTasks :: IORef (Map Text (Id (Task EffectTask.EffectTask))),
     logEntries :: TVar [LogEntry]
   }
 
@@ -152,12 +155,17 @@ enqueue (ServerHandle st) t = do
         M.insert (BuildTask.id buildTask) buildTask
       atomicModifyIORef_ (drvTasks st) $
         M.insert (BuildTask.derivationPath buildTask) (BuildTask.id buildTask)
+    AgentTask.Effect effectTask -> do
+      atomicModifyIORef_ (effectTasks st) $
+        M.insert (EffectTask.derivationPath effectTask) (EffectTask.id effectTask)
+
   putMVar (queue st) (toServicePayload t')
 
 toServicePayload :: AgentTask.AgentTask -> SP.ServicePayload
 toServicePayload = \case
   AgentTask.Evaluate t -> SP.StartEvaluation t
   AgentTask.Build t -> SP.StartBuild t
+  AgentTask.Effect t -> SP.StartEffect t
 
 fixup :: AgentTask.AgentTask -> IO AgentTask.AgentTask
 fixup (AgentTask.Evaluate t) = do
@@ -203,18 +211,36 @@ runBuild sh@(ServerHandle st) task0 = do
   evs <- readIORef (buildEvents st)
   pure $ (,) s $ fromMaybe [] $ M.lookup (BuildTask.id task) evs
 
-fixupBuildTask :: ServerHandle -> BuildTask.BuildTask -> IO BuildTask.BuildTask
-fixupBuildTask (ServerHandle st) t = do
+runEffect ::
+  ServerHandle ->
+  EffectTask.EffectTask ->
+  IO (TaskStatus.TaskStatus)
+runEffect sh task0 = do
+  task <- fixupEffectTask sh task0
+  enqueue sh (AgentTask.Effect task)
+  await sh (idText $ EffectTask.id task)
+
+getInOuts :: ServerHandle -> Text -> IO [Text]
+getInOuts (ServerHandle st) drvPath = do
   drvs <- readIORef $ derivationInfos st
-  let inouts =
-        [ outPath
-          | di <- toList $ drvs & M.lookup (BuildTask.derivationPath t),
-            (dep, outs) <- DerivationInfo.inputDerivations di & M.toList,
-            depInfo <- toList $ drvs & M.lookup dep,
-            out <- outs,
-            outInfo <- depInfo & DerivationInfo.outputs & M.lookup out & toList,
-            outPath <- DerivationInfo.path outInfo & toList
-        ]
+  pure
+    [ outPath
+      | di <- toList $ drvs & M.lookup drvPath,
+        (dep, outs) <- DerivationInfo.inputDerivations di & M.toList,
+        depInfo <- toList $ drvs & M.lookup dep,
+        out <- outs,
+        outInfo <- depInfo & DerivationInfo.outputs & M.lookup out & toList,
+        outPath <- DerivationInfo.path outInfo & toList
+    ]
+
+fixupEffectTask :: ServerHandle -> EffectTask.EffectTask -> IO EffectTask.EffectTask
+fixupEffectTask s t = do
+  inouts <- getInOuts s (EffectTask.derivationPath t)
+  pure $ t {EffectTask.inputDerivationOutputPaths = inouts}
+
+fixupBuildTask :: ServerHandle -> BuildTask.BuildTask -> IO BuildTask.BuildTask
+fixupBuildTask s t = do
+  inouts <- getInOuts s (BuildTask.derivationPath t)
   pure $ t {BuildTask.inputDerivationOutputPaths = inouts}
 
 printState :: ServerState -> IO ()
@@ -242,6 +268,7 @@ withServer doIt = do
   le <- newTVarIO mempty
   dis <- newIORef mempty
   ifdDrvs <- newIORef mempty
+  eft <- newIORef mempty
   let st =
         ServerState
           { queue = q,
@@ -253,7 +280,8 @@ withServer doIt = do
             drvTasks = dt,
             done = d,
             logEntries = le,
-            ifdDerivations = ifdDrvs
+            ifdDerivations = ifdDrvs,
+            effectTasks = eft
           }
       runServer =
         Control.Exception.Safe.handleAny
