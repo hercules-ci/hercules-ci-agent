@@ -21,6 +21,7 @@ data Condition
   | IsTag
   | IsRepo Text
   | IsOwner Text
+  | Const Bool
   deriving (Generic, Eq, Read, Show)
 
 instance ToJSON Condition where
@@ -31,6 +32,7 @@ instance ToJSON Condition where
   toJSON (IsBranch a) = object ["isBranch" .= a]
   toJSON (IsRepo a) = object ["isRepo" .= a]
   toJSON (IsOwner a) = object ["isOwner" .= a]
+  toJSON (Const b) = Bool b
 
 instance FromJSON Condition where
   parseJSON (String "isTag") = pure IsTag
@@ -42,7 +44,8 @@ instance FromJSON Condition where
         Nothing -> fail $ "The field name in a Condition object must be one of " <> show (map fst (HM.toList taggedConditionParsers))
         Just p -> p v
       _ -> fail "A Condition object must contain a single field."
-  parseJSON _ = fail "Expected Object or String."
+  parseJSON (Bool b) = pure (Const b)
+  parseJSON _ = fail "Expected Object, String or true."
 
 taggedConditionParsers :: HM.HashMap Text (Value -> A.Parser Condition)
 taggedConditionParsers =
