@@ -14,9 +14,11 @@
       in {
         effects.launchIt = pkgs.runCommand "one" {
           t = builtins.currentTime;
+          nativeBuildInputs = [ pkgs.curl ];
           __hci_mounts = builtins.toJSON {
             "/etc/forwarded-path" = "forwarded-path";
             "/var/lib/shared-data" = "shared-data";
+            "/etc/hosts" = "hosts";
           };
         } ''
           echo 1>&2 hello "on stderr"
@@ -25,6 +27,11 @@
           cat /etc/forwarded-path/hello
           echo 'hello from shared-data' > /var/lib/shared-data/hello
           cat /var/lib/shared-data/hello
+
+          cat /etc/resolv.conf
+          cat /etc/hosts
+          curl --fail -v --no-progress-bar \
+              $HERCULES_CI_API_BASE_URL/hello
 
           echo -n log line "without newline"
         '' // { isEffect = true; };

@@ -314,6 +314,7 @@ type MockAPI =
     :<|> "api" :> "v1" :> "agent-socket" :> WebSocket
     :<|> "api" :> "v1" :> "logs" :> "build" :> "socket" :> WebSocket
     :<|> "tarball" :> Capture "tarball" Text :> StreamGet NoFraming OctetStream (SourceIO ByteString)
+    :<|> "hello" :> Get '[PlainText] Text
 
 mockApi :: Proxy MockAPI
 mockApi = Proxy
@@ -348,6 +349,7 @@ endpoints server =
     :<|> socket server
     :<|> logSocket server
     :<|> (toSourceIO & liftA & liftA & ($ sourceball))
+    :<|> pure "Hello, world! - The fake API testing endpoint\n"
 
 logSocket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
 logSocket server conn = do

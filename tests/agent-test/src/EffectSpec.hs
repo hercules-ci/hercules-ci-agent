@@ -207,6 +207,9 @@ spec = describe "Effect" do
         guard $
           isJust $
             entries & find \case LogEntry.Msg {msg = m} | m == "hello from shared-data\r" -> True; _noMatch -> False
+        guard $
+          isJust $
+            entries & find \case LogEntry.Msg {msg = m} | m == "Hello, world! - The fake API testing endpoint\r" -> True; _noMatch -> False
       -- FIXME
       -- guard $
       --   isJust $

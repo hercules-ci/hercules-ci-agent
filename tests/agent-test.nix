@@ -44,7 +44,10 @@ in
       ];
       config = {
         # Keep build dependencies around, because we'll be offline
-        environment.etc."reference-stdenv".text = builtins.toJSON (pkgs.runCommand "foo" { } "").drvAttrs;
+        environment.etc."reference-stdenv".text = builtins.toJSON (pkgs.runCommand "foo"
+          {
+            nativeBuildInputs = [ pkgs.curl ];
+          } "").drvAttrs;
         # It's an offline test, so no caches are available
         nix.settings.substituters = lib.mkForce [ ];
         nix.package = lib.mkIf daemonIsNixUnstable pkgs.nixUnstable;
@@ -59,6 +62,8 @@ in
         services.hercules-ci-agent.settings.binaryCachesPath = (pkgs.writeText "binary-caches.json" (builtins.toJSON { })).outPath;
         services.hercules-ci-agent.settings.clusterJoinTokenPath = (pkgs.writeText "pretend-agent-token" "").outPath;
         services.hercules-ci-agent.settings.concurrentTasks = 4; # Decrease on itest memory problems
+        # services.hercules-ci-agent.settings.logLevel = "DebugS";
+        # services.hercules-ci-agent.settings.nixVerbosity = "debug";
         services.hercules-ci-agent.settings.effectMountables = {
           "forwarded-path" = {
             source = pkgs.runCommand "forwarded-path" { } ''
@@ -74,6 +79,11 @@ in
             condition = {
               isRepo = "repo-with-shared-data";
             };
+          };
+          "hosts" = {
+            readOnly = true;
+            source = "/etc/hosts";
+            condition = true;
           };
         };
 
