@@ -68,6 +68,7 @@ library
     Hercules.API.TaskStatus
     Hercules.Formats.CachixCache
     Hercules.Formats.Common
+    Hercules.Formats.Mountable
     Hercules.Formats.NixCache
     Hercules.Formats.Secret
 
@@ -131,6 +132,7 @@ test-suite hercules-ci-api-agent-unit-tests
     Hercules.API.Agent.LifeCycle.AgentInfoSpec
     Hercules.Formats.CachixCacheSpec
     Hercules.Formats.SecretSpec
+    Hercules.Formats.MountableSpec
     Spec
 
   hs-source-dirs:     test

@@ -9,6 +9,7 @@ import Hercules.API.Id (Id)
 import Hercules.Agent.Sensitive
 import Hercules.Agent.WorkerProtocol.Orphans ()
 import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON)
+import Hercules.Formats.Mountable (Mountable)
 import Hercules.Secrets (SecretContext)
 import Protolude
 
@@ -21,6 +22,7 @@ data Effect = Effect
     token :: Sensitive Text,
     projectId :: Id "project",
     projectPath :: Text,
-    secretContext :: SecretContext
+    secretContext :: SecretContext,
+    configuredMountables :: Sensitive (ViaJSON (Map Text (Mountable)))
   }
   deriving (Generic, Binary, Show, Eq)

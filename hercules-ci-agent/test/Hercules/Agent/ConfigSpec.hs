@@ -12,6 +12,9 @@ import Hercules.Agent.Config (Config (..), Purpose (Input), combiCodec)
 import Hercules.Agent.Config.Combined (forJson, forToml)
 import Hercules.Agent.Config.Json qualified as Json
 import Hercules.CNix.Verbosity (Verbosity (Vomit))
+import Hercules.Formats.Mountable (Mountable (Mountable))
+import Hercules.Formats.Mountable qualified
+import Hercules.Formats.Secret qualified
 import Katip (Severity (DebugS))
 import Protolude
 import Test.Hspec
@@ -42,14 +45,12 @@ spec =
                   "workDirectory = \"/var/lib/hercules-ci-agent/work\"",
                   "remotePlatformsWithSameFeatures = [\"aarch64-darwin\"]",
                   "nixVerbosity = \"vomit\"",
-                  -- -- This line should not be needed!
-                  -- "[effectMountables]",
-
-                  -- "[effectMountables.hosts]",
-                  -- "  condition = true",
-                  -- "  readOnly = true",
-                  -- "  source = \"/etc/hosts\"",
-
+                  -- This line should not be needed!
+                  "[effectMountables]",
+                  "[effectMountables.hosts]",
+                  "  condition = true",
+                  "  readOnly = true",
+                  "  source = \"/etc/hosts\"",
                   "[labels]",
                   "module = \"nixos-profile\"",
                   "[labels.agent]",
@@ -80,18 +81,17 @@ spec =
                           ]
                       ),
                   allowInsecureBuiltinFetchers = Just True,
-                  remotePlatformsWithSameFeatures = Just ["aarch64-darwin"]
-                  -- ,
-                  -- effectMountables =
-                  --   M.fromList
-                  --     [ ( "hosts",
-                  --         Mountable
-                  --           { source = "/etc/hosts",
-                  --             readOnly = True,
-                  --             condition = Hercules.Formats.Secret.Const True
-                  --           }
-                  --       )
-                  --     ]
+                  remotePlatformsWithSameFeatures = Just ["aarch64-darwin"],
+                  effectMountables =
+                    M.fromList
+                      [ ( "hosts",
+                          Mountable
+                            { source = "/etc/hosts",
+                              readOnly = True,
+                              condition = Hercules.Formats.Secret.Const True
+                            }
+                        )
+                      ]
                 }
             )
       it "parses empty config" $ do
@@ -125,6 +125,14 @@ spec =
                   "  \"lib\": {\"version\": \"24.05pre-git\"},",
                   "  \"module\": \"nixos-profile\"",
                   "},",
+                  "\"effectMountables\": {",
+                  "  \"hosts\": {",
+                  "    \"source\": \"/etc/hosts\",",
+                  "    \"readOnly\": true,",
+                  "    \"condition\": true,",
+                  "    \"and\":[]",
+                  "  }",
+                  "},",
                   "\"allowInsecureBuiltinFetchers\": true",
                   "}"
                 ]
@@ -151,7 +159,17 @@ spec =
                         ]
                     ),
                 allowInsecureBuiltinFetchers = Just True,
-                remotePlatformsWithSameFeatures = Just ["aarch64-darwin"]
+                remotePlatformsWithSameFeatures = Just ["aarch64-darwin"],
+                effectMountables =
+                  M.fromList
+                    [ ( "hosts",
+                        Mountable
+                          { source = "/etc/hosts",
+                            readOnly = True,
+                            condition = Hercules.Formats.Secret.Const True
+                          }
+                      )
+                    ]
               }
 
       it "handles empty config" $ do
@@ -213,5 +231,6 @@ emptyConfig =
       nixVerbosity = Nothing,
       labels = Nothing,
       allowInsecureBuiltinFetchers = Nothing,
-      remotePlatformsWithSameFeatures = Nothing
+      remotePlatformsWithSameFeatures = Nothing,
+      effectMountables = mempty
     }

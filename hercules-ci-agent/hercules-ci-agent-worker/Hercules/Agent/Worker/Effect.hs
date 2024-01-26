@@ -27,6 +27,7 @@ runEffect extraNixOptions store command = do
         runEffectToken = Just $ Command.Effect.token command,
         runEffectSecretsConfigPath = Just $ Command.Effect.secretsPath command,
         runEffectServerSecrets = Command.Effect.serverSecrets command <&> fromViaJSON,
+        runEffectConfiguredMountables = Command.Effect.configuredMountables command <&> fromViaJSON,
         runEffectApiBaseURL = Command.Effect.apiBaseURL command,
         runEffectDir = dir,
         runEffectProjectId = Just $ Command.Effect.projectId command,

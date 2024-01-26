@@ -7,6 +7,7 @@ import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEventS
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.DerivationInfoSpec
 import qualified Hercules.API.Agent.LifeCycle.AgentInfoSpec
 import qualified Hercules.Formats.CachixCacheSpec
+import qualified Hercules.Formats.MountableSpec
 import qualified Hercules.Formats.SecretSpec
 import Test.Hspec
 
@@ -22,5 +23,7 @@ spec = describe "hercules-ci-api" do
     Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEventSpec.spec
   describe "Hercules.Formats.CachixCache" do
     Hercules.Formats.CachixCacheSpec.spec
+  describe "Hercules.Formats.Mountable" do
+    Hercules.Formats.MountableSpec.spec
   describe "Hercules.Formats.Secret" do
     Hercules.Formats.SecretSpec.spec

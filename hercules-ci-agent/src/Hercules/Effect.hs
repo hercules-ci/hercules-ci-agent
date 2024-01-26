@@ -12,6 +12,7 @@ import Data.Aeson.KeyMap qualified as AK
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Map qualified as M
+import Data.Text qualified as T
 import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent (GitToken (..), SecretRef (GitToken, SimpleSecret), SimpleSecret (MkSimpleSecret))
 import Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent qualified
 import Hercules.API.Id (Id, idText)
@@ -22,6 +23,8 @@ import Hercules.CNix.Store (getDerivationArguments, getDerivationBuilder, getDer
 import Hercules.Effect.Container (BindMount (BindMount))
 import Hercules.Effect.Container qualified as Container
 import Hercules.Error (escalateAs)
+import Hercules.Formats.Mountable (Mountable)
+import Hercules.Formats.Mountable qualified as Mountable
 import Hercules.Formats.Secret qualified as Formats.Secret
 import Hercules.Secrets (SecretContext, evalCondition, evalConditionTrace)
 import Katip (KatipContext, Severity (..), logLocM, logStr)
@@ -37,13 +40,21 @@ import UnliftIO.Directory (createDirectory, createDirectoryIfMissing)
 import UnliftIO.Process (withCreateProcess)
 import UnliftIO.Process qualified as Process
 
+parseDrvMountsMap :: Map ByteString ByteString -> Either Text (Map Text Text)
+parseDrvMountsMap drvEnv =
+  case "__hci_mounts" `M.lookup` drvEnv of
+    Nothing -> pure mempty
+    Just mountsMapText -> case A.eitherDecode (BL.fromStrict mountsMapText) of
+      Left e -> Left $ "Could not parse __hci_mounts variable in derivation. Error: " <> toS e
+      Right r -> pure r
+
 parseDrvSecretsMap :: Map ByteString ByteString -> Either Text (Map Text SecretRef)
 parseDrvSecretsMap drvEnv =
   case (,) "secretsToUse" <$> M.lookup "secretsToUse" drvEnv
     <|> (,) "secretsMap" <$> M.lookup "secretsMap" drvEnv of
     Nothing -> pure mempty
     Just (attrName, secretsMapText) -> case A.eitherDecode (BL.fromStrict secretsMapText) of
-      Left _ -> Left $ "Could not parse " <> attrName <> " variable in derivation. It must be a JSON dictionary."
+      Left e -> Left $ "Could not parse " <> attrName <> " variable in derivation. Error: " <> toS e
       Right r -> parseSecretRefs attrName r
 
 parseSecretRefs :: Text -> A.Object -> Either Text (Map Text SecretRef)
@@ -147,6 +158,7 @@ data RunEffectParams = RunEffectParams
     runEffectSecretsConfigPath :: Maybe FilePath,
     runEffectSecretContext :: Maybe SecretContext,
     runEffectServerSecrets :: Sensitive (Map Text (Map Text A.Value)),
+    runEffectConfiguredMountables :: Sensitive (Map Text Mountable),
     runEffectApiBaseURL :: Text,
     runEffectDir :: FilePath,
     runEffectProjectId :: Maybe (Id "project"),
@@ -166,6 +178,7 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
   drvArgs <- liftIO $ getDerivationArguments derivation
   drvEnv <- liftIO $ getDerivationEnv derivation
   drvSecretsMap <- escalateAs FatalError $ parseDrvSecretsMap drvEnv
+  drvMountsMap <- escalateAs FatalError $ parseDrvMountsMap drvEnv
   let mkDir d = let newDir = dir </> d in toS newDir <$ createDirectory newDir
   buildDir <- mkDir "build"
   etcDir <- mkDir "etc"
@@ -230,19 +243,28 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
               let socketPath = dir </> "nix-daemon-socket"
                in (withNixDaemonProxy (runEffectExtraNixOptions p) socketPath, socketPath)
             else (identity, "/nix/var/nix/daemon-socket/socket")
-
+    extraBindMounts_ <- checkMounts (reveal $ runEffectConfiguredMountables p) (runEffectSecretContext p) drvMountsMap
+    -- We've validated that the paths are pretty much canonical; otherwise this check would be insufficient.
+    let isExtraBind path = extraBindMounts_ & any (\m -> Container.pathInContainer m == path)
     withNixDaemonProxyPerhaps $
       Container.run
         runcDir
         Container.Config
           { extraBindMounts =
               [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
-                BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False},
                 BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
-                -- we cannot bind mount this read-only because of https://github.com/opencontainers/runc/issues/1523
-                BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = False},
                 BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = toS forwardedSocketPath, readOnly = True}
-              ],
+              ]
+                ++ [ BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False}
+                     | not (isExtraBind "/etc")
+                   ]
+                ++ [
+                     -- TODO: does this apply to crun?
+                     -- we cannot bind mount this read-only because of https://github.com/opencontainers/runc/issues/1523
+                     BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = False}
+                     | not (isExtraBind "/etc") && not (isExtraBind "/etc/resolv.conf")
+                   ]
+                ++ extraBindMounts_,
             executable = decodeUtf8With lenientDecode drvBuilder,
             arguments = map (decodeUtf8With lenientDecode) drvArgs,
             environment = overridableEnv // drvEnv' // onlyImpureOverridableEnv // impureEnvVars // fixedEnv,
@@ -250,6 +272,37 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
             hostname = "hercules-ci",
             rootReadOnly = False
           }
+
+checkMounts :: Map Text Mountable -> Maybe SecretContext -> Map Text Text -> IO [BindMount]
+checkMounts configuredMnts secretContext drvMounts = do
+  concat <$> forM (M.toList drvMounts) \(mntPath, mntName) -> do
+    let -- Intentionally generic message, as misconfigurations on the agent are somewhat sensitive.
+        abort = throwIO $ FatalError $ "While configuring the mount for effect sandbox path " <> show mntPath <> ", a mountable with name " <> mntName <> " has not been configured on agent, or it has been configured, but the condition field does not allow it to be used by this effect invocation. Make sure that mountable " <> mntName <> " exists in the agent configuration and that its condition field allows it to be used in the context of this job."
+    case M.lookup mntName configuredMnts of
+      Nothing -> do
+        abort
+      Just mountable -> do
+        when (not ("/" `T.isPrefixOf` mntPath)) do
+          throwIO $ FatalError ("Mount path must be absolute, but path does not start with /: " <> show mntPath)
+        when ("/." `T.isInfixOf` mntPath) do
+          throwIO $ FatalError ("Mount path must not contain /., but path is: " <> show mntPath)
+        when ("//" `T.isInfixOf` mntPath) do
+          throwIO $ FatalError ("Mount path must not contain //, but path is: " <> show mntPath)
+        let -- Only valid after checks above
+            checkPrefix path = do
+              when (mntPath == path || (path <> "/") `T.isPrefixOf` mntPath) do
+                throwIO $ FatalError ("Mount over " <> path <> " is not allowed: " <> show mntPath)
+        checkPrefix "/nix"
+        checkPrefix "/secrets"
+        checkPrefix "/build"
+
+        let cond = Mountable.condition mountable
+        -- TODO: make hci effect run allow this? allow this when condition is simply `true`?
+        ctx <- maybe (panic "No job context provided - don't know whether mounts are allowed.") pure secretContext
+        let conditionOk = evalCondition ctx cond
+        when (not conditionOk) do
+          abort
+        pure [BindMount {pathInContainer = mntPath, pathInHost = Mountable.source mountable, readOnly = Mountable.readOnly mountable}]
 
 withNixDaemonProxy :: [(Text, Text)] -> FilePath -> IO a -> IO a
 withNixDaemonProxy extraNixOptions socketPath wrappedAction = do

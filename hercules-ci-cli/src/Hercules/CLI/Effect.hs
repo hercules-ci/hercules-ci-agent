@@ -118,7 +118,8 @@ runParser = do
                   runEffectSecretContext = secretContextMaybe,
                   runEffectUseNixDaemonProxy = False, -- FIXME Enable proxy for ci/dev parity. Requires access to agent binaries. Unified executable?
                   runEffectExtraNixOptions = [],
-                  runEffectFriendly = True
+                  runEffectFriendly = True,
+                  runEffectConfiguredMountables = mempty -- FIXME: provide hosts?
                 }
         throwIO exitCode
 
