@@ -1,8 +1,10 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralisedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Hercules.Agent.Config
   ( Config (..),
@@ -11,14 +13,17 @@ module Hercules.Agent.Config
     Purpose (..),
     readConfig,
     finalizeConfig,
+
+    -- * Export for testing
+    combiCodec,
   )
 where
 
 import Data.Aeson qualified as A
-import Data.Aeson.KeyMap qualified as AK
-import Data.Scientific (floatingOrInteger, fromFloatDigits)
-import Data.Vector qualified as V
 import GHC.Conc (getNumProcessors)
+import Hercules.Agent.Config.Combined
+import Hercules.Agent.Config.Json as Json
+import Hercules.Agent.Config.Toml qualified as Toml
 import Hercules.CNix.Verbosity (Verbosity (..))
 import Katip (Severity (..))
 import Protolude hiding (to)
@@ -26,10 +31,10 @@ import System.Environment qualified
 import System.FilePath ((</>))
 import Toml
 
-data ConfigPath = TomlPath FilePath
+newtype ConfigPath = ConfigPath FilePath
 
 nounPhrase :: ConfigPath -> Text
-nounPhrase (TomlPath p) = "your agent.toml file from " <> show p
+nounPhrase (ConfigPath p) = "your agent config file from " <> show p
 
 data Purpose = Input | Final
 
@@ -66,83 +71,42 @@ data Config purpose = Config
 
 deriving instance Show (Config 'Final)
 
-tomlCodec :: TomlCodec (Config 'Input)
-tomlCodec =
+combiCodec :: Combi' (Config 'Input)
+combiCodec =
   Config
-    <$> dioptional (Toml.text "apiBaseUrl")
-      .= herculesApiBaseURL
-    <*> dioptional (Toml.bool "nixUserIsTrusted")
-      .= nixUserIsTrusted
-    <*> dioptional
-      ( Toml.dimatch matchRight Right (Toml.int "concurrentTasks")
-          <|> Toml.dimatch matchLeft Left (Toml.textBy (\() -> "auto") isAuto "concurrentTasks")
+    <$> opt (textAtKey "apiBaseUrl") .=. herculesApiBaseURL
+    <*> opt (boolAtKey "nixUserIsTrusted") .=. nixUserIsTrusted
+    <*> opt
+      ( combi
+          ( Toml.dimatch matchRight Right (Toml.int "concurrentTasks")
+              <|> Toml.dimatch matchLeft Left (Toml.textBy (\() -> "auto") isAuto "concurrentTasks")
+          )
+          ( Json.dimatch matchRight Right (Json.int "concurrentTasks")
+              <|> Json.dimatch matchLeft Left (Json.textBy (\() -> "auto") isAuto "concurrentTasks")
+          )
       )
-      .= concurrentTasks
-    <*> dioptional (Toml.string keyBaseDirectory)
-      .= baseDirectory
-    <*> dioptional (Toml.string "staticSecretsDirectory")
-      .= staticSecretsDirectory
-    <*> dioptional (Toml.string "workDirectory")
-      .= workDirectory
-    <*> dioptional (Toml.string keyClusterJoinTokenPath)
-      .= clusterJoinTokenPath
-    <*> dioptional (Toml.string "binaryCachesPath")
-      .= binaryCachesPath
-    <*> dioptional (Toml.string "secretsJsonPath")
-      .= secretsJsonPath
-    <*> dioptional (Toml.enumBounded "logLevel")
-      .= logLevel
-    <*> dioptional (Toml.enumBounded "nixVerbosity")
-      .= nixVerbosity
-    <*> dioptional (Toml.tableMap _KeyText embedJson "labels")
-      .= labels
-    <*> dioptional (Toml.bool "allowInsecureBuiltinFetchers")
-      .= allowInsecureBuiltinFetchers
-    <*> dioptional (Toml.arrayOf Toml._Text "remotePlatformsWithSameFeatures")
-      .= remotePlatformsWithSameFeatures
-
-embedJson :: Key -> TomlCodec A.Value
-embedJson key =
-  Codec
-    { codecRead =
-        codecRead (match (embedJsonBiMap key) key)
-          <!> codecRead (A.Object . AK.fromHashMapText <$> Toml.tableHashMap _KeyText embedJson key),
-      codecWrite = panic "embedJson.write: not implemented" $ \case
-        A.String s -> A.String <$> codecWrite (Toml.text key) s
-        A.Number sci -> A.Number . fromRational . toRational <$> codecWrite (Toml.double key) (fromRational $ toRational sci)
-        A.Bool b -> A.Bool <$> codecWrite (Toml.bool key) b
-        A.Array a -> A.Array . V.fromList <$> codecWrite (Toml.arrayOf (embedJsonBiMap key) key) (Protolude.toList a)
-        A.Object o -> A.Object . AK.fromHashMapText <$> codecWrite (Toml.tableHashMap _KeyText embedJson key) (AK.toHashMapText o)
-        A.Null -> eitherToTomlState (Left ("null is not supported in TOML" :: Text))
-    }
-
-embedJsonBiMap :: Key -> TomlBiMap A.Value AnyValue
-embedJsonBiMap _key =
-  -- TODO: use key for error reporting
-  BiMap
-    { forward = panic "embedJsonBiMap.forward: not implemented" $ \case
-        A.String s -> pure $ AnyValue $ Text s
-        A.Number sci -> case floatingOrInteger sci of
-          Left fl -> pure $ AnyValue $ Double fl -- lossy
-          Right i -> pure $ AnyValue $ Integer i
-        A.Bool b -> pure $ AnyValue $ Bool b
-        A.Array _a -> Left $ ArbitraryError "Conversion from JSON array of arrays to TOML not implemented yet"
-        A.Object _o -> Left $ ArbitraryError "Conversion from JSON array of objects to TOML is not supported"
-        A.Null -> Left $ ArbitraryError "JSON null is not supported in TOML",
-      backward = anyValueToJSON
-    }
-
-anyValueToJSON :: AnyValue -> Either TomlBiMapError A.Value
-anyValueToJSON = \case
-  AnyValue (Bool b) -> pure (A.Bool b)
-  AnyValue (Integer i) -> pure (A.Number $ fromIntegral i)
-  AnyValue (Double d) -> pure (A.Number $ fromFloatDigits d)
-  AnyValue (Text t) -> pure (A.String t)
-  AnyValue (Zoned _zt) -> Left (ArbitraryError "Conversion from TOML zoned time to JSON not implemented yet. Use a string.")
-  AnyValue (Local _zt) -> Left (ArbitraryError "Conversion from TOML local time to JSON not implemented yet. Use a string.")
-  AnyValue (Day _d) -> Left (ArbitraryError "Conversion from TOML day to JSON not implemented yet. Use a string.")
-  AnyValue (Hours _h) -> Left (ArbitraryError "Conversion from TOML hours to JSON not implemented yet. Use a string.")
-  AnyValue (Array a) -> A.Array <$> sequence (V.fromList (a <&> AnyValue <&> anyValueToJSON))
+      .=. concurrentTasks
+    <*> opt (stringAtKey keyBaseDirectory) .=. baseDirectory
+    <*> opt (stringAtKey "staticSecretsDirectory") .=. staticSecretsDirectory
+    <*> opt (stringAtKey "workDirectory") .=. workDirectory
+    <*> opt (stringAtKey keyClusterJoinTokenPath) .=. clusterJoinTokenPath
+    <*> opt (stringAtKey "binaryCachesPath") .=. binaryCachesPath
+    <*> opt (stringAtKey "secretsJsonPath") .=. secretsJsonPath
+    <*> opt (enumBoundedAtKey "logLevel") .=. logLevel
+    <*> opt (enumBoundedAtKey "nixVerbosity") .=. nixVerbosity
+    <*> opt
+      ( combi
+          (Toml.tableMap Toml._KeyText Toml.embedJson "labels")
+          (Json.tableMap' Json.value' "labels")
+      )
+      .=. labels
+    <*> opt (boolAtKey "allowInsecureBuiltinFetchers") .=. allowInsecureBuiltinFetchers
+    <*> opt
+      ( combi
+          (Toml.arrayOf Toml._Text "remotePlatformsWithSameFeatures")
+          (Json.arrayOf Json._Text "remotePlatformsWithSameFeatures")
+      )
+      .=. remotePlatformsWithSameFeatures
 
 matchLeft :: Either a b -> Maybe a
 matchLeft (Left a) = Just a
@@ -173,7 +137,8 @@ defaultApiBaseUrl = "https://hercules-ci.com"
 
 readConfig :: ConfigPath -> IO (Config 'Input)
 readConfig loc = case loc of
-  TomlPath fp -> Toml.decodeFile tomlCodec (toS fp)
+  ConfigPath fp | ".json" `isSuffixOf` fp -> Json.decodeFile (forJson combiCodec) (toS fp)
+  ConfigPath fp -> Toml.decodeFile (forToml combiCodec) (toS fp)
 
 finalizeConfig :: ConfigPath -> Config 'Input -> IO (Config 'Final)
 finalizeConfig loc input = do

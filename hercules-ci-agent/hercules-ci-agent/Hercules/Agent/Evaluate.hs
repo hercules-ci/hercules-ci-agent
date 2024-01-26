@@ -301,7 +301,7 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
           Nothing -> panic $ "derivation " <> drvPathText <> " does not have a predetermined path. Content addressed derivations are not supported yet."
           Just x -> pure x
         alreadyPositive <-
-          any (isJust . join) <$> for (M.toList substituters) \(uri, substituter) -> liftIO do
+          any (isJust . join) <$> for (M.toList substituters) \(_uri, substituter) -> liftIO do
             CNix.queryPathInfoFromClientCache substituter outputPath
         if alreadyPositive
           then pure True

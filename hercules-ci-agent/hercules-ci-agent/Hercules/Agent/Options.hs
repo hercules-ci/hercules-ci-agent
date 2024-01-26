@@ -31,12 +31,12 @@ parseMode =
 
 parseConfigPath :: Parser ConfigPath
 parseConfigPath =
-  TomlPath
+  ConfigPath
     <$> strOption
       ( long "config"
           <> metavar "FILE"
           <> help
-            "File path to the configuration file (TOML)"
+            "File path to the configuration file (TOML, or JSON if the path ends in .json)"
       )
 
 parserInfo :: ParserInfo Options

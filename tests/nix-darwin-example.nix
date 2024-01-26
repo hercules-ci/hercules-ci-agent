@@ -7,6 +7,7 @@ let
       flake.darwinModules.agent-profile
     ];
     services.hercules-ci-agent.enable = true;
+    services.hercules-ci-agent.settings.labels.testNull = null;
 
     # Check that the check on the "trusted-users =" setting works
     _module.args.hypothetical = lib.mkDefault false;

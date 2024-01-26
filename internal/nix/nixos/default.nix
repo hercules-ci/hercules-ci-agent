@@ -12,7 +12,7 @@ let
 
   cfg = config.services.hercules-ci-agent;
 
-  command = "${cfg.package}/bin/hercules-ci-agent --config ${cfg.tomlFile}";
+  command = "${cfg.package}/bin/hercules-ci-agent --config ${cfg.jsonFile}";
   testCommand = "${command} --test-configuration";
 
 in
