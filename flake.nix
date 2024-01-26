@@ -280,7 +280,14 @@
                 internal = {
 
                   devShell.extraLibraries = hp: {
-                    inherit (hp) releaser;
+                    inherit (hp) releaser
+                      ascii-progress
+
+                      # enable only when working on expr and up
+                      # hercules-ci-cnix-store
+                      # cachix
+
+                      ;
                     # Cachix deps (cachix was excluded because of its dependency on cnix-store)
                   } //
                   lib.listToAttrs (
