@@ -4,8 +4,6 @@ with lib;
 let
   cfg = config.services.hercules-ci-agent;
   user = config.users.users._hercules-ci-agent;
-  # TOML doesn't have `null`...
-  nullIsUnknown = x: if x == null then "unknown" else x;
 in
 {
   imports = [ ./common.nix ];
@@ -69,9 +67,9 @@ in
     };
 
     services.hercules-ci-agent.settings.labels = {
-      darwin.label = nullIsUnknown config.system.darwinLabel;
-      darwin.revision = nullIsUnknown config.system.darwinRevision;
-      darwin.version = nullIsUnknown config.system.darwinVersion;
+      darwin.label = config.system.darwinLabel;
+      darwin.revision = config.system.darwinRevision;
+      darwin.version = config.system.darwinVersion;
       darwin.nix.daemon = config.nix.useDaemon;
       darwin.nix.sandbox = config.nix.settings.sandbox;
     };
