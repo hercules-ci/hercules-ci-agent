@@ -65,50 +65,6 @@ taggedConditionParsers =
       ("isOwner", fmap IsOwner . parseJSON)
     ]
 
-{-
-
-This was awful:
-
-instance FromJSON Condition where
-  parseJSON (String "isTag") = pure IsTag
-  parseJSON (String "isDefaultBranch") = pure IsDefaultBranch
-  parseJSON j = do
-    l <- parseJSON j
-    case l of
-      [] -> fail "The empty list does not represent a Condition."
-      (jTag : args) -> do
-        tag <- parseJSON jTag
-        case tag :: Text of
-          "or" -> do
-            Or <$> traverse parseJSON args
-          "and" -> do
-            And <$> traverse parseJSON args
-          "isDefaultBranch" -> do
-            IsDefaultBranch <$ noParams tag args
-          "isTag" -> do
-            IsTag <$ noParams tag args
-          "isBranch" -> do
-            IsBranch <$> traverse parseJSON args
-          "isRepo" -> do
-            IsRepo <$> traverse parseJSON args
-          "isOwner" -> do
-            IsOwner <$> traverse parseJSON args
-          t -> do
-            fail $ "Unknown tag " <> show t <> " in Condition."
-    where
-      noParams _ [] = pure ()
-      noParams tag _ = fail $ "Condition with tag " <> show tag <> " does not take any parameters."
-
-instance ToJSON Condition where
-  toJSON (Or a) = toJSON (String "or" : map toJSON a)
-  toJSON (And a) = toJSON (String "and" : map toJSON a)
-  toJSON IsDefaultBranch = String "isDefaultBranch"
-  toJSON IsTag = String "isTag"
-  toJSON (IsBranch a) = toJSON (String "isBranch" : map toJSON a)
-  toJSON (IsRepo a) = toJSON (String "isRepo" : map toJSON a)
-  toJSON (IsOwner a) = toJSON (String "isOwner" : map toJSON a)
--}
-
 -- | Arbitrary secret like keys, tokens, passwords etc.
 data Secret = Secret
   { data_ :: Map Text Value,
