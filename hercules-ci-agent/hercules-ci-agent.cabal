@@ -470,6 +470,7 @@ test-suite hercules-ci-agent-unit-tests
     , transformers
     , transformers-base
     , unliftio-core
+    , unordered-containers
     , uuid
     , vector
   build-tool-depends:
