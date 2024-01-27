@@ -12,7 +12,6 @@ let
   format = pkgs.formats.json { };
 
   settingsModule = { config, packageOption, pkgs, ... }: {
-    freeformType = format.type;
     options = {
       apiBaseUrl = mkOption {
         description = mdDoc ''
@@ -69,6 +68,14 @@ let
             pkgs.version = "...";
           }
         '';
+      };
+      nixUserIsTrusted = mkOption {
+        description = mdDoc ''
+          Whether hercules-ci-agent is trusted by the nix-daemon. This allows some optimization.
+        '';
+        type = types.bool;
+        default = false;
+        internal = true;
       };
       workDirectory = mkOption {
         description = mdDoc ''
@@ -145,7 +152,54 @@ let
       };
     };
   };
+
+  closedType = opt:
+    let any = lib.types.anything;
+    in any // {
+      merge = loc: defs:
+        let r = any.merge loc defs;
+        in if r == { }
+        then { }
+        else
+          throw ''
+            ${lib.showOption loc}: Encountered unknown settings.
+            Make sure the following settings are typed correctly, or if you override the
+            package and these are new options, enable ${lib.showOption opt.loc}.
+            The unknown settings are:
+            ${lib.generators.toPretty {} r}
+          '';
+    };
+
+
+  makeSettingsOptions = { cfg, opt }: {
+    settings = mkOption {
+      description = mdDoc ''
+        These settings are written to the `agent.json` file.
+      '';
+      type = types.submoduleWith {
+        modules = [
+          settingsModule
+          {
+            freeformType =
+              if cfg.allowUnknownSettings
+              then format.type
+              else closedType opt.allowUnknownSettings;
+          }
+        ];
+      };
+      default = { };
+    };
+    allowUnknownSettings = mkOption {
+      description = mdDoc ''
+        Allow unknown settings to be written to the `agent.json` file.
+
+        This is useful for forward compatibility - if you've overridden the package.
+      '';
+      type = types.bool;
+      default = false;
+    };
+  };
 in
 {
-  inherit format settingsModule;
+  inherit format makeSettingsOptions;
 }
