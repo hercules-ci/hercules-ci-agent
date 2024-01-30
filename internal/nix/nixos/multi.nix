@@ -10,7 +10,7 @@ let
 
   submodule = { config, options, name, ... }:
     let
-      inherit (import ../settings.nix { inherit pkgs lib; }) format settingsModule;
+      inherit (import ../settings.nix { inherit pkgs lib; }) format makeSettingsOptions;
       configFile = format.generate "hercules-ci-agent${suffix}.json" config.settings;
       command = "${config.package}/bin/hercules-ci-agent --config ${configFile}";
       testCommand = "${command} --test-configuration";
@@ -31,17 +31,7 @@ let
           default = pkgs.hercules-ci-agent;
           defaultText = literalExpression "pkgs.hercules-ci-agent";
         };
-        settings = mkOption {
-          description = ''
-            These settings are written to the `agent.json` file.
-
-            Not all settings are listed as options, can be set nonetheless.
-
-            For the exhaustive list of settings, see <https://docs.hercules-ci.com/hercules-ci/reference/agent-config/>.
-          '';
-          type = types.submoduleWith { modules = [ settingsModule ]; };
-        };
-      };
+      } // makeSettingsOptions { cfg = config; opt = options; };
       config = let cfg = config; in
         {
           settings = {

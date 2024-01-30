@@ -44,7 +44,10 @@ in
       ];
       config = {
         # Keep build dependencies around, because we'll be offline
-        environment.etc."reference-stdenv".text = builtins.toJSON (pkgs.runCommand "foo" { } "").drvAttrs;
+        environment.etc."reference-stdenv".text = builtins.toJSON (pkgs.runCommand "foo"
+          {
+            nativeBuildInputs = [ pkgs.curl ];
+          } "").drvAttrs;
         # It's an offline test, so no caches are available
         nix.settings.substituters = lib.mkForce [ ];
         nix.package = lib.mkIf daemonIsNixUnstable pkgs.nixUnstable;
@@ -59,6 +62,49 @@ in
         services.hercules-ci-agent.settings.binaryCachesPath = (pkgs.writeText "binary-caches.json" (builtins.toJSON { })).outPath;
         services.hercules-ci-agent.settings.clusterJoinTokenPath = (pkgs.writeText "pretend-agent-token" "").outPath;
         services.hercules-ci-agent.settings.concurrentTasks = 4; # Decrease on itest memory problems
+        # services.hercules-ci-agent.settings.logLevel = "DebugS";
+        # services.hercules-ci-agent.settings.nixVerbosity = "debug";
+        services.hercules-ci-agent.settings.effectMountables = {
+          "forwarded-path" = {
+            source = pkgs.runCommand "forwarded-path" { } ''
+              mkdir -p $out
+              echo "hello from forwarded path" > $out/hello;
+            '';
+            readOnly = true;
+            condition = true;
+          };
+          "shared-data" = {
+            source = "/var/lib/ci-data/shared";
+            readOnly = false;
+            condition = {
+              isRepo = "repo-with-shared-data";
+            };
+          };
+          "hosts" = {
+            readOnly = true;
+            source = "/etc/hosts";
+            condition = true;
+          };
+          "test-condition-type" = {
+            readOnly = true;
+            source = "/dev/null";
+            # bogus expression that contains examples of all possible conditions
+            condition = {
+              or = [
+                { isOwner = "hercules-ci"; }
+                { isRepo = "repo-with-shared-data"; }
+                { isBranch = "main"; }
+                "isTag"
+                {
+                  and = [
+                    "isDefaultBranch"
+                    { isBranch = "master"; }
+                  ];
+                }
+              ];
+            };
+          };
+        };
 
         systemd.services.hercules-ci-agent.serviceConfig.StartLimitBurst = lib.mkForce (agentStartTimeoutSec * 10);
         systemd.services.hercules-ci-agent.serviceConfig.RestartSec = lib.mkForce ("100ms");
@@ -83,6 +129,8 @@ in
           echo '{}' > /var/lib/hercules-ci-agent/secrets/secrets.json
           chown -R hercules-ci-agent /var/lib/hercules-ci-agent
           chmod 0700 /var/lib/hercules-ci-agent/secrets
+          mkdir -p /var/lib/ci-data/shared
+          chown -R hercules-ci-agent /var/lib/ci-data/shared
       """)
 
       # Run the test code + api

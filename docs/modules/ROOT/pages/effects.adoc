@@ -11,7 +11,7 @@ Effects run as part of a xref:hercules-ci:ROOT:glossary.adoc#job[job], after all
 
 == Sandbox type
 
-Currently, effects run in Linux containers only. Note that you _can_ deploy to a macOS machine via SSH from a Linux agent using e.g. xref:hercules-ci-effects:ROOT:reference/nix-functions/runNixDarwin.adoc[hercules-ci-effects runNixDarwin].
+Currently, effects run only run on Linux containers only, in a transient container. Note that you _can_ deploy to a macOS machine via SSH from a Linux agent using e.g. xref:hercules-ci-effects:ROOT:reference/nix-functions/runNixDarwin.adoc[hercules-ci-effects runNixDarwin].
 
 [[paths]]
 == Paths
@@ -67,6 +67,7 @@ A slash separated string containing in order: the site name (typically `github`)
 
 Example: `github/hercules-ci/hercules-ci-agent`
 
+[[secrets]]
 == Secrets
 
 The `secretsMap` declares what secrets should be provided to the effect.

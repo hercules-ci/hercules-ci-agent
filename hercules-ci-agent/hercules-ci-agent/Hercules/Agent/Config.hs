@@ -11,6 +11,7 @@ module Hercules.Agent.Config
     FinalConfig,
     ConfigPath (..),
     Purpose (..),
+    Mountable (..),
     readConfig,
     finalizeConfig,
 
@@ -20,16 +21,21 @@ module Hercules.Agent.Config
 where
 
 import Data.Aeson qualified as A
+import Data.Aeson.Types qualified as A
+import Data.Profunctor (Star (Star))
 import GHC.Conc (getNumProcessors)
 import Hercules.Agent.Config.Combined
 import Hercules.Agent.Config.Json as Json
 import Hercules.Agent.Config.Toml qualified as Toml
 import Hercules.CNix.Verbosity (Verbosity (..))
+import Hercules.Formats.Mountable (Mountable (Mountable))
+import Hercules.Formats.Mountable qualified as Mountable
 import Katip (Severity (..))
 import Protolude hiding (to)
 import System.Environment qualified
 import System.FilePath ((</>))
-import Toml
+import Toml (Key)
+import Toml qualified
 
 newtype ConfigPath = ConfigPath FilePath
 
@@ -65,7 +71,8 @@ data Config purpose = Config
     nixVerbosity :: Item purpose 'Required Verbosity,
     labels :: Item purpose 'Required (Map Text A.Value),
     allowInsecureBuiltinFetchers :: Item purpose 'Required Bool,
-    remotePlatformsWithSameFeatures :: Item purpose 'Optional [Text]
+    remotePlatformsWithSameFeatures :: Item purpose 'Optional [Text],
+    effectMountables :: Map Text Mountable
   }
   deriving (Generic)
 
@@ -107,6 +114,42 @@ combiCodec =
           (Json.arrayOf Json._Text "remotePlatformsWithSameFeatures")
       )
       .=. remotePlatformsWithSameFeatures
+    <*> optEmpty
+      ( combi
+          (Toml.tableMap Toml._KeyText (Toml.table (forToml mountableCodec)) "effectMountables")
+          (Json.tableMap' (forJson mountableCodec) "effectMountables")
+      )
+      .=. effectMountables
+
+mountableCodec :: Combi' Mountable
+mountableCodec =
+  Mountable
+    <$> textAtKey "source" .=. Mountable.source
+    <*> boolAtKey "readOnly" .=. Mountable.readOnly
+    <*> combi
+      ((throwImmediately . A.parseJSON) <$> Toml.embedJson "condition")
+      ( GCodec
+          ( do
+              let parse =
+                    A.withObject "Mountable" $ \o ->
+                      o A..: "condition"
+              v <- ask
+              -- seq (Debug.Trace.traceShowId $ Debug.Trace.trace "------------" v) pass
+              case A.parseEither parse v of
+                Right x -> pure x
+                Left e -> throwError $ "Error parsing condition for mountable: " <> show e
+          )
+          (Star $ \_ -> panic "condition toJSON not implemented")
+      )
+      .=. (A.toJSON . Mountable.condition)
+  where
+    -- "Parser" is more like "parse result"
+    -- TODO: more friendly reporting?
+    throwImmediately :: A.Parser a -> a
+    throwImmediately p =
+      A.parseEither (const p) () & \case
+        Left e -> panic $ "Error parsing condition for mountable: " <> show e
+        Right a -> a
 
 matchLeft :: Either a b -> Maybe a
 matchLeft (Left a) = Just a
@@ -189,5 +232,6 @@ finalizeConfig loc input = do
         nixVerbosity = nixVerbosity input & fromMaybe Talkative,
         labels = fromMaybe mempty $ labels input,
         allowInsecureBuiltinFetchers = fromMaybe False $ allowInsecureBuiltinFetchers input,
-        remotePlatformsWithSameFeatures = remotePlatformsWithSameFeatures input
+        remotePlatformsWithSameFeatures = remotePlatformsWithSameFeatures input,
+        effectMountables = effectMountables input
       }

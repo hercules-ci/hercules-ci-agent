@@ -8,6 +8,7 @@
 * xref:job-definition.adoc[Job Definition]
 ** xref:evaluation.adoc[Evaluation]
 ** xref:effects.adoc[Effects]
+*** xref:effects/declaration.adoc[Effect Declaration]
 ** xref:legacy-evaluation.adoc[Legacy Evaluation]
 * Security Reference
 ** xref:data-sharing.adoc[Data sharing overview]

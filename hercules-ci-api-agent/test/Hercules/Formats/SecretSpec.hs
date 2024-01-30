@@ -64,7 +64,7 @@ genSecret =
     6
     ( Secret
         <$> liftArbitraryMap text (resize 100 genValue)
-        <*> frequency [(1, pure Nothing), (19, Just <$> genCondition)]
+        <*> frequency [(1, pure Nothing), (17, Just <$> genCondition)]
     )
 
 genCondition :: Gen Condition
@@ -76,11 +76,13 @@ genCondition =
       (1, pure IsTag),
       (1, IsBranch <$> text),
       (1, IsRepo <$> text),
-      (1, IsOwner <$> text)
+      (1, IsOwner <$> text),
+      (1, Hercules.Formats.Secret.Const <$> arbitrary)
     ]
 
-text :: Gen Text
+genText, text :: Gen Text
 text = TE.decodeUtf8 . TE.encodeUtf8 . T.pack <$> resize 4 arbitrary
+genText = text
 
 liftArbitraryMap :: (Ord k) => Gen k -> Gen a -> Gen (M.Map k a)
 liftArbitraryMap k v = M.fromList <$> liftArbitrary ((,) <$> k <*> v)

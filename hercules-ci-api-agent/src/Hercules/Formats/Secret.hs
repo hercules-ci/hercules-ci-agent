@@ -21,6 +21,7 @@ data Condition
   | IsTag
   | IsRepo Text
   | IsOwner Text
+  | Const Bool
   deriving (Generic, Eq, Read, Show)
 
 instance ToJSON Condition where
@@ -31,6 +32,7 @@ instance ToJSON Condition where
   toJSON (IsBranch a) = object ["isBranch" .= a]
   toJSON (IsRepo a) = object ["isRepo" .= a]
   toJSON (IsOwner a) = object ["isOwner" .= a]
+  toJSON (Const b) = Bool b
 
 instance FromJSON Condition where
   parseJSON (String "isTag") = pure IsTag
@@ -42,7 +44,8 @@ instance FromJSON Condition where
         Nothing -> fail $ "The field name in a Condition object must be one of " <> show (map fst (HM.toList taggedConditionParsers))
         Just p -> p v
       _ -> fail "A Condition object must contain a single field."
-  parseJSON _ = fail "Expected Object or String."
+  parseJSON (Bool b) = pure (Const b)
+  parseJSON _ = fail "Expected Object, String or true."
 
 taggedConditionParsers :: HM.HashMap Text (Value -> A.Parser Condition)
 taggedConditionParsers =
@@ -61,50 +64,6 @@ taggedConditionParsers =
       ("isRepo", fmap IsRepo . parseJSON),
       ("isOwner", fmap IsOwner . parseJSON)
     ]
-
-{-
-
-This was awful:
-
-instance FromJSON Condition where
-  parseJSON (String "isTag") = pure IsTag
-  parseJSON (String "isDefaultBranch") = pure IsDefaultBranch
-  parseJSON j = do
-    l <- parseJSON j
-    case l of
-      [] -> fail "The empty list does not represent a Condition."
-      (jTag : args) -> do
-        tag <- parseJSON jTag
-        case tag :: Text of
-          "or" -> do
-            Or <$> traverse parseJSON args
-          "and" -> do
-            And <$> traverse parseJSON args
-          "isDefaultBranch" -> do
-            IsDefaultBranch <$ noParams tag args
-          "isTag" -> do
-            IsTag <$ noParams tag args
-          "isBranch" -> do
-            IsBranch <$> traverse parseJSON args
-          "isRepo" -> do
-            IsRepo <$> traverse parseJSON args
-          "isOwner" -> do
-            IsOwner <$> traverse parseJSON args
-          t -> do
-            fail $ "Unknown tag " <> show t <> " in Condition."
-    where
-      noParams _ [] = pure ()
-      noParams tag _ = fail $ "Condition with tag " <> show tag <> " does not take any parameters."
-
-instance ToJSON Condition where
-  toJSON (Or a) = toJSON (String "or" : map toJSON a)
-  toJSON (And a) = toJSON (String "and" : map toJSON a)
-  toJSON IsDefaultBranch = String "isDefaultBranch"
-  toJSON IsTag = String "isTag"
-  toJSON (IsBranch a) = toJSON (String "isBranch" : map toJSON a)
-  toJSON (IsRepo a) = toJSON (String "isRepo" : map toJSON a)
-  toJSON (IsOwner a) = toJSON (String "isOwner" : map toJSON a)
--}
 
 -- | Arbitrary secret like keys, tokens, passwords etc.
 data Secret = Secret

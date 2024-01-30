@@ -80,6 +80,9 @@ evalCondition' ctx = eval
       if actual == expect
         then pure True
         else False <$ tell ["isOwner: owner " <> show actual <> " is not the desired " <> show expect]
+    eval (Hercules.Formats.Secret.Const b) = do
+      tell ["const: " <> show b]
+      pure b
 
 -- This uses tagless final to derive both an efficient and a tracing function.
 

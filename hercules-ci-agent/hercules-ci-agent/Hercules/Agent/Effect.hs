@@ -75,7 +75,8 @@ performEffect sendLogEntries effectTask = withWorkDir "effect" $ \workDir -> do
                     repoName = EffectTask.repoName effectTask,
                     ref = EffectTask.ref effectTask,
                     isDefaultBranch = EffectTask.isDefaultBranch effectTask
-                  }
+                  },
+              configuredMountables = Sensitive (ViaJSON (Config.effectMountables config))
             }
   let stderrHandler =
         stderrLineHandler

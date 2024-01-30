@@ -21,8 +21,9 @@ let
   mdDoc = lib.mdDoc or (x: "Documentation not rendered. Please upgrade to a newer NixOS with markdown support.");
 
   cfg = config.services.hercules-ci-agent;
+  opt = options.services.hercules-ci-agent;
 
-  inherit (import ./settings.nix { inherit pkgs lib; }) format settingsModule;
+  inherit (import ./settings.nix { inherit pkgs lib; }) format makeSettingsOptions;
 
 in
 {
@@ -54,16 +55,6 @@ in
       default = pkgs.hercules-ci-agent;
       defaultText = literalExpression "pkgs.hercules-ci-agent";
     };
-    settings = mkOption {
-      description = mdDoc ''
-        These settings are written to the `agent.json` file.
-
-        Not all settings are listed as options, can be set nonetheless.
-
-        For the exhaustive list of settings, see <https://docs.hercules-ci.com/hercules-ci/reference/agent-config/>.
-      '';
-      type = types.submoduleWith { modules = [ settingsModule ]; };
-    };
 
     /*
       Internal and/or computed values.
@@ -79,7 +70,7 @@ in
         The fully assembled config file.
       '';
     };
-  };
+  } // makeSettingsOptions { inherit cfg opt; };
 
   config = mkIf cfg.enable {
     # Make sure that nix.extraOptions does not override trusted-users
