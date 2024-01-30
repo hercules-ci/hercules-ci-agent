@@ -2,10 +2,16 @@
 { pkgs, lib }:
 let
   inherit (lib)
+    head
+    isAttrs
     types
     literalExpression
     mkOption
     ;
+  inherit (lib.lists)
+    length
+    ;
+
   literalMD = lib.literalMD or (x: lib.literalDocBook "Documentation not rendered. Please upgrade to a newer NixOS with markdown support.");
   mdDoc = lib.mdDoc or (x: "Documentation not rendered. Please upgrade to a newer NixOS with markdown support.");
 
@@ -13,6 +19,15 @@ let
 
   settingsModule = { config, packageOption, pkgs, ... }: {
     options = {
+      allowInsecureBuiltinFetchers = mkOption {
+        description = mdDoc ''
+          Allow the use of insecure fetching protocols, such as `http`.
+
+          Disabled by default, because most users do not need this, but note that Nix by default does allow this.
+        '';
+        type = types.bool;
+        default = false;
+      };
       apiBaseUrl = mkOption {
         description = mdDoc ''
           API base URL that the agent will connect to.
@@ -54,6 +69,15 @@ let
           `"auto"`, meaning equal to the number of CPU cores.
         '';
       };
+      effectMountables = mkOption {
+        description = mdDoc ''
+          An attribute set of mountable directories for effects.
+
+          See https://docs.hercules-ci.com/hercules-ci-agent/agent-config#effectMountables
+        '';
+        type = types.lazyAttrsOf (types.submodule effectMountableModule);
+        default = { };
+      };
       labels = mkOption {
         description = mdDoc ''
           A key-value map of user data.
@@ -69,6 +93,20 @@ let
           }
         '';
       };
+      logLevel = mkOption {
+        default = "InfoS";
+        type = types.enum [
+          "DebugS"
+          "InfoS"
+          "WarningS"
+          "ErrorS"
+        ];
+        description = ''
+          Control the importance threshold for messages are logged to the system log.
+
+          More verbose: `"DebugS"`, less verbose: `"WarningS"`, `"ErrorS"`.
+        '';
+      };
       nixUserIsTrusted = mkOption {
         description = mdDoc ''
           Whether hercules-ci-agent is trusted by the nix-daemon. This allows some optimization.
@@ -76,6 +114,14 @@ let
         type = types.bool;
         default = false;
         internal = true;
+      };
+      nixVerbosity = mkOption {
+        internal = true;
+        default = "Talkative";
+      };
+      remotePlatformsWithSameFeatures = mkOption {
+        internal = true;
+        default = [ ];
       };
       workDirectory = mkOption {
         description = mdDoc ''
@@ -152,6 +198,91 @@ let
       };
     };
   };
+
+  effectMountableModule = {
+    options = {
+      source = mkOption {
+        description = mdDoc ''
+          A mountable directory as a path string.
+        '';
+        type = types.path;
+        example = "/etc/hosts";
+        default = null;
+      };
+      readOnly = mkOption {
+        description = mdDoc ''
+          If `true`, the mount into the sandbox will be a read-only bind mount.
+
+          If `false`, the mount is not mounted read-only, and it will be writable if it is for the system user that runs hercules-ci-agent (i.e. `hercules-ci-agent` or `hci-''${name}`).
+        '';
+        type = types.bool;
+      };
+      condition = mkOption {
+        description = mdDoc ''
+          A [condition expression](https://docs.hercules-ci.com/hercules-ci-agent/secrets-json#condition) that decides whether a mountable is accessible to an effect.
+        '';
+        type = conditionType;
+        default = "true";
+      };
+    };
+  };
+
+  # An early version of https://github.com/NixOS/nixpkgs/pull/284551
+  # TODO: Migrate ~1 year after that PR is merged. Use `visible = "shallow"` because of the recursion.
+  attrTag = tags:
+    let
+      choicesStr = lib.concatMapStringsSep ", " lib.strings.escapeNixIdentifier (lib.attrNames tags);
+    in
+    lib.mkOptionType {
+      name = "attrTag";
+      description = "attribute-tagged union of ${choicesStr}";
+      getSubModules = null;
+      substSubModules = m: attrTag (lib.mapAttrs (n: v: v.substSubModules m) tags);
+      check = v: lib.isAttrs v && lib.length (lib.attrNames v) == 1 && tags?${head (lib.attrNames v)};
+      merge = loc: defs:
+        let
+          choice = lib.head (lib.attrNames (lib.head defs).value);
+          checkedValueDefs = map
+            (def:
+              assert (lib.length (lib.attrNames def.value)) == 1;
+              if (head (lib.attrNames def.value)) != choice
+              then throw "The option `${lib.showOption loc}` is defined both as `${choice}` and `${lib.head (lib.attrNames def.value)}`, in ${lib.showFiles (lib.getFiles defs)}."
+              else { inherit (def) file; value = def.value.${choice}; })
+            defs;
+        in
+        if tags?${choice}
+        then
+          {
+            ${choice} =
+              (lib.mergeDefinitions
+                (loc ++ [ choice ])
+                tags.${choice}
+                checkedValueDefs
+              ).mergedValue;
+          }
+        else throw "The option `${lib.showOption loc}` is defined as ${lib.strings.escapeNixIdentifier choice}, but ${lib.strings.escapeNixIdentifier choice} is not among the valid choices (${choicesStr}). Value ${choice} was defined in ${lib.showFiles (lib.getFiles defs)}.";
+    };
+
+
+  conditionType =
+    types.oneOf
+      [
+        types.bool
+        (types.enum [
+          "isDefaultBranch"
+          "isTag"
+        ])
+        (attrTag {
+          "and" = types.listOf conditionType;
+          "or" = types.listOf conditionType;
+          "isBranch" = types.str;
+          "isRepo" = types.str;
+          "isOwner" = types.str;
+        })
+      ]
+    // {
+      description = "condition";
+    };
 
   closedType = opt:
     let any = lib.types.anything;

@@ -181,7 +181,9 @@ Values involving arrays of non-primitive types may not be representable currentl
 [[logLevel]]
 == logLevel
 
-Optional. Defaults to `"InfoS"`. More verbose: `"DebugS"`, less verbose: `"WarningS"`, `"ErrorS"`.
+Optional. Control the importance threshold for messages are logged to the system log.
+
+Defaults to `"InfoS"`. More verbose: `"DebugS"`, less verbose: `"WarningS"`, `"ErrorS"`.
 
 [[nixVerbosity]]
 == nixVerbosity

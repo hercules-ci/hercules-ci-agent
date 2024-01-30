@@ -85,6 +85,25 @@ in
             source = "/etc/hosts";
             condition = true;
           };
+          "test-condition-type" = {
+            readOnly = true;
+            source = "/dev/null";
+            # bogus expression that contains examples of all possible conditions
+            condition = {
+              or = [
+                { isOwner = "hercules-ci"; }
+                { isRepo = "repo-with-shared-data"; }
+                { isBranch = "main"; }
+                "isTag"
+                {
+                  and = [
+                    "isDefaultBranch"
+                    { isBranch = "master"; }
+                  ];
+                }
+              ];
+            };
+          };
         };
 
         systemd.services.hercules-ci-agent.serviceConfig.StartLimitBurst = lib.mkForce (agentStartTimeoutSec * 10);
