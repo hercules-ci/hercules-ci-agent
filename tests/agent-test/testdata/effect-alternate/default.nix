@@ -29,6 +29,9 @@
           [[ $(id -g) == 142 ]]
 
           set +x
+
+          grep '"hercules-ci":' $HERCULES_CI_SECRETS_JSON
+
           echo all good.
         '' // { isEffect = true; };
       };

@@ -39,6 +39,8 @@
           echo hi >/hi
           set +x
 
+          grep '"hercules-ci":' $HERCULES_CI_SECRETS_JSON
+
           echo -n log line "without newline"
         '' // { isEffect = true; };
       };
