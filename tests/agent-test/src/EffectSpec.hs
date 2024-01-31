@@ -5,7 +5,6 @@ module EffectSpec where
 
 import Data.Aeson qualified as A
 import Data.Map qualified as M
-import Data.UUID.V4 qualified as UUID
 import Hercules.API.Agent.Effect.EffectTask qualified as EffectTask
 import Hercules.API.Agent.Evaluate.EvaluateEvent (EvaluateEvent)
 import Hercules.API.Agent.Evaluate.EvaluateEvent qualified as EvaluateEvent
@@ -19,18 +18,9 @@ import Hercules.API.TaskStatus qualified as TaskStatus
 import MockTasksApi
 import Protolude
 import Test.Hspec
-import TestSupport (apiBaseUrl)
+import TestSupport (apiBaseUrl, failWith, printErrItems, randomId, shouldBeJust, (=:))
 import Prelude (error)
 import Prelude qualified
-
-randomId :: IO (Id a)
-randomId = Id <$> UUID.nextRandom
-
-failWith :: [Char] -> IO a
-failWith s = do
-  expectationFailure s
-  -- Why doesn't it just return forall a? Oh well.
-  panic ("expectationFailure didn't throw: " <> toS s)
 
 defaultEvalTask :: EvaluateTask.EvaluateTask
 defaultEvalTask =
@@ -65,12 +55,6 @@ isAttrLike EvaluateEvent.AttributeError {} = True
 isAttrLike EvaluateEvent.AttributeEffect {} = True
 isAttrLike EvaluateEvent.Message {} = True -- this is a bit of a stretch but hey
 isAttrLike _ = False
-
-(=:) :: k -> a -> Map k a
-(=:) = M.singleton
-
-printErrItems :: (Foldable t, MonadIO f, Show a) => t a -> f ()
-printErrItems items = for_ items \item -> putErrText ("  - " <> show item)
 
 spec :: SpecWith ServerHandle
 spec = describe "Effect" do
@@ -249,9 +233,3 @@ spec = describe "Effect" do
         )
     void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "all good.\r" -> True; _noMatch -> False
     pass
-
-shouldBeJust :: (HasCallStack) => Maybe a -> IO a
-shouldBeJust = withFrozenCallStack \case
-  Nothing -> do
-    failWith "Expected Just, got Nothing"
-  Just a -> pure a

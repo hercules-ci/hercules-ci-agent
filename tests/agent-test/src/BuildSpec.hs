@@ -6,7 +6,6 @@ module BuildSpec where
 import Data.Aeson qualified as A
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Data.UUID.V4 qualified as UUID
 import Hercules.API.Agent.Build.BuildEvent qualified as BuildEvent
 import Hercules.API.Agent.Build.BuildTask qualified as BuildTask
 import Hercules.API.Agent.Evaluate.EvaluateEvent
@@ -18,23 +17,13 @@ import Hercules.API.Agent.Evaluate.EvaluateTask qualified as EvaluateTask
 import Hercules.API.Agent.Evaluate.EvaluateTask.OnPush qualified as EvaluateTask.OnPush
 import Hercules.API.Agent.Evaluate.ImmutableInput qualified as ImmutableInput
 import Hercules.API.Agent.OutputInfo qualified as OutputInfo
-import Hercules.API.Id (Id (Id))
 import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Hercules.API.TaskStatus qualified as TaskStatus
 import MockTasksApi
 import Protolude
 import Test.Hspec
-import TestSupport (apiBaseUrl)
-import Prelude
-  ( error,
-    userError,
-  )
-
-randomId :: IO (Id a)
-randomId = Id <$> UUID.nextRandom
-
-failWith :: [Char] -> IO a
-failWith = throwIO . userError
+import TestSupport (apiBaseUrl, failWith, randomId, shouldBeJust, (=:))
+import Prelude (error)
 
 defaultEvalTask :: EvaluateTask.EvaluateTask
 defaultEvalTask =
@@ -68,9 +57,6 @@ isAttrLike EvaluateEvent.Attribute {} = True
 isAttrLike EvaluateEvent.AttributeError {} = True
 isAttrLike EvaluateEvent.Message {} = True -- this is a bit of a stretch but hey
 isAttrLike _ = False
-
-(=:) :: k -> a -> Map k a
-(=:) = M.singleton
 
 spec :: SpecWith ServerHandle
 spec = describe "Build" do
@@ -193,9 +179,3 @@ spec = describe "Build" do
                   `T.isInfixOf` m ->
                 True
           _ -> False
-
-shouldBeJust :: (HasCallStack) => Maybe a -> IO a
-shouldBeJust = withFrozenCallStack \case
-  Nothing -> do
-    failWith "Expected Just, got Nothing"
-  Just a -> pure a

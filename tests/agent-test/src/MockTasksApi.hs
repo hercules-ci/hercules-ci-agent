@@ -796,6 +796,3 @@ logsEndpoints _server =
         NoContent <$ do
           hPutStrLn stderr $ "Got log: " <> logBytes
     }
-
-randomId :: IO (Id a)
-randomId = Id <$> UUID.nextRandom

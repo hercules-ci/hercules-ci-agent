@@ -7,7 +7,6 @@ import Data.Aeson qualified as A
 import Data.List (last)
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Data.UUID.V4 qualified as UUID
 import Hercules.API.Agent.Evaluate.EvaluateEvent
   ( EvaluateEvent,
   )
@@ -26,23 +25,13 @@ import Hercules.API.Agent.Evaluate.EvaluateTask.OnPush qualified as EvaluateTask
 import Hercules.API.Agent.Evaluate.ImmutableInput (ImmutableInput (ArchiveUrl))
 import Hercules.API.Agent.Evaluate.ImmutableInput qualified as API.ImmutableInput
 import Hercules.API.DayOfWeek (DayOfWeek (..))
-import Hercules.API.Id (Id (Id))
 import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Hercules.API.TaskStatus qualified as TaskStatus
 import MockTasksApi
 import Protolude
 import Test.Hspec
-import TestSupport (apiBaseUrl)
-import Prelude
-  ( error,
-    userError,
-  )
-
-randomId :: IO (Id a)
-randomId = Id <$> UUID.nextRandom
-
-failWith :: [Char] -> IO a
-failWith = throwIO . userError
+import TestSupport (apiBaseUrl, failWith, randomId, shouldBeJust, (=:))
+import Prelude (error)
 
 attrLike :: [EvaluateEvent] -> [EvaluateEvent]
 attrLike = filter isAttrLike
@@ -53,9 +42,6 @@ isAttrLike EvaluateEvent.AttributeEffect {} = True
 isAttrLike EvaluateEvent.AttributeError {} = True
 isAttrLike EvaluateEvent.Message {} = True -- this is a bit of a stretch but hey
 isAttrLike _ = False
-
-(=:) :: k -> a -> Map k a
-(=:) = M.singleton
 
 defaultTask :: EvaluateTask.EvaluateTask
 defaultTask =
@@ -928,9 +914,3 @@ noANSI [] = []
 
 findJust :: Text -> (a -> Maybe b) -> [a] -> b
 findJust err f l = l & mapMaybe f & headMay & fromMaybe (panic $ "Could not find " <> err)
-
-shouldBeJust :: (HasCallStack) => Maybe a -> IO a
-shouldBeJust = withFrozenCallStack \case
-  Nothing -> do
-    failWith "Expected Just, got Nothing"
-  Just a -> pure a
