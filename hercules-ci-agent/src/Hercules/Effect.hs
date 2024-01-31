@@ -183,7 +183,7 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
   buildDir <- mkDir "build"
   etcDir <- mkDir "etc"
   secretsDir <- mkDir "secrets"
-  runcDir <- mkDir "runc-state"
+  containerDir <- mkDir "container-state"
   let extraSecrets =
         runEffectToken p
           & maybe
@@ -248,7 +248,7 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
     let isExtraBind path = extraBindMounts_ & any (\m -> Container.pathInContainer m == path)
     withNixDaemonProxyPerhaps $
       Container.run
-        runcDir
+        containerDir
         Container.Config
           { extraBindMounts =
               [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},

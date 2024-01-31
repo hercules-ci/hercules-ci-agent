@@ -41,8 +41,8 @@ data Config = Config
     rootReadOnly :: Bool
   }
 
-effectToRuncSpec :: Config -> Value -> Value
-effectToRuncSpec config spec =
+effectToOCIRuntimeSpec :: Config -> Value -> Value
+effectToOCIRuntimeSpec config spec =
   let defaultMounts = [defaultBindMount "/nix/store"]
       mounts =
         foldMap
@@ -71,31 +71,28 @@ effectToRuncSpec config spec =
 
 run :: FilePath -> Config -> IO ExitCode
 run dir config = do
-  let runcExe = "runc"
+  let containerRuntimeExe = "runc"
       createConfigJsonSpec =
-        (System.Process.proc runcExe ["spec", "--rootless"])
+        (System.Process.proc containerRuntimeExe ["spec", "--rootless"])
           { cwd = Just dir
           }
       configJsonPath = dir </> "config.json"
-      runcRootPath = dir </> "runc-root"
-      -- Although runc run --root says
-      --    root directory for storage of container state (this should be located in tmpfs)
-      -- this is not a requirement. See https://github.com/opencontainers/runc/issues/2054
+      runtimeRootPath = dir </> "container-root"
       rootfsPath = dir </> "rootfs"
   (exit, _out, err) <- readCreateProcessWithExitCode createConfigJsonSpec ""
   case exit of
     ExitSuccess -> pass
     ExitFailure e -> do
       putErrText (decodeUtf8With lenientDecode err)
-      panic $ "Could not create container configuration template. runc terminated with exit code " <> show e
+      panic $ "Could not create container configuration template. " <> toS containerRuntimeExe <> " terminated with exit code " <> show e
   templateBytes <- BS.readFile configJsonPath
   template <- case eitherDecode (BL.fromStrict templateBytes) of
     Right a -> pure a
-    Left e -> throwIO (FatalError $ "decoding runc config.json template: " <> show e)
-  let configJson = effectToRuncSpec config template
+    Left e -> throwIO (FatalError $ "decoding container config.json template: " <> show e)
+  let configJson = effectToOCIRuntimeSpec config template
   BS.writeFile configJsonPath (BL.toStrict $ encode configJson)
   createDirectory rootfsPath
-  createDirectory runcRootPath
+  createDirectory runtimeRootPath
   name <- do
     uuid <- UUID.nextRandom
     pure $ "hercules-ci-" <> show uuid
@@ -104,7 +101,7 @@ run dir config = do
       concurrently
         ( do
             let createProcSpec =
-                  (System.Process.proc runcExe ["--root", runcRootPath, "run", name])
+                  (System.Process.proc containerRuntimeExe ["--root", runtimeRootPath, "run", name])
                     { std_in = UseHandle terminal, -- can't pass /dev/null :(
                       std_out = UseHandle terminal,
                       std_err = UseHandle terminal,
@@ -114,10 +111,10 @@ run dir config = do
               waitForProcess processHandle
                 `onException` ( do
                                   putErrText "Terminating effect process..."
-                                  _ <- System.Process.withCreateProcess (System.Process.proc runcExe ["kill", name]) \_ _ _ kh ->
+                                  _ <- System.Process.withCreateProcess (System.Process.proc containerRuntimeExe ["kill", name]) \_ _ _ kh ->
                                     waitForProcess kh
                                   threadDelay 3_000_000
-                                  _ <- System.Process.withCreateProcess (System.Process.proc runcExe ["kill", name, "KILL"]) \_ _ _ kh ->
+                                  _ <- System.Process.withCreateProcess (System.Process.proc containerRuntimeExe ["kill", name, "KILL"]) \_ _ _ kh ->
                                     waitForProcess kh
                                   putErrText "Killed effect process."
                               )
