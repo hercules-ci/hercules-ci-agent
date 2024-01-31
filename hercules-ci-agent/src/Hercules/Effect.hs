@@ -43,10 +43,10 @@ import UnliftIO.Process qualified as Process
 
 parseDrvMountsMap :: Map ByteString ByteString -> Either Text (Map Text Text)
 parseDrvMountsMap drvEnv =
-  case "__hci_mounts" `M.lookup` drvEnv of
+  case "__hci_effect_mounts" `M.lookup` drvEnv of
     Nothing -> pure mempty
     Just mountsMapText -> case A.eitherDecode (BL.fromStrict mountsMapText) of
-      Left e -> Left $ "Could not parse __hci_mounts variable in derivation. Error: " <> toS e
+      Left e -> Left $ "Could not parse __hci_effect_mounts variable in derivation. Error: " <> toS e
       Right r -> pure r
 
 parseDrvSecretsMap :: Map ByteString ByteString -> Either Text (Map Text SecretRef)

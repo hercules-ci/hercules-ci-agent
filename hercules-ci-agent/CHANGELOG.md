@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
- - Effect mounts. Specify [`effectMountables`](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#effectMountables) in the agent configuration, deploy, and [mount](https://docs.hercules-ci.com/hercules-ci-agent/effects/declaration.html#__hci_mounts) them into an effect. This can be used for instance to expose the host's `/etc/hosts`, or hardware devices such as GPUs. Access is [controlled](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#effectMountables-condition) by the agent configuration.
+ - Effect mounts. Specify [`effectMountables`](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#effectMountables) in the agent configuration, deploy, and [mount](https://docs.hercules-ci.com/hercules-ci-agent/effects/declaration.html#__hci_effect_mounts) them into an effect. This can be used for instance to expose the host's `/etc/hosts`, or hardware devices such as GPUs. Access is [controlled](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#effectMountables-condition) by the agent configuration.
 
  - New configuration option `remotePlatformsWithSameFeatures`, allowing a remote build to be used before more elaborate remote builder support is implemented.
    The recommended method for running a cluster is still to install `hercules-ci-agent` on each machine, as that is more efficient and accurate.

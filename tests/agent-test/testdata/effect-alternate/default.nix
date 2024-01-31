@@ -15,7 +15,7 @@
         effects.launchIt = pkgs.runCommand "one" {
           t = builtins.currentTime;
           nativeBuildInputs = [ ];
-          __hci_mounts = builtins.toJSON {
+          __hci_effect_mounts = builtins.toJSON {
             "/etc/hosts" = "hosts";
           };
           __hci_effect_virtual_uid = 42;

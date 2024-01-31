@@ -15,7 +15,7 @@
         effects.launchIt = pkgs.runCommand "one" {
           t = builtins.currentTime;
           nativeBuildInputs = [ pkgs.curl ];
-          __hci_mounts = builtins.toJSON {
+          __hci_effect_mounts = builtins.toJSON {
             "/etc/forwarded-path" = "forwarded-path";
             "/var/lib/shared-data" = "shared-data";
             "/etc/hosts" = "hosts";

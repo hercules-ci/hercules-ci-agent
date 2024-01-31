@@ -13,8 +13,8 @@ Output-related derivation attributes are mostly ignored.
 
 Currently, `__structuredAttributes` must not be used in effects. It can be used in dependencies of the effect just fine.
 
-[[__hci_mounts]]
-=== `__hci_mounts`
+[[__hci_effect_mounts]]
+=== `__hci_effect_mounts`
 
 _Since hercules-ci-agent 0.10.1_
 
