@@ -23,7 +23,6 @@ import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Hercules.API.TaskStatus qualified as TaskStatus
 import MockTasksApi
 import Protolude
-import System.Timeout (timeout)
 import Test.Hspec
 import TestSupport (apiBaseUrl)
 import Prelude

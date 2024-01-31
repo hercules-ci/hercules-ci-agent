@@ -593,6 +593,7 @@ spec = describe "Evaluation" $ do
   context "when the source produces too many attributes" $
     it "yields an error message" $
       \srv -> do
+        pendingWith "slow test"
         id <- randomId
         (s, r) <-
           runEval

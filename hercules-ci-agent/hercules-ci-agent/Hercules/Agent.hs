@@ -169,7 +169,7 @@ taskStateMonitor tasks = watchChange mempty
         now <- readTVar tasks
         guard $ now /= current
         pure now
-      katipAddContext (sl "state" (A.toJSON $ fmap Prelude.show new)) do
+      katipAddContext (sl "state" (A.toJSON $ fmap Prelude.show new) <> sl "currentConcurrency" (length new)) do
         logLocM DebugS "Task state updated"
       watchChange new
 
