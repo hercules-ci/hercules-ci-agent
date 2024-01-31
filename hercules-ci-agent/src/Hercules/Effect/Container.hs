@@ -11,6 +11,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Map qualified as M
 import Data.UUID.V4 qualified as UUID
+import Data.Vector qualified as V
 import GHC.IO.Exception (IOErrorType (HardwareFault))
 import Protolude
 import System.Directory (createDirectory)
@@ -68,6 +69,8 @@ effectToOCIRuntimeSpec config spec =
         & key "process" . key "cwd" .~ toJSON (config & workingDirectory)
         & key "hostname" .~ toJSON (config & hostname)
         & key "root" . key "readonly" .~ toJSON (config & rootReadOnly)
+        -- TODO Use slirp? e.g. https://github.com/rootless-containers/slirp4netns or might kernel offer bridging (in the future?)
+        & key "linux" . key "namespaces" . _Array %~ V.filter (\x -> x ^? key "type" . _String /= Just "network")
 
 run :: FilePath -> Config -> IO ExitCode
 run dir config = do
