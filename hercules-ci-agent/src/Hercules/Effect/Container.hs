@@ -74,7 +74,7 @@ effectToOCIRuntimeSpec config spec =
 
 run :: FilePath -> Config -> IO ExitCode
 run dir config = do
-  let containerRuntimeExe = "runc"
+  let containerRuntimeExe = "crun"
       createConfigJsonSpec =
         (System.Process.proc containerRuntimeExe ["spec", "--rootless"])
           { cwd = Just dir
