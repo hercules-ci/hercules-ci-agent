@@ -3,7 +3,6 @@
 
 module EvaluationSpec where
 
-import Control.Concurrent.STM (readTVar)
 import Data.Aeson qualified as A
 import Data.List (last)
 import Data.Map qualified as M
@@ -32,7 +31,6 @@ import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Hercules.API.TaskStatus qualified as TaskStatus
 import MockTasksApi
 import Protolude
-import System.Timeout (timeout)
 import Test.Hspec
 import TestSupport (apiBaseUrl)
 import Prelude
@@ -69,7 +67,7 @@ defaultTask =
       otherInputs = mempty,
       autoArguments = mempty,
       nixPath = mempty,
-      logToken = "mock-eval-log-token",
+      logToken = "ignore-logs",
       selector = ConfigOrLegacy,
       ciSystems = Nothing,
       extraGitCredentials = Nothing,
@@ -93,30 +91,25 @@ spec = describe "Evaluation" $ do
       \srv -> do
         pendingWith "flaky test" -- "Did not receive log in time.", see below
         id <- randomId
-        (s, r) <-
+        (s, _evalEvents) <-
           runEval
             srv
             ( fixupInputs
                 defaultTask
                   { EvaluateTask.id = id,
                     EvaluateTask.otherInputs = "src" =: "/tarball/stack-overflow",
-                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                    EvaluateTask.logToken = "stack-overflow-log-token"
                   }
             )
-        x <- timeout 30_000_000 do
-          atomically do
-            entries <- readTVar (logEntries $ serverState srv)
-            guard $
-              isJust $
-                entries & find
-                  \case LogEntry.Msg {msg = msg} | "stack overflow" `T.isInfixOf` msg -> True; _ -> False
-          pass
-        case x of
-          Nothing -> failWith "Did not receive log in time."
-          Just _ -> pass
-        print r
-        print s
         s `shouldBe` TaskStatus.Exceptional "Worker failed with exit status: 1"
+        entries <- getLogs srv "stack-overflow-log-token"
+        void $
+          shouldBeJust $
+            entries & find
+              \case
+                LogEntry.Msg {msg = msg} | "stack overflow" `T.isInfixOf` msg -> True
+                _mismatched -> False
 
   context "when the source tarball cannot be fetched" $
     it "crashes with an error message" $
@@ -934,3 +927,9 @@ noANSI [] = []
 
 findJust :: Text -> (a -> Maybe b) -> [a] -> b
 findJust err f l = l & mapMaybe f & headMay & fromMaybe (panic $ "Could not find " <> err)
+
+shouldBeJust :: (HasCallStack) => Maybe a -> IO a
+shouldBeJust = withFrozenCallStack \case
+  Nothing -> do
+    failWith "Expected Just, got Nothing"
+  Just a -> pure a

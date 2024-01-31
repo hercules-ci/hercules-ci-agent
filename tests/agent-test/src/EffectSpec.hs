@@ -3,7 +3,6 @@
 
 module EffectSpec where
 
-import Control.Concurrent.STM.TVar (readTVar)
 import Data.Aeson qualified as A
 import Data.Map qualified as M
 import Data.UUID.V4 qualified as UUID
@@ -19,20 +18,19 @@ import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Hercules.API.TaskStatus qualified as TaskStatus
 import MockTasksApi
 import Protolude
-import System.Timeout (timeout)
 import Test.Hspec
 import TestSupport (apiBaseUrl)
-import Prelude
-  ( error,
-    userError,
-  )
+import Prelude (error)
 import Prelude qualified
 
 randomId :: IO (Id a)
 randomId = Id <$> UUID.nextRandom
 
 failWith :: [Char] -> IO a
-failWith = throwIO . userError
+failWith s = do
+  expectationFailure s
+  -- Why doesn't it just return forall a? Oh well.
+  panic ("expectationFailure didn't throw: " <> toS s)
 
 defaultEvalTask :: EvaluateTask.EvaluateTask
 defaultEvalTask =
@@ -44,7 +42,7 @@ defaultEvalTask =
       inputs = mempty,
       inputMetadata = mempty,
       nixPath = mempty,
-      logToken = "mock-eval-log-token",
+      logToken = "ignore-logs",
       selector = EvaluateTask.ConfigOrLegacy,
       ciSystems = Nothing,
       extraGitCredentials = mempty,
@@ -108,15 +106,21 @@ spec = describe "Effect" do
           failWith $ "Events should be a single attribute, not: " <> show attrEvs
     -- Test: launch it
     id2 <- randomId
-    s2 <-
-      runEffect
+    _logEntries <-
+      runEffectExceptional
         srv
+        "mountable-denied"
+        ( \msg -> do
+            let msg' = toS msg
+            msg' `shouldContain` "/var/lib/shared-data"
+            msg' `shouldContain` "a mountable with name shared-data has not been configured on agent, or it has been configured, but the condition field does not allow"
+        )
         ( EffectTask.EffectTask
             { id = id2,
               derivationPath = drvPath,
-              logToken = "pretend-jwt-for-log",
+              logToken = "will-be-replaced",
               inputDerivationOutputPaths = [],
-              token = "test-fake-token",
+              token = "dummy-jwt",
               projectId = Id $ Prelude.read "00000000-0000-0000-0000-000000001234",
               projectPath = "github/test-fake-owner/test-fake-repo",
               serverSecrets = mempty,
@@ -127,14 +131,6 @@ spec = describe "Effect" do
               isDefaultBranch = True
             }
         )
-    case s2 of
-      TaskStatus.Exceptional msg -> do
-        let msg' = toS msg
-        msg' `shouldContain` "/var/lib/shared-data"
-        msg' `shouldContain` "a mountable with name shared-data has not been configured on agent, or it has been configured, but the condition field does not allow"
-      _ -> failWith ("Unexpected status" <> show s2)
-
-    -- TODO check that it didn't run. Need to add task id to log lines so that we don't get false results from other tests.
     pass
 
   it "works" $ \srv -> do
@@ -169,15 +165,16 @@ spec = describe "Effect" do
           failWith $ "Events should be a single attribute, not: " <> show attrEvs
     -- Test: launch it
     id2 <- randomId
-    s2 <-
-      runEffect
+    entries <-
+      runEffectSucceed
         srv
+        "effect-works"
         ( EffectTask.EffectTask
             { id = id2,
               derivationPath = drvPath,
-              logToken = "pretend-jwt-for-log",
+              logToken = "will-be-replaced",
               inputDerivationOutputPaths = [],
-              token = "test-fake-token",
+              token = "dummy-jwt",
               projectId = Id $ Prelude.read "00000000-0000-0000-0000-000000001234",
               projectPath = "github/test-fake-owner/test-fake-repo",
               serverSecrets = mempty,
@@ -188,35 +185,18 @@ spec = describe "Effect" do
               isDefaultBranch = True
             }
         )
-    s2 `shouldBe` TaskStatus.Successful ()
-    x <- timeout 30_000_000 do
-      atomically do
-        entries <- readTVar (logEntries $ serverState srv)
-        guard $
-          isJust $
-            entries & find \case LogEntry.Msg {msg = m} | m == "hello on stderr\r" -> True; _noMatch -> False
-        guard $
-          isJust $
-            entries & find \case LogEntry.Msg {msg = m} | m == "hello on stdout\r" -> True; _noMatch -> False
-        guard $
-          isJust $
-            entries & find \case LogEntry.Msg {msg = m} | m == "hi from src\r" -> True; _noMatch -> False
-        guard $
-          isJust $
-            entries & find \case LogEntry.Msg {msg = m} | m == "hello from forwarded path\r" -> True; _noMatch -> False
-        guard $
-          isJust $
-            entries & find \case LogEntry.Msg {msg = m} | m == "hello from shared-data\r" -> True; _noMatch -> False
-        guard $
-          isJust $
-            entries & find \case LogEntry.Msg {msg = m} | m == "Hello, world! - The fake API testing endpoint\r" -> True; _noMatch -> False
-      -- FIXME
-      -- guard $
-      --   isJust $
-      --     entries & find \case LogEntry.Result { msg = m } | m == "log line without newline\r" -> True; _noMatch -> False
-      pass
-    case x of
-      Nothing -> do
-        printErrItems =<< atomically (readTVar (logEntries $ serverState srv))
-        failWith "Did not receive satisfactory log in time."
-      Just _ -> pass
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hello on stderr\r" -> True; _noMatch -> False
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hello on stdout\r" -> True; _noMatch -> False
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hi from src\r" -> True; _noMatch -> False
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hello from forwarded path\r" -> True; _noMatch -> False
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hello from shared-data\r" -> True; _noMatch -> False
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "Hello, world! - The fake API testing endpoint\r" -> True; _noMatch -> False
+    -- FIXME
+    -- void $ shouldBeJust $ entries & find \case LogEntry.Result { msg = m } | m == "log line without newline\r" -> True; _noMatch -> False
+    pass
+
+shouldBeJust :: (HasCallStack) => Maybe a -> IO a
+shouldBeJust = withFrozenCallStack \case
+  Nothing -> do
+    failWith "Expected Just, got Nothing"
+  Just a -> pure a

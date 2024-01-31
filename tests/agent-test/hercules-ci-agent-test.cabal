@@ -59,6 +59,7 @@ executable hercules-ci-agent-test
     , hercules-ci-api-core
     , hspec
     , http-api-data
+    , HUnit
     , mmorph
     , protolude
     , random

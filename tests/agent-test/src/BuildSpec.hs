@@ -3,7 +3,6 @@
 
 module BuildSpec where
 
-import Control.Concurrent.STM.TVar (readTVar)
 import Data.Aeson qualified as A
 import Data.Map qualified as M
 import Data.Text qualified as T
@@ -48,7 +47,7 @@ defaultEvalTask =
       inputs = mempty,
       inputMetadata = mempty,
       nixPath = mempty,
-      logToken = "mock-eval-log-token",
+      logToken = "ignore-logs",
       selector = EvaluateTask.ConfigOrLegacy,
       ciSystems = Nothing,
       extraGitCredentials = mempty,
@@ -113,7 +112,7 @@ spec = describe "Build" do
         ( BuildTask.BuildTask
             { id = id2,
               derivationPath = drvPath,
-              logToken = "pretend-jwt-for-log",
+              logToken = "happy-build",
               inputDerivationOutputPaths = []
             }
         )
@@ -130,19 +129,13 @@ spec = describe "Build" do
             `shouldBe` "sha256:10n8hp369w047c07j0fgx2d3kp2ia7r8bxr23z7cn4bzwi9c5b11"
           sz `shouldBe` 168
       _ -> failWith $ "Didn't expect this: " <> show be
-    x <- timeout 30_000_000 do
-      atomically do
-        entries <- readTVar (logEntries $ serverState srv)
-        guard $
-          isJust $
-            entries & find \case LogEntry.Result {rtype = LogEntry.ResultTypeBuildLogLine, fields = f} | toList f == [LogEntry.String "hello on stderr"] -> True; _ -> False
-        guard $
-          isJust $
-            entries & find \case LogEntry.Result {rtype = LogEntry.ResultTypeBuildLogLine, fields = f} | toList f == [LogEntry.String "hello on stdout"] -> True; _ -> False
-      pass
-    case x of
-      Nothing -> failWith "Did not receive log in time."
-      Just _ -> pass
+    entries <- getLogs srv "happy-build"
+    void $
+      shouldBeJust $
+        entries & find \case LogEntry.Result {rtype = LogEntry.ResultTypeBuildLogLine, fields = f} | toList f == [LogEntry.String "hello on stderr"] -> True; _ -> False
+    void $
+      shouldBeJust $
+        entries & find \case LogEntry.Result {rtype = LogEntry.ResultTypeBuildLogLine, fields = f} | toList f == [LogEntry.String "hello on stdout"] -> True; _ -> False
 
   it "prints cyclic output reference error" $ \srv -> do
     -- Setup: put the drv in the agent's store
@@ -180,7 +173,7 @@ spec = describe "Build" do
         ( BuildTask.BuildTask
             { id = id2,
               derivationPath = drvPath,
-              logToken = "pretend-jwt-for-log",
+              logToken = "cyclic-output-refs",
               inputDerivationOutputPaths = []
             }
         )
@@ -188,27 +181,22 @@ spec = describe "Build" do
     case be of
       [] -> pass
       _ -> failWith $ "Didn't expect build events: " <> show be
-    x <- timeout 30_000_000 do
-      atomically do
-        entries <- readTVar (logEntries $ serverState srv)
-        -- unsafePerformIO do
-        --   for_ (reverse entries) print
-        --   pure pass
+    entries <- getLogs srv "cyclic-output-refs"
+    void $
+      shouldBeJust $
+        entries & find \case
+          LogEntry.Msg {level = 0, msg = m}
+            | "cycle detected"
+                `T.isInfixOf` m
+                && "outputOne"
+                  `T.isInfixOf` m
+                && "outputTwo"
+                  `T.isInfixOf` m ->
+                True
+          _ -> False
 
-        guard $
-          isJust $
-            entries & find \case
-              LogEntry.Msg {level = 0, msg = m}
-                | "cycle detected"
-                    `T.isInfixOf` m
-                    && "outputOne"
-                      `T.isInfixOf` m
-                    && "outputTwo"
-                      `T.isInfixOf` m ->
-                    True
-              _ -> False
-
-      pass
-    case x of
-      Nothing -> failWith "Did not receive log in time."
-      Just _ -> pass
+shouldBeJust :: (HasCallStack) => Maybe a -> IO a
+shouldBeJust = withFrozenCallStack \case
+  Nothing -> do
+    failWith "Expected Just, got Nothing"
+  Just a -> pure a

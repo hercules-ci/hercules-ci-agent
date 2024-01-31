@@ -16,7 +16,11 @@ main = do
     withServer $ \server ->
       hspecWith config (beforeAll (pure server) Spec.spec)
   where
-    config = defaultConfig {configColorMode = ColorNever}
+    config =
+      defaultConfig
+        { configColorMode = ColorAlways,
+          configUnicodeMode = UnicodeAlways
+        }
 
 withTimeout :: IO () -> IO ()
 withTimeout =
