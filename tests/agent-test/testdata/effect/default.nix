@@ -33,6 +33,12 @@
           curl --fail -v --no-progress-bar \
               $HERCULES_CI_API_BASE_URL/hello
 
+          set -x
+          [[ $(id -u) == 0 ]]
+          [[ $(id -g) == 0 ]]
+          echo hi >/hi
+          set +x
+
           echo -n log line "without newline"
         '' // { isEffect = true; };
       };
