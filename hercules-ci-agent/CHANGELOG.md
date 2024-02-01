@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - The recommended configuration format is now **JSON**, preferably generated using a configuration manager such as NixOS or nix-darwin.
    TOML is still supported, but does not support `null` in labels, and due to library limitations, it requires that intermediate tables be specified. See [the config file documentation](https://docs.hercules-ci.com/hercules-ci-agent/agent-config).
 
+ - `services.hercules-ci-agent` is now an alias for `services.hercules-ci-agents.""`, which still provides the same behavior as the old module.
+
 ### Added
 
  - Effect mounts. Specify [`effectMountables`](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#effectMountables) in the agent configuration, deploy, and [mount](https://docs.hercules-ci.com/hercules-ci-agent/effects/declaration.html#__hci_effect_mounts) them into an effect. This can be used for instance to expose the host's `/etc/hosts`, or hardware devices such as GPUs. Access is [controlled](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#effectMountables-condition) by the agent configuration.
