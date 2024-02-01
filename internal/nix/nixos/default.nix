@@ -44,6 +44,32 @@ in
         # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86164
         # A 256 MiB stack allows between 400 KiB and 1.5 MiB file to be matched by ".*".
         LimitSTACK = 256 * 1024 * 1024;
+
+        # Hardening
+        CapabilityBoundingSet = "";
+        AmbientCapabilities = "";
+        DeviceAllow = "";
+        ProtectSystem = "full";
+        LockPersonality = true;
+        PrivateDevices = true;
+        PrivateMounts = true;
+        PrivateTmp = true;
+        PrivateUsers = true;
+        ProtectClock = true;
+        ProtectHome = true;
+        ProtectKernelModules = true;
+        RemoveIPC = true;
+        RestrictRealtime = true;
+        RestrictSUIDSGID = true;
+        RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
+        SystemCallArchitectures = "native";
+        UMask = "077";
+
+        # # Blocks /proc remount in effect container
+        # ProtectKernelLogs = true;
+        # ProtectKernelTunables = true;
+        # # workDirectory may not exist yet.
+        # WorkingDirectory = cfg.settings.workDirectory;
       };
     };
 
