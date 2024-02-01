@@ -866,7 +866,7 @@ getDerivationInputs' derivation =
                   r->push_back(i);
                 }
 
-                // for (const auto &i : (*$(DerivationInputsIterator *i))->second.childMap) {
+                // for (const auto &i : iter->second.childMap) {
                 // TODO (RFC 92)
                 //}
 

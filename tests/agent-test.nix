@@ -21,6 +21,9 @@ in
 {
   name = "agent-test${optionalString daemonIsNixUnstable "-daemon-nixUnstable"}";
 
+  # python code is rarely ever changed, but takes like 3s to typecheck
+  skipTypeCheck = true;
+
   nodes = {
     agent = { config, pkgs, lib, ... }: {
       imports = [
@@ -61,7 +64,6 @@ in
         services.hercules-ci-agent.settings.apiBaseUrl = "http://api";
         services.hercules-ci-agent.settings.binaryCachesPath = (pkgs.writeText "binary-caches.json" (builtins.toJSON { })).outPath;
         services.hercules-ci-agent.settings.clusterJoinTokenPath = (pkgs.writeText "pretend-agent-token" "").outPath;
-        services.hercules-ci-agent.settings.concurrentTasks = 4; # Decrease on itest memory problems
         # services.hercules-ci-agent.settings.logLevel = "DebugS";
         # services.hercules-ci-agent.settings.nixVerbosity = "debug";
         services.hercules-ci-agent.settings.effectMountables = {
@@ -109,7 +111,8 @@ in
         systemd.services.hercules-ci-agent.serviceConfig.StartLimitBurst = lib.mkForce (agentStartTimeoutSec * 10);
         systemd.services.hercules-ci-agent.serviceConfig.RestartSec = lib.mkForce ("100ms");
         virtualisation.diskSize = 10 * 1024;
-        virtualisation.memorySize = 2048;
+        virtualisation.memorySize = 4096;
+        virtualisation.cores = 3;
       };
     };
     api = { pkgs, ... }: {
@@ -117,6 +120,7 @@ in
       environment.systemPackages = [
         flake.packages.${pkgs.hostPlatform.system}.internal-hercules-ci-agent-test
       ];
+      virtualisation.cores = 2;
     };
   };
 

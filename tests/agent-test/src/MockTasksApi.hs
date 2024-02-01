@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module MockTasksApi
@@ -12,7 +13,9 @@ module MockTasksApi
     serverState,
     logEntries,
     fixupInputs,
-    runEffect,
+    runEffectSucceed,
+    runEffectExceptional,
+    getLogs,
   )
 where
 
@@ -50,6 +53,7 @@ import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.UUID (UUID)
+import Data.UUID.V1 (nextUUID)
 import Data.UUID.V4 qualified as UUID
 import DummyApi qualified
 import Hercules.API.Agent
@@ -79,11 +83,12 @@ import Hercules.API.Agent.Tasks (TasksAPI (..))
 import Hercules.API.Id
 import Hercules.API.Logs (LogsAPI (..))
 import Hercules.API.Logs.LogEntry (LogEntry)
-import Hercules.API.Logs.LogMessage (LogMessage (LogEntries))
+import Hercules.API.Logs.LogMessage (LogMessage (End, LogEntries))
 import Hercules.API.Task (Task)
 import Hercules.API.Task qualified as Task
 import Hercules.API.TaskStatus qualified as TaskStatus
 import Network.Wai.Handler.Warp (run)
+import Network.WebSockets (acceptRequest, requestHeaders)
 import Network.WebSockets qualified as WS
 import Network.WebSockets.Connection qualified
 import Orphans ()
@@ -100,6 +105,9 @@ import System.Directory
   )
 import System.Environment (getEnvironment)
 import System.FilePath ((</>))
+import System.Timeout (timeout)
+import Test.HUnit.Lang (FailureReason (ExpectedButGot, Reason), HUnitFailure (HUnitFailure))
+import Test.Hspec (expectationFailure, shouldBe)
 import TestSupport
 import Prelude qualified
 
@@ -135,7 +143,9 @@ data ServerState = ServerState
         ),
     drvTasks :: IORef (Map Text (Id (Task BuildTask.BuildTask))),
     effectTasks :: IORef (Map Text (Id (Task EffectTask.EffectTask))),
-    logEntries :: TVar [LogEntry]
+    -- | log token to reverse log entries
+    logEntries :: TVar (Map Text [LogEntry]),
+    logsDone :: TVar (Set Text)
   }
 
 newtype ServerHandle = ServerHandle ServerState
@@ -211,14 +221,99 @@ runBuild sh@(ServerHandle st) task0 = do
   evs <- readIORef (buildEvents st)
   pure $ (,) s $ fromMaybe [] $ M.lookup (BuildTask.id task) evs
 
-runEffect ::
+runEffect_ ::
   ServerHandle ->
+  Text ->
   EffectTask.EffectTask ->
-  IO (TaskStatus.TaskStatus)
-runEffect sh task0 = do
-  task <- fixupEffectTask sh task0
+  IO (TaskStatus.TaskStatus, Text)
+runEffect_ sh hint task0 = do
+  task <- fixupEffectTask sh task0 hint
   enqueue sh (AgentTask.Effect task)
   await sh (idText $ EffectTask.id task)
+    <&> (,EffectTask.logToken task)
+
+runEffectSucceed_ ::
+  (HasCallStack) =>
+  ServerHandle ->
+  -- | hint: test case label
+  Text ->
+  -- | Task. Some attributes may be replaced.
+  EffectTask.EffectTask ->
+  -- | Log token, or exception if the effect failed
+  IO Text
+runEffectSucceed_ sh hint task0 = withFrozenCallStack do
+  (status, logToken) <- runEffect_ sh hint task0
+  requireStatus sh logToken (`shouldBe` TaskStatus.Successful ()) status
+  pure logToken
+
+runEffectSucceed ::
+  (HasCallStack) =>
+  ServerHandle ->
+  -- | hint: test case label
+  Text ->
+  -- | Task. Some attributes may be replaced.
+  EffectTask.EffectTask ->
+  -- | Log token, or exception if the effect failed
+  IO [LogEntry]
+runEffectSucceed sh hint task0 = withFrozenCallStack do
+  logToken <- runEffectSucceed_ sh hint task0
+  getLogs sh logToken
+
+runEffectExceptional ::
+  (HasCallStack) =>
+  ServerHandle ->
+  -- | hint: test case label
+  Text ->
+  -- | Assertions about the message
+  (Text -> IO ()) ->
+  -- | Task. Some attributes may be replaced.
+  EffectTask.EffectTask ->
+  -- | Log token, or exception if the effect failed
+  IO [LogEntry]
+runEffectExceptional sh hint f task0 = withFrozenCallStack do
+  (status, logToken) <- runEffect_ sh hint task0
+  requireStatus
+    sh
+    logToken
+    ( \case
+        TaskStatus.Exceptional msg -> f msg
+        s -> expectationFailure ("Expected exceptional status but got" <> show s)
+    )
+    status
+  getLogs sh logToken
+
+requireStatus ::
+  (HasCallStack) =>
+  ServerHandle ->
+  -- | Log token
+  Text ->
+  -- | Assertions about the status
+  (TaskStatus.TaskStatus -> IO ()) ->
+  -- | Actual status
+  TaskStatus.TaskStatus ->
+  -- | Check status, get log, throw if mismatched
+  IO ()
+requireStatus sh logToken f actual = withFrozenCallStack do
+  ( f actual
+      `catch` ( \case
+                  (HUnitFailure loc (ExpectedButGot pref expectedStr actualStr)) -> do
+                    logs <- getLogs sh logToken
+                    throwIO $ HUnitFailure loc (ExpectedButGot (Just $ maybe identity (\x y -> x ++ "; " ++ y) pref $ "Unexpected status" <> withLogStr logs) expectedStr actualStr)
+                  (HUnitFailure loc (Reason msg)) -> do
+                    logs <- getLogs sh logToken
+                    throwIO $ HUnitFailure loc (Reason $ msg <> "; Unexpected status" <> withLogStr logs)
+              )
+    )
+    `Control.Exception.Safe.catch` ( \e -> do
+                                       logs <- getLogs sh logToken
+                                       expectationFailure $
+                                         "Unexpected exception while checking status " <> show actual <> ";" <> withLogStr logs <> "\nException: " <> show (e :: SomeException)
+                                   )
+  where
+    withLogStr [] = " with empty log"
+    withLogStr entries =
+      " with log entries:\n"
+        <> L.unlines (map (\entry -> "  " ++ Prelude.show entry) entries)
 
 getInOuts :: ServerHandle -> Text -> IO [Text]
 getInOuts (ServerHandle st) drvPath = do
@@ -233,10 +328,16 @@ getInOuts (ServerHandle st) drvPath = do
         outPath <- DerivationInfo.path outInfo & toList
     ]
 
-fixupEffectTask :: ServerHandle -> EffectTask.EffectTask -> IO EffectTask.EffectTask
-fixupEffectTask s t = do
+fixupEffectTask :: ServerHandle -> EffectTask.EffectTask -> Text -> IO EffectTask.EffectTask
+fixupEffectTask s t hint = do
   inouts <- getInOuts s (EffectTask.derivationPath t)
-  pure $ t {EffectTask.inputDerivationOutputPaths = inouts}
+  logId <- nextUUID
+  let logToken = hint <> "-" <> show logId
+  pure
+    t
+      { EffectTask.inputDerivationOutputPaths = inouts,
+        EffectTask.logToken = logToken
+      }
 
 fixupBuildTask :: ServerHandle -> BuildTask.BuildTask -> IO BuildTask.BuildTask
 fixupBuildTask s t = do
@@ -269,6 +370,7 @@ withServer doIt = do
   dis <- newIORef mempty
   ifdDrvs <- newIORef mempty
   eft <- newIORef mempty
+  ld <- newTVarIO mempty
   let st =
         ServerState
           { queue = q,
@@ -281,7 +383,8 @@ withServer doIt = do
             done = d,
             logEntries = le,
             ifdDerivations = ifdDrvs,
-            effectTasks = eft
+            effectTasks = eft,
+            logsDone = ld
           }
       runServer =
         Control.Exception.Safe.handleAny
@@ -312,7 +415,7 @@ type MockAPI =
         :<|> ToServantApi (LifeCycleAPI Auth')
     )
     :<|> "api" :> "v1" :> "agent-socket" :> WebSocket
-    :<|> "api" :> "v1" :> "logs" :> "build" :> "socket" :> WebSocket
+    :<|> "api" :> "v1" :> "logs" :> "build" :> "socket" :> WebSocketPending
     :<|> "tarball" :> Capture "tarball" Text :> StreamGet NoFraming OctetStream (SourceIO ByteString)
     :<|> "hello" :> Get '[PlainText] Text
 
@@ -351,8 +454,19 @@ endpoints server =
     :<|> (toSourceIO & liftA & liftA & ($ sourceball))
     :<|> pure "Hello, world! - The fake API testing endpoint\n"
 
-logSocket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
-logSocket server conn = do
+logSocket :: ServerState -> Network.WebSockets.Connection.PendingConnection -> Handler ()
+logSocket server pendingConn = do
+  token <- do
+    let req = Network.WebSockets.Connection.pendingRequest pendingConn
+        headers = requestHeaders req
+    authzHeader <- case filter (\(h, _) -> h == "authorization") headers of
+      [] -> throwError err401 {errBody = "Missing authorization header"}
+      [(_, v)] -> pure (decodeUtf8 v)
+      _ -> throwError err400 {errBody = "Multiple authorization headers"}
+    unless ("Bearer " `T.isPrefixOf` authzHeader) do
+      throwError err401 {errBody = "Authorization header must be a bearer token"}
+    pure $ T.drop (T.length "Bearer ") authzHeader
+  conn <- liftIO do acceptRequest pendingConn
   let send :: (MonadIO m) => [Frame SI.ServiceInfo SI.ServiceInfo] -> m ()
       send = send' conn
       -- FIXME
@@ -369,15 +483,48 @@ logSocket server conn = do
       Frame.Ack {} -> pass
       Frame.Oob {} -> pass
       Frame.Msg {p = payload, n = number} -> do
-        processLogPayload server payload
+        processLogPayload server token payload
         send [Frame.Ack number]
 
-processLogPayload :: ServerState -> LogMessage -> Handler ()
-processLogPayload server (LogEntries les) = do
+processLogPayload :: ServerState -> Text -> LogMessage -> Handler ()
+processLogPayload server token (LogEntries les) = do
+  let addNewEntries = (toList les ++)
+      addNewLog = M.alter (Just . addNewEntries . fromMaybe []) token
+  open <- liftIO $ atomically do
+    -- Make sure the log is still open for writing
+    done <- readTVar (logsDone server)
+    let open = S.notMember token done
+    when open do
+      modifyTVar (logEntries server) addNewLog
+    pure open
+  let doCheck = token /= "ignore-logs"
+  when (doCheck && not open) do
+    putErrText $ "############## ERROR ############## log is closed: " <> show token
+    throwError err400 {errBody = "Log is closed!"}
+processLogPayload server token (End {}) = do
   liftIO $ atomically do
-    modifyTVar (logEntries server) (toList les ++)
-processLogPayload _ _ =
-  pass
+    modifyTVar (logsDone server) (S.insert token)
+processLogPayload _ _ _ = pass
+
+getLogsSTM :: ServerState -> Text -> STM [LogEntry]
+getLogsSTM server token = do
+  do
+    -- wait for completion
+    done <- readTVar (logsDone server)
+    when (S.notMember token done) retry
+  logs <- readTVar (logEntries server)
+  pure $ reverse $ fromMaybe [] $ M.lookup token logs
+
+getLogs :: ServerHandle -> Text -> IO [LogEntry]
+getLogs (ServerHandle st) token = do
+  timeoutFail 30_000_000 $ atomically $ getLogsSTM st token
+
+timeoutFail :: Int -> IO a -> IO a
+timeoutFail timeoutMicros action = do
+  res <- timeout timeoutMicros action
+  case res of
+    Nothing -> panic "timeout"
+    Just x -> pure x
 
 socket :: ServerState -> Network.WebSockets.Connection.Connection -> Handler ()
 socket server conn = do
@@ -535,7 +682,7 @@ handleTasksUpdate st id body _authResult = do
             $ BuildTask.BuildTask
               { BuildTask.id = buildId,
                 BuildTask.derivationPath = drvPath,
-                BuildTask.logToken = "eyBlurb=",
+                BuildTask.logToken = "ignore-logs",
                 inputDerivationOutputPaths = []
               }
     _ -> pass
@@ -649,6 +796,3 @@ logsEndpoints _server =
         NoContent <$ do
           hPutStrLn stderr $ "Got log: " <> logBytes
     }
-
-randomId :: IO (Id a)
-randomId = Id <$> UUID.nextRandom

@@ -371,7 +371,7 @@
                           mv $out/bin/hercules-ci-agent $out/libexec
                           makeWrapper $out/libexec/hercules-ci-agent $out/bin/hercules-ci-agent --prefix PATH : ${lib.makeBinPath 
                             ([ pkgs.gnutar pkgs.gzip pkgs.git pkgs.openssh ]
-                             ++ lib.optional pkgs.stdenv.isLinux pkgs.runc)}
+                             ++ lib.optional pkgs.stdenv.isLinux pkgs.crun)}
                         '';
                         passthru = o.passthru or { } // {
                           inherit nix;
@@ -406,7 +406,7 @@
                       h.justStaticExecutables
                       (self.generateOptparseApplicativeCompletions [ "hci" ])
                       (h.overrideCabal (o:
-                        let binPath = lib.optionals pkgs.stdenv.isLinux [ pkgs.runc ];
+                        let binPath = lib.optionals pkgs.stdenv.isLinux [ pkgs.crun ];
                         in
                         {
                           postInstall =

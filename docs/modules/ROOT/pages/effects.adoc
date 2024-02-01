@@ -129,4 +129,4 @@ This is picked up automatically by the xref:hercules-ci-agent:hci:index.adoc[`hc
 
 Network access is provided via the container runtime used.
 
-The current implementation is based on `runc` and bind mounts `/etc/resolv.conf`. If your host setup demands a different approach, please open an issue describing your needs or contact mailto:support@hercules-ci.com if you are hesitant to share any network information.
+The current implementation is based on `crun` and bind mounts `/etc/resolv.conf`. If your host setup demands a different approach, please open an issue describing your needs or contact mailto:support@hercules-ci.com if you are hesitant to share any network information.

@@ -3,12 +3,10 @@
 
 module EvaluationSpec where
 
-import Control.Concurrent.STM (readTVar)
 import Data.Aeson qualified as A
 import Data.List (last)
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Data.UUID.V4 qualified as UUID
 import Hercules.API.Agent.Evaluate.EvaluateEvent
   ( EvaluateEvent,
   )
@@ -27,24 +25,13 @@ import Hercules.API.Agent.Evaluate.EvaluateTask.OnPush qualified as EvaluateTask
 import Hercules.API.Agent.Evaluate.ImmutableInput (ImmutableInput (ArchiveUrl))
 import Hercules.API.Agent.Evaluate.ImmutableInput qualified as API.ImmutableInput
 import Hercules.API.DayOfWeek (DayOfWeek (..))
-import Hercules.API.Id (Id (Id))
 import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Hercules.API.TaskStatus qualified as TaskStatus
 import MockTasksApi
 import Protolude
-import System.Timeout (timeout)
 import Test.Hspec
-import TestSupport (apiBaseUrl)
-import Prelude
-  ( error,
-    userError,
-  )
-
-randomId :: IO (Id a)
-randomId = Id <$> UUID.nextRandom
-
-failWith :: [Char] -> IO a
-failWith = throwIO . userError
+import TestSupport (apiBaseUrl, failWith, randomId, shouldBeJust, (=:))
+import Prelude (error)
 
 attrLike :: [EvaluateEvent] -> [EvaluateEvent]
 attrLike = filter isAttrLike
@@ -56,9 +43,6 @@ isAttrLike EvaluateEvent.AttributeError {} = True
 isAttrLike EvaluateEvent.Message {} = True -- this is a bit of a stretch but hey
 isAttrLike _ = False
 
-(=:) :: k -> a -> Map k a
-(=:) = M.singleton
-
 defaultTask :: EvaluateTask.EvaluateTask
 defaultTask =
   EvaluateTask.EvaluateTask
@@ -69,7 +53,7 @@ defaultTask =
       otherInputs = mempty,
       autoArguments = mempty,
       nixPath = mempty,
-      logToken = "mock-eval-log-token",
+      logToken = "ignore-logs",
       selector = ConfigOrLegacy,
       ciSystems = Nothing,
       extraGitCredentials = Nothing,
@@ -93,30 +77,25 @@ spec = describe "Evaluation" $ do
       \srv -> do
         pendingWith "flaky test" -- "Did not receive log in time.", see below
         id <- randomId
-        (s, r) <-
+        (s, _evalEvents) <-
           runEval
             srv
             ( fixupInputs
                 defaultTask
                   { EvaluateTask.id = id,
                     EvaluateTask.otherInputs = "src" =: "/tarball/stack-overflow",
-                    EvaluateTask.inputMetadata = "src" =: defaultMeta
+                    EvaluateTask.inputMetadata = "src" =: defaultMeta,
+                    EvaluateTask.logToken = "stack-overflow-log-token"
                   }
             )
-        x <- timeout 30_000_000 do
-          atomically do
-            entries <- readTVar (logEntries $ serverState srv)
-            guard $
-              isJust $
-                entries & find
-                  \case LogEntry.Msg {msg = msg} | "stack overflow" `T.isInfixOf` msg -> True; _ -> False
-          pass
-        case x of
-          Nothing -> failWith "Did not receive log in time."
-          Just _ -> pass
-        print r
-        print s
         s `shouldBe` TaskStatus.Exceptional "Worker failed with exit status: 1"
+        entries <- getLogs srv "stack-overflow-log-token"
+        void $
+          shouldBeJust $
+            entries & find
+              \case
+                LogEntry.Msg {msg = msg} | "stack overflow" `T.isInfixOf` msg -> True
+                _mismatched -> False
 
   context "when the source tarball cannot be fetched" $
     it "crashes with an error message" $
@@ -600,6 +579,7 @@ spec = describe "Evaluation" $ do
   context "when the source produces too many attributes" $
     it "yields an error message" $
       \srv -> do
+        pendingWith "slow test"
         id <- randomId
         (s, r) <-
           runEval

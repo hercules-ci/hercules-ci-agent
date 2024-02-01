@@ -14,9 +14,23 @@ main = do
   hSetBuffering stderr LineBuffering
   withTimeout $
     withServer $ \server ->
-      hspecWith config (beforeAll (pure server) Spec.spec)
+      hspecWith config (beforeAll (pure server) (parallel Spec.spec))
   where
-    config = defaultConfig {configColorMode = ColorNever}
+    config =
+      defaultConfig
+        { {-
+            This may unpack nixpkgs twice, concurrently.
+            More than that may be a problem for tmpfs.
+            Increase beyond 2 does not cause speedup until Nix has dogpile locking.
+          -}
+          configConcurrentJobs = Just 2,
+          configRandomize = True,
+          configColorMode = ColorAlways,
+          configUnicodeMode = UnicodeAlways,
+          configPrintSlowItems = Just 10,
+          configPrintCpuTime = False, -- True would be misleading when the action is in a different process or vm
+          configTimes = True -- Also misleading because agent may be saturated arbitrarily, and an arbitrary test will pick up preparatory builds
+        }
 
 withTimeout :: IO () -> IO ()
 withTimeout =

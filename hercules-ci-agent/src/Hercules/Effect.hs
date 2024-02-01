@@ -34,6 +34,7 @@ import System.FilePath
 import System.IO.Error (isDoesNotExistError)
 import System.Posix (dup, fdToHandle)
 import System.Posix.Signals (killProcess, signalProcess)
+import System.Posix.User (getEffectiveGroupID, getEffectiveUserID)
 import System.Process (ProcessHandle)
 import System.Process.Internals qualified as Process.Internal
 import UnliftIO.Directory (createDirectory, createDirectoryIfMissing)
@@ -42,10 +43,10 @@ import UnliftIO.Process qualified as Process
 
 parseDrvMountsMap :: Map ByteString ByteString -> Either Text (Map Text Text)
 parseDrvMountsMap drvEnv =
-  case "__hci_mounts" `M.lookup` drvEnv of
+  case "__hci_effect_mounts" `M.lookup` drvEnv of
     Nothing -> pure mempty
     Just mountsMapText -> case A.eitherDecode (BL.fromStrict mountsMapText) of
-      Left e -> Left $ "Could not parse __hci_mounts variable in derivation. Error: " <> toS e
+      Left e -> Left $ "Could not parse __hci_effect_mounts variable in derivation. Error: " <> toS e
       Right r -> pure r
 
 parseDrvSecretsMap :: Map ByteString ByteString -> Either Text (Map Text SecretRef)
@@ -183,7 +184,7 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
   buildDir <- mkDir "build"
   etcDir <- mkDir "etc"
   secretsDir <- mkDir "secrets"
-  runcDir <- mkDir "runc-state"
+  containerDir <- mkDir "container-state"
   let extraSecrets =
         runEffectToken p
           & maybe
@@ -235,6 +236,20 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
               ("TMP", "/build"),
               ("TEMP", "/build")
             ]
+
+        uid_ = drvEnv' & M.lookup "__hci_effect_virtual_uid" & maybe 0 (readOrThrow "__hci_effect_virtual_uid as integer")
+        gid_ = drvEnv' & M.lookup "__hci_effect_virtual_gid" & maybe uid_ (readOrThrow "__hci_effect_virtual_gid as integer")
+        rootReadOnly_ = drvEnv' & M.lookup "__hci_effect_root_read_only" & maybe False (readBool "__hci_effect_root_read_only")
+
+        readOrThrow what str = case reads (toS str) of
+          [(x, "")] -> x
+          _ -> panic ("Could not parse " <> what <> " from derivation environment. Value was: " <> show str)
+        readBool _ "1" = True
+        readBool _ "" = False
+        readBool _ "true" = True
+        readBool _ "false" = False
+        readBool what x = panic ("Could not parse boolean " <> what <> " from derivation environment. Value was: " <> show x)
+
         (//) :: (Ord k) => Map k a -> Map k a -> Map k a
         (//) = flip M.union
     let (withNixDaemonProxyPerhaps, forwardedSocketPath) =
@@ -243,12 +258,24 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
               let socketPath = dir </> "nix-daemon-socket"
                in (withNixDaemonProxy (runEffectExtraNixOptions p) socketPath, socketPath)
             else (identity, "/nix/var/nix/daemon-socket/socket")
+
+    -- Tell the runtime to use the current process' uid/gid
+    hostUID_ <-
+      getEffectiveUserID
+        >>= \case
+          0 -> panic "Refusing to host effect as root user"
+          x -> pure x
+    hostGID_ <-
+      getEffectiveGroupID
+        >>= \case
+          x -> pure x
+
     extraBindMounts_ <- checkMounts (reveal $ runEffectConfiguredMountables p) (runEffectSecretContext p) drvMountsMap
     -- We've validated that the paths are pretty much canonical; otherwise this check would be insufficient.
     let isExtraBind path = extraBindMounts_ & any (\m -> Container.pathInContainer m == path)
     withNixDaemonProxyPerhaps $
       Container.run
-        runcDir
+        containerDir
         Container.Config
           { extraBindMounts =
               [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
@@ -270,7 +297,11 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
             environment = overridableEnv // drvEnv' // onlyImpureOverridableEnv // impureEnvVars // fixedEnv,
             workingDirectory = "/build",
             hostname = "hercules-ci",
-            rootReadOnly = False
+            rootReadOnly = rootReadOnly_,
+            virtualUID = uid_,
+            virtualGID = gid_,
+            hostUID = fromIntegral hostUID_,
+            hostGID = fromIntegral hostGID_
           }
 
 checkMounts :: Map Text Mountable -> Maybe SecretContext -> Map Text Text -> IO [BindMount]

@@ -15,7 +15,7 @@
         effects.launchIt = pkgs.runCommand "one" {
           t = builtins.currentTime;
           nativeBuildInputs = [ pkgs.curl ];
-          __hci_mounts = builtins.toJSON {
+          __hci_effect_mounts = builtins.toJSON {
             "/etc/forwarded-path" = "forwarded-path";
             "/var/lib/shared-data" = "shared-data";
             "/etc/hosts" = "hosts";
@@ -32,6 +32,14 @@
           cat /etc/hosts
           curl --fail -v --no-progress-bar \
               $HERCULES_CI_API_BASE_URL/hello
+
+          set -x
+          [[ $(id -u) == 0 ]]
+          [[ $(id -g) == 0 ]]
+          echo hi >/hi
+          set +x
+
+          grep '"hercules-ci":' $HERCULES_CI_SECRETS_JSON
 
           echo -n log line "without newline"
         '' // { isEffect = true; };
