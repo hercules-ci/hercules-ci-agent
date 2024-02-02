@@ -54,6 +54,7 @@ in
         # It's an offline test, so no caches are available
         nix.settings.substituters = lib.mkForce [ ];
         nix.package = lib.mkIf daemonIsNixUnstable pkgs.nixUnstable;
+        boot.kernelModules = [ "loop" ];
         services.hercules-ci-agent.enable = true;
         # Instead of the default, we want the nix library version from the build matrix (which should include at least the default)
         services.hercules-ci-agent.package = lib.mkForce flake.packages.${pkgs.hostPlatform.system}.hercules-ci-agent;
@@ -85,6 +86,12 @@ in
           "hosts" = {
             readOnly = true;
             source = "/etc/hosts";
+            condition = true;
+          };
+          "my-blocks" = {
+            readOnly = false;
+            # Not using the first device(s), in case the test framework uses it.
+            source = "/dev/loop9";
             condition = true;
           };
           "test-condition-type" = {
@@ -133,8 +140,16 @@ in
           echo '{}' > /var/lib/hercules-ci-agent/secrets/secrets.json
           chown -R hercules-ci-agent /var/lib/hercules-ci-agent
           chmod 0700 /var/lib/hercules-ci-agent/secrets
+
+          # Custom mount for test
           mkdir -p /var/lib/ci-data/shared
           chown -R hercules-ci-agent /var/lib/ci-data/shared
+
+          # Loopback block device for test
+          dd if=/dev/zero of=/root/loop9-backing-file bs=1024 count=1024
+          losetup /dev/loop9 /root/loop9-backing-file
+          echo "initial data of the loopback block device" > /dev/loop9
+          chown hercules-ci-agent /dev/loop9
       """)
 
       # Run the test code + api
