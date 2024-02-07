@@ -5,6 +5,7 @@
 systemArgs@{ pkgs, config, lib, ... }:
 let
   inherit (lib) mkIf mkDefault types mkOption;
+  inherit (lib.strings) match;
   literalDocBook = lib.literalDocBook or lib.literalExample;
   literalExpression = lib.literalExpression or lib.literalExample;
 
@@ -16,6 +17,42 @@ let
       testCommand = "${command} --test-configuration";
       suffix = if name == "" then "" else "-${name}";
       user = if name == "" then "hercules-ci-agent" else "hci-${name}";
+      uniqueStrings = strs: lib.attrValues (lib.genAttrs strs (name: name));
+      wholeStringMatches = regex: str: match regex str != null;
+      needsDevices = devices != [ ];
+      devices = uniqueStrings (
+        lib.lists.concatLists
+          (lib.mapAttrsToList
+            (name: mountable@{ source, ... }:
+              let
+                sourcePath = "${source}";
+                isDev =
+                  lib.strings.hasPrefix "/dev/" sourcePath
+                  # Systemd provides these regardless. If they're used, it's
+                  # probably as a placeholder, and that should just work without
+                  # explicitly allowing it.
+                  && ! wholeStringMatches "/dev/null" sourcePath
+                  && ! wholeStringMatches "/dev/zero" sourcePath
+                  && ! wholeStringMatches "/dev/random" sourcePath
+                  && ! wholeStringMatches "/dev/urandom" sourcePath
+
+                  # Let systemd deal with these directories. Maybe they should just
+                  # be forwarded, but without knowing the use case, let's not allow
+                  # anything extra.
+                  && ! wholeStringMatches "/dev/shm(/.*|$)" sourcePath
+                  && ! wholeStringMatches "/dev/pts(/.*|$)" sourcePath
+                  # No shenanigans with .. or .
+                  # (this may look like input validation, but don't put untrusted data in your config!)
+                  && ! wholeStringMatches ".*/\\.\\.(/.*|$)" sourcePath
+                  && ! wholeStringMatches ".*/\\.(/.*|$)" sourcePath
+                  # Not all of /dev
+                  && ! wholeStringMatches "/dev/+" sourcePath;
+              in
+              lib.optional isDev sourcePath
+            )
+            (config.settings.effectMountables or { })
+          )
+      );
     in
     {
       options = {
@@ -75,6 +112,36 @@ let
                 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86164
                 # A 256 MiB stack allows between 400 KiB and 1.5 MiB file to be matched by ".*".
                 LimitSTACK = 256 * 1024 * 1024;
+
+                # Hardening
+                CapabilityBoundingSet = "";
+                AmbientCapabilities = "";
+                ProtectSystem = "full";
+                LockPersonality = true;
+                PrivateMounts = true;
+                PrivateTmp = true;
+                PrivateUsers = true;
+                ProtectClock = true;
+                ProtectHome = true;
+                ProtectKernelModules = true;
+                RemoveIPC = true;
+                RestrictRealtime = true;
+                RestrictSUIDSGID = true;
+                RestrictAddressFamilies = [ "AF_UNIX" "AF_INET" "AF_INET6" ];
+                SystemCallArchitectures = "native";
+                UMask = "077";
+
+                # Hardening / devices
+                PrivateDevices = ! needsDevices;
+                DevicePolicy = "closed";
+                DeviceAllow = if needsDevices then devices else "";
+
+                # Hardening / failed
+                # # Blocks /proc remount in effect container
+                # ProtectKernelLogs = true;
+                # ProtectKernelTunables = true;
+                # # workDirectory may not exist yet.
+                # WorkingDirectory = cfg.settings.workDirectory;
               };
             };
 
