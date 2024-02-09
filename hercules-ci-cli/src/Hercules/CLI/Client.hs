@@ -62,18 +62,6 @@ import qualified System.Environment
 import qualified UnliftIO
 import UnliftIO.Retry (RetryPolicyM, RetryStatus, capDelay, fullJitterBackoff, retrying, rsIterNumber)
 
--- | Bad instance to make it the client for State api compile. GHC seems to pick
--- the wrong overlappable instance.
-instance
-  FromSourceIO
-    RawBytes
-    ( Headers
-        '[ContentLength, ContentDisposition]
-        (SourceIO RawBytes)
-    )
-  where
-  fromSourceIO = addHeader (-1) . addHeader "" . fromSourceIO
-
 client :: ClientAPI ClientAuth (AsClientT ClientM)
 client = fromServant $ Servant.Client.Streaming.client (servantClientApi @ClientAuth)
 
