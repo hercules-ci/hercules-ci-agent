@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module MockTasksApi
@@ -649,7 +650,7 @@ handleTasksSetStatus st tid status _authResult = do
 
 taskEndpoints :: ServerState -> TasksAPI Auth' AsServer
 taskEndpoints server =
-  DummyApi.dummyTasksEndpoints
+  (DummyApi.dummyTasksEndpoints @Auth')
     { tasksSetStatus = handleTasksSetStatus server
     }
 
@@ -701,7 +702,7 @@ handleTasksGetEvaluation st id _authResult = do
 
 evalEndpoints :: ServerState -> EvalAPI Auth' AsServer
 evalEndpoints server =
-  DummyApi.dummyEvalEndpoints
+  (DummyApi.dummyEvalEndpoints @Auth')
     { tasksGetEvaluation = handleTasksGetEvaluation server,
       tasksUpdateEvaluation = handleTasksUpdate server,
       getDerivationStatus2 = handleGetDerivationStatus server
@@ -761,7 +762,7 @@ handleAgentCreate _ca _r = pure "pretend-jwt"
 
 buildEndpoints :: ServerState -> BuildAPI Auth' AsServer
 buildEndpoints server =
-  DummyApi.dummyBuildEndpoints
+  (DummyApi.dummyBuildEndpoints @Auth')
     { getBuild = handleGetBuild server,
       updateBuild = handleUpdateBuild server
     }
