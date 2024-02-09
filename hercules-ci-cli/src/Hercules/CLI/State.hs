@@ -1,5 +1,6 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -53,7 +54,12 @@ getCommandParser = do
       bytes <- retryStreamOnFail "state get" (\token -> getStateData projectStateClient name versionMaybe token) \case
         Left e -> throwIO e
         Right (Headers stream headers) -> do
-          bl <- runConduitRes $ fromSourceIO stream .| mapC (BB.byteString . fromRawBytes) .| sinkLazyBuilder
+#if MIN_VERSION_servant(0,20,0)
+          s <- fromSourceIO stream
+#else
+          let s = fromSourceIO stream
+#endif
+          bl <- runConduitRes $ s .| mapC (BB.byteString . fromRawBytes) .| sinkLazyBuilder
           let lenH :: ResponseHeader "Content-Length" Integer
               lenH `HCons` _ = headers
               actual = fromIntegral $ BL.length bl
