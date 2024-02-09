@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeApplications #-}
@@ -41,7 +42,13 @@ instance
         (SourceIO ByteString)
     )
   where
-  fromSourceIO = addHeader (-1) . fromSourceIO
+#if MIN_VERSION_servant(0,20,0)
+  fromSourceIO sio =
+    addHeader (-1) <$> fromSourceIO sio
+#else
+  fromSourceIO sio =
+    addHeader (-1) $ fromSourceIO sio
+#endif
 
 client :: AgentAPI ClientAuth (AsClientT ClientM)
 client = fromServant $ Servant.Client.Streaming.client (servantApi @ClientAuth)

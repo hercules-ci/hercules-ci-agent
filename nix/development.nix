@@ -28,6 +28,7 @@ toplevel@{ config, inputs, withSystem, ... }:
           "Hercules/Agent/Cachix.hs"
           "Hercules/Agent/Compat.hs"
           "Hercules/Agent/StoreFFI.hs"
+          "Hercules/Agent/Client.hs" # CPP
           "Hercules/CNix/Expr.hs" # parse error in quasiquotation
           "Hercules/CNix/Store.hs" # parse error in quasiquotation + CPP
         ];
