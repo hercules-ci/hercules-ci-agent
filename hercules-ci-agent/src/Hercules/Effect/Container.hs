@@ -6,7 +6,6 @@ module Hercules.Effect.Container where
 
 import Control.Lens
 import Data.Aeson (Value (String), eitherDecode, encode, object, toJSON)
-import Data.Aeson qualified as A
 import Data.Aeson.Lens
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
@@ -19,8 +18,6 @@ import System.Directory (createDirectory)
 import System.FilePath ((</>))
 import System.IO (hClose)
 import System.IO.Error (ioeGetErrorType)
-import System.Posix (fileAccess, getFileStatus, isCharacterDevice, specialDeviceID)
-import System.Posix.ByteString (isBlockDevice)
 import System.Posix.IO (closeFd, fdToHandle)
 import System.Posix.Terminal (openPseudoTerminal)
 import System.Process (CreateProcess (..), StdStream (UseHandle), proc, waitForProcess, withCreateProcess)
