@@ -31,18 +31,6 @@ import Servant.Client.Generic (AsClientT)
 import Servant.Client.Streaming (ClientM)
 import Servant.Client.Streaming qualified
 
--- | Bad instance to make it the client for State api compile. GHC seems to pick
--- the wrong overlappable instance.
-instance
-  FromSourceIO
-    ByteString
-    ( Headers
-        '[Hercules.API.Agent.State.ContentLength]
-        (SourceIO ByteString)
-    )
-  where
-  fromSourceIO = addHeader (-1) . fromSourceIO
-
 client :: AgentAPI ClientAuth (AsClientT ClientM)
 client = fromServant $ Servant.Client.Streaming.client (servantApi @ClientAuth)
 
