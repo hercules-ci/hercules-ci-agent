@@ -5,6 +5,14 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.5.1.0 - 2024-02-12
+
+### Added
+
+ - `Mountable` configuration format
+ - Constant booleans in `Condition` expressions
+ - `SubstitutionQueryResult` evaluation event
+
 ## 0.5.0.1 - 2023-06-28
 
  - Maintenance release
