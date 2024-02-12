@@ -34,7 +34,7 @@ main :: IO ()
 main = do
   hSetBuffering stdout LineBuffering
   hSetBuffering stderr LineBuffering
-  gitAssertEmptyStaging
+  -- gitAssertEmptyStaging
   -- Disabled because metadata change does not warrant a bump
   whenConfirmed "Check haddocks buildable?" do
     cmd "cabal" ["v2-haddock", "--haddock-for-hackage", "all"]
@@ -101,8 +101,8 @@ releasePackage pkg extraBumps = do
       extraBumps oldVersion newVersion
       tarball <- cabalSdist2 dir
       docs <- cabalMakeHaddocks2 dir
-      cabalUpload tarball
-      cabalUploadDocs docs
+      -- cabalUpload tarball
+      -- cabalUploadDocs docs
       gitCommit $ releaseName
       gitTag releaseName
       gitPush "origin"
