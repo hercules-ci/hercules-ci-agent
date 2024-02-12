@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased 0.10
+## [0.10.1] - 2024-02-12
 
 ### Changed
 
@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - `services.hercules-ci-agent` is now an alias for `services.hercules-ci-agents.""`, which still provides the same behavior as the old module.
 
+ - Hardening flags have been applied to the NixOS module.
+
+ - The effect sandbox now use the `crun` container runtime instead of `runc`.
+
+ - Attribute sets containing a `_type` attribute are not scanned for derivations in `herculesCI.<...>.outputs`. This prevents accidental scanning of large or failing attribute trees, such as NixOS configurations. `nixosConfigurations` in Flakes are still built as usual, as they are not (verbatim) in the `herculesCI.<...>.outputs` attributes.
+
 ### Added
 
  - Effect mounts. Specify [`effectMountables`](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#effectMountables) in the agent configuration, deploy, and [mount](https://docs.hercules-ci.com/hercules-ci-agent/effects/declaration.html#__hci_effect_mounts) them into an effect. This can be used for instance to expose the host's `/etc/hosts`, or hardware devices such as GPUs. Access is [controlled](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#effectMountables-condition) by the agent configuration.
@@ -33,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - New configuration option `remotePlatformsWithSameFeatures`, allowing a remote build to be used before more elaborate remote builder support is implemented.
    The recommended method for running a cluster is still to install `hercules-ci-agent` on each machine, as that is more efficient and accurate.
 
- - Agent [labels](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#labels) can now be `null`, when using the JSON format.
+ - Agent [labels](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#labels) can now be `null`, when using the JSON configuration format.
 
 ### Fixed
 
@@ -41,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - An interaction between the Nix GC and threads has been fixed, solving such a crash.
 
-## [0.9.12] - 2022-06-28
+## [0.9.12] - 2023-06-28
 
 ### Added
 
@@ -53,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Do not `chdir` the build worker. This functionality of the `process` package appears unreliable, but is not needed.
 
-## [0.9.11] - 2022-03-06
+## [0.9.11] - 2023-03-06
 
 ### BREAKING
 
