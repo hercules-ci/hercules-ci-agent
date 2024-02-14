@@ -5,6 +5,7 @@
 module Hercules.API.Projects where
 
 import Data.OpenApi qualified as O3
+import GHC.Records (HasField (getField))
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Build.EvaluationDetail
   ( EvaluationDetail,
@@ -22,6 +23,7 @@ import Hercules.API.Projects.CreateProject
 import Hercules.API.Projects.CreateUserEffectTokenResponse (CreateUserEffectTokenResponse)
 import Hercules.API.Projects.Job
   ( Job,
+    JobType,
     ProjectAndJobs,
   )
 import Hercules.API.Projects.JobHandlers (JobHandlers)
@@ -58,6 +60,9 @@ data ProjectResourceGroup auth f = ProjectResourceGroup
         :- Summary "Retrieve information about jobs"
           :> "jobs"
           :> QueryParam' '[Optional, Description "Constrain the results by git ref, such as refs/heads/my-branch or HEAD"] "ref" Text
+          :> QueryParam' '[Optional, Description "Git commit hash (from which to load the job handler definition)"] "rev" (Name "Rev")
+          :> QueryParam' '[Optional, Description "Job handler type, such as onPush or onSchedule"] "handler" JobType
+          :> QueryParam' '[Optional, Description "Job handler name, such as <name> in onPush.<name>"] "name" (Name "JobName")
           :> QueryParam' '[Optional, Description "Only return successful jobs, or only failed ones"] "success" Bool
           :> QueryParam' '[Optional, Description "Return jobs that come \"after\" the provided id in the response order."] "offsetId" (Id Job)
           :> QueryParam' '[Optional, Description "Return jobs that come \"after\" the provided index in the response order."] "offsetIndex" Int64
@@ -139,7 +144,8 @@ data ProjectsAPI auth f = ProjectsAPI
           :> Post '[JSON] CreateUserEffectTokenResponse,
     findJobs ::
       f
-        :- Summary "Find jobs"
+        :- Summary "Find jobs in multiple projects at once"
+          :> Description "For a more powerful single project endpoint, see /api/v1/site/{site}/account/{account}/project/{project}/jobs"
           :> "jobs"
           :> QueryParam' '[Optional, Description "Currently only \"github\" or omit entirely"] "site" (Name Forge)
           :> QueryParam' '[Optional, Description "Account name filter"] "account" (Name Account)
@@ -248,3 +254,5 @@ data ProjectsAPI auth f = ProjectsAPI
 newtype PagedJobs = PagedJobs (PagedResponse Job)
   deriving (Generic, Show, Eq)
   deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
+
+instance HasField "get" PagedJobs (PagedResponse Job) where getField (PagedJobs a) = a

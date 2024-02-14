@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DerivingVia #-}
 
 module Hercules.API.Projects.Job
   ( module Hercules.API.Projects.Job,
@@ -9,6 +10,7 @@ module Hercules.API.Projects.Job
 where
 
 import Data.OpenApi qualified as O3
+import Data.Swagger (ToParamSchema)
 import Hercules.API.Accounts.Account (Account)
 import Hercules.API.Evaluation.Evaluation
   ( Evaluation,
@@ -19,6 +21,8 @@ import Hercules.API.Prelude
 import Hercules.API.Projects.Project (Project)
 import Hercules.API.Projects.SimpleJob (JobPhase (..), JobStatus (..))
 import Hercules.API.Repos.Repo (Repo)
+import Hercules.API.ShowRead (ShowRead (ShowRead))
+import Web.HttpApiData (FromHttpApiData, ToHttpApiData)
 
 data Job = Job
   { id :: Id Job,
@@ -57,8 +61,9 @@ data JobType
   | Legacy
   | OnPush
   | OnSchedule
-  deriving (Generic, Show, Eq)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, O3.ToSchema)
+  deriving (Generic, Eq, Enum, Bounded, Show, Read)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, ToParamSchema, O3.ToSchema, O3.ToParamSchema)
+  deriving (ToHttpApiData, FromHttpApiData) via (ShowRead JobType)
 
 data GitCommitSource = GitCommitSource
   { revision :: Text,

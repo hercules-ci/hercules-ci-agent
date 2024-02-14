@@ -18,7 +18,6 @@ source-repository head
 common defaults
   default-language:   Haskell2010
   default-extensions:
-    NoImplicitPrelude
     DeriveGeneric
     DeriveTraversable
     DerivingStrategies
@@ -28,6 +27,7 @@ common defaults
     InstanceSigs
     LambdaCase
     MultiParamTypeClasses
+    NoImplicitPrelude
     OverloadedStrings
     RankNTypes
     TupleSections
@@ -128,6 +128,7 @@ library
     Hercules.API.Repos.SimpleRepo
     Hercules.API.Result
     Hercules.API.Servant.Status
+    Hercules.API.ShowRead
     Hercules.API.SimpleAttribute
     Hercules.API.State
     Hercules.API.State.ProjectState
