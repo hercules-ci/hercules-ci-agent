@@ -62,7 +62,7 @@ data JobType
   | OnPush
   | OnSchedule
   deriving (Generic, Eq, Enum, Bounded, Show, Read)
-  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, ToParamSchema, O3.ToSchema)
+  deriving anyclass (NFData, ToJSON, FromJSON, ToSchema, ToParamSchema, O3.ToSchema, O3.ToParamSchema)
   deriving (ToHttpApiData, FromHttpApiData) via (ShowRead JobType)
 
 data GitCommitSource = GitCommitSource
