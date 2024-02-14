@@ -13,6 +13,7 @@ let
     literalExpression
     mkIf
     mkOption
+    mkPackageOption
     mkRemovedOptionModule
     mkRenamedOptionModule
     types
@@ -47,14 +48,7 @@ in
         Support is available at [help@hercules-ci.com](mailto:help@hercules-ci.com).
       '';
     };
-    package = mkOption {
-      description = mdDoc ''
-        Package containing the bin/hercules-ci-agent executable.
-      '';
-      type = types.package;
-      default = pkgs.hercules-ci-agent;
-      defaultText = literalExpression "pkgs.hercules-ci-agent";
-    };
+    package = mkPackageOption pkgs "hercules-ci-agent" { };
 
     /*
       Internal and/or computed values.
