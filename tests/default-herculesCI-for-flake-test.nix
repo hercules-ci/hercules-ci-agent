@@ -57,6 +57,12 @@ in rec {
     darwinConfigurations.my-intel.config.nixpkgs.system = "x86_64-darwin";
     darwinConfigurations.my-apple.config.system.build.toplevel = fakePkg "my-apple";
     darwinConfigurations.my-apple.config.nixpkgs.system = "aarch64-darwin";
+    darwinConfigurations.my-apple-2.config.system.build.toplevel = fakePkg "my-apple2";
+    darwinConfigurations.my-apple-2.config.nixpkgs.system = throw "nixpkgs.system must be ignored when nixpkgs.hostPlatform.system exists";
+    darwinConfigurations.my-apple-2.options.nixpkgs.hostPlatform = lib.mkOption { } // { isDefined = true; };
+    darwinConfigurations.my-apple-2.options.nixpkgs.buildPlatform = lib.mkOption { };
+    darwinConfigurations.my-apple-2.config.nixpkgs.hostPlatform.system = throw "host platform doesn't matter";
+    darwinConfigurations.my-apple-2.config.nixpkgs.buildPlatform.system = "aarch64-darwin";
     herculesCI = args: {
       ciSystems = [ "x86_64-linux" "x86_64-darwin" ];
     };
