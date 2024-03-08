@@ -5,6 +5,16 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.3.5.0 - 2024-02-12
+
+### Added
+
+ - `queryPathInfoFromClientCache`
+
+ - Nix support 2.17 up to 2.20
+
+ - A `both` function to combine `Verbosity`
+
 ## 0.3.4.0 - 2023-06-28
 
 ### Added
