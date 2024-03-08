@@ -780,7 +780,8 @@ runEvalProcess sendLogItems store projectDir file autoArguments nixPath emit upl
                         Message.message = e
                       }
                 continue
-              Event.Build drv outputName notAttempt waitForStatus -> do
+              e@(Event.Build drv outputName notAttempt waitForStatus) -> katipAddContext (sl "buildEvent" (show e :: Text)) do
+                logLocM DebugS "Handling build event"
                 storePath <- liftIO (parseStorePath store drv)
                 let drvText = decode drv
                 withNamedContext "derivation" (decode drv) $ do
@@ -897,6 +898,8 @@ drvPoller notAttempt drvPath = do
         getDerivationStatus2
           Hercules.Agent.Client.evalClient
           drvPath
+  katipAddContext (sl "response" (show resp :: Text)) do
+    logLocM DebugS "drvPoller response"
   let oneSecond = 1000 * 1000
       again = do
         liftIO $ threadDelay oneSecond
