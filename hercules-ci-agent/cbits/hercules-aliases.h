@@ -20,7 +20,9 @@ typedef std::queue<std::unique_ptr<HerculesLogger::LogEntry>> LogEntryQueue;
 
 typedef nix::Strings::iterator StringsIterator;
 typedef nix::DerivationOutputs::iterator DerivationOutputsIterator;
+#if ! MIN_VERSION_hercules_ci_cnix_store(0,3,5)
 typedef nix::DerivationInputs::iterator DerivationInputsIterator;
+#endif
 typedef nix::StringPairs::iterator StringPairsIterator;
 
 using namespace std;
