@@ -451,9 +451,8 @@
                       else x: x
                     ) super.ormolu;
 
-                    # getFlake here is not pretty, but it's for dev purposes only, so I'm not bothering.
-                    # TODO: remove override when nixpkgs picks up the new release
-                    releaser = super.callCabal2nix "releaser" (builtins.getFlake "github:hercules-ci/haskell-releaser?rev=e50360ec896fcb6ad724566aece6625973419e8d") { };
+                    # make sure to update haskell-flake before re-enabling this (haskell-flake#271)
+                    # releaser = super.callCabal2nix "releaser" (builtins.getFlake "github:hercules-ci/haskell-releaser?rev=e50360ec896fcb6ad724566aece6625973419e8d") { };
 
                   };
                 };
