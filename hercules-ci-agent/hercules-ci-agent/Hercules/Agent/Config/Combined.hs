@@ -46,3 +46,6 @@ optEmpty c = dimap Just (fromMaybe mempty) (opt c)
 
 enumBoundedAtKey :: (Bounded a, Enum a, Show a) => Key -> Combi' a
 enumBoundedAtKey k = Combi (Data.Bifunctor.Product.Pair (Toml.enumBounded k) (Json.enumBounded k))
+
+tableMap :: (Key -> Combi' a) -> Key -> Combi' (Map Text a)
+tableMap c k = Combi $ Pair (Toml.tableMap Toml._KeyText (forToml . c) k) (Json.tableMap (forJson . c) k)

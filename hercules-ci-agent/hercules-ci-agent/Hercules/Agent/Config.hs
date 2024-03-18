@@ -25,7 +25,8 @@ import Data.Aeson.Types qualified as A
 import Data.Profunctor (Star (Star))
 import GHC.Conc (getNumProcessors)
 import Hercules.Agent.Config.Combined
-import Hercules.Agent.Config.Json as Json
+import Hercules.Agent.Config.Json (GCodec (GCodec), (.=.))
+import Hercules.Agent.Config.Json qualified as Json
 import Hercules.Agent.Config.Toml qualified as Toml
 import Hercules.CNix.Verbosity (Verbosity (..))
 import Hercules.Formats.Mountable (Mountable (Mountable))
@@ -72,7 +73,8 @@ data Config purpose = Config
     labels :: Item purpose 'Required (Map Text A.Value),
     allowInsecureBuiltinFetchers :: Item purpose 'Required Bool,
     remotePlatformsWithSameFeatures :: Item purpose 'Optional [Text],
-    effectMountables :: Map Text Mountable
+    effectMountables :: Map Text Mountable,
+    nixSettings :: Map Text Text
   }
   deriving (Generic)
 
@@ -120,6 +122,9 @@ combiCodec =
           (Json.tableMap' (forJson mountableCodec) "effectMountables")
       )
       .=. effectMountables
+    <*> optEmpty
+      (tableMap textAtKey "nixSettings")
+      .=. nixSettings
 
 mountableCodec :: Combi' Mountable
 mountableCodec =
@@ -233,5 +238,6 @@ finalizeConfig loc input = do
         labels = fromMaybe mempty $ labels input,
         allowInsecureBuiltinFetchers = fromMaybe False $ allowInsecureBuiltinFetchers input,
         remotePlatformsWithSameFeatures = remotePlatformsWithSameFeatures input,
-        effectMountables = effectMountables input
+        effectMountables = effectMountables input,
+        nixSettings = nixSettings input
       }

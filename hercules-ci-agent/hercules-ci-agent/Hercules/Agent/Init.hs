@@ -40,7 +40,7 @@ withEnv config logEnv f = do
   concPushes <- newMemo
   concQueries <- newMemo
   withLogging $ Hercules.Agent.Cachix.Init.withEnv config (BC.cachixCaches bcs) \cachix -> liftIO do
-    nix <- Hercules.Agent.Nix.Init.newEnv
+    nix <- Hercules.Agent.Nix.Init.newEnv config
     serviceInfo <- ServiceInfo.newEnv clientEnv
     let env =
           Env

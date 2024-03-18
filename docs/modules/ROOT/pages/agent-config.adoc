@@ -185,6 +185,23 @@ Optional. Control the importance threshold for messages are logged to the system
 
 Defaults to `"InfoS"`. More verbose: `"DebugS"`, less verbose: `"WarningS"`, `"ErrorS"`.
 
+[[nixSettings]]
+== nixSettings
+
+Since hercules-ci-agent 0.10.2
+
+Optional. A key-value map of Nix settings.
+
+Nix interprets keys that start with `extra-` as additions to the existing (e.g. system) value. However, `nixSettings` is unordered, so make sure to use `extra-${x}` or plain `${x}`, but not both.
+
+Example, to ignore other system caches:
+
+```json
+"nixSettings": {
+  "substituters": "https://cache.nixos.org"
+}
+```
+
 [[nixVerbosity]]
 == nixVerbosity
 
