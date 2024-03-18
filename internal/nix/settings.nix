@@ -119,6 +119,23 @@ let
         internal = true;
         default = "Talkative";
       };
+      nixSettings = mkOption {
+        description = mdDoc ''
+          Since hercules-ci-agent 0.10.2.
+
+          A key-value map of Nix settings.
+
+          Nix interprets keys that start with `extra-` as additions to the existing (e.g. system) value. However, `nixSettings` is unordered, so make sure to use `extra-''${x}` or plain `''${x}`, but not both.
+        '';
+        type = types.lazyAttrsOf types.str;
+        default = { };
+        example = lib.literalExpression ''
+          {
+            # ignore other system substituters
+            substituters = "https://cache.nixos.org";
+          };
+        '';
+      };
       remotePlatformsWithSameFeatures = mkOption {
         internal = true;
         default = [ ];

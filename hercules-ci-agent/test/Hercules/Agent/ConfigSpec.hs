@@ -45,6 +45,8 @@ spec =
                   "workDirectory = \"/var/lib/hercules-ci-agent/work\"",
                   "remotePlatformsWithSameFeatures = [\"aarch64-darwin\"]",
                   "nixVerbosity = \"vomit\"",
+                  "[nixSettings]",
+                  "  substituters = \"https://example.com\"",
                   -- This line should not be needed!
                   "[effectMountables]",
                   "[effectMountables.hosts]",
@@ -91,7 +93,8 @@ spec =
                               condition = Hercules.Formats.Secret.Const True
                             }
                         )
-                      ]
+                      ],
+                  nixSettings = M.singleton "substituters" "https://example.com"
                 }
             )
       it "parses empty config" $ do
@@ -119,6 +122,7 @@ spec =
                   "\"secretsJsonPath\": \"/var/lib/hercules-ci-agent/secrets/secrets.json\",",
                   "\"logLevel\": \"DebugS\",",
                   "\"nixVerbosity\": \"Vomit\",",
+                  "\"nixSettings\": { \"substituters\": \"https://example.com\" },",
                   "\"remotePlatformsWithSameFeatures\": [\"aarch64-darwin\"],",
                   "\"labels\": {",
                   "  \"agent\": {\"source\": \"flake\"},",
@@ -169,7 +173,8 @@ spec =
                             condition = Hercules.Formats.Secret.Const True
                           }
                       )
-                    ]
+                    ],
+                nixSettings = M.singleton "substituters" "https://example.com"
               }
 
       it "handles empty config" $ do
@@ -232,5 +237,6 @@ emptyConfig =
       labels = Nothing,
       allowInsecureBuiltinFetchers = Nothing,
       remotePlatformsWithSameFeatures = Nothing,
-      effectMountables = mempty
+      effectMountables = mempty,
+      nixSettings = mempty
     }

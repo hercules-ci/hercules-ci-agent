@@ -39,6 +39,7 @@ import Toml hiding
     dimap,
     first,
     match,
+    tableMap,
     _EnumBounded,
     _Text,
     _TextBy,
@@ -250,12 +251,30 @@ tableMap' ::
   Key ->
   JsonCodec' (Map Text v)
 tableMap' valCodec key =
+  tableMap
+    ( \k ->
+        GCodec
+          { gRead =
+              local
+                (\v -> fromMaybe (panic "tableMap': key disappeared") (v ^? at' k))
+                (gRead valCodec),
+            gWrite = do
+              panic "tableMap': write not implemented"
+          }
+    )
+    key
+
+tableMap ::
+  (Key -> JsonCodec' v) ->
+  Key ->
+  JsonCodec' (Map Text v)
+tableMap valCodec key =
   let c = match (prismWithError "JSON Object expected" (Aeson.Lens._Object . aesonMap)) key
    in GCodec
         { gRead = do
             x <- gRead c
-            fmap M.fromList $ for (M.toList x) $ \(k, v) -> do
-              v' <- local (const v) $ gRead valCodec
+            fmap M.fromList $ for (M.toList x) $ \(k, _v) -> do
+              v' <- gRead (valCodec (key <> (Key $ Piece k :| [])))
               pure (k, v'),
           gWrite = do
             panic "tableMap': write not implemented"

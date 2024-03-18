@@ -1,11 +1,19 @@
+{-# LANGUAGE DataKinds #-}
+
 module Hercules.Agent.Nix.Init where
 
+import Data.Map qualified as M
+import Hercules.Agent.Config (Config, Purpose (Final))
+import Hercules.Agent.Config qualified
 import Hercules.Agent.EnvironmentInfo qualified as EnvironmentInfo
 import Hercules.Agent.Nix.Env
+import Hercules.CNix qualified as CNix
 import Protolude
 
-newEnv :: IO Env
-newEnv = do
+newEnv :: Config 'Final -> IO Env
+newEnv config = do
+  for_ (M.toList config.nixSettings) $ \(k, v) -> do
+    CNix.setGlobalOption k v
   nixInfo <- EnvironmentInfo.getNixInfo
   when (EnvironmentInfo.nixNarinfoCacheNegativeTTL nixInfo /= 0) $ do
     putErrText
@@ -33,5 +41,5 @@ newEnv = do
   -- extraOptions here.
   pure
     Env
-      { extraOptions = []
+      { extraOptions = M.toList config.nixSettings
       }
