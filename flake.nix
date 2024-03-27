@@ -194,6 +194,31 @@
               };
             };
 
+          darwinModules.multi-agent-service =
+            { lib, pkgs, ...}:
+            {
+              _file = "${toString ./flake.nix}#darwinModules.multi-agent-service";
+              imports = [
+                agentFromFlakeModule_multi
+                ./internal/nix/nix-darwin/multi.nix
+              ];
+
+              # This module replaces what's provided by nix-darwin
+              disabledModules = [ "services/hercules-ci-agent" ];
+
+              options = let inherit (lib) types mkOption; in
+                {
+                  services.hercules-ci-agents =
+                    mkOption {
+                      type = types.attrsOf (
+                        types.submoduleWith {
+                          modules = [{ config.settings.labels.module = "darwin-multi-service"; }];
+                        }
+                      );
+                    };
+                };
+            };
+
           # A nix-darwin module with more defaults set for machines that serve as agents
           darwinModules.agent-profile =
             { lib, pkgs, ... }:
