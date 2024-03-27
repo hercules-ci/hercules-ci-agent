@@ -36,6 +36,10 @@ let
           type = types.str;
           default = "_hercules-ci-agent";
         };
+        logFile = mkOption {
+          type = types.str;
+          default = "/var/log/hci-agent${suffix}.log";
+        };
       } // makeSettingsOptions { cfg = config; opt = options; };
       config = let cfg = config; in
         {
@@ -83,9 +87,6 @@ let
               touch '${cfg.logFile}'
               chown ${toString user.uid}:${toString user.gid} '${cfg.logFile}'
             '';
-            # Trusted user allows simplified configuration and better performance
-            # when operating in a cluster.
-            nix.settings.trusted-users = [ config.systemd.services."hercules-ci-agent${suffix}".serviceConfig.User ];
           };
         };
     };
@@ -115,7 +116,8 @@ in {
 
   config = lib.mkMerge [
     {
-      nix = mergeSub (c: c.nix);
+# FIXME: trusted user hardcoded        
+#      nix = mergeSub (c: c.nix);
       launchd = mergeSub (c: c.launchd);
 # FIXME: no per-agent user support      
 #      users = mergeSub (c: c.users);
@@ -126,6 +128,9 @@ in {
         # even shortly after the previous lookup. This *also* applies to the daemon.
         narinfo-cache-negative-ttl = 0
       '';
+
+      # FIXME: hardcoded user
+      nix.settings.trusted-users = [ "_hercules-ci-agent" ];
 
       users.knownGroups = [ "hercules-ci-agent" "_hercules-ci-agent" ];
       users.knownUsers = [ "hercules-ci-agent" "_hercules-ci-agent" ];
