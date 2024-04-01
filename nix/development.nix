@@ -39,7 +39,7 @@ toplevel@{ config, inputs, withSystem, ... }:
       excludes = [
         ".*/vendor/.*"
       ];
-      settings.ormolu.defaultExtensions = [ "TypeApplications" ];
+      hooks.ormolu.settings.defaultExtensions = [ "TypeApplications" ];
     };
 
   };
