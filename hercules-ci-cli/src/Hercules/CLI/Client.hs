@@ -41,7 +41,7 @@ import Hercules.API (ClientAPI (..), ClientAuth, servantClientApi, useApi)
 import Hercules.API.Accounts (AccountsAPI)
 import Hercules.API.Projects (ProjectsAPI)
 import Hercules.API.Repos (ReposAPI)
-import Hercules.API.State (ContentDisposition, ContentLength, RawBytes, StateAPI)
+import Hercules.API.State (StateAPI)
 import Hercules.Error
 import qualified Network.HTTP.Client as HTTP
 import qualified Network.HTTP.Client.TLS

@@ -11,7 +11,6 @@ where
 
 import Conduit
 import Control.Concurrent.STM hiding (check)
-import Control.Monad.Except
 import Control.Monad.IO.Unlift
 import Data.Aeson qualified as A
 import Data.Binary qualified as B
