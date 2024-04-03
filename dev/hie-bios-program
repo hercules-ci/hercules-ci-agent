@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")"; pwd)"
+
+# notable difference compared to stack repl:
+# no -hide-all-packages
+# no -i
+
+cat > "$HIE_BIOS_OUTPUT" <<EOF
+-i$ROOT/cabal-pkg-config-version-hook/src
+-i$ROOT/dev/vendor/cachix/cachix-api/src
+-i$ROOT/dev/vendor/cachix/cachix/src
+-i$ROOT/hercules-ci-agent/src
+-i$ROOT/hercules-ci-api-agent/src
+-i$ROOT/hercules-ci-api-core/src
+-i$ROOT/hercules-ci-api/src
+-i$ROOT/hercules-ci-cnix-expr/src
+-i$ROOT/hercules-ci-cnix-store/src
+-I$ROOT/hercules-ci-cnix-expr/include
+-I$ROOT/hercules-ci-cnix-store/include
+-lstdc++
+-optcxx-std=c++17
+-optcxx-std=c++17
+-optcxx-Wall
+-optcxx-Wall
+-Wall
+-Wcompat
+-Werror=incomplete-patterns
+-Werror=missing-fields
+-Wincomplete-patterns
+-Wincomplete-record-updates
+-Wincomplete-uni-patterns
+-Wmissing-signatures
+-Wname-shadowing
+-Wredundant-bang-patterns
+-Wredundant-constraints
+-Wtabs
+-Wunused-imports
+-Wunused-packages
+-XDeriveAnyClass
+-XDeriveGeneric
+-XDeriveTraversable
+-XDerivingStrategies
+-XDerivingVia
+-XDisambiguateRecordFields
+-XFlexibleContexts
+-XHaskell2010
+-XImportQualifiedPost
+-XInstanceSigs
+-XLambdaCase
+-XMultiParamTypeClasses
+-XNamedFieldPuns
+-XNoImplicitPrelude
+-XNumericUnderscores
+-XOverloadedRecordDot
+-XOverloadedStrings
+-XRankNTypes
+-XRecordWildCards
+-XScopedTypeVariables
+-XTupleSections
+-XTypeApplications
+-XTypeOperators
+EOF
+exit 0
+
+##############################################################################
+
+# tmp=$(mktemp -d)
+# trap 'rm -rf "$tmp"' EXIT
+
+# cat > "$tmp/spy" <<EOF
+# #!/usr/bin/env bash
+# for arg in "\$@"; do
+#   echo "\$arg" >> $HIE_BIOS_OUTPUT
+# done
+# EOF
+# chmod a+x "$tmp/spy"
+# cat "$tmp/spy"
+
+# ( echo; echo; ) | stack repl --with-ghc "$tmp/spy" \
+#       cabal-pkg-config-version-hook:lib \
+#       cachix:lib \
+#       cachix-api:lib \
+#       hercules-ci-agent:lib \
+#       hercules-ci-api:lib \
+#       hercules-ci-api-agent:lib \
+#       hercules-ci-api-core:lib \
+#       hercules-ci-cnix-expr:lib \
+#       hercules-ci-cnix-store:lib \
+#   ;
+#       # hercules-ci-cli:lib \

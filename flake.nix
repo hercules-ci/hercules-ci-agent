@@ -431,8 +431,6 @@
                       }))
                     ];
 
-                    hie-bios = h.appendPatch ./nix/hie-bios.patch super.hie-bios;
-
                     # Dodge build failures of components we don't need.
                     haskell-language-server = h.appendConfigureFlags [ "-f-fourmolu" ] (
                       super.haskell-language-server.override {
