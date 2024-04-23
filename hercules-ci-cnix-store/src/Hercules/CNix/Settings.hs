@@ -40,6 +40,9 @@ C.include "<nix/config.h>"
 C.include "<nix/globals.hh>"
 C.include "<set>"
 C.include "<string>"
+C.include "hercules-ci-cnix/string.hxx"
+
+C.using "namespace hercules_ci_cnix"
 
 byteStringSet :: IO (Ptr (Std.Set.CStdSet Std.String.CStdString)) -> IO (Set ByteString)
 byteStringSet x =
@@ -67,7 +70,7 @@ getSystem :: IO ByteString
 getSystem =
   unsafePackMallocCString
     =<< [C.exp| const char *{
-      strdup(nix::settings.thisSystem.get().c_str())
+      stringdup(nix::settings.thisSystem.get())
     }|]
 
 getSystemFeatures :: IO (Set ByteString)
@@ -107,7 +110,7 @@ getNetrcFile :: IO ByteString
 getNetrcFile =
   unsafePackMallocCString
     =<< [C.exp| const char *{
-      strdup(nix::settings.netrcFile.get().c_str())
+      stringdup(nix::settings.netrcFile.get())
     }|]
 
 -- Gets the value of https://nixos.org/manual/nix/stable/command-ref/conf-file.html?highlight=use-sqlite-wal#conf-use-sqlite-wal

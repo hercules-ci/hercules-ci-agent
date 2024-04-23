@@ -43,6 +43,8 @@ common cxx-opts
 
   cxx-options:
     -Wall
+    -- GHC does _not_ produce declarations, so this only applies to cxx-sources.
+    -Werror=missing-declarations
   extra-libraries: stdc++
 
   if os(darwin)
@@ -96,7 +98,10 @@ library
     , nix-main >= 2.4 && < 2.19 || (>= 2.19.3 && < 2.21)
   install-includes:
       hercules-ci-cnix/store.hxx
+      hercules-ci-cnix/string.hxx
   hs-source-dirs: src
+  cxx-sources:
+      cbits/string.cxx
   build-depends:
       base >= 4.7 && <5
     , inline-c
