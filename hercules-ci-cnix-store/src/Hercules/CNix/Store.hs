@@ -82,6 +82,8 @@ C.include "<nix/hash.hh>"
 
 C.include "hercules-ci-cnix/store.hxx"
 
+C.include "hercules-ci-cnix/string.hxx"
+
 #if NIX_IS_AT_LEAST(2,19,0)
 
 C.include "<nix/signals.hh>"
@@ -97,6 +99,8 @@ C.include "<nix/nar-info-disk-cache.hh>"
 #endif
 
 C.using "namespace nix"
+
+C.using "namespace hercules_ci_cnix"
 
 forNonNull :: Applicative m => Ptr a -> (Ptr a -> m b) -> m (Maybe b)
 forNonNull = flip traverseNonNull
@@ -150,7 +154,7 @@ storeUri (Store store) =
   unsafeMallocBS
     [C.block| const char* {
        std::string uri = (*$(refStore* store))->getUri();
-       return strdup(uri.c_str());
+       return stringdup(uri);
      } |]
 
 -- | Usually @"/nix/store"@
@@ -159,7 +163,7 @@ storeDir (Store store) =
   unsafeMallocBS
     [C.block| const char* {
        std::string uri = (*$(refStore* store))->storeDir;
-       return strdup(uri.c_str());
+       return stringdup(uri);
      } |]
 
 getStoreProtocolVersion :: Store -> IO Int
@@ -209,7 +213,7 @@ instance Prelude.Show StorePath where
       BS.unsafePackMallocCString
         =<< [C.block| const char* {
           std::string s($fptr-ptr:(nix::StorePath *storePath)->to_string());
-          return strdup(s.c_str());
+          return stringdup(s);
         }|]
     pure $ toS $ decodeUtf8With lenientDecode bs
 
@@ -250,7 +254,7 @@ getStorePathBaseName (StorePath sp) = do
   BS.unsafePackMallocCString
     =<< [C.block| const char *{
       std::string s($fptr-ptr:(nix::StorePath *sp)->to_string());
-      return strdup(s.c_str());
+      return stringdup(s);
     }|]
 
 getStorePathHash :: StorePath -> IO ByteString
@@ -258,7 +262,7 @@ getStorePathHash (StorePath sp) = do
   BS.unsafePackMallocCString
     =<< [C.block| const char *{
       std::string s($fptr-ptr:(nix::StorePath *sp)->hashPart());
-      return strdup(s.c_str());
+      return stringdup(s);
     }|]
 
 storePathToPath :: Store -> StorePath -> IO ByteString
@@ -268,7 +272,7 @@ storePathToPath (Store store) (StorePath sp) =
       Store & store = **$(refStore* store);
       StorePath &sp = *$fptr-ptr:(nix::StorePath *sp);
       std::string s(store.printStorePath(sp));
-      return strdup(s.c_str());
+      return stringdup(s);
     }|]
 
 ensurePath :: Store -> StorePath -> IO ()
@@ -409,7 +413,7 @@ getDerivationNameFromPath storePath =
     =<< [C.throwBlock| const char *{
       StorePath &sp = *$fptr-ptr:(nix::StorePath *storePath);
       std::string s(Derivation::nameFromPath(sp));
-      return strdup(s.c_str());
+      return stringdup(s);
     }|]
 
 data DerivationOutput = DerivationOutput
@@ -469,7 +473,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                     int &hashSize = *$(int *hashSizeP);
 
                     std::string nameString = i->first;
-                    name = strdup(nameString.c_str());
+                    name = stringdup(nameString);
                     path = nullptr;
                     std::visit(overloaded {
 #if NIX_IS_AT_LEAST(2, 18, 0)
@@ -797,14 +801,14 @@ getDerivationPlatform :: Derivation -> IO ByteString
 getDerivationPlatform derivation =
   unsafeMallocBS
     [C.exp| const char* {
-       strdup($fptr-ptr:(Derivation *derivation)->platform.c_str())
+       stringdup($fptr-ptr:(Derivation *derivation)->platform)
      } |]
 
 getDerivationBuilder :: Derivation -> IO ByteString
 getDerivationBuilder derivation =
   unsafeMallocBS
     [C.exp| const char* {
-       strdup($fptr-ptr:(Derivation *derivation)->builder.c_str())
+       stringdup($fptr-ptr:(Derivation *derivation)->builder)
      } |]
 
 getDerivationArguments :: Derivation -> IO [ByteString]
@@ -957,7 +961,7 @@ toByteStrings strings = do
     if isEnd
       then pure []
       else do
-        s <- [C.exp| const char*{ strdup((*$(StringsIterator *i))->c_str()) }|]
+        s <- [C.exp| const char*{ stringdup(*(*$(StringsIterator *i))) }|]
         bs <- BS.unsafePackMallocCString s
         [C.block| void { (*$(StringsIterator *i))++; }|]
         (bs :) <$> go
@@ -971,8 +975,8 @@ toByteStringMap strings =
       if isEnd
         then pure []
         else do
-          k <- [C.exp| const char*{ strdup((*$(StringPairsIterator *i))->first.c_str()) }|]
-          v <- [C.exp| const char*{ strdup((*$(StringPairsIterator *i))->second.c_str()) }|]
+          k <- [C.exp| const char*{ stringdup((*$(StringPairsIterator *i))->first) }|]
+          v <- [C.exp| const char*{ stringdup((*$(StringPairsIterator *i))->second) }|]
           bk <- BS.unsafePackMallocCString k
           bv <- BS.unsafePackMallocCString v
           [C.block| void { (*$(StringPairsIterator *i))++; }|]
@@ -1209,7 +1213,7 @@ validPathInfoNarHash32 vpi =
 #else
       std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::Base32, true));
 #endif
-      return strdup(s.c_str());
+      return stringdup(s);
     }|]
 
 -- | Deriver field of a ValidPathInfo struct. Source: store-api.hh

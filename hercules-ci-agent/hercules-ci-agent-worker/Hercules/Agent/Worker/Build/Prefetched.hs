@@ -53,7 +53,11 @@ C.include "<nix/path-with-outputs.hh>"
 
 C.include "<hercules-ci-cnix/store.hxx>"
 
+C.include "<hercules-ci-cnix/string.hxx>"
+
 C.using "namespace nix"
+
+C.using "namespace hercules_ci_cnix"
 
 data BuildStatus
   = Built
@@ -166,7 +170,7 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
           printError(e.msg());
           status = -2;
           success = false;
-          errorMessage = strdup(e.msg().c_str());
+          errorMessage = stringdup(e.msg());
           startTime = 0;
           stopTime = 0;
         }
@@ -230,7 +234,7 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
         }
         printError(result.errorMsg);
         success = result.success();
-        errorMessage = strdup(result.errorMsg.c_str());
+        errorMessage = stringdup(result.errorMsg);
         startTime = result.startTime;
         stopTime = result.stopTime;
       }
