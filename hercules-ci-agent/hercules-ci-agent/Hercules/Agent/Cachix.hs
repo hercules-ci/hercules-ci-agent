@@ -25,6 +25,9 @@ import Hercules.Error
 import qualified Hercules.Formats.CachixCache as CachixCache
 import Protolude
 import qualified Hercules.CNix as CNix
+#if MIN_VERSION_cachix(1,7,2)
+import qualified Cachix.Client.OptionsParser as Opts
+#endif
 
 push :: CNix.Store -> Text -> [StorePath] -> Int -> App ()
 push nixStore cache paths workers = withNamedContext "cache" cache $ do
@@ -76,6 +79,10 @@ push nixStore cache paths workers = withNamedContext "cache" cache $ do
 #endif
 #if MIN_VERSION_cachix(1,6,0)
                       onUncompressedNARStream = \_ _ -> Conduit.awaitForever Conduit.yield,
+#endif
+#if MIN_VERSION_cachix(1,7,2)
+                      chunkSize = Opts.defaultChunkSize,
+                      numConcurrentChunks = Opts.defaultNumConcurrentChunks,
 #endif
                       omitDeriver = False
                     }
