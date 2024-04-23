@@ -650,6 +650,7 @@ runEvalProcess sendLogItems store projectDir file autoArguments nixPath emit upl
             Eval.srcInput = ViaJSON <$> srcInput,
             Eval.apiBaseUrl = apiBaseUrl,
             Eval.ciSystems = EvaluateTask.ciSystems task,
+            Eval.pushToBinaryCaches = EvaluateTask.pushToBinaryCaches task,
             Eval.selector = ViaJSON $ EvaluateTask.selector task,
             Eval.isFlakeJob = EvaluateTask.isFlakeJob task,
             Eval.allowInsecureBuiltinFetchers = Config.allowInsecureBuiltinFetchers cfg,
