@@ -492,7 +492,12 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
         Just (_, _, _, _, _, file_) -> file_
 
   let uploadDrvs paths = do
-        caches <- activePushCaches
+        caches <-
+          case EvaluateTask.pushToBinaryCaches task of
+            Nothing -> activePushCaches
+            Just desiredPushCaches -> do
+              availablePushCaches <- activePushCaches
+              pure . M.keys $ desiredPushCaches `M.intersection` (M.fromList $ (,()) <$> availablePushCaches)
         forM_ caches $ \cache -> do
           withNamedContext "cache" cache $ logLocM DebugS "Pushing derivations"
 
