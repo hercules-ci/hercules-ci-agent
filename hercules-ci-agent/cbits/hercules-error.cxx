@@ -1,4 +1,7 @@
 #include "hercules-error.hh"
+#include "hercules-ci-cnix/string.hxx"
+
+using namespace hercules_ci_cnix;
 
 void
 hercules::copyErrorStrings(const nix::Error &err, const char **msgStrPtr, const char **traceStrPtr) noexcept {
@@ -7,7 +10,7 @@ hercules::copyErrorStrings(const nix::Error &err, const char **msgStrPtr, const 
         std::stringstream s;
         nix::showErrorInfo(s, err.info(), false);
         msg = s.str();
-        *msgStrPtr = strdup(msg.c_str());
+        *msgStrPtr = stringdup(msg);
     }
 
     // There's no method for getting just the trace, short of
@@ -24,6 +27,6 @@ hercules::copyErrorStrings(const nix::Error &err, const char **msgStrPtr, const 
             t = nix::trim(t);
         }
 
-        *traceStrPtr = strdup(t.c_str());
+        *traceStrPtr = stringdup(t);
     }
 }

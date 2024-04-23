@@ -133,6 +133,8 @@ C.include "<nix/args/root.hh>"
 
 C.include "hercules-ci-cnix/expr.hxx"
 
+C.include "hercules-ci-cnix/string.hxx"
+
 C.include "<gc/gc.h>"
 
 C.include "<gc/gc_cpp.h>"
@@ -140,6 +142,8 @@ C.include "<gc/gc_cpp.h>"
 C.include "<gc/gc_allocator.h>"
 
 C.using "namespace nix"
+
+C.using "namespace hercules_ci_cnix"
 
 C.verbatim "\nGC_API void GC_CALL GC_throw_bad_alloc() { throw std::bad_alloc(); }\n"
 
@@ -464,10 +468,10 @@ getAttrs evalState (Value (RawValue v)) = do
         name <- unsafeMallocBS [C.block| const char *{
           EvalState &evalState = *$(EvalState *evalState);
           SymbolStr str = evalState.symbols[$(Attr *i)->name];
-          return strdup(static_cast<std::string>(str).c_str());
+          return stringdup(static_cast<std::string>(str));
         }|]
 #else
-        name <- unsafeMallocBS [C.exp| const char *{ strdup(static_cast<std::string>($(Attr *i)->name).c_str()) } |]
+        name <- unsafeMallocBS [C.exp| const char *{ stringdup(static_cast<std::string>($(Attr *i)->name)) } |]
 #endif
         value <- mkRawValue =<< [C.exp| Value *{ new (NoGC) Value(*$(Attr *i)->value) } |]
         let acc' = M.insert name value acc
@@ -587,7 +591,7 @@ mkPath evalState path =
 #if NIX_IS_AT_LEAST(2,19,0)
       r->mkPath(state.rootPath(CanonPath(s)));
 #else
-      r->mkPath(s.c_str());
+      r->mkPath(stringdup(s));
 #endif
       return r;
   }|]
