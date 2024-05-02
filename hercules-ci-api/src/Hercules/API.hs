@@ -33,6 +33,7 @@ where
 
 import Control.Lens
 import Control.Monad
+import Data.List qualified as L
 import Data.OpenApi qualified as O3
 import Data.Proxy (Proxy (..))
 import Data.Swagger hiding (Header)
@@ -146,7 +147,14 @@ apiWithJWT = servantClientApi @(Auth '[JWT] ())
 
 -- | NOTE: this has not been tested yet.
 openapi3 :: O3.OpenApi
-openapi3 = SO3.toOpenApi apiWithJWT
+openapi3 =
+  SO3.toOpenApi apiWithJWT
+    -- It's generating a lot of duplicate security requirements, so let's deduplicate them.
+    & O3.security %~ (uniq . L.sortOn show)
+  where
+    -- Remove duplicates from a sorted list. (No custom prelude in this package for ordNub)
+    uniq (a1 : a2 : as) = if a1 == a2 then uniq (a2 : as) else a1 : uniq (a2 : as)
+    uniq as = as
 
 clientApiProxy :: (ClientAPI (Auth '[JWT] ()) AsApi -> a) -> Proxy ("api" :> "v1" :> a)
 clientApiProxy _ = Proxy
