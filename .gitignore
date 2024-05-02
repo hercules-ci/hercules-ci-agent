@@ -29,3 +29,6 @@ stack.yaml.lock
 # .hie-bios
 stack.yaml.nixed.tmp
 stack.yaml.nixed.tmp.lock
+
+# direnv
+.direnv/
