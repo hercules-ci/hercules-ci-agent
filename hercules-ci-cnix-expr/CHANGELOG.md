@@ -5,6 +5,12 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.3.6.2 - 2024-05-03
+
+### Fixed
+
+ - Remove most uses of `c_str()`, of which at least one exhibited undefined behavior.
+
 ## 0.3.6.1 - 2024-02-12
 
 ### Added
