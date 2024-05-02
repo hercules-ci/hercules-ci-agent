@@ -77,5 +77,5 @@ fromNumMaybe _ = Nothing
 --
 -- Requires a sensible implementation of the 'Integral' 'mod' method that returns non-negative numbers.
 -- 'Integer', 'Int', 'Int8', etc are ok. So is the 'Word' family of types, though beware of 'minBound' overflows.
-fromNum :: (Integral n, Eq n) => n -> DayOfWeek
+fromNum :: (Integral n) => n -> DayOfWeek
 fromNum n = fromJust (fromNumMaybe (1 + (n - 1) `mod` 7))
