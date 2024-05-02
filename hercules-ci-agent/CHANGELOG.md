@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
  - Add `nixSettings` configuration item, to more easily configure Nix settings such as `substituters`, overriding the system Nix settings.
+ - Cachix 1.7.2 support
+
+### Fixed
+
+ - Remove most uses of `c_str()`, of which at least one exhibited undefined behavior.
+ - `nix-darwin` module now reads `system` correctly from the configuration.
 
 ## [0.10.1] - 2024-02-12
 
