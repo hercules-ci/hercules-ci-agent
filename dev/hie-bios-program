@@ -1,24 +1,57 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")"; pwd)"
+# ROOT="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")"; pwd)"
+ROOTS=""
 
 # notable difference compared to stack repl:
 # no -hide-all-packages
 # no -i
 
+hsdirs=(
+  cabal-pkg-config-version-hook/src
+  dev/vendor/cachix/cachix-api/src
+  dev/vendor/cachix/cachix/src
+  hercules-ci-agent/src
+  hercules-ci-agent/hercules-ci-agent
+  hercules-ci-agent/hercules-ci-agent-worker
+  hercules-ci-api-agent/src
+  hercules-ci-api-core/src
+  hercules-ci-api/src
+  hercules-ci-cnix-expr/src
+  hercules-ci-cnix-store/src
+  hercules-ci-cnix-expr/include
+  hercules-ci-cnix-store/include
+  tests/agent-test/src
+  dev/lsp-dummies
+)
+n="
+"
+
+flags=""
+for dir in "${hsdirs[@]}"; do
+
+  flags="$flags$n-i${ROOTS}$dir"
+
+  modules=$(find "$dir" -name '*.hs' | sed -e "s%^$dir/%%" -e 's/\.hs$//' -e 's^/^.^g')
+  for module in "${modules[@]}"; do
+    case "$module" in
+      # Don't need everything from Cachix. This avoids some warnings.
+      Cachix.Deploy.*)
+        ;;
+      *)
+        flags="$flags$n$module"
+        ;;
+    esac
+  done
+
+done
+
+# remove first newline
+flags="${flags:1}"
+
 cat > "$HIE_BIOS_OUTPUT" <<EOF
--i$ROOT/cabal-pkg-config-version-hook/src
--i$ROOT/dev/vendor/cachix/cachix-api/src
--i$ROOT/dev/vendor/cachix/cachix/src
--i$ROOT/hercules-ci-agent/src
--i$ROOT/hercules-ci-api-agent/src
--i$ROOT/hercules-ci-api-core/src
--i$ROOT/hercules-ci-api/src
--i$ROOT/hercules-ci-cnix-expr/src
--i$ROOT/hercules-ci-cnix-store/src
--I$ROOT/hercules-ci-cnix-expr/include
--I$ROOT/hercules-ci-cnix-store/include
+${flags}
 -lstdc++
 -optcxx-std=c++17
 -optcxx-std=c++17
@@ -38,6 +71,7 @@ cat > "$HIE_BIOS_OUTPUT" <<EOF
 -Wtabs
 -Wunused-imports
 -Wunused-packages
+-Wno-type-equality-out-of-scope
 -XDeriveAnyClass
 -XDeriveGeneric
 -XDeriveTraversable
@@ -61,32 +95,12 @@ cat > "$HIE_BIOS_OUTPUT" <<EOF
 -XTupleSections
 -XTypeApplications
 -XTypeOperators
+-DMIN_VERSION_cachix(x,y,z)=1
+-DNIX_IS_AT_LEAST(x,y,z)=1
+-hide-package
+cryptonite
+-hide-package
+optparse-applicative
 EOF
-exit 0
 
-##############################################################################
-
-# tmp=$(mktemp -d)
-# trap 'rm -rf "$tmp"' EXIT
-
-# cat > "$tmp/spy" <<EOF
-# #!/usr/bin/env bash
-# for arg in "\$@"; do
-#   echo "\$arg" >> $HIE_BIOS_OUTPUT
-# done
-# EOF
-# chmod a+x "$tmp/spy"
-# cat "$tmp/spy"
-
-# ( echo; echo; ) | stack repl --with-ghc "$tmp/spy" \
-#       cabal-pkg-config-version-hook:lib \
-#       cachix:lib \
-#       cachix-api:lib \
-#       hercules-ci-agent:lib \
-#       hercules-ci-api:lib \
-#       hercules-ci-api-agent:lib \
-#       hercules-ci-api-core:lib \
-#       hercules-ci-cnix-expr:lib \
-#       hercules-ci-cnix-store:lib \
-#   ;
-#       # hercules-ci-cli:lib \
+# cp $HIE_BIOS_OUTPUT /tmp/hie-bios-output
