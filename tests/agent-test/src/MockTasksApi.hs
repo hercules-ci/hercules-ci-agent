@@ -350,8 +350,8 @@ printState st = do
   putErrText "Mock Server Diagnostic"
   putErrText "-----"
   putErrText . ("queue: " <>) . show <=< tryReadMVar $ st.queue
-  done <- readTVarIO st.done
-  for_ (M.toList done) \(key, value) -> do
+  isDone <- readTVarIO st.done
+  for_ (M.toList isDone) \(key, value) -> do
     putErrText ("task " <> show key <> ": " <> show value)
   putErrText "-----"
 
@@ -492,8 +492,8 @@ processLogPayload server token (LogEntries les) = do
       addNewLog = M.alter (Just . addNewEntries . fromMaybe []) token
   open <- liftIO $ atomically do
     -- Make sure the log is still open for writing
-    done <- readTVar (logsDone server)
-    let open = S.notMember token done
+    isDone <- readTVar (logsDone server)
+    let open = S.notMember token isDone
     when open do
       modifyTVar (logEntries server) addNewLog
     pure open
@@ -510,8 +510,8 @@ getLogsSTM :: ServerState -> Text -> STM [LogEntry]
 getLogsSTM server token = do
   do
     -- wait for completion
-    done <- readTVar (logsDone server)
-    when (S.notMember token done) retry
+    isDone <- readTVar (logsDone server)
+    when (S.notMember token isDone) retry
   logs <- readTVar (logEntries server)
   pure $ reverse $ fromMaybe [] $ M.lookup token logs
 

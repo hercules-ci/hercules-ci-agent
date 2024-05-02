@@ -20,7 +20,6 @@ import Hercules.API.Agent (AddAPIVersion, AgentAPI, ClientAuth, build, eval, lif
 import Hercules.API.Agent.Build (BuildAPI)
 import Hercules.API.Agent.Evaluate (EvalAPI)
 import Hercules.API.Agent.LifeCycle (LifeCycleAPI)
-import Hercules.API.Agent.State (ContentLength)
 import Hercules.API.Agent.Tasks (TasksAPI)
 import Hercules.API.Logs (LogsAPI)
 import Hercules.API.Servant (useApi)

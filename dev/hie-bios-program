@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ROOT="$(cd "$(dirname "$(dirname "${BASH_SOURCE[0]}")")"; pwd)"
+ROOTS=""
+
+# notable difference compared to stack repl:
+# no -hide-all-packages
+# no -i
+
+hsdirs=(
+  cabal-pkg-config-version-hook/src
+  dev/vendor/cachix/cachix-api/src
+  dev/vendor/cachix/cachix/src
+  hercules-ci-agent/src
+  hercules-ci-agent/hercules-ci-agent
+  hercules-ci-agent/hercules-ci-agent-worker
+  hercules-ci-api-agent/src
+  hercules-ci-api-core/src
+  hercules-ci-api/src
+  hercules-ci-cnix-expr/src
+  hercules-ci-cnix-store/src
+  hercules-ci-cnix-expr/include
+  hercules-ci-cnix-store/include
+  tests/agent-test/src
+  dev/lsp-dummies
+)
+n="
+"
+
+flags=""
+for dir in "${hsdirs[@]}"; do
+
+  flags="$flags$n-i${ROOTS}$dir"
+
+  modules=$(find "$dir" -name '*.hs' | sed -e "s%^$dir/%%" -e 's/\.hs$//' -e 's^/^.^g')
+  for module in "${modules[@]}"; do
+    case "$module" in
+      # Don't need everything from Cachix. This avoids some warnings.
+      Cachix.Deploy.*)
+        ;;
+      *)
+        flags="$flags$n$module"
+        ;;
+    esac
+  done
+
+done
+
+# remove first newline
+flags="${flags:1}"
+
+cat > "$HIE_BIOS_OUTPUT" <<EOF
+${flags}
+-lstdc++
+-optcxx-std=c++17
+-optcxx-std=c++17
+-optcxx-Wall
+-optcxx-Wall
+-Wall
+-Wcompat
+-Werror=incomplete-patterns
+-Werror=missing-fields
+-Wincomplete-patterns
+-Wincomplete-record-updates
+-Wincomplete-uni-patterns
+-Wmissing-signatures
+-Wname-shadowing
+-Wredundant-bang-patterns
+-Wredundant-constraints
+-Wtabs
+-Wunused-imports
+-Wunused-packages
+-Wno-type-equality-out-of-scope
+-XDeriveAnyClass
+-XDeriveGeneric
+-XDeriveTraversable
+-XDerivingStrategies
+-XDerivingVia
+-XDisambiguateRecordFields
+-XFlexibleContexts
+-XHaskell2010
+-XImportQualifiedPost
+-XInstanceSigs
+-XLambdaCase
+-XMultiParamTypeClasses
+-XNamedFieldPuns
+-XNoImplicitPrelude
+-XNumericUnderscores
+-XOverloadedRecordDot
+-XOverloadedStrings
+-XRankNTypes
+-XRecordWildCards
+-XScopedTypeVariables
+-XTupleSections
+-XTypeApplications
+-XTypeOperators
+-DMIN_VERSION_cachix(x,y,z)=1
+-DNIX_IS_AT_LEAST(x,y,z)=1
+-hide-package
+cryptonite
+-hide-package
+optparse-applicative
+EOF
+
+# cp $HIE_BIOS_OUTPUT /tmp/hie-bios-output

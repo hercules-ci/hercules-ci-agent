@@ -1,2 +1,3 @@
 cradle:
-  stack: {}
+  bios:
+    program: ./dev/hie-bios-program

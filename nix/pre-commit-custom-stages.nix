@@ -26,12 +26,10 @@ in
       type = types.listOf types.str;
       default = [ ];
     };
-    hooks = mkOption {
-      type = types.attrsOf (types.submodule hookModule);
-    };
     withCustomStages = mkOption { internal = true; };
   };
   config = {
+    hookModule = hookModule;
     withCustomStages = newStages: (extendModules {
       modules = [{
         customStages =

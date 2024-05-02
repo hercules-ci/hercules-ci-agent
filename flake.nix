@@ -431,14 +431,12 @@
                       }))
                     ];
 
-                    hie-bios = h.appendPatch ./nix/hie-bios.patch super.hie-bios;
-
-                    # Dodge build failures of components we don't need.
-                    haskell-language-server = h.appendConfigureFlags [ "-f-fourmolu" ] (
-                      super.haskell-language-server.override {
-                        hls-fourmolu-plugin = null;
-                      }
-                    );
+                    # # Dodge build failures of components we don't need.
+                    # haskell-language-server = h.appendConfigureFlags [ "-f-fourmolu" ] (
+                    #   super.haskell-language-server.override {
+                    #     hls-fourmolu-plugin = null;
+                    #   }
+                    # );
 
                     ghcid = (
                       if system == "aarch64-darwin"
