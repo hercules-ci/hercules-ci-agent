@@ -5,11 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.10.2] - 2024-05-03
 
 ### Added
 
  - Add `nixSettings` configuration item, to more easily configure Nix settings such as `substituters`, overriding the system Nix settings.
+ - Cachix 1.7.2 support
+
+### Fixed
+
+ - Remove most uses of `c_str()`, of which at least one exhibited undefined behavior.
+ - `nix-darwin` module now reads `system` correctly from the configuration.
 
 ## [0.10.1] - 2024-02-12
 

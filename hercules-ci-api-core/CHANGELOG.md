@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [0.1.7.0] - 2024-05-03
+
+### Added
+
+- `DayOfWeek.fromNum`: no usable with `Eq` instance <!-- I suppsoe removing a constraint counts as a semver addition -->
+
 ## [0.1.6.0] - 2024-02-12
 
 ### Added

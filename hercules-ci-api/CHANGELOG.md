@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.8.3.0 - 2024-05-03
+
+### Fixed
+
+- Deduplicate OpenAPI3 security / jwt items
+- Replace bad generated OpenAPI3 identifier
+
+### Added
+- `O3.ToParamSchema JobType`
+- `instance HasField "get"` for `PagedJobs`
+- `getJobs`: Add `rev`, `handler`, `name` query params
+- `instance ToParamSchema JobType`
+- `Hercules.API.ShowRead` wrapper
+deea4 doc: API / Find jobs: refer to per project endpoint
+- `NotPlanned` derivation status
+- Document auth instructions in API description
+- Add `references` to `BuiltOutput`
+
 ## 0.8.2.0 - 2024-02-12
 
 ### Added
