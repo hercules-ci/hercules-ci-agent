@@ -185,6 +185,7 @@ executable hercules-gen-swagger
     , hercules-ci-api
     , http-api-data
     , http-media
+    , insert-ordered-containers
     , lens
     , memory
     , network-uri

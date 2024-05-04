@@ -457,6 +457,9 @@
               };
               packages.hercules-ci-api-swagger =
                 pkgs.callPackage ./hercules-ci-api/swagger.nix { hercules-ci-api = config.packages.internal-hercules-ci-api; };
+              packages.hercules-ci-api-openapi3 =
+                pkgs.callPackage ./nix/openapi3.nix { hercules-ci-api = config.packages.internal-hercules-ci-api; };
+
               packages.hercules-ci-cli = config.packages.internal-hercules-ci-cli;
               packages.hci = config.packages.hercules-ci-cli;
               packages.hercules-ci-agent = config.packages.internal-hercules-ci-agent;
