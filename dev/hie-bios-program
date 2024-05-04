@@ -18,6 +18,7 @@ hsdirs=(
   hercules-ci-api-agent/src
   hercules-ci-api-core/src
   hercules-ci-api/src
+  hercules-ci-api/hercules-gen-swagger
   hercules-ci-cnix-expr/src
   hercules-ci-cnix-store/src
   hercules-ci-cnix-expr/include
