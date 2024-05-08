@@ -59,7 +59,11 @@ C.include "<gc/gc_cpp.h>"
 
 C.include "<gc/gc_allocator.h>"
 
+C.include "hercules-ci-cnix/string.hxx"
+
 C.using "namespace nix"
+
+C.using "namespace hercules_ci_cnix"
 
 init :: IO ()
 init =
@@ -107,7 +111,7 @@ nixVersion :: ByteString
 nixVersion = unsafePerformIO $ do
   p <-
     [C.exp| const char* {
-      strdup(nix::nixVersion.c_str())
+      stringdup(nix::nixVersion)
     }|]
   unsafePackMallocCString p
 {-# NOINLINE nixVersion #-}

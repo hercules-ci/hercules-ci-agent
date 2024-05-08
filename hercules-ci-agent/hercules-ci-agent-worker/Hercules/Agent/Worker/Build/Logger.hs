@@ -39,11 +39,15 @@ C.include "<nix/shared.hh>"
 
 C.include "<nix/globals.hh>"
 
+C.include "<hercules-ci-cnix/string.hxx>"
+
 C.include "hercules-aliases.h"
 
 C.include "hercules-logger.hh"
 
 C.using "namespace nix"
+
+C.using "namespace hercules_ci_cnix"
 
 initLogger :: IO ()
 initLogger =
@@ -130,11 +134,11 @@ convertEntry logEntryPtr = alloca \millisPtr -> alloca \textStrPtr -> alloca \le
         *$(uint64_t *millisPtr) = ln.ms;
         switch (ln.entryType) {
           case 1:
-            *$(const char **textStrPtr) = strdup(ln.text.c_str());
+            *$(const char **textStrPtr) = stringdup(ln.text);
             *$(int *levelPtr) = ln.level;
             return ln.entryType;
           case 2:
-            *$(const char **textStrPtr) = strdup(ln.text.c_str());
+            *$(const char **textStrPtr) = stringdup(ln.text);
             *$(int *levelPtr) = ln.level;
             *$(uint64_t *activityIdPtr) = ln.activityId;
             *$(uint64_t *typePtr) = ln.type;
@@ -224,7 +228,7 @@ convertAndDeleteFields fieldsPtr = flip
             *$(uint64_t *uintPtr) = field.i;
             return 0;
           case nix::Logger::Field::tString:
-            *$(const char **stringPtr) = strdup(field.s.c_str());
+            *$(const char **stringPtr) = stringdup(field.s);
             return 1;
           default:
             return -1;
