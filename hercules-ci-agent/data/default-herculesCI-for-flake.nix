@@ -52,7 +52,10 @@ let
     then attrs: attrs
     else intersectAttrs ciSystems;
 
-  getSystemNixDarwin = sys: sys.config.nixpkgs.system;
+  getSystemNixDarwin = sys:
+    if sys?options.nixpkgs.hostPlatform && sys.options.nixpkgs.hostPlatform.isDefined
+    then sys.config.nixpkgs.buildPlatform.system
+    else sys.config.nixpkgs.localSystem.system or sys.config.nixpkgs.system;
 
   getSystemNixOS = sys:
     if sys?options.nixpkgs.hostPlatform && sys.options.nixpkgs.hostPlatform.isDefined
