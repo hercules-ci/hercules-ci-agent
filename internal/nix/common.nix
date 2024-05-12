@@ -19,7 +19,6 @@ let
     types
     ;
   literalMD = lib.literalMD or (x: lib.literalDocBook "Documentation not rendered. Please upgrade to a newer NixOS with markdown support.");
-  mdDoc = lib.mdDoc or (x: "Documentation not rendered. Please upgrade to a newer NixOS with markdown support.");
 
   cfg = config.services.hercules-ci-agent;
   opt = options.services.hercules-ci-agent;
@@ -39,7 +38,7 @@ in
     enable = mkOption {
       type = types.bool;
       default = false;
-      description = mdDoc ''
+      description = ''
         Enable to run Hercules CI Agent as a system service.
 
         [Hercules CI](https://hercules-ci.com) is a
@@ -60,7 +59,7 @@ in
       type = types.path;
       internal = true;
       defaultText = literalMD "generated `hercules-ci-agent.json`";
-      description = mdDoc ''
+      description = ''
         The fully assembled config file.
       '';
     };

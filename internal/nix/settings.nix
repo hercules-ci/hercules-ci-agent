@@ -13,14 +13,13 @@ let
     ;
 
   literalMD = lib.literalMD or (x: lib.literalDocBook "Documentation not rendered. Please upgrade to a newer NixOS with markdown support.");
-  mdDoc = lib.mdDoc or (x: "Documentation not rendered. Please upgrade to a newer NixOS with markdown support.");
 
   format = pkgs.formats.json { };
 
   settingsModule = { config, packageOption, pkgs, ... }: {
     options = {
       allowInsecureBuiltinFetchers = mkOption {
-        description = mdDoc ''
+        description = ''
           Allow the use of insecure fetching protocols, such as `http`.
 
           Disabled by default, because most users do not need this, but note that Nix by default does allow this.
@@ -29,7 +28,7 @@ let
         default = false;
       };
       apiBaseUrl = mkOption {
-        description = mdDoc ''
+        description = ''
           API base URL that the agent will connect to.
 
           When using Hercules CI Enterprise, set this to the URL where your
@@ -41,12 +40,12 @@ let
       baseDirectory = mkOption {
         type = types.path;
         default = "/var/lib/hercules-ci-agent";
-        description = mdDoc ''
+        description = ''
           State directory (secrets, work directory, etc) for agent
         '';
       };
       concurrentTasks = mkOption {
-        description = mdDoc ''
+        description = ''
           Number of tasks to perform simultaneously.
 
           A task is a single derivation build, an evaluation or an effect run.
@@ -70,7 +69,7 @@ let
         '';
       };
       effectMountables = mkOption {
-        description = mdDoc ''
+        description = ''
           An attribute set of mountable directories for effects.
 
           See https://docs.hercules-ci.com/hercules-ci-agent/agent-config#effectMountables
@@ -79,7 +78,7 @@ let
         default = { };
       };
       labels = mkOption {
-        description = mdDoc ''
+        description = ''
           A key-value map of user data.
 
           Any Nix type that is representable in JSON is permitted.
@@ -108,7 +107,7 @@ let
         '';
       };
       nixUserIsTrusted = mkOption {
-        description = mdDoc ''
+        description = ''
           Whether hercules-ci-agent is trusted by the nix-daemon. This allows some optimization.
         '';
         type = types.bool;
@@ -120,7 +119,7 @@ let
         default = "Talkative";
       };
       nixSettings = mkOption {
-        description = mdDoc ''
+        description = ''
           Since hercules-ci-agent 0.10.2.
 
           A key-value map of Nix settings.
@@ -141,7 +140,7 @@ let
         default = [ ];
       };
       workDirectory = mkOption {
-        description = mdDoc ''
+        description = ''
           The directory in which temporary subdirectories are created for task state. This includes sources for Nix evaluation.
         '';
         type = types.path;
@@ -149,7 +148,7 @@ let
         defaultText = literalExpression ''baseDirectory + "/work"'';
       };
       staticSecretsDirectory = mkOption {
-        description = mdDoc ''
+        description = ''
           This is the default directory to look for statically configured secrets like `cluster-join-token.key`.
 
           See also `clusterJoinTokenPath` and `binaryCachesPath` for fine-grained configuration.
@@ -159,7 +158,7 @@ let
         defaultText = literalExpression ''baseDirectory + "/secrets"'';
       };
       clusterJoinTokenPath = mkOption {
-        description = mdDoc ''
+        description = ''
           Location of the cluster-join-token.key file.
 
           You can retrieve the contents of the file when creating a new agent via
@@ -176,7 +175,7 @@ let
         defaultText = literalExpression ''staticSecretsDirectory + "/cluster-join-token.key"'';
       };
       binaryCachesPath = mkOption {
-        description = mdDoc ''
+        description = ''
           Path to a JSON file containing binary cache secret keys.
 
           As these values are confidential, they should not be in the store, but
@@ -190,7 +189,7 @@ let
         defaultText = literalExpression ''staticSecretsDirectory + "/binary-caches.json"'';
       };
       secretsJsonPath = mkOption {
-        description = mdDoc ''
+        description = ''
           Path to a JSON file containing secrets for effects.
 
           As these values are confidential, they should not be in the store, but
@@ -219,7 +218,7 @@ let
   effectMountableModule = {
     options = {
       source = mkOption {
-        description = mdDoc ''
+        description = ''
           A mountable directory as a path string.
         '';
         type = types.path;
@@ -227,7 +226,7 @@ let
         default = null;
       };
       readOnly = mkOption {
-        description = mdDoc ''
+        description = ''
           If `true`, the mount into the sandbox will be a read-only bind mount.
 
           If `false`, the mount is not mounted read-only, and it will be writable if it is for the system user that runs hercules-ci-agent (i.e. `hercules-ci-agent` or `hci-''${name}`).
@@ -235,7 +234,7 @@ let
         type = types.bool;
       };
       condition = mkOption {
-        description = mdDoc ''
+        description = ''
           A [condition expression](https://docs.hercules-ci.com/hercules-ci-agent/secrets-json#condition) that decides whether a mountable is accessible to an effect.
         '';
         type = conditionType;
@@ -321,7 +320,7 @@ let
 
   makeSettingsOptions = { cfg, opt }: {
     settings = mkOption {
-      description = mdDoc ''
+      description = ''
         These settings are written to the `agent.json` file.
       '';
       type = types.submoduleWith {
@@ -338,7 +337,7 @@ let
       default = { };
     };
     allowUnknownSettings = mkOption {
-      description = mdDoc ''
+      description = ''
         Allow unknown settings to be written to the `agent.json` file.
 
         This is useful for forward compatibility - if you've overridden the package.
