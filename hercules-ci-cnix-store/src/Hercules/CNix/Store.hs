@@ -968,8 +968,7 @@ toByteStrings strings = do
 
 toByteStringMap :: Ptr StringPairs -> IO (Map ByteString ByteString)
 toByteStringMap strings =
-  M.fromList <$> do
-    i <- [C.exp| StringPairsIterator *{ new StringPairsIterator($(StringPairs *strings)->begin()) } |]
+  M.fromList <$> withStringPairIterator \i ->
     fix $ \go -> do
       isEnd <- (0 /=) <$> [C.exp| bool { *$(StringPairsIterator *i) == $(StringPairs *strings)->end() }|]
       if isEnd
@@ -981,6 +980,11 @@ toByteStringMap strings =
           bv <- BS.unsafePackMallocCString v
           [C.block| void { (*$(StringPairsIterator *i))++; }|]
           ((bk, bv) :) <$> go
+  where
+    withStringPairIterator =
+      bracket
+        [C.exp| StringPairsIterator *{ new StringPairsIterator($(StringPairs *strings)->begin()) }|]
+        (\i -> [C.block| void { delete $(StringPairsIterator *i); }|])
 
 withStrings :: (Ptr Strings -> IO a) -> IO a
 withStrings =
