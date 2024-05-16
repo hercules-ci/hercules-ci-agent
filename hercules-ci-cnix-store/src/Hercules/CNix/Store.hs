@@ -446,14 +446,15 @@ data HashType = MD5 | SHA1 | SHA256 | SHA512
   deriving (Eq, Show)
 
 getDerivationOutputs :: Store -> ByteString -> Derivation -> IO [DerivationOutput]
-getDerivationOutputs (Store store) drvName (Derivation derivation) =
+getDerivationOutputs (Store store) drvName (Derivation derivationFPtr) =
+  withForeignPtr derivationFPtr \derivation ->
   bracket
     [C.exp| DerivationOutputsIterator* {
-      new DerivationOutputsIterator($fptr-ptr:(Derivation *derivation)->outputs.begin())
+      new DerivationOutputsIterator($(Derivation *derivation)->outputs.begin())
     }|]
     deleteDerivationOutputsIterator
     $ \i -> fix $ \continue -> do
-      isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationOutputsIterator *i) == $fptr-ptr:(Derivation *derivation)->outputs.end() }|]
+      isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationOutputsIterator *i) == $(Derivation *derivation)->outputs.end() }|]
       if isEnd
         then pure []
         else
@@ -483,7 +484,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                       },
                       [&](DerivationOutput::CAFixed dof) -> void {
                         typ = 1;
-                        path = new StorePath(dof.path(store, $fptr-ptr:(Derivation *derivation)->name, nameString));
+                        path = new StorePath(dof.path(store, $(Derivation *derivation)->name, nameString));
                         std::visit(overloaded {
                           [&](nix::FileIngestionMethod fim_) -> void {
                             switch (fim_) {
@@ -615,7 +616,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivation) =
                       },
                       [&](DerivationOutputCAFixed dof) -> void {
                         typ = 1;
-                        path = new StorePath(dof.path(store, $fptr-ptr:(Derivation *derivation)->name, nameString));
+                        path = new StorePath(dof.path(store, $(Derivation *derivation)->name, nameString));
 #if NIX_IS_AT_LEAST(2, 16, 0)
                         std::visit(overloaded {
                           [&](nix::FileIngestionMethod fim_) -> void {
@@ -845,14 +846,15 @@ getDerivationInputs _ = getDerivationInputs'
 -- | Get the inputs of a derivation, ignoring dependencies on outputs of outputs (RFC 92 inputs).
 getDerivationInputs' :: Derivation -> IO [(StorePath, [ByteString])]
 #if NIX_IS_AT_LEAST(2, 18, 0)
-getDerivationInputs' derivation =
+getDerivationInputs' (Derivation derivationFPtr) =
+  withForeignPtr derivationFPtr \derivation ->
   bracket
     [C.exp| DerivationInputsIterator* {
-      new DerivationInputsIterator($fptr-ptr:(Derivation *derivation)->inputDrvs.map.begin())
+      new DerivationInputsIterator($(Derivation *derivation)->inputDrvs.map.begin())
     }|]
     deleteDerivationInputsIterator
     $ \i -> fix $ \continue -> do
-      isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationInputsIterator *i) == $fptr-ptr:(Derivation *derivation)->inputDrvs.map.end() }|]
+      isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationInputsIterator *i) == $(Derivation *derivation)->inputDrvs.map.end() }|]
       if isEnd
         then pure []
         else do
@@ -881,10 +883,11 @@ getDerivationInputs' derivation =
           [C.block| void { (*$(DerivationInputsIterator *i))++; }|]
           ((name, outs) :) <$> continue
 #else
-getDerivationInputs' derivation =
+getDerivationInputs' (Derivation derivationFPtr) =
+  withForeignPtr derivationFPtr \derivation ->
   bracket
     [C.exp| DerivationInputsIterator* {
-      new DerivationInputsIterator($fptr-ptr:(Derivation *derivation)->inputDrvs.begin())
+      new DerivationInputsIterator($(Derivation *derivation)->inputDrvs.begin())
     }|]
     deleteDerivationInputsIterator
     $ \i -> fix $ \continue -> do
@@ -916,16 +919,17 @@ deleteDerivationInputsIterator :: Ptr DerivationInputsIterator -> IO ()
 deleteDerivationInputsIterator a = [C.block| void { delete $(DerivationInputsIterator *a); }|]
 
 getDerivationEnv :: Derivation -> IO (Map ByteString ByteString)
-getDerivationEnv derivation =
-  [C.exp| StringPairs* { &($fptr-ptr:(Derivation *derivation)->env) }|]
-    >>= toByteStringMap
+getDerivationEnv (Derivation fptr) =
+  withForeignPtr fptr \ptr -> do
+    pairs <- [C.exp| StringPairs* { &$(Derivation *ptr)->env }|]
+    toByteStringMap pairs
 
-getDerivationOutputNames :: ForeignPtr Derivation -> IO [ByteString]
-getDerivationOutputNames derivation =
-  bracket
+getDerivationOutputNames :: ForeignPtr C.Derivation -> IO [ByteString]
+getDerivationOutputNames fptr =
+  withForeignPtr fptr \ptr -> bracket
     [C.throwBlock| Strings* {
       Strings *r = new Strings();
-      for (auto i : $fptr-ptr:(Derivation *derivation)->outputs) {
+      for (auto i : $(Derivation *ptr)->outputs) {
         r->push_back(i.first);
       }
       return r;
