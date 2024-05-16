@@ -582,14 +582,18 @@ apply (RawValue f) (RawValue a) = do
     }|]
 
 mkPath :: Ptr EvalState -> ByteString -> IO (Value NixPath)
+#if NIX_IS_AT_LEAST(2,19,0)
 mkPath evalState path =
+#else
+mkPath _evalState path =
+#endif
   Value
     <$> ( mkRawValue
             =<< [C.throwBlock| Value *{
-      EvalState & state = *$(EvalState *evalState);
       Value *r = new (NoGC) Value();
       std::string s($bs-ptr:path, $bs-len:path);
 #if NIX_IS_AT_LEAST(2,19,0)
+      EvalState & state = *$(EvalState *evalState);
       r->mkPath(state.rootPath(CanonPath(s)));
 #else
       r->mkPath(stringdup(s));
