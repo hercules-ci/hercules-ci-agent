@@ -32,3 +32,6 @@ stack.yaml.nixed.tmp.lock
 
 # direnv
 .direnv/
+
+# Coverage files spilled by Cabal
+**/setup.tix
