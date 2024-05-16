@@ -4,6 +4,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeApplications #-}
+-- 'Delete' and 'Finalizer' instances are necessarily orphan instances due to TH staging restrictions.
+{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Hercules.CNix.Std.String
   ( -- * Context
@@ -23,11 +25,12 @@ module Hercules.CNix.Std.String
   )
 where
 
-import Control.Exception (bracket, mask_)
+import Control.Exception (mask_)
 import Data.ByteString (ByteString)
 import Data.ByteString.Unsafe (unsafePackMallocCStringLen)
 import Foreign hiding (new)
 import Hercules.CNix.Encapsulation
+import Hercules.CNix.Memory (Delete (..), Finalizer (finalizer), withDelete)
 import Hercules.CNix.Std.String.Context
 import Hercules.CNix.Std.String.Instances ()
 import qualified Language.C.Inline as C
@@ -57,11 +60,14 @@ new bs =
     return new std::string($bs-ptr:bs, $bs-len:bs);
   }|]
 
-delete :: Ptr CStdString -> IO ()
-delete bs = [C.block| void { delete $(std::string *bs); }|]
+instance Delete CStdString where
+  delete bs = [C.block| void { delete $(std::string *bs); }|]
 
 withString :: ByteString -> (Ptr CStdString -> IO a) -> IO a
-withString bs = bracket (new bs) delete
+withString bs = withDelete (new bs)
+
+instance Finalizer CStdString where
+  finalizer = finalize -- must be a CAF
 
 finalize :: FinalizerPtr CStdString
 {-# NOINLINE finalize #-}
@@ -77,8 +83,7 @@ finalize =
 
 newtype StdString = StdString (ForeignPtr CStdString)
 
-instance HasEncapsulation CStdString StdString where
-  moveToForeignPtrWrapper x = StdString <$> newForeignPtr finalize x
+instance HasEncapsulation CStdString StdString
 
 copyToByteString :: StdString -> IO ByteString
 copyToByteString (StdString s) = mask_ $ alloca \ptr -> alloca \sz -> do
