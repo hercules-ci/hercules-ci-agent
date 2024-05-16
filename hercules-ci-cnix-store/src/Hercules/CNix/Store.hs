@@ -11,8 +11,133 @@
 #endif
 
 module Hercules.CNix.Store
-  ( module Hercules.CNix.Store,
-    module Hercules.CNix.Store.Context,
+  ( -- * Opening a 'Store'
+    Store (..),
+    openStore,
+    releaseStore,
+    withStore,
+    withStore',
+    withStoreFromURI,
+
+    -- * Store properties
+    storeUri,
+    storeDir,
+    getStoreProtocolVersion,
+    getClientProtocolVersion,
+
+    -- * Store paths
+    StorePath (..),
+    parseStorePathBaseName,
+    parseStorePath,
+    followLinksToStorePath,
+    storePathToPath,
+    getStorePathBaseName,
+    getStorePathHash,
+
+    -- * Store objects
+    isValidPath,
+    queryPathInfo,
+    queryPathInfoFromClientCache,
+    ValidPathInfo,
+    validPathInfoNarSize,
+    validPathInfoNarHash32,
+    validPathInfoDeriver,
+    validPathInfoDeriver',
+    validPathInfoReferences,
+    validPathInfoReferences',
+
+    computeFSClosure,
+    ClosureParams(..),
+    defaultClosureParams,
+
+    -- * Realisation
+    ensurePath,
+    buildPaths,
+    buildPath,
+
+    -- * Garbage collection
+    addTemporaryRoot,
+
+    -- * In-memory cache control
+    clearPathInfoCache,
+    clearSubstituterCaches,
+
+    -- * Derivation references
+    StorePathWithOutputs (..),
+    newStorePathWithOutputs,
+    getStorePath,
+    getOutputs,
+
+    -- * Derivations
+    Derivation (..),
+    getDerivation,
+    getDerivationFromString,
+    getDerivationNameFromPath,
+    getDerivationPlatform,
+    getDerivationBuilder,
+    getDerivationArguments,
+    getDerivationEnv,
+    getDerivationSources,
+    getDerivationSources',
+    getDerivationInputs,
+    getDerivationInputs',
+
+    getDerivationOutputNames,
+    DerivationOutput (..),
+    DerivationOutputDetail (..),
+    FixedOutputHash (..),
+    FileIngestionMethod (..),
+    getDerivationOutputs,
+
+    -- * Copying
+    copyClosure,
+
+    -- * Signing
+    SecretKey,
+    parseSecretKey,
+    signPath,
+
+    -- * Hashes
+    Hash (..),
+    HashType (..),
+
+    -- * Utilities
+    --
+    -- To be moved and deprecated
+    Strings,
+    withStrings,
+    withStringsOf,
+    pushString,
+    getStringsLength,
+    toByteStrings,
+    toByteStringMap,
+
+    -- * Deprecated
+    forNonNull,
+    traverseNonNull,
+    deleteDerivationInputsIterator,
+    deleteDerivationOutputsIterator,
+    deleteStringPairs,
+    deleteStrings,
+    finalizeDerivation,
+    finalizeRefValidPathInfo,
+    finalizeSecretKey,
+    finalizeStorePath,
+    finalizeStorePathWithOutputs,
+    finalizeStrings,
+    moveStorePath,
+    moveStorePathMaybe,
+    unsafeMallocBS,
+    withPtr',
+    DerivationInputsIterator,
+    DerivationOutputsIterator,
+    NixStore,
+    NixStorePath,
+    Ref,
+    StringPairs,
+
+    -- * Re-exports
+    Hercules.CNix.Store.Context.context,
   )
 where
 
@@ -208,6 +333,7 @@ finalizeStorePath =
         }
       }
     |]
+{-# DEPRECATED finalizeStorePath "Use 'finalizer' instead" #-}
 
 -- | Move ownership of a Ptr NixStorePath into 'StorePath'
 moveStorePath :: Ptr NixStorePath -> IO StorePath
@@ -338,6 +464,7 @@ finalizeStorePathWithOutputs =
         }
       }
     |]
+{-# DEPRECATED finalizeStorePathWithOutputs "Use 'finalizer' instead" #-}
 
 newStorePathWithOutputs :: StorePath -> [ByteString] -> IO StorePathWithOutputs
 newStorePathWithOutputs storePath outputs = do
@@ -395,6 +522,7 @@ finalizeDerivation =
         delete v;
       }
     } |]
+{-# DEPRECATED finalizeDerivation "Use 'finalizer' instead" #-}
 
 getDerivation :: Store -> StorePath -> IO Derivation
 getDerivation (Store store) (StorePath spwo) = do
@@ -981,6 +1109,7 @@ finalizeStrings =
         delete v;
       }
     } |]
+{-# DEPRECATED finalizeStrings "Use 'finalizer' instead" #-}
 
 getStringsLength :: Ptr Strings -> IO C.CSize
 getStringsLength strings = [C.exp| size_t { $(Strings *strings)->size() }|]
@@ -1076,6 +1205,7 @@ finalizeSecretKey =
         delete v;
       }
     } |]
+{-# DEPRECATED finalizeSecretKey "Use 'finalizer' instead" #-}
 
 signPath ::
   Store ->
@@ -1236,6 +1366,7 @@ finalizeRefValidPathInfo =
       void (*)(refValidPathInfo *) {
         [](refValidPathInfo *v){ delete v; }
       }|]
+{-# DEPRECATED finalizeRefValidPathInfo "Use 'finalizer' instead" #-}
 
 -- | The narSize field of a ValidPathInfo struct. Source: path-info.hh / store-api.hh
 validPathInfoNarSize :: ForeignPtr (Ref ValidPathInfo) -> Int64
