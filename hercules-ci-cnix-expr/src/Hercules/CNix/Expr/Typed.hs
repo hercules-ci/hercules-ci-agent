@@ -29,6 +29,7 @@ module Hercules.CNix.Expr.Typed
 where
 
 import Control.Exception (throwIO)
+import qualified Data.ByteString.Unsafe as BS
 import Hercules.CNix.Expr.Context
 import Hercules.CNix.Expr.Raw
 import qualified Language.C.Inline.Cpp as C
@@ -160,8 +161,8 @@ getInt (Value (RawValue v)) =
 -- NOT coerceToString
 getStringIgnoreContext :: Value NixString -> IO ByteString
 getStringIgnoreContext (Value (RawValue v)) =
-  unsafeMallocBS
-    [C.exp| const char *{
+  BS.unsafePackMallocCString
+    =<< [C.exp| const char *{
 #if NIX_IS_AT_LEAST(2,19,0)
     strdup($(Value *v)->c_str())
 #else

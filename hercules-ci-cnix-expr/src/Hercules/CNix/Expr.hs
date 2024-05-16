@@ -94,6 +94,7 @@ import Paths_hercules_ci_cnix_expr (getDataFileName)
 import Protolude hiding (evalState)
 import System.Directory (makeAbsolute)
 import Data.Aeson.KeyMap (toMapText)
+import qualified Data.ByteString.Unsafe as BS
 
 C.context (Hercules.CNix.Store.Context.context <> Hercules.CNix.Expr.Context.evalContext)
 
@@ -465,13 +466,13 @@ getAttrs evalState (Value (RawValue v)) = do
       gather acc i | i == end = pure acc
       gather acc i = do
 #if NIX_IS_AT_LEAST(2,9,0)
-        name <- unsafeMallocBS [C.block| const char *{
+        name <- BS.unsafePackMallocCString =<< [C.block| const char *{
           EvalState &evalState = *$(EvalState *evalState);
           SymbolStr str = evalState.symbols[$(Attr *i)->name];
           return stringdup(static_cast<std::string>(str));
         }|]
 #else
-        name <- unsafeMallocBS [C.exp| const char *{ stringdup(static_cast<std::string>($(Attr *i)->name)) } |]
+        name <- BS.unsafePackMallocCString =<< [C.exp| const char *{ stringdup(static_cast<std::string>($(Attr *i)->name)) } |]
 #endif
         value <- mkRawValue =<< [C.exp| Value *{ new (NoGC) Value(*$(Attr *i)->value) } |]
         let acc' = M.insert name value acc

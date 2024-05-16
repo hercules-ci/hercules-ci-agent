@@ -22,7 +22,6 @@ import GHC.IO.Handle (hDuplicate, hDuplicateTo)
 import Hercules.API.Logs.LogEntry (LogEntry)
 import Hercules.API.Logs.LogEntry qualified as LogEntry
 import Hercules.Agent.Worker.Build.Logger.Context (Fields, HerculesLoggerEntry, context)
-import Hercules.CNix.Store.Context (unsafeMallocBS)
 import Language.C.Inline.Cpp qualified as C
 import Language.C.Inline.Cpp.Exception qualified as C
 import Protolude hiding (bracket, finally, mask_, onException, tryJust, wait, withAsync, yield)
@@ -241,7 +240,9 @@ convertAndDeleteFields fieldsPtr = flip
       }|]
                 >>= \case
                   0 -> LogEntry.Int <$> peek uintPtr
-                  1 -> LogEntry.String . decode <$> unsafeMallocBS (peek stringPtr)
+                  1 ->
+                    LogEntry.String . decode
+                      <$> (unsafePackMallocCString =<< peek stringPtr)
                   _ -> panic "convertAndDeleteFields invalid internal type"
 
 decode :: ByteString -> Text

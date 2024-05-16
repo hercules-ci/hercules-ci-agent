@@ -283,8 +283,8 @@ withStoreFromURI storeURIText f = do
       (unlift . f . Store)
 
 storeUri :: MonadIO m => Store -> m ByteString
-storeUri (Store store) =
-  unsafeMallocBS
+storeUri (Store store) = liftIO do
+  BS.unsafePackMallocCString =<<
     [C.block| const char* {
        std::string uri = (*$(refStore* store))->getUri();
        return stringdup(uri);
@@ -292,8 +292,8 @@ storeUri (Store store) =
 
 -- | Usually @"/nix/store"@
 storeDir :: MonadIO m => Store -> m ByteString
-storeDir (Store store) =
-  unsafeMallocBS
+storeDir (Store store) = liftIO do
+  BS.unsafePackMallocCString =<<
     [C.block| const char* {
        std::string uri = (*$(refStore* store))->storeDir;
        return stringdup(uri);
@@ -947,14 +947,14 @@ deleteDerivationOutputsIterator = delete
 
 getDerivationPlatform :: Derivation -> IO ByteString
 getDerivationPlatform derivation =
-  unsafeMallocBS
+  BS.unsafePackMallocCString =<<
     [C.exp| const char* {
        stringdup($fptr-ptr:(Derivation *derivation)->platform)
      } |]
 
 getDerivationBuilder :: Derivation -> IO ByteString
 getDerivationBuilder derivation =
-  unsafeMallocBS
+  BS.unsafePackMallocCString =<<
     [C.exp| const char* {
        stringdup($fptr-ptr:(Derivation *derivation)->builder)
      } |]
