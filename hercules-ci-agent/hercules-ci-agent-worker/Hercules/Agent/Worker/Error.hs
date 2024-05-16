@@ -7,7 +7,8 @@ module Hercules.Agent.Worker.Error where
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Foreign (alloca, peek)
 import Hercules.CNix.Encapsulation (HasEncapsulation (moveToForeignPtrWrapper))
-import Hercules.CNix.Store (StorePath (StorePath), traverseNonNull)
+import Hercules.CNix.Memory (traverseNonNull)
+import Hercules.CNix.Store (StorePath (StorePath))
 import Hercules.CNix.Store.Context qualified
 import Language.C.Inline.Cpp qualified as C
 import Language.C.Inline.Cpp.Exception qualified as C

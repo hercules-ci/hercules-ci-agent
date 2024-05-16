@@ -68,3 +68,4 @@ context =
 
 unsafeMallocBS :: (MonadIO m) => IO Foreign.C.String.CString -> m ByteString
 unsafeMallocBS m = liftIO (unsafePackMallocCString =<< m)
+{-# DEPRECATED unsafeMallocBS "Use unsafePackMallocCString" #-}
