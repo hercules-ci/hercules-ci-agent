@@ -8,6 +8,8 @@ packages:
   ./hercules-ci-cnix-expr
   ./hercules-ci-cnix-store
   ./tests/agent-test
+  ./dev/vendor/cachix/cachix
+  ./dev/vendor/cachix/cachix-api
 
 source-repository-package
     type: git
