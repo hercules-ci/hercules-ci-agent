@@ -5,6 +5,10 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.3.6.3 - 2024-05-19
+
+Solve build warnings.
+
 ## 0.3.6.2 - 2024-05-03
 
 ### Fixed
