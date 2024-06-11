@@ -2,6 +2,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedLabels #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Hercules.Agent.NixFile
@@ -32,6 +33,7 @@ module Hercules.Agent.NixFile
 where
 
 import Control.Monad.Trans.Maybe (MaybeT (MaybeT), runMaybeT)
+import Data.FileEmbed (embedFileRelative)
 import Data.Map qualified as M
 import Data.Type.Equality (type (~))
 import Hercules.API.Agent.Evaluate.EvaluateEvent.InputDeclaration (InputDeclaration (SiblingInput), SiblingInput (MkSiblingInput))
@@ -46,7 +48,6 @@ import Hercules.CNix.Expr
     Match (IsAttrs),
     NixAttrs,
     Value (Value, rtValue),
-    addAllowedPath,
     assertType,
     autoCallFunction,
     evalFile,
@@ -62,7 +63,6 @@ import Hercules.CNix.Expr.Raw (RawValue)
 import Hercules.CNix.Expr.Schema (Attrs, Dictionary, MonadEval, PSObject (PSObject), Provenance (Other), StringWithoutContext, basicAttrsWithProvenance, dictionaryToMap, fromPSObject, toPSObject, (#.), (#?), ($?), (.$), (>>$.), type (->.), type (->?), type (.), type (::.), type (::?), type (::??), type (?), type (|.))
 import Hercules.CNix.Expr.Schema qualified as Schema
 import Hercules.Error (escalateAs)
-import Paths_hercules_ci_agent (getDataFileName)
 import Protolude hiding (evalState)
 import System.Directory qualified as Dir
 import System.FilePath (takeDirectory, takeFileName, (</>))
@@ -324,10 +324,11 @@ attrByPath evalState v (a : as) = do
         & fmap join
     _ -> pure Nothing
 
+defaultHerculesCIAttrFileContents :: ByteString
+defaultHerculesCIAttrFileContents = $(embedFileRelative "data/default-herculesCI-for-flake.nix")
+
 loadDefaultHerculesCI :: (MonadEval m) => m (PSObject DefaultHerculesCIHelperSchema)
 loadDefaultHerculesCI = do
-  fname <- liftIO $ getDataFileName "data/default-herculesCI-for-flake.nix"
   evalState <- ask
-  liftIO $ addAllowedPath evalState . encodeUtf8 . toS $ fname
-  v <- liftIO $ evalFile evalState fname
+  v <- liftIO $ valueFromExpressionString evalState defaultHerculesCIAttrFileContents "/"
   pure (PSObject {value = v, provenance = Other "<default herculesCI helper shim>"})
