@@ -393,6 +393,9 @@
                           configureFlags = o.configureFlags or [ ] ++ [
                             "--bindir=${pkgs.emptyDirectory}/hercules-ci-built-without-binaries/no-bin"
                           ];
+                          # We're undoing justStaticExecutables, to make it a library again,
+                          # so it's ok to have library references, including ghc.
+                          disallowGhcReference = false;
                         }))
                       ])
                     ;

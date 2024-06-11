@@ -17,9 +17,8 @@ extra-source-files:
     cbits/hercules-error.hh
     cbits/hercules-logger.hh
     cbits/nix-2.4/hercules-store.hh
-    testdata/vm-test-run-agent-test.drv
-data-files:
     data/default-herculesCI-for-flake.nix
+    testdata/vm-test-run-agent-test.drv
 
 flag nix-2_15
   description: Build for Nix >=2.15.0
@@ -155,6 +154,7 @@ library
     , directory
     , dlist
     , exceptions
+    , file-embed
     , filepath
     , hercules-ci-api-agent
     , hercules-ci-api-core
