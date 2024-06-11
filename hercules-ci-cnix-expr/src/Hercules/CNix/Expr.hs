@@ -90,7 +90,6 @@ import Hercules.CNix.Store
 import Hercules.CNix.Store.Context
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exception as C
-import Paths_hercules_ci_cnix_expr (getDataFileName)
 import Protolude hiding (evalState)
 import System.Directory (makeAbsolute)
 import Data.Aeson.KeyMap (toMapText)
@@ -327,7 +326,7 @@ addAllowedPath evalState path =
 
 addInternalAllowedPaths :: Ptr EvalState -> IO ()
 addInternalAllowedPaths evalState = do
-  addAllowedPath evalState . encodeUtf8 . toS =<< getDataFileName "vendor/flake-compat"
+  pass
 
 evalFile :: Ptr EvalState -> FilePath -> IO RawValue
 evalFile evalState filename = do

@@ -16,11 +16,6 @@ extra-source-files:
     test/data/sample.json
     test/data/simple-flake/flake.nix
 
-data-dir: data
-data-files:
-  vendor/flake-compat/*.nix
-  vendor/flake-compat/COPYING
-
 source-repository head
   type: git
   location: https://github.com/hercules-ci/hercules-ci-agent
@@ -91,10 +86,6 @@ library
       Hercules.CNix.Expr.Raw
       Hercules.CNix.Expr.Typed
       Hercules.CNix.Expr.Schema
-  other-modules:
-      Paths_hercules_ci_cnix_expr
-  autogen-modules:
-      Paths_hercules_ci_cnix_expr
 
   hs-source-dirs:
       src
