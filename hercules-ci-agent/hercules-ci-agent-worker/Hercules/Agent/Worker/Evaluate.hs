@@ -34,7 +34,7 @@ import Hercules.API.Agent.Evaluate.ImmutableInput qualified as API.ImmutableInpu
 import Hercules.API.DayOfWeek (DayOfWeek (..))
 import Hercules.Agent.NixFile (HerculesCISchema, InputsSchema, OutputsSchema, getHerculesCI, homeExprRawValue, loadNixFile, parseExtraInputs)
 import Hercules.Agent.NixFile qualified as NixFile
-import Hercules.Agent.NixFile.HerculesCIArgs (CISystems (CISystems), HerculesCIMeta (HerculesCIMeta), fromGitSource)
+import Hercules.Agent.NixFile.HerculesCIArgs (BinaryCaches (BinaryCaches), CISystems (CISystems), HerculesCIMeta (HerculesCIMeta), fromGitSource)
 import Hercules.Agent.NixFile.HerculesCIArgs qualified
 import Hercules.Agent.Worker.Env (HerculesState (..))
 import Hercules.Agent.Worker.Error (ExceptionText (exceptionTextDerivationPath), exceptionTextMessage, exceptionTextTrace, renderException, throwBuildError)
@@ -292,7 +292,7 @@ runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eva
       do
         homeExpr <- getHomeExpr evalState eval
         let hargs = fromGitSource (coerce $ Eval.gitSource eval) meta
-            meta = HerculesCIMeta {apiBaseUrl = Eval.apiBaseUrl eval, ciSystems = CISystems (Eval.ciSystems eval)}
+            meta = HerculesCIMeta {apiBaseUrl = Eval.apiBaseUrl eval, ciSystems = CISystems (Eval.ciSystems eval), pushToBinaryCaches = BinaryCaches (Eval.pushToBinaryCaches eval)}
         liftIO (flip runReaderT evalState $ getHerculesCI homeExpr hargs) >>= \case
           Nothing ->
             -- legacy
