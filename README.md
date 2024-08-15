@@ -1,5 +1,7 @@
 # Hercules CI Agent
 
+[![Hercules CI](https://hercules-ci.com/api/v1/site/github/account/hercules-ci/project/hercules-ci-agent/badge)](https://hercules-ci.com/github/hercules-ci/hercules-ci-agent/status)
+
 Hercules CI Agent runs on your infrastructure and executes tasks (evaluation, builds, etc)
 for your [Hercules CI](https://hercules-ci.com/) account.
 
