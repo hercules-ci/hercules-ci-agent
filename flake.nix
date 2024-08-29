@@ -2,7 +2,7 @@
   description = "Hercules CI Agent";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-  inputs.flake-parts.url = "github:hercules-ci/flake-parts";
+  inputs.flake-parts.url = "github:hercules-ci/flake-parts/partition";
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
   inputs.haskell-flake.url = "github:srid/haskell-flake/0.3.0";
 
@@ -84,17 +84,17 @@
     flake-parts.lib.mkFlake { inherit inputs; } (flakeArgs@{ config, lib, inputs, ... }: {
       imports = [
         inputs.flake-parts.flakeModules.easyOverlay
+        inputs.flake-parts.flakeModules.partitions
         inputs.haskell-flake.flakeModule
         ./nix/variants.nix
-        ./nix/flake-private-dev-inputs.nix
         ./docs/flake-docs-render.nix
       ];
       config = {
-        privateDevInputSubflakePath = "dev/private";
         partitionedAttrs.checks = "dev";
         partitionedAttrs.devShells = "dev";
         partitionedAttrs.herculesCI = "dev";
-        partitions.dev.settings = { inputs, ... }: {
+        partitions.dev.extraInputsFlake = ./dev/private;
+        partitions.dev.module = { inputs, ... }: {
           imports = [
             ./nix/development.nix
             ./nix/flake-update-pre-commit.nix
