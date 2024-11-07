@@ -336,7 +336,7 @@ addAllowedPath evalState path =
   }|]
 
 addInternalAllowedPaths :: Ptr EvalState -> IO ()
-addInternalAllowedPaths evalState = do
+addInternalAllowedPaths _evalState = do
   pass
 
 evalFile :: Ptr EvalState -> FilePath -> IO RawValue
