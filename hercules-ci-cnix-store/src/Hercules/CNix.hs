@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -58,6 +59,12 @@ C.include "<gc/gc.h>"
 C.include "<gc/gc_cpp.h>"
 
 C.include "<gc/gc_allocator.h>"
+
+#if NIX_IS_AT_LEAST(2, 24, 0)
+
+C.include "<config-global.hh>"
+
+#endif
 
 C.include "hercules-ci-cnix/string.hxx"
 

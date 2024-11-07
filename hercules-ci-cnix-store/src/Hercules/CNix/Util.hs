@@ -43,9 +43,15 @@ setInterruptThrown =
 
 triggerInterrupt :: IO ()
 triggerInterrupt =
+#if NIX_IS_AT_LEAST(2,24,0)
+  [C.throwBlock| void {
+    nix::unix::triggerInterrupt();
+  } |]
+#else
   [C.throwBlock| void {
     nix::triggerInterrupt();
   } |]
+#endif
 
 installDefaultSigINTHandler :: IO ()
 installDefaultSigINTHandler = do

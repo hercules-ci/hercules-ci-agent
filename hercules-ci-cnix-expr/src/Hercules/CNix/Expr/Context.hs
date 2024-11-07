@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskellQuotes #-}
@@ -9,6 +10,9 @@ module Hercules.CNix.Expr.Context
     Value',
     Attr',
     BindingsBuilder',
+#if NIX_IS_AT_LEAST(2,24,0)
+    ListBuilder',
+#endif
     module Hercules.CNix.Store.Context,
     (=:),
   )
@@ -28,6 +32,10 @@ data Value'
 data Attr'
 
 data BindingsBuilder'
+
+#if NIX_IS_AT_LEAST(2,24,0)
+data ListBuilder'
+#endif
 
 context :: C.Context
 context =
@@ -51,4 +59,8 @@ evalContext =
           =: [t|Attr'|]
           <> C.TypeName "BindingsBuilder"
           =: [t|BindingsBuilder'|]
+#if NIX_IS_AT_LEAST(2,24,0)
+          <> C.TypeName "ListBuilder"
+          =: [t|ListBuilder'|]
+#endif
     }

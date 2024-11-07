@@ -131,6 +131,12 @@ C.include "<nix/flake/flakeref.hh>"
 C.include "<nix/args/root.hh>"
 #endif
 
+#if NIX_IS_AT_LEAST(2,24,0)
+C.include "<nix/config-global.hh>"
+C.include "<nix/eval-gc.hh>"
+C.include "<nix/common-eval-args.hh>"
+#endif
+
 C.include "hercules-ci-cnix/expr.hxx"
 
 C.include "hercules-ci-cnix/string.hxx"
@@ -280,7 +286,12 @@ logInfo t = do
 -- | (private) Make an EvalState and leak it.
 newEvalState :: MonadIO m => Store -> m (Ptr EvalState)
 newEvalState (Store store) = liftIO
-#if NIX_IS_AT_LEAST(2,17,0)
+#if NIX_IS_AT_LEAST(2,24,0)
+  [C.throwBlock| EvalState* {
+    nix::LookupPath emptyLookupPath;
+    return new EvalState(emptyLookupPath, *$(refStore* store), fetchSettings, evalSettings);
+  } |]
+#elif NIX_IS_AT_LEAST(2,17,0)
   [C.throwBlock| EvalState* {
     nix::SearchPath searchPaths;
     return new EvalState(searchPaths, *$(refStore* store));
@@ -390,7 +401,11 @@ autoCallFunction evalState (RawValue fun) (Value (RawValue autoArgs)) =
     =<< [C.throwBlock| Value* {
           Value result;
           $(EvalState *evalState)->autoCallFunction(
+#if NIX_IS_AT_LEAST(2,24,0)
+                  const_cast<Bindings &>(*$(Value *autoArgs)->attrs()),
+#else
                   *$(Value *autoArgs)->attrs,
+#endif
                   *$(Value *fun),
                   result);
           return new (NoGC) Value (result);
@@ -419,8 +434,14 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
     <$> [C.throwBlock| int {
           Value *v = $(Value *v);
           EvalState &evalState = *$(EvalState *evalState);
-          Bindings::iterator iter = v->attrs->find(evalState.sRecurseForDerivations);
-          if (iter == v->attrs->end()) {
+#if NIX_IS_AT_LEAST(2,24,0)
+          auto attrs = v->attrs();
+#else
+          auto attrs = v->attrs;
+#endif
+          // Bindings::const_iterator iter; // 2.24
+          auto iter = attrs->find(evalState.sRecurseForDerivations);
+          if (iter == attrs->end()) {
             return 0;
           } else {
             // Previously this bool was unpacked manually and included a special
@@ -444,8 +465,14 @@ getAttr evalState (Value (RawValue v)) k =
       Value &v = *$(Value *v);
       EvalState &evalState = *$(EvalState *evalState);
       Symbol k = evalState.symbols.create($bs-cstr:k);
-      Bindings::iterator iter = v.attrs->find(k);
-      if (iter == v.attrs->end()) {
+#if NIX_IS_AT_LEAST(2,24,0)
+      auto attrs = v.attrs();
+#else
+      auto attrs = v.attrs;
+#endif
+      // Bindings::const_iterator iter; // 2.24
+      auto iter = attrs->find(k);
+      if (iter == attrs->end()) {
         return nullptr;
       } else {
         return iter->value;
@@ -459,8 +486,13 @@ mkNullableRawValue p = Just <$> mkRawValue p
 
 getAttrs :: Ptr EvalState -> Value NixAttrs -> IO (Map ByteString RawValue)
 getAttrs evalState (Value (RawValue v)) = do
+#if NIX_IS_AT_LEAST(2,24,0)
+  begin <- [C.exp| const Attr *{ $(Value *v)->attrs()->begin() }|]
+  end <- [C.exp| const Attr *{ $(Value *v)->attrs()->end() }|]
+#else
   begin <- [C.exp| Attr *{ $(Value *v)->attrs->begin() }|]
   end <- [C.exp| Attr *{ $(Value *v)->attrs->end() }|]
+#endif
   let gather :: Map ByteString RawValue -> Ptr Attr' -> IO (Map ByteString RawValue)
       gather acc i | i == end = pure acc
       gather acc i = do
@@ -486,7 +518,11 @@ getDrvFile evalState (RawValue v) = liftIO do
       EvalState &state = *$(EvalState *evalState);
       auto drvInfo = getDerivation(state, *$(Value *v), false);
       if (!drvInfo)
+#if NIX_IS_AT_LEAST(2,24,0)
+        throw EvalError(state, "Not a valid derivation");
+#else
         throw EvalError("Not a valid derivation");
+#endif
 
 #if NIX_IS_AT_LEAST(2,7,0)
       StorePath storePath = drvInfo->requireDrvPath();
@@ -607,9 +643,20 @@ getFlakeFromFlakeRef evalState flakeRef = do
     EvalState &evalState = *$(EvalState *evalState);
     Value *r = new (NoGC) Value();
     std::string flakeRefStr($bs-ptr:flakeRef, $bs-len:flakeRef);
-    auto flakeRef = nix::parseFlakeRef(flakeRefStr, {}, true);
+    auto flakeRef = nix::parseFlakeRef(
+#if NIX_IS_AT_LEAST(2,24,0)
+      fetchSettings,
+#endif
+      flakeRefStr,
+      {},
+      true);
     nix::flake::callFlake(evalState,
-      nix::flake::lockFlake(evalState, flakeRef,
+      nix::flake::lockFlake(
+#if NIX_IS_AT_LEAST(2,24,0)
+        flakeSettings,
+#endif
+        evalState,
+        flakeRef,
         nix::flake::LockFlags {
           .updateLockFile = false,
           .useRegistries = false,
@@ -632,9 +679,20 @@ getLocalFlake evalState path = do
     EvalState &evalState = *$(EvalState *evalState);
     Value *r = new (NoGC) Value();
     std::string path($bs-ptr:absPath, $bs-len:absPath);
-    auto flakeRef = nix::parseFlakeRef(path, {}, true);
+    auto flakeRef = nix::parseFlakeRef(
+#if NIX_IS_AT_LEAST(2,24,0)
+      fetchSettings,
+#endif
+      path,
+      {},
+      true);
     nix::flake::callFlake(evalState,
-      nix::flake::lockFlake(evalState, flakeRef,
+      nix::flake::lockFlake(
+#if NIX_IS_AT_LEAST(2,24,0)
+        flakeSettings,
+#endif
+        evalState,
+        flakeRef,
         nix::flake::LockFlags {
           .updateLockFile = false,
           .useRegistries = false,
@@ -667,9 +725,18 @@ getFlakeFromGit evalState url ref rev =
     attrs.emplace("ref", ref);
     attrs.emplace("rev", rev);
 
-    auto flakeRef = nix::FlakeRef::fromAttrs(attrs);
+    auto flakeRef = nix::FlakeRef::fromAttrs(
+#if NIX_IS_AT_LEAST(2,24,0)
+      fetchSettings,
+#endif
+      attrs);
     nix::flake::callFlake(evalState,
-      nix::flake::lockFlake(evalState, flakeRef,
+      nix::flake::lockFlake(
+#if NIX_IS_AT_LEAST(2,24,0)
+        flakeSettings,
+#endif
+        evalState,
+        flakeRef,
         nix::flake::LockFlags {
           .updateLockFile = false,
           .useRegistries = false,
@@ -969,6 +1036,30 @@ instance ToRawValue a => ToRawValue (Vector a)
 instance ToRawValue a => ToValue (Vector a) where
   type NixTypeFor (Vector a) = NixList
   toValue evalState vec =
+#if NIX_IS_AT_LEAST(2,24,0)
+    coerce <$> do
+      let l :: C.CInt
+          l = fromIntegral (length vec)
+      b <-
+        [C.block| ListBuilder* {
+          EvalState &evalState = *$(EvalState *evalState);
+          return new (NoGC) ListBuilder(evalState, $(int l));
+        }|]
+      vec & V.imapM_ \i a -> do
+        RawValue aRaw <- toRawValue evalState a
+        let ix = fromIntegral i
+        [C.block| void {
+          ListBuilder &b = *$(ListBuilder *b);
+          b[$(int ix)] = $(Value *aRaw);
+        }|]
+      v <-
+        [C.block| Value* {
+          Value * v = new (NoGC) Value();
+          v->mkList(*$(ListBuilder *b));
+          return v;
+        }|]
+      Value <$> mkRawValue v
+#else
     coerce <$> do
       let l :: C.CInt
           l = fromIntegral (length vec)
@@ -987,6 +1078,7 @@ instance ToRawValue a => ToValue (Vector a) where
           v.listElems()[$(int ix)] = $(Value *aRaw);
         }|]
       Value <$> mkRawValue v
+#endif
 
 instance ToRawValue a => ToRawValue [a]
 

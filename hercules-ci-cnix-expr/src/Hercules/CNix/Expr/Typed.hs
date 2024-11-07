@@ -1,6 +1,7 @@
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP #-}
 
 module Hercules.CNix.Expr.Typed
   ( Value (..),
@@ -151,12 +152,20 @@ match' es v = match es v >>= \case Left e -> throwIO e; Right a -> pure a
 
 getBool :: Value Bool -> IO Bool
 getBool (Value (RawValue v)) =
-  (0 /=)
-    <$> [C.exp| int { $(Value *v)->boolean ? 1 : 0 }|]
+  (0 /=) <$>
+#if NIX_IS_AT_LEAST(2,24,0)
+    [C.exp| int { $(Value *v)->boolean() ? 1 : 0 }|]
+#else
+    [C.exp| int { $(Value *v)->boolean ? 1 : 0 }|]
+#endif
 
 getInt :: Value NixInt -> IO Int64
 getInt (Value (RawValue v)) =
+#if NIX_IS_AT_LEAST(2,24,0)
+  [C.exp| int64_t { $(Value *v)->integer() }|]
+#else
   [C.exp| int64_t { $(Value *v)->integer }|]
+#endif
 
 -- NOT coerceToString
 getStringIgnoreContext :: Value NixString -> IO ByteString
@@ -172,8 +181,12 @@ getStringIgnoreContext (Value (RawValue v)) =
 
 hasContext :: Value NixString -> IO Bool
 hasContext (Value (RawValue v)) =
-  (0 /=)
-    <$> [C.exp| int { $(Value *v)->string.context ? 1 : 0 }|]
+  (0 /=) <$>
+#if NIX_IS_AT_LEAST(2,24,0)
+    [C.exp| int { $(Value *v)->context() ? 1 : 0 }|]
+#else
+    [C.exp| int { $(Value *v)->string.context ? 1 : 0 }|]
+#endif
 
 class CheckType a where
   checkType :: Ptr EvalState -> RawValue -> IO (Maybe (Value a))
