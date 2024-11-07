@@ -348,7 +348,9 @@
                       super.inline-c-cpp;
 
                     servant-auth-server =
-                      if super.servant-auth-server.version == "0.4.8.0" && super.servant-auth-server.meta.broken or true
+                      if (super.servant-auth-server.version == "0.4.8.0"
+                        || super.servant-auth-server.version == "0.4.9.0")
+                      && super.servant-auth-server.meta.broken or true
                       then
                       # It's probably fine. We only use it in a test.
                         h.dontCheck (h.unmarkBroken super.servant-auth-server)
