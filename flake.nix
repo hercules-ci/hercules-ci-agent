@@ -294,6 +294,8 @@
                   devShell.extraLibraries = hp: {
                     inherit (hp) releaser
                       ascii-progress
+                      hnix-store-core
+                      hnix-store-nar
 
                       # enable only when working on expr and up
                       # hercules-ci-cnix-store
