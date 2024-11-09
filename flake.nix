@@ -347,6 +347,9 @@
                         super.inline-c-cpp.patches;
                       super.inline-c-cpp;
 
+                    hie-bios =
+                      h.appendPatch ./dev/hie-bios-fml.diff super.hie-bios;
+
                     servant-auth-server =
                       if (super.servant-auth-server.version == "0.4.8.0"
                         || super.servant-auth-server.version == "0.4.9.0")

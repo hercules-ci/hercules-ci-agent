@@ -48,14 +48,25 @@ for dir in "${hsdirs[@]}"; do
 
 done
 
+# TODO nix-fetchers missing??
+for f in $(pkg-config --cflags-only-I nix-store nix-expr nix-cmd nix-util nix-flake); do
+  # shellcheck disable=SC2001
+  # replace /include/nix with /include (wacky)
+  flags="$flags$n$(echo "$f" | sed 's^/include/nix^/include^')"
+  flags="$flags$n$f"
+done
+
 # remove first newline
 flags="${flags:1}"
 
 cat > "$HIE_BIOS_OUTPUT" <<EOF
 ${flags}
+-I$PWD/../inline-c/inline-c-cpp/include
+-I$PWD/hercules-ci-cnix-expr/include
+-I$PWD/hercules-ci-cnix-store/include
 -lstdc++
--optcxx-std=c++17
--optcxx-std=c++17
+-optcxx-std=c++2a
+-optcxx-std=c++2a
 -optcxx-Wall
 -optcxx-Wall
 -Wall
