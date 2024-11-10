@@ -135,6 +135,9 @@ in
     ''
       start_all()
 
+      api.wait_for_unit("multi-user.target")
+      agent.wait_for_unit("multi-user.target")
+
       agent.succeed("""
           mkdir -p /var/lib/hercules-ci-agent/secrets
           echo '{}' > /var/lib/hercules-ci-agent/secrets/secrets.json
