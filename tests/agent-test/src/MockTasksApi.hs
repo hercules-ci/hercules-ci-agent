@@ -87,7 +87,8 @@ import Hercules.API.Logs.LogMessage (LogMessage (End, LogEntries))
 import Hercules.API.Task (Task)
 import Hercules.API.Task qualified as Task
 import Hercules.API.TaskStatus qualified as TaskStatus
-import Network.Wai.Handler.Warp (run)
+import Network.Wai.Handler.Warp (runSettings)
+import Network.Wai.Handler.Warp qualified as W
 import Network.WebSockets (acceptRequest, requestHeaders)
 import Network.WebSockets qualified as WS
 import Network.WebSockets.Connection qualified
@@ -401,7 +402,8 @@ withServer doIt = do
               forever do
                 threadDelay (60 * 1000 * 1000)
                 printState st
-            run port (app st)
+            let settings = W.defaultSettings & W.setPort port & W.setHost "*6"
+            runSettings settings (app st)
   withAsync runServer $ \a -> do
     doIt $ ServerHandle st
     cancel a
