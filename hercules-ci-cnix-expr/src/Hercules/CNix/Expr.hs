@@ -171,6 +171,9 @@ init =
 #endif
       nix::settings.experimentalFeatures.assign(features);
 #endif
+#if NIX_IS_AT_LEAST(2,24,0)
+      nix::flake::initLib(flakeSettings);
+#endif
     } |]
 
 -- | Initialize the current (main) thread for stack overflow detection.
