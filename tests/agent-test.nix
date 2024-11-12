@@ -153,6 +153,13 @@ in
           losetup /dev/loop9 /root/loop9-backing-file
           echo "initial data of the loopback block device" > /dev/loop9
           chown hercules-ci-agent /dev/loop9
+
+          # Wait for hercules-ci-agent to fail.
+          # This way we know that the agent will come up with a fresh and complete cgroup.
+          # This depends on journald being caught up, so we first give it some time to process outdated logs (if any).
+          sleep 1
+          (journalctl -u hercules-ci-agent.service --follow -n 0 --no-pager JOB_RESULT=failed SYSLOG_IDENTIFIER=systemd || :) | read -n 1
+
       """)
 
       # Run the test code + api
