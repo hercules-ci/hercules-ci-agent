@@ -5,6 +5,12 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.3.6.1 - 2024-11-15
+
+### Added
+
+ - Nix 2.24 support
+
 ## 0.3.6.0 - 2024-05-19
 
 ### Added

@@ -5,6 +5,11 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.3.6.5 - 2024-11-15
+
+- Nix 2.24 support
+  This includes the newly separate `nix-flake` library as a dependency of `hercules-ci-cnix-expr`.
+
 ## 0.3.6.4 - 2024-06-12
 
 Got rid of unnecessary data files, improving packaging.
