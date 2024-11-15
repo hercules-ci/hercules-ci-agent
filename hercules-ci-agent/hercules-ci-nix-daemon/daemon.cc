@@ -19,6 +19,11 @@ using namespace nix;
 #include <nix/signals.hh>
 #endif
 
+#if NIX_IS_AT_LEAST(2,24,0)
+#include <nix/config-global.hh>
+using nix::unix::closeOnExec;
+#endif
+
 #if ! NIX_IS_AT_LEAST(2,15,0)
 using nix::daemon::TrustedFlag;
 using nix::daemon::NotTrusted;
@@ -104,8 +109,13 @@ extern "C" int main(int argc, char **argv) {
 #endif
                 daemon::processConnection(
                     store
+#if NIX_IS_AT_LEAST(2,24,0)
+                    , std::move(from)
+                    , std::move(to)
+#else
                     , from
                     , to
+#endif
                     , trusted
                     , recursive
 #if ! NIX_IS_AT_LEAST(2,14,0)
@@ -117,7 +127,11 @@ extern "C" int main(int argc, char **argv) {
             return 0;
         } catch (Error & error) {
             ErrorInfo ei = error.info();
+#if NIX_IS_AT_LEAST(2,24,0)
+            ei.msg = HintFmt("hercules-ci-nix-daemon: error processing connection: %1%", ei.msg.str());
+#else
             ei.msg = hintfmt("hercules-ci-nix-daemon: error processing connection: %1%", ei.msg.str());
+#endif
             logError(ei);
         }
     }

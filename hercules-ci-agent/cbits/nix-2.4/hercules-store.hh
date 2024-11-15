@@ -64,7 +64,27 @@ public:
   virtual void addToStore(const ValidPathInfo & info, Source & narSource,
       RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs) override;
 
-#if NIX_IS_AT_LEAST(2,20,0)
+#if NIX_IS_AT_LEAST(2,24,0)
+
+    virtual StorePath addToStore(
+        std::string_view name,
+        const SourcePath & path,
+        ContentAddressMethod method,
+        HashAlgorithm hashAlgo,
+        const StorePathSet & references,
+        PathFilter & filter,
+        RepairFlag repair) override;
+
+    virtual StorePath addToStoreFromDump(
+        Source & dump,
+        std::string_view name,
+        FileSerialisationMethod dumpMethod,
+        ContentAddressMethod hashMethod,
+        HashAlgorithm hashAlgo,
+        const StorePathSet & references,
+        RepairFlag repair) override;
+
+#elif NIX_IS_AT_LEAST(2,20,0)
 
     virtual StorePath addToStore(
         std::string_view name,

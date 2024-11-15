@@ -33,6 +33,10 @@ flag nix-2_15
   description: Build for Nix >=2.5pre*
   default: False
 
+flag nix-2_24
+  description: Build for Nix >=2.24
+  default: False
+
 flag ide
   description: Whether to enable IDE workarounds. You shouldn't need this.
   default: False
@@ -125,6 +129,9 @@ library
     pkgconfig-depends:
       -- MixEvalArgs has moved here
       nix-cmd >= 2.8
+  if flag(nix-2_24)
+    pkgconfig-depends:
+      nix-flake
 
 
 test-suite hercules-ci-cnix-expr-unit-tests

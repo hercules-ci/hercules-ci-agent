@@ -68,8 +68,8 @@ validate fname bcs = do
   when (null (cachixCaches bcs) && null (nixCaches bcs)) $
     logLocM
       WarningS
-      "You did not configure any caches. This is ok for evaluation purposes,\
-      \ but a cache is required for multi-agent operation and\
+      "You did not configure any caches. This is ok for trying out Hercules CI,\
+      \ but a cache _is_ required for multi-agent operation and\
       \ to work well across garbage collection.\
       \ For more information about binary-caches.json, see\
       \ https://docs.hercules-ci.com/hercules-ci/reference/binary-caches-json/"

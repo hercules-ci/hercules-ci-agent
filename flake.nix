@@ -236,11 +236,23 @@
                         "The `nix` flake does not define a package for system ${pkgs.stdenv.hostPlatform.system}. Using nixpkgs' `nix` instead."
                         pkgs.nix
                     )
+                  else if pkgs.nix.version == "2.24.10"
+                  then
+                    pkgs.nix.overrideAttrs
+                      (o: {
+                        # We need to use the nix package from the flake, because the test runner
+                        # will use the nix package from the flake.
+                        patches = o.patches or [ ] ++ [
+                          # https://github.com/NixOS/nix/pull/11821
+                          (pkgs.fetchpatch2 {
+                            name = "nix-git-cache-fix-empty-dir.patch";
+                            url = "https://github.com/NixOS/nix/commit/388271e8ec6f5057bc8d39865fcc280e044b2844.diff";
+                            hash = "sha256-9RomRFX4Kt7qv9ERJhcISdW1QHs24uuTcwuxHt0hTd8=";
+                          })
+                        ];
+                      })
                   else
-                  # blocked on restrict-eval issue
-                    if lib.versionAtLeast "2.19" pkgs.nix.version
-                    then pkgs.nixVersions.nix_2_18
-                    else pkgs.nix;
+                    pkgs.nix;
               };
 
             h = pkgs.haskell.lib.compose;
@@ -282,6 +294,8 @@
                   devShell.extraLibraries = hp: {
                     inherit (hp) releaser
                       ascii-progress
+                      hnix-store-core
+                      hnix-store-nar
 
                       # enable only when working on expr and up
                       # hercules-ci-cnix-store
@@ -347,8 +361,13 @@
                         super.inline-c-cpp.patches;
                       super.inline-c-cpp;
 
+                    hie-bios =
+                      h.appendPatch ./dev/hie-bios-fml.diff super.hie-bios;
+
                     servant-auth-server =
-                      if super.servant-auth-server.version == "0.4.8.0" && super.servant-auth-server.meta.broken or true
+                      if (super.servant-auth-server.version == "0.4.8.0"
+                        || super.servant-auth-server.version == "0.4.9.0")
+                      && super.servant-auth-server.meta.broken or true
                       then
                       # It's probably fine. We only use it in a test.
                         h.dontCheck (h.unmarkBroken super.servant-auth-server)

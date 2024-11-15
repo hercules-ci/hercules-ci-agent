@@ -6,6 +6,7 @@ let
     imports = [
       flake.darwinModules.agent-profile
     ];
+    system.stateVersion = 5;
     services.hercules-ci-agent.enable = true;
     services.hercules-ci-agent.settings.labels.testNull = null;
 

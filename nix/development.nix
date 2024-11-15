@@ -18,6 +18,9 @@ toplevel@{ withSystem, ... }:
           "Hercules/CNix/Expr.hs" # parse error in quasiquotation
           "Hercules/CNix/Store.hs" # parse error in quasiquotation + CPP
           "Hercules/CLI/State.hs"
+          "Hercules/CNix/Expr/Context.hs"
+          "Hercules/CNix/Expr/Typed.hs"
+          "Hercules/CNix/Util.hs"
         ];
         shellcheck.enable = true;
         nixpkgs-fmt.enable = true;

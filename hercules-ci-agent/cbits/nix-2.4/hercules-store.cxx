@@ -84,7 +84,33 @@ void WrappingStore::addToStore(const ValidPathInfo & info, Source & narSource,
   wrappedStore->addToStore(info, narSource, repair, checkSigs);
 }
 
-#if NIX_IS_AT_LEAST(2,20,0)
+#if NIX_IS_AT_LEAST(2,24,0)
+
+StorePath WrappingStore::addToStore(
+    std::string_view name,
+    const SourcePath & path,
+    ContentAddressMethod method,
+    HashAlgorithm hashAlgo,
+    const StorePathSet & references,
+    PathFilter & filter,
+    RepairFlag repair)
+{
+    return wrappedStore->addToStore(name, path, method, hashAlgo, references, filter, repair);
+}
+
+StorePath WrappingStore::addToStoreFromDump(
+    Source & dump,
+    std::string_view name,
+    FileSerialisationMethod dumpMethod,
+    ContentAddressMethod method,
+    HashAlgorithm hashAlgo,
+    const StorePathSet & references,
+    RepairFlag repair)
+{
+    return wrappedStore->addToStoreFromDump(dump, name, dumpMethod, method, hashAlgo, references, repair);
+}
+
+#elif NIX_IS_AT_LEAST(2,20,0)
 
 StorePath WrappingStore::addToStore(
     std::string_view name,

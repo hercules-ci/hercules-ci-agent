@@ -1,0 +1,12 @@
+diff --git a/src/HIE/Bios/Ghc/Logger.hs b/src/HIE/Bios/Ghc/Logger.hs
+index c3ae0ed..9ce01f6 100644
+--- a/src/HIE/Bios/Ghc/Logger.hs
++++ b/src/HIE/Bios/Ghc/Logger.hs
+@@ -56,6 +56,7 @@ appendLogRef df style (LogRef ref) _
+   src msg = do
+         let !l = ppMsg src sev df style msg
+         modifyIORef ref (\b -> b . (l:))
++appendLogRef _df _style _ref _ignore _diag _src _msg = pure ()
+ 
+ ----------------------------------------------------------------
+ 

@@ -95,8 +95,8 @@ library
   include-dirs:
       include
   pkgconfig-depends:
-      nix-store (>= 2.4 && < 2.19) || (>= 2.19.3 && < 2.21)
-    , nix-main >= 2.4 && < 2.19 || (>= 2.19.3 && < 2.21)
+      nix-store (>= 2.4 && < 2.19) || (>= 2.19.3 && < 2.21) || (>= 2.24.10 && < 2.25)
+    , nix-main >= 2.4 && < 2.19 || (>= 2.19.3 && < 2.21) || (>= 2.24.10 && < 2.25)
   install-includes:
       hercules-ci-cnix/store.hxx
       hercules-ci-cnix/string.hxx

@@ -590,6 +590,179 @@ data HashType = MD5 | SHA1 | SHA256 | SHA512
   deriving (Eq, Show)
 
 getDerivationOutputs :: Store -> ByteString -> Derivation -> IO [DerivationOutput]
+#if NIX_IS_AT_LEAST(2, 24, 0)
+getDerivationOutputs (Store store) drvName (Derivation derivationFPtr) =
+  withForeignPtr derivationFPtr \derivation ->
+  withDelete
+    [C.exp| DerivationOutputsIterator* {
+      new DerivationOutputsIterator($(Derivation *derivation)->outputs.begin())
+    }|] \i ->
+    fix $ \continue -> do
+      isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationOutputsIterator *i) == $(Derivation *derivation)->outputs.end() }|]
+      if isEnd
+        then pure []
+        else
+          ( mask_ do
+              alloca \nameP -> alloca \pathP -> alloca \typP -> alloca \fimP ->
+                alloca \hashTypeP -> alloca \hashValueP -> alloca \hashSizeP -> do
+                  [C.throwBlock| void {
+                    Store &store = **$(refStore *store);
+                    std::string drvName = std::string($bs-ptr:drvName, $bs-len:drvName);
+                    nix::DerivationOutputs::iterator &i = *$(DerivationOutputsIterator *i);
+                    const char *&name = *$(const char **nameP);
+                    int &typ = *$(int *typP);
+                    StorePath *& path = *$(nix::StorePath **pathP);
+                    int &fim = *$(int *fimP);
+                    int &hashType = *$(int *hashTypeP);
+                    char *&hashValue = *$(char **hashValueP);
+                    int &hashSize = *$(int *hashSizeP);
+
+                    std::string nameString = i->first;
+                    name = stringdup(nameString);
+                    path = nullptr;
+                    std::visit(overloaded {
+                      [&](DerivationOutput::InputAddressed doi) -> void {
+                        typ = 0;
+                        path = new StorePath(doi.path);
+                      },
+                      [&](DerivationOutput::CAFixed dof) -> void {
+                        typ = 1;
+                        path = new StorePath(dof.path(store, $(Derivation *derivation)->name, nameString));
+                        switch (dof.ca.method.raw) {
+                          case ContentAddressMethod::Raw::Text:
+                            // FIXME (RFC 92)
+                            fim = -1;
+                            break;
+                          case ContentAddressMethod::Raw::Flat:
+                            fim = 0;
+                            break;
+                          case ContentAddressMethod::Raw::NixArchive:
+                            fim = 1;
+                            break;
+                          case ContentAddressMethod::Raw::Git:
+                            // FIXME (git-hashing)
+                            fim = -1;
+                            break;
+                          default:
+                            fim = -1;
+                            break;
+                        }
+
+                        const Hash & hash = dof.ca.hash;
+
+                        switch (hash.algo) {
+                          case HashAlgorithm::MD5:
+                            hashType = 0;
+                            break;
+                          case HashAlgorithm::SHA1:
+                            hashType = 1;
+                            break;
+                          case HashAlgorithm::SHA256:
+                            hashType = 2;
+                            break;
+                          case HashAlgorithm::SHA512:
+                            hashType = 3;
+                            break;
+                          default:
+                            hashType = -1;
+                            break;
+                        }
+                        hashSize = hash.hashSize;
+                        hashValue = (char*)malloc(hashSize);
+                        std::memcpy((void*)(hashValue),
+                                    (void*)(hash.hash),
+                                    hashSize);
+                      },
+                      [&](DerivationOutput::CAFloating dof) -> void {
+                        typ = 2;
+                        switch(dof.method.raw) {
+                          case ContentAddressMethod::Raw::Text:
+                            // FIXME (RFC 92)
+                            fim = -1;
+                            break;
+                          case ContentAddressMethod::Raw::Flat:
+                            fim = 0;
+                            break;
+                          case ContentAddressMethod::Raw::NixArchive:
+                            fim = 1;
+                            break;
+                          case ContentAddressMethod::Raw::Git:
+                            // FIXME (git-hashing)
+                            fim = -1;
+                            break;
+                          default:
+                            fim = -1;
+                            break;
+                        }
+                        switch (dof.hashAlgo) {
+                          case HashAlgorithm::MD5:
+                            hashType = 0;
+                            break;
+                          case HashAlgorithm::SHA1:
+                            hashType = 1;
+                            break;
+                          case HashAlgorithm::SHA256:
+                            hashType = 2;
+                            break;
+                          case HashAlgorithm::SHA512:
+                            hashType = 3;
+                            break;
+                          default:
+                            hashType = -1;
+                            break;
+                        }
+                      },
+                      [&](DerivationOutput::Deferred) -> void {
+                        typ = 3;
+                      },
+                      [&](DerivationOutput::Impure) -> void {
+                        typ = 4;
+                      },
+                    },
+                    i->second.raw
+                    );
+                    i++;
+                  }|]
+                  name <- unsafePackMallocCString =<< peek nameP
+                  path <- nullableMoveToForeignPtrWrapper =<< peek pathP
+                  typ <- peek typP
+                  let getFileIngestionMethod = peek fimP <&> \case 0 -> Flat; 1 -> Recursive; _ -> panic "getDerivationOutputs: unknown fim"
+                      getHashType =
+                        peek hashTypeP <&> \case
+                          0 -> MD5
+                          1 -> SHA1
+                          2 -> SHA256
+                          3 -> SHA512
+                          _ -> panic "getDerivationOutputs: unknown hashType"
+                  detail <- case typ of
+                    0 -> pure $ DerivationOutputInputAddressed (fromMaybe (panic "getDerivationOutputs: impossible DOIA path missing") path)
+                    1 -> do
+                      hashValue <- peek hashValueP
+                      hashSize <- peek hashSizeP
+                      hashString <- SBS.packCStringLen (hashValue, fromIntegral hashSize)
+                      free hashValue
+                      hashType <- getHashType
+                      fim <- getFileIngestionMethod
+                      pure $ DerivationOutputCAFixed (FixedOutputHash fim (Hash hashType hashString)) (fromMaybe (panic "getDerivationOutputs: impossible DOCF path missing") path)
+                    2 -> do
+                      hashType <- getHashType
+                      fim <- getFileIngestionMethod
+                      pure $ DerivationOutputCAFloating fim hashType
+                    3 -> pure DerivationOutputDeferred
+                    4 -> panic "getDerivationOutputs: impure derivations not supported yet"
+                    _ -> panic "getDerivationOutputs: impossible getDerivationOutputs typ"
+                  pure
+                    ( DerivationOutput
+                        { derivationOutputName = name,
+                          derivationOutputPath = path,
+                          derivationOutputDetail = detail
+                        }
+                        :
+                    )
+          )
+            <*> continue
+#else
+-- < 2.24
 getDerivationOutputs (Store store) drvName (Derivation derivationFPtr) =
   withForeignPtr derivationFPtr \derivation ->
   withDelete
@@ -937,6 +1110,7 @@ getDerivationOutputs (Store store) drvName (Derivation derivationFPtr) =
                     )
           )
             <*> continue
+#endif
 
 instance Delete DerivationOutputsIterator where
   delete a = [C.block| void { delete $(DerivationOutputsIterator *a); }|]
