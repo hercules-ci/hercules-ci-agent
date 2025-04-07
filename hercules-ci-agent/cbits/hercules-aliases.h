@@ -2,9 +2,13 @@
 
 #include "hercules-store.hh"
 #include "hercules-logger.hh"
-#include "derivations.hh"
 #include <hercules-ci-cnix/store.hxx>
 #include <hercules-ci-cnix/expr.hxx>
+#if NIX_IS_AT_LEAST(2,28,0)
+#include <nix/store/derivations.hh>
+#else
+#include "derivations.hh"
+#endif
 
 // inline-c-cpp doesn't seem to handle namespace operator or template
 // syntax so we help it a bit for now. This definition can be inlined

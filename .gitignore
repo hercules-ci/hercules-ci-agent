@@ -35,3 +35,6 @@ stack.yaml.nixed.tmp.lock
 
 # Coverage files spilled by Cabal
 **/setup.tix
+
+# stray object files??
+*.o

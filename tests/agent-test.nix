@@ -164,7 +164,7 @@ in
 
       # Run the test code + api
       api.succeed(
-          """(cd ${testdata} && hercules-ci-agent-test ${runnerArgs} >/dev/console 2>/dev/console)"""
+          """(cd ${testdata} && hercules-ci-agent-test ${runnerArgs} 1>&2)"""
       )
     '';
 }

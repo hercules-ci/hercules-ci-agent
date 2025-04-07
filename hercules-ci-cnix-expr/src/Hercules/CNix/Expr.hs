@@ -34,7 +34,6 @@ module Hercules.CNix.Expr
     evalFile,
     newStrings,
     appendString,
-    evalArgs,
     autoCallFunction,
     isDerivation,
     isFunctor,
@@ -105,36 +104,41 @@ C.include "<cstring>"
 
 C.include "<math.h>"
 
-C.include "<nix/config.h>"
+#if NIX_IS_AT_LEAST(2, 28, 0)
 
-C.include "<nix/shared.hh>"
-
-C.include "<nix/eval.hh>"
-
-C.include "<nix/eval-inline.hh>"
-
-C.include "<nix/store-api.hh>"
-
-C.include "<nix/common-eval-args.hh>"
-
-C.include "<nix/get-drvs.hh>"
-
-C.include "<nix/derivations.hh>"
-
-C.include "<nix/globals.hh>"
-
+C.include "<nix/util/config-global.hh>"
+C.include "<nix/store/store-api.hh>"
+C.include "<nix/store/globals.hh>"
+C.include "<nix/expr/eval.hh>"
+C.include "<nix/expr/eval-inline.hh>"
+C.include "<nix/expr/get-drvs.hh>"
 C.include "<nix/flake/flake.hh>"
-
 C.include "<nix/flake/flakeref.hh>"
+C.include "<nix/flake/settings.hh>"
+C.include "<nix/fetchers/fetch-settings.hh>"
+C.include "<nix/main/shared.hh>"
 
-#if NIX_IS_AT_LEAST(2,19,0)
+#else
+C.include "<nix/config.h>"
+C.include "<nix/shared.hh>"
+C.include "<nix/eval.hh>"
+C.include "<nix/eval-inline.hh>"
+C.include "<nix/store-api.hh>"
+C.include "<nix/get-drvs.hh>"
+C.include "<nix/derivations.hh>"
+C.include "<nix/globals.hh>"
+C.include "<nix/flake/flake.hh>"
+C.include "<nix/flake/flakeref.hh>"
+#  if NIX_IS_AT_LEAST(2,19,0)
 C.include "<nix/args/root.hh>"
-#endif
-
-#if NIX_IS_AT_LEAST(2,24,0)
+#  endif
+#  if NIX_IS_AT_LEAST(2,24,0)
 C.include "<nix/config-global.hh>"
 C.include "<nix/eval-gc.hh>"
-C.include "<nix/common-eval-args.hh>"
+C.include "<nix/flake/settings.hh>"
+C.include "<nix/fetch-settings.hh>"
+C.include "<nix/eval-settings.hh>"
+#  endif
 #endif
 
 C.include "hercules-ci-cnix/expr.hxx"
@@ -153,10 +157,18 @@ C.using "namespace hercules_ci_cnix"
 
 C.verbatim "\nGC_API void GC_CALL GC_throw_bad_alloc() { throw std::bad_alloc(); }\n"
 
+C.verbatim "nix::flake::Settings flakeSettings;"
+C.verbatim "nix::fetchers::Settings fetchSettings;"
+C.verbatim "static bool readOnlyMode = false;"
+C.verbatim "nix::EvalSettings evalSettings(readOnlyMode);"
+
 init :: IO ()
 init =
   void
     [C.throwBlock| void {
+      { auto _ = GlobalConfig::Register(&flakeSettings); }
+      { auto _ = GlobalConfig::Register(&fetchSettings); }
+      { auto _ = GlobalConfig::Register(&evalSettings); }
       nix::initNix();
       nix::initGC();
 #if NIX_IS_AT_LEAST(2,15,0)
@@ -171,7 +183,9 @@ init =
 #endif
       nix::settings.experimentalFeatures.assign(features);
 #endif
-#if NIX_IS_AT_LEAST(2,24,0)
+#if NIX_IS_AT_LEAST(2,28,0)
+      flakeSettings.configureEvalSettings(evalSettings);
+#elif NIX_IS_AT_LEAST(2,24,0)
       nix::flake::initLib(flakeSettings);
 #endif
     } |]
@@ -370,33 +384,6 @@ appendString ss s =
   [C.block| void {
     $(Strings *ss)->push_back(std::string($bs-ptr:s, $bs-len:s));
   }|]
-
-#if NIX_IS_AT_LEAST(2,19,0)
-C.verbatim "struct EvalArgs : nix::RootArgs, nix::MixEvalArgs { };"
-#else
-C.verbatim "struct EvalArgs : nix::MixEvalArgs { };"
-#endif
-
-evalArgs :: Ptr EvalState -> [ByteString] -> IO (Value NixAttrs)
-evalArgs evalState args = do
-  argsStrings <- newStrings
-  forM_ args $ appendString argsStrings
-  fmap unsafeAssertType . mkRawValue
-    =<< [C.throwBlock| Value * {
-      Strings *args = $(Strings *argsStrings);
-      struct EvalArgs evalArgs;
-      Bindings *autoArgs;
-      EvalState &state = *$(EvalState *evalState);
-
-      evalArgs.parseCmdline(*args);
-      autoArgs = evalArgs.getAutoArgs(state);
-      if (!autoArgs) {
-        throw nix::Error("Could not evaluate automatic arguments");
-      }
-      Value *r = new (NoGC) Value ();
-      r->mkAttrs(autoArgs);
-      return r;
-    }|]
 
 autoCallFunction :: Ptr EvalState -> RawValue -> Value NixAttrs -> IO RawValue
 autoCallFunction evalState (RawValue fun) (Value (RawValue autoArgs)) =

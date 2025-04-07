@@ -37,6 +37,10 @@ flag nix-2_24
   description: Build for Nix >=2.24
   default: False
 
+flag nix-2_25
+  description: Build for Nix >=2.25
+  default: False
+
 flag ide
   description: Whether to enable IDE workarounds. You shouldn't need this.
   default: False
@@ -125,10 +129,6 @@ library
       nix-store >= 2.4
     , nix-expr >= 2.4
     , nix-main >= 2.4
-  if flag(nix-2_8)
-    pkgconfig-depends:
-      -- MixEvalArgs has moved here
-      nix-cmd >= 2.8
   if flag(nix-2_24)
     pkgconfig-depends:
       nix-flake
@@ -169,3 +169,7 @@ test-suite hercules-ci-cnix-expr-unit-tests
   build-tool-depends:
       hspec-discover:hspec-discover == 2.*
   default-language: Haskell2010
+
+  -- Missing nix-fetchers.pc upstream in Nix 2.24
+  if flag(nix-2_24) && ! flag(nix-2_25)
+    extra-libraries: nixfetchers

@@ -15,6 +15,7 @@ toplevel@{ withSystem, ... }:
           "Hercules/Agent/Cachix.hs"
           "Hercules/Agent/Compat.hs"
           "Hercules/Agent/StoreFFI.hs"
+          "Hercules/Agent/Worker/Build/Logger.hs"
           "Hercules/CNix/Expr.hs" # parse error in quasiquotation
           "Hercules/CNix/Store.hs" # parse error in quasiquotation + CPP
           "Hercules/CLI/State.hs"

@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -16,9 +17,15 @@ import qualified Language.C.Inline.Cpp as C
 
 C.context $ context <> stdVectorCtx <> stdSetCtx
 
+#if NIX_IS_AT_LEAST(2, 28, 0)
+C.include "<nix/store/path.hh>"
+C.include "<nix/store/derivations.hh>"
+C.include "<nix/store/path-with-outputs.hh>"
+#else
 C.include "<nix/path.hh>"
 C.include "<nix/derivations.hh>"
 C.include "<nix/path-with-outputs.hh>"
+#endif
 
 _ = Proxy :: Proxy NixStorePath
 

@@ -52,7 +52,7 @@ import Hercules.Agent.WorkerProtocol.Event.AttributeError qualified as Attribute
 import Hercules.Agent.WorkerProtocol.Event.AttributeIFD qualified as Event.AttributeIFD
 import Hercules.Agent.WorkerProtocol.ViaJSON qualified as ViaJSON
 import Hercules.CNix as CNix
-import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, evalArgs, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, toValue, withEvalStateConduit)
+import Hercules.CNix.Expr (Match (IsAttrs, IsString), NixAttrs, RawValue, addAllowedPath, addInternalAllowedPaths, autoCallFunction, getAttrBool, getAttrList, getAttrs, getDrvFile, getFlakeFromArchiveUrl, getFlakeFromGit, getRecurseForDerivations, getStringIgnoreContext, isDerivation, isFunctor, match, rawValueType, rtValue, toRawValue, toValue, valueFromExpressionString, withEvalStateConduit)
 import Hercules.CNix.Expr.Context (EvalState)
 import Hercules.CNix.Expr.Raw qualified
 import Hercules.CNix.Expr.Schema (MonadEval, PSObject, dictionaryToMap, fromPSObject, provenance, requireDict, traverseArray, (#.), (#?), (#?!), (#??), ($?), (|!), type (->?), type (.))
@@ -91,14 +91,6 @@ data EvalEnv = EvalEnv
 
 evalEnvStore :: EvalEnv -> Store
 evalEnvStore = nixStore . herculesStore . evalEnvHerculesState
-
--- TODO: test
-autoArgArgs :: Map Text Eval.Arg -> [ByteString]
-autoArgArgs kvs = do
-  (k, v) <- M.toList kvs
-  case v of
-    Eval.LiteralArg s -> ["--argstr", encodeUtf8 k, s]
-    Eval.ExprArg s -> ["--arg", encodeUtf8 k, s]
 
 -- Ensure that a nested build invocation does not happen by a mistake in wiring.
 --
@@ -286,8 +278,13 @@ runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eva
     katipAddContext (sl "storeURI" (decode s)) $
       logLocM DebugS "EvalState loaded."
     args <-
-      liftIO $
-        evalArgs evalState (autoArgArgs (Eval.autoArguments eval))
+      liftIO do
+        argMap <-
+          Eval.autoArguments eval
+            & M.traverseWithKey \k arg -> do
+              valueFromExpressionString evalState arg ("Argument " <> encodeUtf8 k)
+        toValue evalState (M.mapKeys encodeUtf8 argMap)
+
     Data.Conduit.handleC (yieldAttributeError store []) $
       do
         homeExpr <- getHomeExpr evalState eval

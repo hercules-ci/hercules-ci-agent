@@ -441,10 +441,13 @@
                     ];
 
                     # FIXME: https://github.com/hercules-ci/hercules-ci-agent/pull/443/files
-                    hercules-ci-cnix-expr = lib.pipe super.hercules-ci-cnix-expr [
+                    hercules-ci-cnix-expr = lib.pipe super.hercules-ci-cnix-expr ([
                       (x: x.override (o: { inherit nix; }))
                       (h.addBuildTool pkgs.git)
-                    ];
+                    ] ++ lib.optionals (lib.versionAtLeast nix.version "2.24" && !lib.versionAtLeast nix.version "2.25") [
+                      # (x: x.overrideAttrs (o: { NIX_CFLAGS_LINK = (o.NIX_CFLAGS_LINK or "") + " -L${lib.getLib nix}/lib"; }))
+                      (h.appendConfigureFlags [ "--extra-lib-dirs=${lib.getLib nix}/lib" ])
+                    ]);
 
                     hercules-ci-cnix-store = lib.pipe super.hercules-ci-cnix-store [
                       (x: x.override (o: { inherit nix; }))

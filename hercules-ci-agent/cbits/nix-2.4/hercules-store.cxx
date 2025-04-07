@@ -2,6 +2,19 @@
 #include <cstring>
 #include <memory>
 #include <math.h>
+
+#if NIX_IS_AT_LEAST(2,28,0)
+
+#include <nix/store/build-result.hh>
+#include <nix/store/derivations.hh>
+#include <nix/store/globals.hh>
+#include <nix/store/path-with-outputs.hh>
+#include <nix/store/store-api.hh>
+#include <nix/util/callback.hh>
+#include <nix/expr/get-drvs.hh>
+#include <nix/main/shared.hh>
+
+#else
 #include <nix/config.h>
 #include <nix/shared.hh>
 #include <nix/store-api.hh>
@@ -15,6 +28,7 @@
 #include <nix/gc-store.hh>
 #endif
 #include <nix/path-with-outputs.hh>
+#endif
 
 #include "hercules-store.hh"
 

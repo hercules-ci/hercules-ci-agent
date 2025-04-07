@@ -34,42 +34,36 @@ import System.IO.Unsafe (unsafePerformIO)
 
 C.context context
 
+#if NIX_IS_AT_LEAST(2, 28, 0)
+
+C.include "<nix/util/config-global.hh>"
+C.include "<nix/store/derivations.hh>"
+C.include "<nix/store/globals.hh>"
+C.include "<nix/main/shared.hh>"
+
+#else
 C.include "<stdio.h>"
-
 C.include "<cstring>"
-
 C.include "<math.h>"
-
 C.include "<nix/config.h>"
-
 C.include "<nix/shared.hh>"
-
 C.include "<nix/store-api.hh>"
-
 C.include "<nix/get-drvs.hh>"
-
 C.include "<nix/derivations.hh>"
-
 C.include "<nix/globals.hh>"
-
-C.include "hercules-ci-cnix/store.hxx"
-
-C.include "<gc/gc.h>"
-
-C.include "<gc/gc_cpp.h>"
-
-C.include "<gc/gc_allocator.h>"
-
-#if NIX_IS_AT_LEAST(2, 24, 0)
-
+#  if NIX_IS_AT_LEAST(2, 24, 0)
 C.include "<config-global.hh>"
-
+#  endif
 #endif
 
+C.include "<gc/gc.h>"
+C.include "<gc/gc_cpp.h>"
+C.include "<gc/gc_allocator.h>"
+
 C.include "hercules-ci-cnix/string.hxx"
+C.include "hercules-ci-cnix/store.hxx"
 
 C.using "namespace nix"
-
 C.using "namespace hercules_ci_cnix"
 
 init :: IO ()
