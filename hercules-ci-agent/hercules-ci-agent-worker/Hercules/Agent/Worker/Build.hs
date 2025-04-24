@@ -16,6 +16,7 @@ import Hercules.CNix
   ( getDerivationOutputs,
   )
 import Hercules.CNix qualified as CNix
+import Hercules.CNix.Settings qualified as CNix.Settings
 import Hercules.CNix.Store (Store)
 import Katip
 import Protolude hiding (yield)
@@ -44,8 +45,10 @@ runBuild store build = katipAddContext (sl "derivationPath" build.drvPath) do
     Just drv -> pure drv
     Nothing -> panic $ "Could not retrieve derivation " <> show drvStorePath <> " from local store or binary caches."
   drvPlatform <- liftIO $ CNix.getDerivationPlatform derivation
+  maxJobs <- liftIO $ CNix.Settings.getMaxBuildJobs
   let mayNeedRemoteBuild = drvPlatform `elem` Command.Build.materializePlatforms build
-      materialize = materialize0 || mayNeedRemoteBuild
+      willNeedRemoteBuild = maxJobs == 0
+      materialize = materialize0 || mayNeedRemoteBuild || willNeedRemoteBuild
   nixBuildResult <- liftIO $ buildDerivation store drvStorePath derivation (extraPaths <$ guard (not materialize))
   katipAddContext (sl "result" (show nixBuildResult :: Text)) $
     logLocM DebugS "Build result"
