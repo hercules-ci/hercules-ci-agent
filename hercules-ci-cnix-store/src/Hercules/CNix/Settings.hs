@@ -7,6 +7,7 @@ module Hercules.CNix.Settings
   ( getExtraPlatforms,
     getSystem,
     getSystemFeatures,
+    getMaxBuildJobs,
     getSubstituters,
     getTrustedPublicKeys,
     getNarinfoCacheNegativeTtl,
@@ -79,6 +80,16 @@ getSystemFeatures =
     [C.block| std::set<std::string>*{
       return new nix::StringSet(nix::settings.systemFeatures.get());
     }|]
+
+getMaxBuildJobs :: IO Word
+getMaxBuildJobs = do
+  n <-
+    [C.block| unsigned int {
+      return nix::settings.maxBuildJobs.get();
+    }|]
+  if (fromIntegral n :: Integer) > (fromIntegral (maxBound :: Word))
+    then panic ("Nix max-jobs is too large. Can't continue. Value: " <> show n :: Text)
+    else pure (fromIntegral n)
 
 getSubstituters :: IO [ByteString]
 getSubstituters =
