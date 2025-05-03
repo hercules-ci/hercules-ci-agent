@@ -4,7 +4,7 @@
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
-  inputs.haskell-flake.url = "github:srid/haskell-flake/0.3.0";
+  inputs.haskell-flake.url = "github:srid/haskell-flake";
 
   # Optional. Omit to use nixpkgs' nix
   # inputs.nix = {
@@ -290,7 +290,10 @@
 
               haskellProjects = {
                 internal = {
-
+                  # haskell-flake disables profiling by default, but cachix (not
+                  # "locally defined") by defaults builds with profiling and
+                  # depends on hercules-ci-cnix-store, so we re-enable profiling
+                  defaults.settings.local.libraryProfiling = true;
                   devShell.extraLibraries = hp: {
                     inherit (hp) releaser
                       ascii-progress
@@ -313,171 +316,174 @@
                       )
                   );
 
-                  overrides = self: super: {
+                  # TODO: Use more specific options instead of overlay
+                  otherOverlays = [
+                    (self: super: {
 
-                    openapi3 = h.dontCheck (h.unmarkBroken super.openapi3);
+                      openapi3 = h.dontCheck (h.unmarkBroken super.openapi3);
 
-                    cachix_saved = super.cachix;
+                      cachix_saved = super.cachix;
 
-                    cachix =
-                      if flakeArgs.config.isForDevShell
-                      then
-                      # For the shell we omit cachix from the dependency search
-                      # so as not to introduce a nix-built dependency on cnix-store
-                        null
-                      else if builtins.compareVersions super.cachix.version "1.5" >= 0
-                      then
-                        super.cachix.override
-                          (o: {
+                      cachix =
+                        if flakeArgs.config.isForDevShell
+                        then
+                        # For the shell we omit cachix from the dependency search
+                        # so as not to introduce a nix-built dependency on cnix-store
+                          null
+                        else if builtins.compareVersions super.cachix.version "1.5" >= 0
+                        then
+                          super.cachix.override
+                            (o: {
+                              inherit nix;
+                            })
+                        else
+                          ((super.cachix_1_3_3 or super.cachix).override (o: {
                             inherit nix;
-                          })
-                      else
-                        ((super.cachix_1_3_3 or super.cachix).override (o: {
-                          inherit nix;
-                        })).overrideAttrs (o: {
-                          postPatch = ''
-                            ${o.postPatch or ""}
-                            # jailbreak pkgconfig deps
-                            cp cachix.cabal cachix.cabal.backup
-                            sed -i cachix.cabal -e 's/\(nix-[a-z]*\) *(==[0-9.]* *|| *>[0-9.]*) *&& *<[0-9.]*/\1/g'
-                            sed -i cachix.cabal -e 's/pkgconfig-depends:.*/pkgconfig-depends: nix-main, nix-store/'
-                            echo
-                            echo Applied:
-                            diff -U5 cachix.cabal.backup cachix.cabal ||:
-                            echo
-                            rm cachix.cabal.backup
-                          '';
-                        });
-
-                    hercules-ci-optparse-applicative =
-                      super.callPackage ./nix/hercules-ci-optparse-applicative.nix { };
-
-                    inline-c-cpp =
-                      # https://github.com/fpco/inline-c/pull/132
-                      assert
-                      lib.versionAtLeast super.ghc.version "9.4"
-                      || lib.any
-                        (patch: lib.hasSuffix "inline-c-cpp-pr-132-1.patch" (baseNameOf patch))
-                        super.inline-c-cpp.patches;
-                      super.inline-c-cpp;
-
-                    hie-bios =
-                      h.appendPatch ./dev/hie-bios-fml.diff super.hie-bios;
-
-                    servant-auth-server =
-                      if (super.servant-auth-server.version == "0.4.8.0"
-                        || super.servant-auth-server.version == "0.4.9.0")
-                      && super.servant-auth-server.meta.broken or true
-                      then
-                      # It's probably fine. We only use it in a test.
-                        h.dontCheck (h.unmarkBroken super.servant-auth-server)
-                      else super.servant-auth-server;
-
-                    hercules-ci-agent = lib.pipe super.hercules-ci-agent [
-                      h.justStaticExecutables
-                      (h.addBuildTool pkgs.makeBinaryWrapper)
-                      addCompactUnwind
-                      h.enableDWARFDebugging
-                      (h.addBuildDepends [ pkgs.boost ])
-                      (h.overrideCabal (o: {
-                        postCompileBuildDriver = ''
-                          echo Setup version:
-                          ./Setup --version
-                        '';
-                        postInstall = ''
-                          ${o.postInstall or ""}
-                          mkdir -p $out/libexec
-                          mv $out/bin/hercules-ci-agent $out/libexec
-                          makeWrapper $out/libexec/hercules-ci-agent $out/bin/hercules-ci-agent --prefix PATH : ${lib.makeBinPath 
-                            ([ pkgs.gnutar pkgs.gzip pkgs.git pkgs.openssh ]
-                             ++ lib.optional pkgs.stdenv.isLinux pkgs.crun)}
-                        '';
-                        passthru = o.passthru or { } // {
-                          inherit nix;
-                        };
-                      }))
-                      (self.generateOptparseApplicativeCompletions [ "hercules-ci-agent" ])
-                    ];
-
-                    hercules-ci-agent_lib = lib.pipe self.hercules-ci-agent
-                      # Don't override this when making a devShell, because Nixpkgs shellFor does not recognize it as a local dependency.
-                      (lib.optionals (!flakeArgs.config.isForDevShell) [
-                        (h.overrideCabal (o: {
-                          isLibrary = true;
-                          isExecutable = false;
-                          postInstall = "";
-                          postFixup = "";
-                          enableSharedExecutables = false;
-                          buildTarget = "lib:hercules-ci-agent hercules-ci-agent-unit-tests";
-                          configureFlags = o.configureFlags or [ ] ++ [
-                            "--bindir=${pkgs.emptyDirectory}/hercules-ci-built-without-binaries/no-bin"
-                          ];
-                          # We're undoing justStaticExecutables, to make it a library again,
-                          # so it's ok to have library references, including ghc.
-                          disallowGhcReference = false;
-                        }))
-                      ])
-                    ;
-                    hercules-ci-cli = lib.pipe super.hercules-ci-cli [
-                      (x: x.override (o: {
-                        hercules-ci-agent = self.hercules-ci-agent_lib;
-                      }))
-                      (h.addBuildTool pkgs.makeBinaryWrapper)
-                      addCompactUnwind
-                      h.disableLibraryProfiling
-                      h.justStaticExecutables
-                      (self.generateOptparseApplicativeCompletions [ "hci" ])
-                      (h.overrideCabal (o:
-                        let binPath = lib.optionals pkgs.stdenv.isLinux [ pkgs.crun ];
-                        in
-                        {
-                          postInstall =
-                            o.postInstall or ""
-                            + lib.optionalString (binPath != [ ]) ''
-                              wrapProgram $out/bin/hci --prefix PATH : ${lib.makeBinPath binPath}
+                          })).overrideAttrs (o: {
+                            postPatch = ''
+                              ${o.postPatch or ""}
+                              # jailbreak pkgconfig deps
+                              cp cachix.cabal cachix.cabal.backup
+                              sed -i cachix.cabal -e 's/\(nix-[a-z]*\) *(==[0-9.]* *|| *>[0-9.]*) *&& *<[0-9.]*/\1/g'
+                              sed -i cachix.cabal -e 's/pkgconfig-depends:.*/pkgconfig-depends: nix-main, nix-store/'
+                              echo
+                              echo Applied:
+                              diff -U5 cachix.cabal.backup cachix.cabal ||:
+                              echo
+                              rm cachix.cabal.backup
                             '';
-                        }
-                      ))
-                    ];
+                          });
 
-                    # FIXME: https://github.com/hercules-ci/hercules-ci-agent/pull/443/files
-                    hercules-ci-cnix-expr = lib.pipe super.hercules-ci-cnix-expr ([
-                      (x: x.override (o: { inherit nix; }))
-                      (h.addBuildTool pkgs.git)
-                    ] ++ lib.optionals (lib.versionAtLeast nix.version "2.24" && !lib.versionAtLeast nix.version "2.25") [
-                      # (x: x.overrideAttrs (o: { NIX_CFLAGS_LINK = (o.NIX_CFLAGS_LINK or "") + " -L${lib.getLib nix}/lib"; }))
-                      (h.appendConfigureFlags [ "--extra-lib-dirs=${lib.getLib nix}/lib" ])
-                    ]);
+                      hercules-ci-optparse-applicative =
+                        super.callPackage ./nix/hercules-ci-optparse-applicative.nix { };
 
-                    hercules-ci-cnix-store = lib.pipe super.hercules-ci-cnix-store [
-                      (x: x.override (o: { inherit nix; }))
-                      (x: x.overrideAttrs (o: {
-                        passthru = o.passthru // { nixPackage = nix; };
-                      }))
-                    ];
+                      inline-c-cpp =
+                        # https://github.com/fpco/inline-c/pull/132
+                        assert
+                        lib.versionAtLeast super.ghc.version "9.4"
+                        || lib.any
+                          (patch: lib.hasSuffix "inline-c-cpp-pr-132-1.patch" (baseNameOf patch))
+                          super.inline-c-cpp.patches;
+                        super.inline-c-cpp;
 
-                    # # Dodge build failures of components we don't need.
-                    # haskell-language-server = h.appendConfigureFlags [ "-f-fourmolu" ] (
-                    #   super.haskell-language-server.override {
-                    #     hls-fourmolu-plugin = null;
-                    #   }
-                    # );
+                      hie-bios =
+                        h.appendPatch ./dev/hie-bios-fml.diff super.hie-bios;
 
-                    ghcid = (
-                      if system == "aarch64-darwin"
-                      then h.overrideCabal (drv: { enableSeparateBinOutput = false; })
-                      else x: x
-                    ) super.ghcid;
-                    ormolu = (
-                      if system == "aarch64-darwin"
-                      then h.overrideCabal (drv: { enableSeparateBinOutput = false; })
-                      else x: x
-                    ) super.ormolu;
+                      servant-auth-server =
+                        if (super.servant-auth-server.version == "0.4.8.0"
+                          || super.servant-auth-server.version == "0.4.9.0")
+                        && super.servant-auth-server.meta.broken or true
+                        then
+                        # It's probably fine. We only use it in a test.
+                          h.dontCheck (h.unmarkBroken super.servant-auth-server)
+                        else super.servant-auth-server;
 
-                    # make sure to update haskell-flake before re-enabling this (haskell-flake#271)
-                    # releaser = super.callCabal2nix "releaser" (builtins.getFlake "github:hercules-ci/haskell-releaser?rev=e50360ec896fcb6ad724566aece6625973419e8d") { };
+                      hercules-ci-agent = lib.pipe super.hercules-ci-agent [
+                        h.justStaticExecutables
+                        (h.addBuildTool pkgs.makeBinaryWrapper)
+                        addCompactUnwind
+                        h.enableDWARFDebugging
+                        (h.addBuildDepends [ pkgs.boost ])
+                        (h.overrideCabal (o: {
+                          postCompileBuildDriver = ''
+                            echo Setup version:
+                            ./Setup --version
+                          '';
+                          postInstall = ''
+                            ${o.postInstall or ""}
+                            mkdir -p $out/libexec
+                            mv $out/bin/hercules-ci-agent $out/libexec
+                            makeWrapper $out/libexec/hercules-ci-agent $out/bin/hercules-ci-agent --prefix PATH : ${lib.makeBinPath 
+                              ([ pkgs.gnutar pkgs.gzip pkgs.git pkgs.openssh ]
+                               ++ lib.optional pkgs.stdenv.isLinux pkgs.crun)}
+                          '';
+                          passthru = o.passthru or { } // {
+                            inherit nix;
+                          };
+                        }))
+                        (self.generateOptparseApplicativeCompletions [ "hercules-ci-agent" ])
+                      ];
 
-                  };
+                      hercules-ci-agent_lib = lib.pipe self.hercules-ci-agent
+                        # Don't override this when making a devShell, because Nixpkgs shellFor does not recognize it as a local dependency.
+                        (lib.optionals (!flakeArgs.config.isForDevShell) [
+                          (h.overrideCabal (o: {
+                            isLibrary = true;
+                            isExecutable = false;
+                            postInstall = "";
+                            postFixup = "";
+                            enableSharedExecutables = false;
+                            buildTarget = "lib:hercules-ci-agent hercules-ci-agent-unit-tests";
+                            configureFlags = o.configureFlags or [ ] ++ [
+                              "--bindir=${pkgs.emptyDirectory}/hercules-ci-built-without-binaries/no-bin"
+                            ];
+                            # We're undoing justStaticExecutables, to make it a library again,
+                            # so it's ok to have library references, including ghc.
+                            disallowGhcReference = false;
+                          }))
+                        ])
+                      ;
+                      hercules-ci-cli = lib.pipe super.hercules-ci-cli [
+                        (x: x.override (o: {
+                          hercules-ci-agent = self.hercules-ci-agent_lib;
+                        }))
+                        (h.addBuildTool pkgs.makeBinaryWrapper)
+                        addCompactUnwind
+                        h.disableLibraryProfiling
+                        h.justStaticExecutables
+                        (self.generateOptparseApplicativeCompletions [ "hci" ])
+                        (h.overrideCabal (o:
+                          let binPath = lib.optionals pkgs.stdenv.isLinux [ pkgs.crun ];
+                          in
+                          {
+                            postInstall =
+                              o.postInstall or ""
+                              + lib.optionalString (binPath != [ ]) ''
+                                wrapProgram $out/bin/hci --prefix PATH : ${lib.makeBinPath binPath}
+                              '';
+                          }
+                        ))
+                      ];
+
+                      # FIXME: https://github.com/hercules-ci/hercules-ci-agent/pull/443/files
+                      hercules-ci-cnix-expr = lib.pipe super.hercules-ci-cnix-expr ([
+                        (x: x.override (o: { inherit nix; }))
+                        (h.addBuildTool pkgs.git)
+                      ] ++ lib.optionals (lib.versionAtLeast nix.version "2.24" && !lib.versionAtLeast nix.version "2.25") [
+                        # (x: x.overrideAttrs (o: { NIX_CFLAGS_LINK = (o.NIX_CFLAGS_LINK or "") + " -L${lib.getLib nix}/lib"; }))
+                        (h.appendConfigureFlags [ "--extra-lib-dirs=${lib.getLib nix}/lib" ])
+                      ]);
+
+                      hercules-ci-cnix-store = lib.pipe super.hercules-ci-cnix-store [
+                        (x: x.override (o: { inherit nix; }))
+                        (x: x.overrideAttrs (o: {
+                          passthru = o.passthru // { nixPackage = nix; };
+                        }))
+                      ];
+
+                      # # Dodge build failures of components we don't need.
+                      # haskell-language-server = h.appendConfigureFlags [ "-f-fourmolu" ] (
+                      #   super.haskell-language-server.override {
+                      #     hls-fourmolu-plugin = null;
+                      #   }
+                      # );
+
+                      ghcid = (
+                        if system == "aarch64-darwin"
+                        then h.overrideCabal (drv: { enableSeparateBinOutput = false; })
+                        else x: x
+                      ) super.ghcid;
+                      ormolu = (
+                        if system == "aarch64-darwin"
+                        then h.overrideCabal (drv: { enableSeparateBinOutput = false; })
+                        else x: x
+                      ) super.ormolu;
+
+                      # make sure to update haskell-flake before re-enabling this (haskell-flake#271)
+                      # releaser = super.callCabal2nix "releaser" (builtins.getFlake "github:hercules-ci/haskell-releaser?rev=e50360ec896fcb6ad724566aece6625973419e8d") { };
+
+                    })
+                  ];
                 };
               };
               packages.hercules-ci-api-swagger =
