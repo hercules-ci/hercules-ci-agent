@@ -289,11 +289,14 @@
               apps.hercules-ci-agent = config.apps.internal-hercules-ci-agent;
 
               haskellProjects = {
-                internal = {
+                internal = project@{ ... }: {
                   # haskell-flake disables profiling by default, but cachix (not
                   # "locally defined") by defaults builds with profiling and
                   # depends on hercules-ci-cnix-store, so we re-enable profiling
                   defaults.settings.local.libraryProfiling = true;
+                  # Slightly faster and does not create deps: source-drv -> inputs
+                  defaults.settings.local.impl.buildFromSdist = [ (project.config.basePackages.buildFromCabalSdist) ];
+
                   devShell.extraLibraries = hp: {
                     inherit (hp) releaser
                       ascii-progress
