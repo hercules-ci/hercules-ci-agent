@@ -5,6 +5,13 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.3.7.0 - 2025-05-05
+
+### Added
+
+ - `getMaxBuildJobs`
+ - Nix 2.28 support
+
 ## 0.3.6.1 - 2024-11-15
 
 ### Added
