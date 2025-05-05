@@ -1,10 +1,19 @@
 #pragma once
 
+#if NIX_IS_AT_LEAST(2, 28, 0)
+#include <nix/util/error.hh>
+#include <nix/util/logging.hh>
+#include <nix/util/sync.hh>
+#include <nix/main/shared.hh>
+#else
 #include <nix/config.h>
 #include <nix/error.hh>
 #include <nix/shared.hh>
 #include <nix/sync.hh>
 #include <nix/logging.hh>
+#endif
+
+
 #include <queue>
 #include <string>
 

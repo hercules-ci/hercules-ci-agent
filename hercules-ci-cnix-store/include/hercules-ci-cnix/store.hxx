@@ -1,7 +1,11 @@
 
 #pragma once
 
+#if NIX_IS_AT_LEAST(2,28,0)
+#include <nix/store/path-info.hh>
+#else
 #include <nix/path-info.hh>
+#endif
 
 typedef nix::ref<nix::Store> refStore;
 

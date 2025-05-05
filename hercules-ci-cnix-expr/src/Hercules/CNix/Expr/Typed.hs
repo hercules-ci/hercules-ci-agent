@@ -48,23 +48,22 @@ C.include "<cstring>"
 
 C.include "<math.h>"
 
+#if NIX_IS_AT_LEAST(2, 28, 0)
+
+C.include "<nix/expr/eval.hh>"
+C.include "<nix/expr/eval-inline.hh>"
+
+#else
 C.include "<nix/config.h>"
-
 C.include "<nix/shared.hh>"
-
 C.include "<nix/eval.hh>"
-
 C.include "<nix/eval-inline.hh>"
-
 C.include "<nix/store-api.hh>"
-
-C.include "<nix/common-eval-args.hh>"
-
+-- C.include "<nix/common-eval-args.hh>"
 C.include "<nix/get-drvs.hh>"
-
 C.include "<nix/derivations.hh>"
-
 C.include "<nix/globals.hh>"
+#endif
 
 C.include "hercules-ci-cnix/expr.hxx"
 
@@ -161,7 +160,9 @@ getBool (Value (RawValue v)) =
 
 getInt :: Value NixInt -> IO Int64
 getInt (Value (RawValue v)) =
-#if NIX_IS_AT_LEAST(2,24,0)
+#if NIX_IS_AT_LEAST(2,27,0)
+  [C.exp| int64_t { $(Value *v)->integer().value }|]
+#elif NIX_IS_AT_LEAST(2,24,0)
   [C.exp| int64_t { $(Value *v)->integer() }|]
 #else
   [C.exp| int64_t { $(Value *v)->integer }|]

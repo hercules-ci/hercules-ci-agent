@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -19,10 +20,16 @@ import Protolude
 
 C.context context
 
+#if NIX_IS_AT_LEAST(2, 28, 0)
+
+C.include "<nix/util/logging.hh>"
+
+#else
 C.include "<nix/config.h>"
 C.include "<nix/error.hh>"
 C.include "<nix/globals.hh>"
 C.include "<nix/logging.hh>"
+#endif
 
 data Verbosity
   = Error

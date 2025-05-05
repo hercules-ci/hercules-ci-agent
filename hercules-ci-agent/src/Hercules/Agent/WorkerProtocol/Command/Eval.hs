@@ -13,7 +13,7 @@ import Protolude
 data Eval = Eval
   { cwd :: FilePath,
     file :: Text,
-    autoArguments :: Map Text Arg,
+    autoArguments :: Map Text ByteString,
     -- TODO: Also set at worker start, so remove this here to avoid ambiguity?
     extraNixOptions :: [(Text, Text)],
     gitSource :: ViaJSON GitSource,
@@ -25,9 +25,4 @@ data Eval = Eval
     allowInsecureBuiltinFetchers :: Bool,
     allowedPaths :: [ByteString]
   }
-  deriving (Generic, Binary, Show, Eq)
-
-data Arg
-  = LiteralArg ByteString
-  | ExprArg ByteString
   deriving (Generic, Binary, Show, Eq)

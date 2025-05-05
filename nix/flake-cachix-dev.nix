@@ -5,14 +5,16 @@
   variants.cachix-dev = {
     perSystem = { system, pkgs, ... }: {
       haskellProjects.internal = {
-        overrides = self: super:
-          let
-            flake = builtins.getFlake "git+https://github.com/cachix/cachix.git?rev=498f2fa43de8b2fc2e372c275dece0715101cbda&allRefs=true";
-            c = flake.lib.customHaskellPackages { inherit pkgs; haskellPackages = self; };
-          in
-          # If the overrides change, we need to make sure it's not hercules-ci-cnix-store for example
-          assert lib.attrNames c == [ "cachix" "cachix-api" ];
-          c;
+        otherOverlays = lib.mkBefore [
+          (self: super:
+            let
+              flake = builtins.getFlake "git+https://github.com/cachix/cachix.git?rev=498f2fa43de8b2fc2e372c275dece0715101cbda&allRefs=true";
+              c = flake.lib.customHaskellPackages { inherit pkgs; haskellPackages = self; };
+            in
+            # If the overrides change, we need to make sure it's not hercules-ci-cnix-store for example
+            assert lib.attrNames c == [ "cachix" "cachix-api" ];
+            c)
+        ];
       };
     };
   };

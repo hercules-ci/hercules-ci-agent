@@ -5,6 +5,17 @@
 
 #include <string_view>
 
+#if NIX_IS_AT_LEAST(2,28,0)
+
+#include <nix/util/error.hh>
+#include <nix/util/fmt.hh>
+#include <nix/util/config-global.hh>
+#include <nix/util/serialise.hh>
+#include <nix/util/signals.hh>
+#include <nix/store/daemon.hh>
+#include <nix/main/shared.hh>
+
+#else
 #include <nix/config.h>
 #include <nix/shared.hh>
 #include <nix/error.hh>
@@ -13,14 +24,18 @@
 #include <nix/store-api.hh>
 #include <nix/daemon.hh>
 
-using namespace nix;
+#  if NIX_IS_AT_LEAST(2,19,0)
+#    include <nix/signals.hh>
+#  endif
 
-#if NIX_IS_AT_LEAST(2,19,0)
-#include <nix/signals.hh>
+#  if NIX_IS_AT_LEAST(2,24,0)
+#    include <nix/config-global.hh>
+#  endif
 #endif
 
+using namespace nix;
+
 #if NIX_IS_AT_LEAST(2,24,0)
-#include <nix/config-global.hh>
 using nix::unix::closeOnExec;
 #endif
 

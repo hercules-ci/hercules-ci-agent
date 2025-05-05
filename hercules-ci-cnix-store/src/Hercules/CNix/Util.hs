@@ -25,12 +25,16 @@ import Prelude ()
 
 C.context context
 
+#if NIX_IS_AT_LEAST(2, 28, 0)
+
+C.include "<nix/util/signals.hh>"
+
+#else
 C.include "<nix/config.h>"
-
 C.include "<nix/util.hh>"
-
-#if NIX_IS_AT_LEAST(2,19,0)
+#  if NIX_IS_AT_LEAST(2,19,0)
 C.include "<nix/signals.hh>"
+#  endif
 #endif
 
 C.using "namespace nix"

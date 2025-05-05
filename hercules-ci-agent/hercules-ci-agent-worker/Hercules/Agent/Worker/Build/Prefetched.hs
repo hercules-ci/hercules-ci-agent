@@ -31,30 +31,33 @@ C.context context
 
 C.include "<cstring>"
 
-C.include "<nix/config.h>"
+#if NIX_IS_AT_LEAST(2, 28, 0)
 
-C.include "<nix/shared.hh>"
+C.include "<nix/store/build-result.hh>"
+C.include "<nix/store/derivations.hh>"
+C.include "<nix/store/path-with-outputs.hh>"
+C.include "<nix/store/store-api.hh>"
+C.include "<nix/util/signals.hh>"
 
-C.include "<nix/store-api.hh>"
-
-C.include "<nix/get-drvs.hh>"
-
-C.include "<nix/derivations.hh>"
-
-C.include "<nix/globals.hh>"
-
-#if NIX_IS_AT_LEAST(2,19,0)
-C.include "<nix/signals.hh>"
 #else
+C.include "<nix/config.h>"
+C.include "<nix/shared.hh>"
+C.include "<nix/store-api.hh>"
+C.include "<nix/get-drvs.hh>"
+C.include "<nix/derivations.hh>"
+C.include "<nix/globals.hh>"
+#  if NIX_IS_AT_LEAST(2,19,0)
+C.include "<nix/signals.hh>"
+#  else
 -- redundant?
 C.include "<nix/fs-accessor.hh>"
-#endif
-
-#if NIX_IS_AT_LEAST(2,7,0)
+#  endif
+#  if NIX_IS_AT_LEAST(2,7,0)
 C.include "<nix/build-result.hh>"
-#endif
+#  endif
 
 C.include "<nix/path-with-outputs.hh>"
+#endif
 
 C.include "<hercules-ci-cnix/store.hxx>"
 

@@ -1,6 +1,15 @@
 #include <cstdio>
 #include <cstring>
 #include <math.h>
+
+#if NIX_IS_AT_LEAST(2,28,0)
+#include <nix/util/util.hh>
+#include <nix/store/derivations.hh>
+#include <nix/store/path-with-outputs.hh>
+#include <nix/store/store-api.hh>
+#include <nix/main/shared.hh>
+
+#else
 #include <nix/config.h>
 #include <nix/shared.hh>
 #include <nix/store-api.hh>
@@ -8,10 +17,11 @@
 #include <nix/get-drvs.hh>
 #include <nix/derivations.hh>
 #include <nix/globals.hh>
-#include <nix/globals.hh>
-#if NIX_IS_AT_LEAST(2,13,0)
-#include <nix/path-with-outputs.hh>
+#  if NIX_IS_AT_LEAST(2,13,0)
+#    include <nix/path-with-outputs.hh>
+#  endif
 #endif
+
 #include "HsFFI.h"
 
 #if NIX_IS_AT_LEAST(2,19,0)

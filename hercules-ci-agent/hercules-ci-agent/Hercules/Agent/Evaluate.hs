@@ -448,11 +448,10 @@ produceEvaluationTaskEvents sendLogItems store task writeToBatch = UnliftIO.hand
                in case do
                     inputId <- EvaluateTask.autoArguments task & M.lookup k
                     EvaluateTask.inputMetadata task & M.lookup (EvaluateTask.path inputId) of
-                    Nothing -> Eval.ExprArg argPath
+                    Nothing -> argPath
                     Just attrs ->
-                      Eval.ExprArg $
-                        -- TODO pass directly to avoid having to escape (or just escape properly)
-                        "builtins.fromJSON ''" <> BL.toStrict (A.encode attrs) <> "'' // { outPath = " <> argPath <> "; }"
+                      -- TODO pass directly to avoid having to escape (or just escape properly)
+                      "builtins.fromJSON ''" <> BL.toStrict (A.encode attrs) <> "'' // { outPath = " <> argPath <> "; }"
     adHocSystem <-
       readFileMaybe (projectDir </> "ci-default-system.txt")
 
@@ -583,7 +582,7 @@ runEvalProcess ::
   CNix.Store ->
   FilePath ->
   FilePath ->
-  Map Text Eval.Arg ->
+  Map Text ByteString ->
   [ EvaluateTask.NixPathElement
       (EvaluateTask.SubPathOf FilePath)
   ] ->

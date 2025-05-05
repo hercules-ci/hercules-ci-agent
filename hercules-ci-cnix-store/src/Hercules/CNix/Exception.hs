@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -16,9 +17,14 @@ import qualified System.Environment
 
 C.context context
 
+#if NIX_IS_AT_LEAST(2, 28, 0)
+C.include "<nix/main/shared.hh>"
+C.include "<nix/store/globals.hh>"
+#else
 C.include "<nix/config.h>"
 C.include "<nix/shared.hh>"
 C.include "<nix/globals.hh>"
+#endif
 
 -- | Log C++ exceptions and call 'exitWith' the way Nix would exit when an
 -- exception occurs.

@@ -187,6 +187,21 @@ C.context (context <> stdVectorCtx <> stdSetCtx <> stdStringCtx)
 
 C.include "<cstring>"
 
+C.include "<variant>"
+
+#if NIX_IS_AT_LEAST(2, 28, 0)
+
+C.include "<nix/main/shared.hh>"
+C.include "<nix/store/store-api.hh>"
+C.include "<nix/store/derivations.hh>"
+C.include "<nix/store/globals.hh>"
+C.include "<nix/store/path.hh>"
+C.include "<nix/store/worker-protocol.hh>"
+C.include "<nix/store/path-with-outputs.hh>"
+C.include "<nix/util/signals.hh>"
+
+#else
+
 C.include "<nix/config.h>"
 
 C.include "<nix/shared.hh>"
@@ -201,31 +216,30 @@ C.include "<nix/globals.hh>"
 
 C.include "<nix/path.hh>"
 
-C.include "<variant>"
-
 C.include "<nix/worker-protocol.hh>"
 
 C.include "<nix/path-with-outputs.hh>"
 
 C.include "<nix/hash.hh>"
 
-C.include "hercules-ci-cnix/store.hxx"
-
-C.include "hercules-ci-cnix/string.hxx"
-
-#if NIX_IS_AT_LEAST(2,19,0)
+#  if NIX_IS_AT_LEAST(2,19,0)
 
 C.include "<nix/signals.hh>"
 
 C.include "<nix/hash.hh>"
 
-#endif
+#  endif
 
-#if ! NIX_IS_AT_LEAST(2,20,0)
+#  if ! NIX_IS_AT_LEAST(2,20,0)
 
 C.include "<nix/nar-info-disk-cache.hh>"
 
+#  endif
 #endif
+
+C.include "hercules-ci-cnix/store.hxx"
+
+C.include "hercules-ci-cnix/string.hxx"
 
 C.using "namespace nix"
 

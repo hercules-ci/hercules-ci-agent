@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -19,18 +20,20 @@ import Prelude ()
 
 C.context context
 
+#if NIX_IS_AT_LEAST(2, 28, 0)
+
+C.include "<nix/expr/eval.hh>"
+C.include "<nix/expr/eval-inline.hh>"
+
+#else
 C.include "<nix/config.h>"
-
 C.include "<nix/eval.hh>"
-
 C.include "<nix/eval-inline.hh>"
+#endif
 
 C.include "<hercules-ci-cnix/expr.hxx>"
-
 C.include "<gc/gc.h>"
-
 C.include "<gc/gc_cpp.h>"
-
 C.include "<gc/gc_allocator.h>"
 
 C.using "namespace nix"
