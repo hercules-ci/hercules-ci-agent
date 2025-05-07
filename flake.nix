@@ -517,8 +517,6 @@
                         pkgs.jq
                         pkgs.nix-prefetch-git
                         pkgs.nixpkgs-fmt
-                        # pkgs.haskell.packages.ghc8107.stack
-                        pkgs.haskellPackages.stack
                         pkgs.pre-commit
                         # pkgs.valgrind (broken on x86_64-darwin)
                       ] ++ lib.optionals shellWithHaskell [
