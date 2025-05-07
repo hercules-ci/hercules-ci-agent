@@ -20,7 +20,8 @@ import Data.Map qualified as M
 import Protolude
 
 -- TODO: Profunctor
-data Partitioner a b = forall m.
+data Partitioner a b
+  = forall m.
   (Monoid m) =>
   Partitioner
   { ingest :: a -> Maybe m,
