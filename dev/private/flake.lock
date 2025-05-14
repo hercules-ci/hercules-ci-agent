@@ -81,11 +81,11 @@
         "nixpkgs": []
       },
       "locked": {
-        "lastModified": 1746254942,
-        "narHash": "sha256-Y062AuRx6l+TJNX8wxZcT59SSLsqD9EedAY0mqgTtQE=",
+        "lastModified": 1747138802,
+        "narHash": "sha256-Ou4zV3OskaDKlkuiM2VT+1w/xceXoZ5RRM4ZuW7n5+I=",
         "owner": "LnL7",
         "repo": "nix-darwin",
-        "rev": "760a11c87009155afa0140d55c40e7c336d62d7a",
+        "rev": "f88be00227161a1e9369a1d199f452dd5d720feb",
         "type": "github"
       },
       "original": {
