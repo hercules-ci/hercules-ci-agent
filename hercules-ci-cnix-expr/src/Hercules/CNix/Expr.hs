@@ -87,6 +87,7 @@ import Hercules.CNix.Expr.Raw
 import Hercules.CNix.Expr.Typed
 import Hercules.CNix.Store
 import Hercules.CNix.Store.Context
+import qualified Hercules.CNix as CNix
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude hiding (evalState)
@@ -162,6 +163,24 @@ C.verbatim "nix::fetchers::Settings fetchSettings;"
 C.verbatim "static bool readOnlyMode = false;"
 C.verbatim "nix::EvalSettings evalSettings(readOnlyMode);"
 
+#if NIX_IS_AT_LEAST(2,28,0)
+
+init :: IO ()
+init = do
+  [C.throwBlock| void {
+    { auto _ = GlobalConfig::Register(&flakeSettings); }
+    { auto _ = GlobalConfig::Register(&fetchSettings); }
+    { auto _ = GlobalConfig::Register(&evalSettings); }
+  }|]
+  CNix.init
+  [C.throwBlock| void {
+    nix::initGC();
+    globalConfig.set("extra-experimental-features", "flakes");
+    flakeSettings.configureEvalSettings(evalSettings);
+  }|]
+
+#else
+
 init :: IO ()
 init =
   void
@@ -169,7 +188,9 @@ init =
       { auto _ = GlobalConfig::Register(&flakeSettings); }
       { auto _ = GlobalConfig::Register(&fetchSettings); }
       { auto _ = GlobalConfig::Register(&evalSettings); }
-      nix::initNix();
+      // Use initLibStore() instead of initNix() to avoid starting Nix's signal handler thread
+      // Instead we manage signal handler settings using the Haskell runtime via `installDefaultSigINTHandler`
+      nix::initLibStore();
       nix::initGC();
 #if NIX_IS_AT_LEAST(2,15,0)
       globalConfig.set("extra-experimental-features", "flakes");
@@ -189,6 +210,7 @@ init =
       nix::flake::initLib(flakeSettings);
 #endif
     } |]
+#endif
 
 -- | Initialize the current (main) thread for stack overflow detection.
 initThread :: IO ()

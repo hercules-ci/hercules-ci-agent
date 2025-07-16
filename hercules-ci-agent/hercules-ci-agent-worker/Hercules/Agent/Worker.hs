@@ -53,7 +53,6 @@ import Hercules.Agent.WorkerProtocol.WorkerConfig (WorkerConfig)
 import Hercules.Agent.WorkerProtocol.WorkerConfig qualified
 import Hercules.CNix as CNix
 import Hercules.CNix.Expr (allowThreads, init, runGcRegisteredThread, setExtraStackOverflowHandlerToSleep)
-import Hercules.CNix.Util (installDefaultSigINTHandler)
 import Hercules.CNix.Verbosity (setShowTrace, setVerbosity)
 import Hercules.CNix.Verbosity qualified as CNix.Verbosity
 import Hercules.Error
@@ -72,7 +71,6 @@ main = do
       Hercules.CNix.Expr.allowThreads
       setShowTrace True
       _ <- installHandler sigTERM (Catch $ raiseSignal sigINT) Nothing
-      installDefaultSigINTHandler
       setExtraStackOverflowHandlerToSleep
       workerConfigBytes <- BSC.hGetLine parentHandles.commands
       workerConfig <- case A.eitherDecode (toS workerConfigBytes) of

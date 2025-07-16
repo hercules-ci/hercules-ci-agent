@@ -15,7 +15,6 @@ import Hercules.Agent.SecureDirectory qualified as SecureDirectory
 import Hercules.Agent.ServiceInfo qualified as ServiceInfo
 import Hercules.Agent.Token qualified as Token
 import Hercules.CNix qualified
-import Hercules.CNix.Util qualified
 import Hercules.CNix.Verbosity qualified
 import Katip qualified as K
 import Network.HTTP.Client.TLS qualified
@@ -78,4 +77,3 @@ initCNix :: Config.FinalConfig -> IO ()
 initCNix cfg = do
   Hercules.CNix.init
   Hercules.CNix.Verbosity.setVerbosity $ Config.nixVerbosity cfg
-  Hercules.CNix.Util.installDefaultSigINTHandler

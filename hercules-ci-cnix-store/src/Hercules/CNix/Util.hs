@@ -57,6 +57,12 @@ triggerInterrupt =
   } |]
 #endif
 
+-- | Install a signal handler that will put Nix into the interrupted state and
+-- throws 'UserInterrupt' in the main thread (as is usual), assuming this
+-- function is called from the main thread.
+--
+-- This may be removed from the library interface in the future, as it is no
+-- longer needed to be called explicitly.
 installDefaultSigINTHandler :: IO ()
 installDefaultSigINTHandler = do
   mainThread <- myThreadId

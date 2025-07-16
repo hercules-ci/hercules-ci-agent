@@ -191,7 +191,6 @@ C.include "<variant>"
 
 #if NIX_IS_AT_LEAST(2, 28, 0)
 
-C.include "<nix/main/shared.hh>"
 C.include "<nix/store/store-api.hh>"
 C.include "<nix/store/derivations.hh>"
 C.include "<nix/store/globals.hh>"

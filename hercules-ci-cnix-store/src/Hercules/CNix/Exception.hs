@@ -18,13 +18,17 @@ import qualified System.Environment
 C.context context
 
 #if NIX_IS_AT_LEAST(2, 28, 0)
-C.include "<nix/main/shared.hh>"
 C.include "<nix/store/globals.hh>"
+C.include "<nix/util/logging.hh>"
+C.include "<nix/util/signals.hh>"
+C.include "<nix/util/error.hh>"
 #else
 C.include "<nix/config.h>"
 C.include "<nix/shared.hh>"
 C.include "<nix/globals.hh>"
 #endif
+
+C.using "namespace nix"
 
 -- | Log C++ exceptions and call 'exitWith' the way Nix would exit when an
 -- exception occurs.
@@ -57,7 +61,29 @@ handleExceptionPtr programName eptr =
   [C.throwBlock| int {
     auto & eptr = *$fptr-ptr:(std::exception_ptr *eptr);
     std::string programName($bs-ptr:programName, $bs-len:programName);
-    return nix::handleExceptions(programName, [&]() {
-      std::rethrow_exception(eptr);
-    });
+    // Based on nix::handleExceptions, but without the libmain-specific stuff
+    std::string error = ANSI_RED "error:" ANSI_NORMAL " ";
+    try {
+      try {
+        try {
+          std::rethrow_exception(eptr);
+        } catch (...) {
+          // Avoid throwing another interrupt error in the print routines that actually catch this.
+          setInterruptThrown();
+          throw;
+        }
+      } catch (BaseError & e) {
+          logError(e.info());
+          return e.info().status;
+      } catch (std::bad_alloc & e) {
+          printError(error + "out of memory");
+          return 1;
+      } catch (std::exception & e) {
+          printError(error + e.what());
+          return 1;
+      }
+    } catch (...) {
+      // Nix would exit with 1, but this is a truly exceptional error, so we return -1
+      return -1;
+    }
   }|]

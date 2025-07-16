@@ -23,6 +23,7 @@ where
 
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Hercules.CNix.Store
+import qualified Hercules.CNix.Util
 import Hercules.CNix.Verbosity
   ( Verbosity (Debug, Talkative),
     setVerbosity,
@@ -66,12 +67,16 @@ C.include "hercules-ci-cnix/store.hxx"
 C.using "namespace nix"
 C.using "namespace hercules_ci_cnix"
 
+-- | Initialize the Nix store library. If you also use the Nix evaluator, you should
+-- call 'Hercules.CNix.Expr.init' instead.
 init :: IO ()
-init =
+init = do
   void
     [C.throwBlock| void {
-      nix::initNix();
+      nix::initLibStore();
     } |]
+  -- Install signal handlers using Haskell primitives (replaces nix::unix::startSignalHandlerThread)
+  Hercules.CNix.Util.installDefaultSigINTHandler
 
 setTalkative :: IO ()
 setTalkative = setVerbosity Talkative

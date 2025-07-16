@@ -391,6 +391,7 @@ executable hercules-ci-agent-worker
   pkgconfig-depends:
       nix-store >= 2.0
     , nix-expr >= 2.0
+    -- TODO: replace stack overflow detection and remove nix-main
     , nix-main >= 2.0
   default-language: Haskell2010
 
