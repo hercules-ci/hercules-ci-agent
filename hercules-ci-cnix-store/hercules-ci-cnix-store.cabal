@@ -94,6 +94,7 @@ library
       Hercules.CNix.Verbosity
   include-dirs:
       include
+      cbits
   pkgconfig-depends:
       nix-store (>= 2.4 && < 2.19) || (>= 2.19.3 && < 2.21) || (>= 2.24.10 && < 2.25) || (>= 2.28 && < 2.29)
   install-includes:
@@ -102,6 +103,8 @@ library
   hs-source-dirs: src
   cxx-sources:
       cbits/string.cxx
+      cbits/signals.cxx
+      cbits/signals.hxx
   build-depends:
       base >= 4.7 && <5
     , inline-c
