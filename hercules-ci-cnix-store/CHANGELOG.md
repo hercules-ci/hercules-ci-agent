@@ -5,6 +5,13 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.4.0.0 - 2025-07-18
+
+### Changed
+
+ - `init` now installs synchronous signal handlers for you. You may remove your call to `installDefaultSigINTHandler`.
+ - The `nix-main` library dependency has been dropped. (if you don't also use `hercules-ci-cnix-expr`)
+
 ## 0.3.7.0 - 2025-05-05
 
 ### Added
