@@ -1,7 +1,7 @@
 cabal-version: 2.4
 
 name:           hercules-ci-agent
-version:        0.10.6
+version:        0.10.7
 synopsis:       Runs Continuous Integration tasks on your machines
 category:       Nix, CI, Testing, DevOps
 homepage:       https://docs.hercules-ci.com
