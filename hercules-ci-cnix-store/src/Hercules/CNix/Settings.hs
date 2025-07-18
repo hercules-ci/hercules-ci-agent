@@ -40,12 +40,7 @@ C.include "<cstring>"
 C.include "<set>"
 C.include "<string>"
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
 C.include "<nix/store/globals.hh>"
-#else
-C.include "<nix/config.h>"
-C.include "<nix/globals.hh>"
-#endif
 
 C.include "hercules-ci-cnix/string.hxx"
 

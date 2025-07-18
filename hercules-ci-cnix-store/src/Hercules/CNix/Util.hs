@@ -25,17 +25,9 @@ import Prelude ()
 
 C.context context
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
-
 C.include "<nix/util/signals.hh>"
 
-#else
-C.include "<nix/config.h>"
-C.include "<nix/util.hh>"
-#  if NIX_IS_AT_LEAST(2,19,0)
-C.include "<nix/signals.hh>"
-#  endif
-#endif
+C.include "signals.hxx"
 
 C.using "namespace nix"
 
@@ -47,16 +39,21 @@ setInterruptThrown =
 
 triggerInterrupt :: IO ()
 triggerInterrupt =
-#if NIX_IS_AT_LEAST(2,24,0)
   [C.throwBlock| void {
     nix::unix::triggerInterrupt();
   } |]
-#else
-  [C.throwBlock| void {
-    nix::triggerInterrupt();
-  } |]
-#endif
 
+-- | Install a signal handler that will put Nix into the interrupted state and
+-- throws 'UserInterrupt' in the main thread (as is usual), assuming this
+-- function is called from the main thread.
+--
+-- This installs a synchronous C signal handler that calls nix::triggerInterrupt()
+-- immediately when signals are delivered, eliminating race conditions between
+-- signal delivery and interrupt flag setting. The handler then chains to any
+-- previously installed handler to preserve existing behavior.
+--
+-- This may be removed from the library interface in the future, as it is no
+-- longer needed to be called explicitly.
 installDefaultSigINTHandler :: IO ()
 installDefaultSigINTHandler = do
   mainThread <- myThreadId
@@ -66,16 +63,11 @@ installDefaultSigINTHandler = do
         for_ mt \t -> do
           throwTo t (toException UserInterrupt)
 
-  -- Install Nix interrupter in Haskell
-  _oldHandler <-
-    for [sigINT, sigTERM, sigHUP] \sig ->
-      installHandler
-        sig
-        ( Catch do
-            triggerInterrupt
-            defaultHaskellHandler
-        )
-        Nothing
+  -- Install synchronous C signal handlers first (these call triggerInterrupt immediately)
+  for_ [sigINT, sigTERM, sigHUP] \sig -> do
+    result <- [C.exp| int { hercules_install_signal_handler($(int sig)) } |]
+    when (result /= 0) $
+      panic $ "Failed to install synchronous signal handler for signal " <> show sig
 
   -- Install dummy SIGUSR1 handler for Nix interrupt signal propagation
   -- (installHandler uses process-wide sigprocmask, so this should apply to all

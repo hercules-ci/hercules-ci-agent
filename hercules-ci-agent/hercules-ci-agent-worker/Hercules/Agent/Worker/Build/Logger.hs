@@ -35,15 +35,6 @@ C.context context
 
 C.include "<cstring>"
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
-
--- C.include 
-
-#else
-C.include "<nix/config.h>"
-C.include "<nix/shared.hh>"
-C.include "<nix/globals.hh>"
-#endif
 
 C.include "<hercules-ci-cnix/string.hxx>"
 
@@ -57,7 +48,6 @@ C.using "namespace hercules_ci_cnix"
 
 initLogger :: IO ()
 initLogger =
-#if NIX_IS_AT_LEAST(2, 28, 0)
   [C.throwBlock| void {
     nix::logger = std::make_unique<HerculesLogger>();
     herculesLogger = dynamic_cast<HerculesLogger *>(nix::logger.get());
@@ -65,12 +55,6 @@ initLogger =
       throw std::runtime_error("Failed to cast logger to HerculesLogger");
     }
   }|]
-#else
-  [C.throwBlock| void {
-    herculesLogger = new HerculesLogger();
-    nix::logger = herculesLogger;
-  }|]
-#endif
 
 popMany :: IO (Vector LogEntry)
 popMany =

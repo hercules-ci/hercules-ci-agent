@@ -3,8 +3,6 @@
 #include <memory>
 #include <math.h>
 
-#if NIX_IS_AT_LEAST(2,28,0)
-
 #include <nix/store/build-result.hh>
 #include <nix/store/derivations.hh>
 #include <nix/store/globals.hh>
@@ -13,22 +11,6 @@
 #include <nix/util/callback.hh>
 #include <nix/expr/get-drvs.hh>
 #include <nix/main/shared.hh>
-
-#else
-#include <nix/config.h>
-#include <nix/shared.hh>
-#include <nix/store-api.hh>
-#include <nix/common-eval-args.hh>
-#include <nix/get-drvs.hh>
-#include <nix/derivations.hh>
-#include <nix/globals.hh>
-#include <nix/callback.hh>
-#if NIX_IS_AT_LEAST(2,7,0)
-#include <nix/build-result.hh>
-#include <nix/gc-store.hh>
-#endif
-#include <nix/path-with-outputs.hh>
-#endif
 
 #include "hercules-store.hh"
 
@@ -98,8 +80,6 @@ void WrappingStore::addToStore(const ValidPathInfo & info, Source & narSource,
   wrappedStore->addToStore(info, narSource, repair, checkSigs);
 }
 
-#if NIX_IS_AT_LEAST(2,24,0)
-
 StorePath WrappingStore::addToStore(
     std::string_view name,
     const SourcePath & path,
@@ -123,89 +103,6 @@ StorePath WrappingStore::addToStoreFromDump(
 {
     return wrappedStore->addToStoreFromDump(dump, name, dumpMethod, method, hashAlgo, references, repair);
 }
-
-#elif NIX_IS_AT_LEAST(2,20,0)
-
-StorePath WrappingStore::addToStore(
-    std::string_view name,
-    SourceAccessor & accessor,
-    const CanonPath & path,
-    ContentAddressMethod method,
-    HashAlgorithm hashAlgo,
-    const StorePathSet & references,
-    PathFilter & filter,
-    RepairFlag repair)
-{
-    return wrappedStore->addToStore(name, accessor, path, method, hashAlgo, references, filter, repair);
-}
-
-StorePath WrappingStore::addToStoreFromDump(
-    Source & dump,
-    std::string_view name,
-    ContentAddressMethod method,
-    HashAlgorithm hashAlgo,
-    const StorePathSet & references,
-    RepairFlag repair)
-{
-    return wrappedStore->addToStoreFromDump(dump, name, method, hashAlgo, references, repair);
-}
-
-#else // < 2.20
-
-StorePath WrappingStore::addToStore(
-#if NIX_IS_AT_LEAST(2,7,0)
-      std::string_view name,
-#else
-      const std::string & name,
-#endif
-      const Path & srcPath,
-      FileIngestionMethod method, HashType hashAlgo,
-      PathFilter & filter, RepairFlag repair
-#if NIX_IS_AT_LEAST(2,5,0)
-      , const StorePathSet & references
-#endif
-      ) {
-
-  return wrappedStore->addToStore(name, srcPath, method, hashAlgo, filter, repair
-#if NIX_IS_AT_LEAST(2,5,0)
-      , references
-#endif
-  );
-
-}
-
-StorePath WrappingStore::addToStoreFromDump(
-      Source & dump,
-#if NIX_IS_AT_LEAST(2,7,0)
-      std::string_view name,
-#else
-      const std::string & name,
-#endif
-      FileIngestionMethod method,
-      HashType hashAlgo,
-      RepairFlag repair
-#if NIX_IS_AT_LEAST(2,5,0)
-      , const StorePathSet & references
-#endif
-      ) {
-
-  return wrappedStore->addToStoreFromDump(dump, name, method, hashAlgo, repair
-#if NIX_IS_AT_LEAST(2,5,0)
-      , references
-#endif
-  );
-}
-
-StorePath WrappingStore::addTextToStore(
-#if NIX_IS_AT_LEAST(2,7,0)
-      std::string_view name, std::string_view s,
-#else
-      const std::string & name, const std::string & s,
-#endif
-      const StorePathSet & references, RepairFlag repair) {
-  return wrappedStore->addTextToStore(name, s, references, repair);
-}
-#endif // < 2.20
 
 void WrappingStore::narFromPath(const StorePath& path, Sink& sink) {
   wrappedStore->narFromPath(path, sink);
@@ -231,44 +128,17 @@ void WrappingStore::addTempRoot(const StorePath& path) {
   wrappedStore->addTempRoot(path);
 }
 
-#if !NIX_IS_AT_LEAST(2,5,0)
-void WrappingStore::syncWithGC() {
-  wrappedStore->syncWithGC();
-}
-#endif
-
 void WrappingStore::optimiseStore() {
   wrappedStore->optimiseStore();
 };
-
-#if !NIX_IS_AT_LEAST(2,7,0)
-void WrappingStore::collectGarbage(const GCOptions& options,
-                                   GCResults& results) {
-  wrappedStore->collectGarbage(options, results);
-}
-
-void WrappingStore::addIndirectRoot(const Path& path) {
-  wrappedStore->addIndirectRoot(path);
-}
-
-Roots WrappingStore::findRoots(bool censor) {
-  return wrappedStore->findRoots(censor);
-}
-#endif
 
 bool WrappingStore::verifyStore(bool checkContents, RepairFlag repair) {
   return wrappedStore->verifyStore(checkContents, repair);
 };
 
-#if NIX_IS_AT_LEAST(2,19,0)
 ref<FSAccessor> WrappingStore::getFSAccessor(bool requireValidPath) {
   return wrappedStore->getFSAccessor(requireValidPath);
 }
-#else
-ref<FSAccessor> WrappingStore::getFSAccessor() {
-  return wrappedStore->getFSAccessor();
-}
-#endif
 
 void WrappingStore::addSignatures(const StorePath& storePath,
                                   const StringSet& sigs) {
@@ -291,16 +161,6 @@ void WrappingStore::queryMissing(const std::vector<DerivedPath> & targets,
                              downloadSize, narSize);
 }
 
-#if !NIX_IS_AT_LEAST(2,8,0)
-#  if NIX_IS_AT_LEAST(2,6,0)
-std::optional<std::string>
-#  else
-std::shared_ptr<std::string>
-#  endif
-WrappingStore::getBuildLog(const StorePath& path) {
-  return wrappedStore->getBuildLog(path);
-}
-#endif
 
 void WrappingStore::connect() {
   wrappedStore->connect();
@@ -314,17 +174,10 @@ unsigned int WrappingStore::getProtocol() {
   return wrappedStore->getProtocol();
 }
 
-#if ! NIX_IS_AT_LEAST(2,14,0)
-void WrappingStore::createUser(const std::string & userName, uid_t userId) {
-  wrappedStore->createUser(userName, userId);
-}
-#endif
 
-#if NIX_IS_AT_LEAST(2,15,0)
 std::optional<TrustedFlag> WrappingStore::isTrustedClient() {
   return wrappedStore->isTrustedClient();
 }
-#endif
 
 /////
 
@@ -336,16 +189,10 @@ const std::string HerculesStore::name() {
   return "wrapped " + wrappedStore->name();
 }
 
-#if NIX_IS_AT_LEAST(2,5,0)
 void HerculesStore::queryRealisationUncached(const DrvOutput &drvOutput,
   Callback<std::shared_ptr<const Realisation>> callback) noexcept {
   wrappedStore->queryRealisation(drvOutput, std::move(callback));
 }
-#else
-std::optional<const Realisation> HerculesStore::queryRealisation(const DrvOutput &drvOut) {
-  return wrappedStore->queryRealisation(drvOut);
-}
-#endif
 
 void HerculesStore::ensurePath(const StorePath& path) {
   /* We avoid asking substituters for paths, since
@@ -383,7 +230,6 @@ void HerculesStore::buildPaths(const std::vector<DerivedPath> & derivedPaths, Bu
 
   // TODO: don't ignore the Opaques
   for (auto & derivedPath : derivedPaths) {
-#if NIX_IS_AT_LEAST(2,18,0)
     std::visit(overloaded {
         [&](const DerivedPathBuilt & b) {
             // TODO (RFC 92)
@@ -414,27 +260,6 @@ void HerculesStore::buildPaths(const std::vector<DerivedPath> & derivedPaths, Bu
             // should this be substituted?
         },
     }, derivedPath);
-#elif NIX_IS_AT_LEAST(2,13,0)
-    auto sOrDrvPath = StorePathWithOutputs::tryFromDerivedPath(derivedPath);
-    std::visit(overloaded {
-        [&](const StorePathWithOutputs & s) {
-            // paths.push_back(StorePathWithOutputs { built.drvPath, built.outputs });
-            paths.push_back(s);
-        },
-        [&](const StorePath & drvPath) {
-            // should this be substituted?
-        },
-    }, sOrDrvPath);
-#else
-    std::visit(overloaded {
-      [&](DerivedPath::Built built) {
-          paths.push_back(StorePathWithOutputs { built.drvPath, built.outputs });
-      },
-      [&](DerivedPath::Opaque opaque) {
-          // TODO: pass this to the callback as well
-      },
-    }, derivedPath.raw());
-#endif
   }
 
   builderCallback(pathsPtr, &exceptionToThrow);

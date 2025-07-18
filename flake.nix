@@ -236,21 +236,6 @@
                         "The `nix` flake does not define a package for system ${pkgs.stdenv.hostPlatform.system}. Using nixpkgs' `nix` instead."
                         pkgs.nix
                     )
-                  else if pkgs.nix.version == "2.24.10"
-                  then
-                    pkgs.nix.overrideAttrs
-                      (o: {
-                        # We need to use the nix package from the flake, because the test runner
-                        # will use the nix package from the flake.
-                        patches = o.patches or [ ] ++ [
-                          # https://github.com/NixOS/nix/pull/11821
-                          (pkgs.fetchpatch2 {
-                            name = "nix-git-cache-fix-empty-dir.patch";
-                            url = "https://github.com/NixOS/nix/commit/388271e8ec6f5057bc8d39865fcc280e044b2844.diff";
-                            hash = "sha256-9RomRFX4Kt7qv9ERJhcISdW1QHs24uuTcwuxHt0hTd8=";
-                          })
-                        ];
-                      })
                   else
                     pkgs.nix;
               };
@@ -449,13 +434,10 @@
                       ];
 
                       # FIXME: https://github.com/hercules-ci/hercules-ci-agent/pull/443/files
-                      hercules-ci-cnix-expr = lib.pipe super.hercules-ci-cnix-expr ([
+                      hercules-ci-cnix-expr = lib.pipe super.hercules-ci-cnix-expr [
                         (x: x.override (o: { inherit nix; }))
                         (h.addBuildTool pkgs.git)
-                      ] ++ lib.optionals (lib.versionAtLeast nix.version "2.24" && !lib.versionAtLeast nix.version "2.25") [
-                        # (x: x.overrideAttrs (o: { NIX_CFLAGS_LINK = (o.NIX_CFLAGS_LINK or "") + " -L${lib.getLib nix}/lib"; }))
-                        (h.appendConfigureFlags [ "--extra-lib-dirs=${lib.getLib nix}/lib" ])
-                      ]);
+                      ];
 
                       hercules-ci-cnix-store = lib.pipe super.hercules-ci-cnix-store [
                         (x: x.override (o: { inherit nix; }))
@@ -484,6 +466,10 @@
 
                       # make sure to update haskell-flake before re-enabling this (haskell-flake#271)
                       # releaser = super.callCabal2nix "releaser" (builtins.getFlake "github:hercules-ci/haskell-releaser?rev=e50360ec896fcb6ad724566aece6625973419e8d") { };
+
+                      # cabal2nix injects pkg-config dependencies by looking them up in the Haskell package set _or_ `pkgs`
+                      # It does not know about the `nix-flake` pkg-config module yet.
+                      nix-flake = nix;
 
                     })
                   ];

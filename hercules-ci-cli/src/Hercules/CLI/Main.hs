@@ -16,7 +16,6 @@ import qualified Hercules.CLI.Secret as Secret
 import qualified Hercules.CLI.State as State
 import qualified Hercules.CNix
 import qualified Hercules.CNix.Exception
-import qualified Hercules.CNix.Util
 import Hercules.CNix.Verbosity (setShowTrace)
 import qualified Language.C.Inline.Cpp.Exception as C
 import qualified Options.Applicative as Optparse
@@ -39,7 +38,6 @@ main =
 initNix :: IO ()
 initNix = do
   Hercules.CNix.init
-  Hercules.CNix.Util.installDefaultSigINTHandler
 
 addNix :: (Functor f) => f (IO a) -> f (IO a)
 addNix = fmap (initNix *>)

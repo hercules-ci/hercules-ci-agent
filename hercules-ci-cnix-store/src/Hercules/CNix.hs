@@ -23,6 +23,7 @@ where
 
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import Hercules.CNix.Store
+import qualified Hercules.CNix.Util
 import Hercules.CNix.Verbosity
   ( Verbosity (Debug, Talkative),
     setVerbosity,
@@ -34,27 +35,10 @@ import System.IO.Unsafe (unsafePerformIO)
 
 C.context context
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
-
 C.include "<nix/util/config-global.hh>"
 C.include "<nix/store/derivations.hh>"
 C.include "<nix/store/globals.hh>"
 C.include "<nix/main/shared.hh>"
-
-#else
-C.include "<stdio.h>"
-C.include "<cstring>"
-C.include "<math.h>"
-C.include "<nix/config.h>"
-C.include "<nix/shared.hh>"
-C.include "<nix/store-api.hh>"
-C.include "<nix/get-drvs.hh>"
-C.include "<nix/derivations.hh>"
-C.include "<nix/globals.hh>"
-#  if NIX_IS_AT_LEAST(2, 24, 0)
-C.include "<config-global.hh>"
-#  endif
-#endif
 
 C.include "<gc/gc.h>"
 C.include "<gc/gc_cpp.h>"
@@ -66,12 +50,16 @@ C.include "hercules-ci-cnix/store.hxx"
 C.using "namespace nix"
 C.using "namespace hercules_ci_cnix"
 
+-- | Initialize the Nix store library. If you also use the Nix evaluator, you should
+-- call 'Hercules.CNix.Expr.init' instead.
 init :: IO ()
-init =
+init = do
   void
     [C.throwBlock| void {
-      nix::initNix();
+      nix::initLibStore();
     } |]
+  -- Install signal handlers using Haskell primitives (replaces nix::unix::startSignalHandlerThread)
+  Hercules.CNix.Util.installDefaultSigINTHandler
 
 setTalkative :: IO ()
 setTalkative = setVerbosity Talkative

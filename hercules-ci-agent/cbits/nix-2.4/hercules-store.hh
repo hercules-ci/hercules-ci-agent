@@ -2,31 +2,15 @@
 #include <cstring>
 #include <math.h>
 
-#if NIX_IS_AT_LEAST(2,28,0)
 #include <nix/util/util.hh>
 #include <nix/store/derivations.hh>
 #include <nix/store/path-with-outputs.hh>
 #include <nix/store/store-api.hh>
 #include <nix/main/shared.hh>
 
-#else
-#include <nix/config.h>
-#include <nix/shared.hh>
-#include <nix/store-api.hh>
-#include <nix/common-eval-args.hh>
-#include <nix/get-drvs.hh>
-#include <nix/derivations.hh>
-#include <nix/globals.hh>
-#  if NIX_IS_AT_LEAST(2,13,0)
-#    include <nix/path-with-outputs.hh>
-#  endif
-#endif
-
 #include "HsFFI.h"
 
-#if NIX_IS_AT_LEAST(2,19,0)
 using FSAccessor = nix::SourceAccessor;
-#endif
 
 using namespace nix;
 
@@ -74,8 +58,6 @@ public:
   virtual void addToStore(const ValidPathInfo & info, Source & narSource,
       RepairFlag repair = NoRepair, CheckSigsFlag checkSigs = CheckSigs) override;
 
-#if NIX_IS_AT_LEAST(2,24,0)
-
     virtual StorePath addToStore(
         std::string_view name,
         const SourcePath & path,
@@ -94,67 +76,6 @@ public:
         const StorePathSet & references,
         RepairFlag repair) override;
 
-#elif NIX_IS_AT_LEAST(2,20,0)
-
-    virtual StorePath addToStore(
-        std::string_view name,
-        SourceAccessor & accessor,
-        const CanonPath & path,
-        ContentAddressMethod method = FileIngestionMethod::Recursive,
-        HashAlgorithm hashAlgo = HashAlgorithm::SHA256,
-        const StorePathSet & references = StorePathSet(),
-        PathFilter & filter = defaultPathFilter,
-        RepairFlag repair = NoRepair) override;
-
-    virtual StorePath addToStoreFromDump(
-        Source & dump,
-        std::string_view name,
-        ContentAddressMethod method = FileIngestionMethod::Recursive,
-        HashAlgorithm hashAlgo = HashAlgorithm::SHA256,
-        const StorePathSet & references = StorePathSet(),
-        RepairFlag repair = NoRepair) override;
-
-
-#else // < 2.20
-  virtual StorePath addToStore(
-#if NIX_IS_AT_LEAST(2,7,0)
-      std::string_view name,
-#else
-      const std::string & name,
-#endif
-      const Path & srcPath,
-      FileIngestionMethod method = FileIngestionMethod::Recursive, HashType hashAlgo = htSHA256,
-      PathFilter & filter = defaultPathFilter, RepairFlag repair = NoRepair
-#if NIX_IS_AT_LEAST(2,5,0)
-      , const StorePathSet & references = StorePathSet()
-#endif
-      ) override;
-
-  virtual StorePath addToStoreFromDump(
-      Source & dump, 
-#if NIX_IS_AT_LEAST(2,7,0)
-      std::string_view name,
-#else
-      const std::string & name,
-#endif
-      FileIngestionMethod method = FileIngestionMethod::Recursive,
-      HashType hashAlgo = htSHA256,
-      RepairFlag repair = NoRepair
-#if NIX_IS_AT_LEAST(2,5,0)
-      , const StorePathSet & references = StorePathSet()
-#endif
-      ) override;
-
-  virtual StorePath addTextToStore(
-#if NIX_IS_AT_LEAST(2,7,0)
-    std::string_view name, std::string_view s,
-#else
-    const std::string & name, const std::string & s,
-#endif
-    const StorePathSet & references, RepairFlag repair = NoRepair) override;
-
-#endif // < 2.20
-
   virtual void narFromPath(const StorePath & path, Sink & sink) override;
 
   virtual void buildPaths(
@@ -169,27 +90,13 @@ public:
 
   virtual void addTempRoot(const StorePath & path) override;
 
-#if !NIX_IS_AT_LEAST(2,5,0)
-  virtual void syncWithGC() override;
-#endif
 
-#if !NIX_IS_AT_LEAST(2,7,0)
-  virtual Roots findRoots(bool censor) override;
-
-  virtual void collectGarbage(const GCOptions & options, GCResults & results) override;
-
-  virtual void addIndirectRoot(const Path & path) override;
-#endif
 
   virtual void optimiseStore() override;
 
   virtual bool verifyStore(bool checkContents, RepairFlag repair = NoRepair) override;
 
-#if NIX_IS_AT_LEAST(2,19,0)
   virtual ref<FSAccessor> getFSAccessor(bool requireValidPath) override;
-#else
-  virtual ref<FSAccessor> getFSAccessor() override;
-#endif
 
   virtual void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 
@@ -201,14 +108,6 @@ public:
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) override;
 
-#if !NIX_IS_AT_LEAST(2,8,0)
-#  if NIX_IS_AT_LEAST(2,6,0)
-  virtual std::optional<std::string>
-#  else
-  virtual std::shared_ptr<std::string>
-#  endif
-    getBuildLog(const StorePath & path) override;
-#endif
 
   virtual unsigned int getProtocol() override;
 
@@ -216,13 +115,8 @@ public:
 
   virtual Path toRealPath(const Path & storePath) override;
 
-#if ! NIX_IS_AT_LEAST(2,14,0)
-  virtual void createUser(const std::string & userName, uid_t userId) override;
-#endif
 
-#if NIX_IS_AT_LEAST(2,15,0)
   virtual std::optional<TrustedFlag> isTrustedClient() override;
-#endif
 
 };
 
@@ -237,12 +131,8 @@ public:
 
   // Overrides
 
-#if NIX_IS_AT_LEAST(2,5,0)
   virtual void queryRealisationUncached(const DrvOutput &,
         Callback<std::shared_ptr<const Realisation>> callback) noexcept override;
-#else
-  virtual std::optional<const Realisation> queryRealisation(const DrvOutput &) override;
-#endif
 
   virtual void ensurePath(const StorePath & path) override;
 

@@ -36,23 +36,7 @@ C.context context
 
 C.include "<cstring>"
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
-
 C.include "<nix/main/shared.hh>"
-
-#else
-C.include "<nix/config.h>"
-
-C.include "<nix/shared.hh>"
-
-C.include "<nix/store-api.hh>"
-
-C.include "<nix/get-drvs.hh>"
-
-C.include "<nix/derivations.hh>"
-
-C.include "<nix/globals.hh>"
-#endif
 
 C.include "hercules-aliases.h"
 
