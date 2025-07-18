@@ -485,6 +485,10 @@
                       # make sure to update haskell-flake before re-enabling this (haskell-flake#271)
                       # releaser = super.callCabal2nix "releaser" (builtins.getFlake "github:hercules-ci/haskell-releaser?rev=e50360ec896fcb6ad724566aece6625973419e8d") { };
 
+                      # cabal2nix injects pkg-config dependencies by looking them up in the Haskell package set _or_ `pkgs`
+                      # It does not know about the `nix-flake` pkg-config module yet.
+                      nix-flake = nix;
+
                     })
                   ];
                 };
