@@ -1,15 +1,7 @@
 #include <csignal>
 #include <unistd.h>
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
 #include <nix/util/signals.hh>
-#else
-#include <nix/config.h>
-#include <nix/util.hh>
-#  if NIX_IS_AT_LEAST(2,19,0)
-#include <nix/signals.hh>
-#  endif
-#endif
 
 #include "signals.hxx"
 
@@ -35,11 +27,7 @@ static struct sigaction* get_old_action(int sig) {
 static void hercules_nix_signal_handler(int sig) {
     // Set the Nix interrupt flag immediately
     // This ensures checkInterrupt() calls after EINTR will work correctly
-#if NIX_IS_AT_LEAST(2,24,0)
     nix::unix::triggerInterrupt();
-#else
-    nix::triggerInterrupt();
-#endif
     
     // Call the previous handler to preserve existing behavior
     struct sigaction* old_action = get_old_action(sig);

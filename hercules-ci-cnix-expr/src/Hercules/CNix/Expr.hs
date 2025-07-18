@@ -105,8 +105,6 @@ C.include "<cstring>"
 
 C.include "<math.h>"
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
-
 C.include "<nix/util/config-global.hh>"
 C.include "<nix/store/store-api.hh>"
 C.include "<nix/store/globals.hh>"
@@ -118,29 +116,6 @@ C.include "<nix/flake/flakeref.hh>"
 C.include "<nix/flake/settings.hh>"
 C.include "<nix/fetchers/fetch-settings.hh>"
 C.include "<nix/main/shared.hh>"
-
-#else
-C.include "<nix/config.h>"
-C.include "<nix/shared.hh>"
-C.include "<nix/eval.hh>"
-C.include "<nix/eval-inline.hh>"
-C.include "<nix/store-api.hh>"
-C.include "<nix/get-drvs.hh>"
-C.include "<nix/derivations.hh>"
-C.include "<nix/globals.hh>"
-C.include "<nix/flake/flake.hh>"
-C.include "<nix/flake/flakeref.hh>"
-#  if NIX_IS_AT_LEAST(2,19,0)
-C.include "<nix/args/root.hh>"
-#  endif
-#  if NIX_IS_AT_LEAST(2,24,0)
-C.include "<nix/config-global.hh>"
-C.include "<nix/eval-gc.hh>"
-C.include "<nix/flake/settings.hh>"
-C.include "<nix/fetch-settings.hh>"
-C.include "<nix/eval-settings.hh>"
-#  endif
-#endif
 
 C.include "hercules-ci-cnix/expr.hxx"
 
@@ -163,8 +138,6 @@ C.verbatim "nix::fetchers::Settings fetchSettings;"
 C.verbatim "static bool readOnlyMode = false;"
 C.verbatim "nix::EvalSettings evalSettings(readOnlyMode);"
 
-#if NIX_IS_AT_LEAST(2,28,0)
-
 init :: IO ()
 init = do
   [C.throwBlock| void {
@@ -178,39 +151,6 @@ init = do
     globalConfig.set("extra-experimental-features", "flakes");
     flakeSettings.configureEvalSettings(evalSettings);
   }|]
-
-#else
-
-init :: IO ()
-init =
-  void
-    [C.throwBlock| void {
-      { auto _ = GlobalConfig::Register(&flakeSettings); }
-      { auto _ = GlobalConfig::Register(&fetchSettings); }
-      { auto _ = GlobalConfig::Register(&evalSettings); }
-      // Use initLibStore() instead of initNix() to avoid starting Nix's signal handler thread
-      // Instead we manage signal handler settings using the Haskell runtime via `installDefaultSigINTHandler`
-      nix::initLibStore();
-      nix::initGC();
-#if NIX_IS_AT_LEAST(2,15,0)
-      globalConfig.set("extra-experimental-features", "flakes");
-#else
-#if NIX_IS_AT_LEAST(2,5,0)
-      std::set<nix::ExperimentalFeature> features(nix::settings.experimentalFeatures.get());
-      features.insert(nix::ExperimentalFeature::Flakes);
-#else
-      Strings features(nix::settings.experimentalFeatures.get());
-      features.push_back("flakes");
-#endif
-      nix::settings.experimentalFeatures.assign(features);
-#endif
-#if NIX_IS_AT_LEAST(2,28,0)
-      flakeSettings.configureEvalSettings(evalSettings);
-#elif NIX_IS_AT_LEAST(2,24,0)
-      nix::flake::initLib(flakeSettings);
-#endif
-    } |]
-#endif
 
 -- | Initialize the current (main) thread for stack overflow detection.
 initThread :: IO ()
@@ -268,7 +208,6 @@ runGcRegisteredThread io =
 -}
 setExtraStackOverflowHandlerToSleep :: IO ()
 setExtraStackOverflowHandlerToSleep =
-#if NIX_IS_AT_LEAST(2,12,0)
   void
     [C.throwBlock| void {
       nix::stackOverflowHandler = [](siginfo_t *info, void *ctx) {
@@ -283,9 +222,6 @@ setExtraStackOverflowHandlerToSleep =
         _exit(1);
         };
     }|]
-#else
-  pass
-#endif
 
 setTalkative :: IO ()
 setTalkative =
@@ -325,22 +261,10 @@ logInfo t = do
 -- | (private) Make an EvalState and leak it.
 newEvalState :: MonadIO m => Store -> m (Ptr EvalState)
 newEvalState (Store store) = liftIO
-#if NIX_IS_AT_LEAST(2,24,0)
   [C.throwBlock| EvalState* {
     nix::LookupPath emptyLookupPath;
     return new EvalState(emptyLookupPath, *$(refStore* store), fetchSettings, evalSettings);
   } |]
-#elif NIX_IS_AT_LEAST(2,17,0)
-  [C.throwBlock| EvalState* {
-    nix::SearchPath searchPaths;
-    return new EvalState(searchPaths, *$(refStore* store));
-  } |]
-#else
-  [C.throwBlock| EvalState* {
-    Strings searchPaths;
-    return new EvalState(searchPaths, *$(refStore* store));
-  } |]
-#endif
 
 -- | (private) Don't leak it.
 deleteEvalState :: MonadIO m => (Ptr EvalState) -> m ()
@@ -365,13 +289,7 @@ addAllowedPath evalState path =
   [C.throwBlock| void {
     std::string path = std::string($bs-ptr:path, $bs-len:path);
     EvalState &evalState = *$(EvalState *evalState);
-#if NIX_IS_AT_LEAST(2,20,0)
     evalState.allowPath(path);
-#else
-    if (evalState.allowedPaths) {
-      evalState.allowedPaths->insert(path);
-    }
-#endif
   }|]
 
 addInternalAllowedPaths :: Ptr EvalState -> IO ()
@@ -386,13 +304,7 @@ evalFile evalState filename = do
       EvalState & state = *$(EvalState *evalState);
       Value value;
       auto cstr = $(const char *filename');
-#if NIX_IS_AT_LEAST(2,19,0)
       SourcePath path {state.rootPath(CanonPath(cstr))};
-#elif NIX_IS_AT_LEAST(2,16,0)
-      SourcePath path = CanonPath(cstr);
-#else
-      std::string path = cstr;
-#endif
       state.evalFile(path, value);
       return new (NoGC) Value(value);
     }|]
@@ -413,11 +325,7 @@ autoCallFunction evalState (RawValue fun) (Value (RawValue autoArgs)) =
     =<< [C.throwBlock| Value* {
           Value result;
           $(EvalState *evalState)->autoCallFunction(
-#if NIX_IS_AT_LEAST(2,24,0)
                   const_cast<Bindings &>(*$(Value *autoArgs)->attrs()),
-#else
-                  *$(Value *autoArgs)->attrs,
-#endif
                   *$(Value *fun),
                   result);
           return new (NoGC) Value (result);
@@ -446,11 +354,7 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
     <$> [C.throwBlock| int {
           Value *v = $(Value *v);
           EvalState &evalState = *$(EvalState *evalState);
-#if NIX_IS_AT_LEAST(2,24,0)
           auto attrs = v->attrs();
-#else
-          auto attrs = v->attrs;
-#endif
           // Bindings::const_iterator iter; // 2.24
           auto iter = attrs->find(evalState.sRecurseForDerivations);
           if (iter == attrs->end()) {
@@ -460,13 +364,7 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
             // case to return true when it is not a bool. That logic was added
             // because an empty attrset was found here, observed in
             // nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
-#if NIX_IS_AT_LEAST(2,14,0)
             return evalState.forceBool(*iter->value, iter->pos, "while evaluating whether to traverse into an attribute set to find more derivations");
-#elif NIX_IS_AT_LEAST(2,9,0)
-            return evalState.forceBool(*iter->value, iter->pos);
-#else
-            return evalState.forceBool(*iter->value, *iter->pos);
-#endif
           }
         } |]
 
@@ -477,11 +375,7 @@ getAttr evalState (Value (RawValue v)) k =
       Value &v = *$(Value *v);
       EvalState &evalState = *$(EvalState *evalState);
       Symbol k = evalState.symbols.create($bs-cstr:k);
-#if NIX_IS_AT_LEAST(2,24,0)
       auto attrs = v.attrs();
-#else
-      auto attrs = v.attrs;
-#endif
       // Bindings::const_iterator iter; // 2.24
       auto iter = attrs->find(k);
       if (iter == attrs->end()) {
@@ -498,25 +392,16 @@ mkNullableRawValue p = Just <$> mkRawValue p
 
 getAttrs :: Ptr EvalState -> Value NixAttrs -> IO (Map ByteString RawValue)
 getAttrs evalState (Value (RawValue v)) = do
-#if NIX_IS_AT_LEAST(2,24,0)
   begin <- [C.exp| const Attr *{ $(Value *v)->attrs()->begin() }|]
   end <- [C.exp| const Attr *{ $(Value *v)->attrs()->end() }|]
-#else
-  begin <- [C.exp| Attr *{ $(Value *v)->attrs->begin() }|]
-  end <- [C.exp| Attr *{ $(Value *v)->attrs->end() }|]
-#endif
   let gather :: Map ByteString RawValue -> Ptr Attr' -> IO (Map ByteString RawValue)
       gather acc i | i == end = pure acc
       gather acc i = do
-#if NIX_IS_AT_LEAST(2,9,0)
         name <- BS.unsafePackMallocCString =<< [C.block| const char *{
           EvalState &evalState = *$(EvalState *evalState);
           SymbolStr str = evalState.symbols[$(Attr *i)->name];
           return stringdup(static_cast<std::string>(str));
         }|]
-#else
-        name <- BS.unsafePackMallocCString =<< [C.exp| const char *{ stringdup(static_cast<std::string>($(Attr *i)->name)) } |]
-#endif
         value <- mkRawValue =<< [C.exp| Value *{ new (NoGC) Value(*$(Attr *i)->value) } |]
         let acc' = M.insert name value acc
         seq acc' pass
@@ -530,18 +415,9 @@ getDrvFile evalState (RawValue v) = liftIO do
       EvalState &state = *$(EvalState *evalState);
       auto drvInfo = getDerivation(state, *$(Value *v), false);
       if (!drvInfo)
-#if NIX_IS_AT_LEAST(2,24,0)
         throw EvalError(state, "Not a valid derivation");
-#else
-        throw EvalError("Not a valid derivation");
-#endif
 
-#if NIX_IS_AT_LEAST(2,7,0)
       StorePath storePath = drvInfo->requireDrvPath();
-#else
-      std::string drvPath = drvInfo->queryDrvPath();
-      StorePath storePath = state.store->parseStorePath(drvPath);
-#endif
 
       // write it (?)
       auto drv = state.store->derivationFromPath(storePath);
@@ -595,13 +471,7 @@ valueFromExpressionString evalState s basePath = do
     =<< [C.throwBlock| Value *{
       EvalState &evalState = *$(EvalState *evalState);
       std::string basePathStr = std::string($bs-ptr:basePath, $bs-len:basePath);
-#if NIX_IS_AT_LEAST(2,19,0)
       SourcePath basePath {evalState.rootPath(CanonPath(basePathStr))};
-#elif NIX_IS_AT_LEAST(2,16,0)
-      SourcePath basePath = CanonPath(basePathStr);
-#else
-      auto & basePath = basePathStr;
-#endif
       Expr *expr = evalState.parseExprFromString(std::string($bs-ptr:s, $bs-len:s), basePath);
       Value *r = new (NoGC) Value();
       evalState.eval(expr, *r);
@@ -629,22 +499,14 @@ apply (RawValue f) (RawValue a) = do
     }|]
 
 mkPath :: Ptr EvalState -> ByteString -> IO (Value NixPath)
-#if NIX_IS_AT_LEAST(2,19,0)
 mkPath evalState path =
-#else
-mkPath _evalState path =
-#endif
   Value
     <$> ( mkRawValue
             =<< [C.throwBlock| Value *{
       Value *r = new (NoGC) Value();
       std::string s($bs-ptr:path, $bs-len:path);
-#if NIX_IS_AT_LEAST(2,19,0)
       EvalState & state = *$(EvalState *evalState);
       r->mkPath(state.rootPath(CanonPath(s)));
-#else
-      r->mkPath(stringdup(s));
-#endif
       return r;
   }|]
         )
@@ -656,27 +518,19 @@ getFlakeFromFlakeRef evalState flakeRef = do
     Value *r = new (NoGC) Value();
     std::string flakeRefStr($bs-ptr:flakeRef, $bs-len:flakeRef);
     auto flakeRef = nix::parseFlakeRef(
-#if NIX_IS_AT_LEAST(2,24,0)
       fetchSettings,
-#endif
       flakeRefStr,
       {},
       true);
     nix::flake::callFlake(evalState,
       nix::flake::lockFlake(
-#if NIX_IS_AT_LEAST(2,24,0)
         flakeSettings,
-#endif
         evalState,
         flakeRef,
         nix::flake::LockFlags {
           .updateLockFile = false,
           .useRegistries = false,
-#if NIX_IS_AT_LEAST(2,13,0)
           .allowUnlocked = false,
-#else
-          .allowMutable = false,
-#endif
         }),
       *r);
     return r;
@@ -692,27 +546,19 @@ getLocalFlake evalState path = do
     Value *r = new (NoGC) Value();
     std::string path($bs-ptr:absPath, $bs-len:absPath);
     auto flakeRef = nix::parseFlakeRef(
-#if NIX_IS_AT_LEAST(2,24,0)
       fetchSettings,
-#endif
       path,
       {},
       true);
     nix::flake::callFlake(evalState,
       nix::flake::lockFlake(
-#if NIX_IS_AT_LEAST(2,24,0)
         flakeSettings,
-#endif
         evalState,
         flakeRef,
         nix::flake::LockFlags {
           .updateLockFile = false,
           .useRegistries = false,
-#if NIX_IS_AT_LEAST(2,13,0)
           .allowUnlocked = false,
-#else
-          .allowMutable = false,
-#endif
         }),
       *r);
     return r;
@@ -738,25 +584,17 @@ getFlakeFromGit evalState url ref rev =
     attrs.emplace("rev", rev);
 
     auto flakeRef = nix::FlakeRef::fromAttrs(
-#if NIX_IS_AT_LEAST(2,24,0)
       fetchSettings,
-#endif
       attrs);
     nix::flake::callFlake(evalState,
       nix::flake::lockFlake(
-#if NIX_IS_AT_LEAST(2,24,0)
         flakeSettings,
-#endif
         evalState,
         flakeRef,
         nix::flake::LockFlags {
           .updateLockFile = false,
           .useRegistries = false,
-#if NIX_IS_AT_LEAST(2,13,0)
           .allowUnlocked = false,
-#else
-          .allowMutable = false,
-#endif
         }),
       *r);
     return r;
@@ -904,7 +742,6 @@ instance ToValue Text where
 
 instance ToRawValue a => ToRawValue (Map ByteString a)
 
-#if NIX_IS_AT_LEAST(2,6,0)
 withBindingsBuilder :: Integral n => Ptr EvalState -> n -> (Ptr BindingsBuilder' -> IO ()) -> IO (Value NixAttrs)
 withBindingsBuilder evalState n f = do
   withBindingsBuilder' evalState n \bb -> do
@@ -927,12 +764,10 @@ withBindingsBuilder' evalState n =
         return new BindingsBuilder(evalState, evalState.allocBindings($(int l)));
       }|]
       \bb -> [C.block| void { delete $(BindingsBuilder *bb); }|]
-#endif
 
 instance ToRawValue a => ToValue (Map ByteString a) where
   type NixTypeFor (Map ByteString a) = NixAttrs
 
-#if NIX_IS_AT_LEAST(2,6,0)
   toValue evalState attrs = withBindingsBuilder evalState (length attrs) \bb -> do
     attrs & traverseWithKey_ \k a -> do
       RawValue aRaw <- toRawValue evalState a
@@ -942,30 +777,6 @@ instance ToRawValue a => ToValue (Map ByteString a) where
           Value &a = *$(Value *aRaw);
           $(BindingsBuilder *bb)->alloc(evalState.symbols.create(k)) = a;
         }|]
-#else
-  toValue evalState attrs = do
-    let l :: C.CInt
-        l = fromIntegral (length attrs)
-    v <-
-      [C.block| Value* {
-          EvalState &evalState = *$(EvalState *evalState);
-          Value *v = new (NoGC) Value();
-          evalState.mkAttrs(*v, $(int l));
-          return v;
-        }|]
-    attrs & traverseWithKey_ \k a -> do
-      RawValue aRaw <- toRawValue evalState a
-      [C.block| void {
-          EvalState &evalState = *$(EvalState *evalState);
-          std::string k($bs-ptr:k, $bs-len:k);
-          Value &a = *$(Value *aRaw);
-          *evalState.allocAttr(*$(Value *v), evalState.symbols.create(k)) = a;
-        }|]
-    [C.block| void {
-        $(Value *v)->attrs->sort();
-      }|]
-    Value <$> mkRawValue v
-#endif
 
 instance ToRawValue a => ToRawValue (Map Text a)
 
@@ -1006,7 +817,6 @@ instance ToRawValue a => ToRawValue (H.HashMap Text a)
 instance ToRawValue a => ToValue (H.HashMap Text a) where
   type NixTypeFor (H.HashMap Text a) = NixAttrs
 
-#if NIX_IS_AT_LEAST(2,6,0)
   toValue evalState attrs = withBindingsBuilder evalState (length attrs) \bb -> do
     attrs & hmTraverseWithKey_ \k' a -> do
       RawValue aRaw <- toRawValue evalState a
@@ -1017,38 +827,12 @@ instance ToRawValue a => ToValue (H.HashMap Text a) where
           Value &a = *$(Value *aRaw);
           $(BindingsBuilder *bb)->alloc(evalState.symbols.create(k)) = a;
         }|]
-#else
-  toValue evalState attrs = do
-    let l :: C.CInt
-        l = fromIntegral (length attrs)
-    v <-
-      [C.block| Value* {
-          EvalState &evalState = *$(EvalState *evalState);
-          Value *v = new (NoGC) Value();
-          evalState.mkAttrs(*v, $(int l));
-          return v;
-        }|]
-    attrs & hmTraverseWithKey_ \k' a -> do
-      RawValue aRaw <- toRawValue evalState a
-      let k = encodeUtf8 k'
-      [C.block| void {
-          EvalState &evalState = *$(EvalState *evalState);
-          std::string k($bs-ptr:k, $bs-len:k);
-          Value &a = *$(Value *aRaw);
-          *evalState.allocAttr(*$(Value *v), evalState.symbols.create(k)) = a;
-        }|]
-    [C.block| void {
-        $(Value *v)->attrs->sort();
-      }|]
-    Value <$> mkRawValue v
-#endif
 
 instance ToRawValue a => ToRawValue (Vector a)
 
 instance ToRawValue a => ToValue (Vector a) where
   type NixTypeFor (Vector a) = NixList
   toValue evalState vec =
-#if NIX_IS_AT_LEAST(2,24,0)
     coerce <$> do
       let l :: C.CInt
           l = fromIntegral (length vec)
@@ -1071,26 +855,6 @@ instance ToRawValue a => ToValue (Vector a) where
           return v;
         }|]
       Value <$> mkRawValue v
-#else
-    coerce <$> do
-      let l :: C.CInt
-          l = fromIntegral (length vec)
-      v <-
-        [C.block| Value* {
-          EvalState &evalState = *$(EvalState *evalState);
-          Value *v = new (NoGC) Value();
-          evalState.mkList(*v, $(int l));
-          return v;
-        }|]
-      vec & V.imapM_ \i a -> do
-        RawValue aRaw <- toRawValue evalState a
-        let ix = fromIntegral i
-        [C.block| void {
-          Value &v = *$(Value *v);
-          v.listElems()[$(int ix)] = $(Value *aRaw);
-        }|]
-      Value <$> mkRawValue v
-#endif
 
 instance ToRawValue a => ToRawValue [a]
 

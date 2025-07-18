@@ -17,16 +17,10 @@ import qualified System.Environment
 
 C.context context
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
 C.include "<nix/store/globals.hh>"
 C.include "<nix/util/logging.hh>"
 C.include "<nix/util/signals.hh>"
 C.include "<nix/util/error.hh>"
-#else
-C.include "<nix/config.h>"
-C.include "<nix/shared.hh>"
-C.include "<nix/globals.hh>"
-#endif
 
 C.using "namespace nix"
 

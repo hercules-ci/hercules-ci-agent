@@ -48,22 +48,8 @@ C.include "<cstring>"
 
 C.include "<math.h>"
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
-
 C.include "<nix/expr/eval.hh>"
 C.include "<nix/expr/eval-inline.hh>"
-
-#else
-C.include "<nix/config.h>"
-C.include "<nix/shared.hh>"
-C.include "<nix/eval.hh>"
-C.include "<nix/eval-inline.hh>"
-C.include "<nix/store-api.hh>"
--- C.include "<nix/common-eval-args.hh>"
-C.include "<nix/get-drvs.hh>"
-C.include "<nix/derivations.hh>"
-C.include "<nix/globals.hh>"
-#endif
 
 C.include "hercules-ci-cnix/expr.hxx"
 
@@ -152,42 +138,24 @@ match' es v = match es v >>= \case Left e -> throwIO e; Right a -> pure a
 getBool :: Value Bool -> IO Bool
 getBool (Value (RawValue v)) =
   (0 /=) <$>
-#if NIX_IS_AT_LEAST(2,24,0)
     [C.exp| int { $(Value *v)->boolean() ? 1 : 0 }|]
-#else
-    [C.exp| int { $(Value *v)->boolean ? 1 : 0 }|]
-#endif
 
 getInt :: Value NixInt -> IO Int64
 getInt (Value (RawValue v)) =
-#if NIX_IS_AT_LEAST(2,27,0)
   [C.exp| int64_t { $(Value *v)->integer().value }|]
-#elif NIX_IS_AT_LEAST(2,24,0)
-  [C.exp| int64_t { $(Value *v)->integer() }|]
-#else
-  [C.exp| int64_t { $(Value *v)->integer }|]
-#endif
 
 -- NOT coerceToString
 getStringIgnoreContext :: Value NixString -> IO ByteString
 getStringIgnoreContext (Value (RawValue v)) =
   BS.unsafePackMallocCString
     =<< [C.exp| const char *{
-#if NIX_IS_AT_LEAST(2,19,0)
     strdup($(Value *v)->c_str())
-#else
-    strdup($(Value *v)->string.s)
-#endif
   }|]
 
 hasContext :: Value NixString -> IO Bool
 hasContext (Value (RawValue v)) =
   (0 /=) <$>
-#if NIX_IS_AT_LEAST(2,24,0)
     [C.exp| int { $(Value *v)->context() ? 1 : 0 }|]
-#else
-    [C.exp| int { $(Value *v)->string.context ? 1 : 0 }|]
-#endif
 
 class CheckType a where
   checkType :: Ptr EvalState -> RawValue -> IO (Maybe (Value a))

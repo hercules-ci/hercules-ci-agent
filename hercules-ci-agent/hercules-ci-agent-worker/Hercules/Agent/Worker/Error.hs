@@ -19,14 +19,7 @@ C.context (C.cppCtx <> C.fptrCtx <> C.bsCtx <> Hercules.CNix.Store.Context.conte
 
 C.include "<hercules-error.hh>"
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
-
 C.include "<nix/util/error.hh>"
-
-#else
-C.include "<nix/error.hh>"
-C.include "<nix/util.hh>"
-#endif
 
 C.include "<iostream>"
 C.include "<sstream>"

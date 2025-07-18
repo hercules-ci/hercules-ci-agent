@@ -5,8 +5,6 @@
 
 #include <string_view>
 
-#if NIX_IS_AT_LEAST(2,28,0)
-
 #include <nix/util/error.hh>
 #include <nix/util/fmt.hh>
 #include <nix/util/config-global.hh>
@@ -15,34 +13,10 @@
 #include <nix/store/daemon.hh>
 #include <nix/main/shared.hh>
 
-#else
-#include <nix/config.h>
-#include <nix/shared.hh>
-#include <nix/error.hh>
-#include <nix/util.hh>
-#include <nix/globals.hh>
-#include <nix/store-api.hh>
-#include <nix/daemon.hh>
-
-#  if NIX_IS_AT_LEAST(2,19,0)
-#    include <nix/signals.hh>
-#  endif
-
-#  if NIX_IS_AT_LEAST(2,24,0)
-#    include <nix/config-global.hh>
-#  endif
-#endif
-
 using namespace nix;
 
-#if NIX_IS_AT_LEAST(2,24,0)
 using nix::unix::closeOnExec;
-#endif
 
-#if ! NIX_IS_AT_LEAST(2,15,0)
-using nix::daemon::TrustedFlag;
-using nix::daemon::NotTrusted;
-#endif
 
 static void sigChldHandler(int sigNo)
 {
@@ -119,34 +93,19 @@ extern "C" int main(int argc, char **argv) {
                 ref<Store> store = openStore();
                 TrustedFlag trusted = NotTrusted;
                 daemon::RecursiveFlag recursive = daemon::NotRecursive;
-#if ! NIX_IS_AT_LEAST(2,14,0)
-                std::function<void(Store &)> authHook = [](Store &){};
-#endif
                 daemon::processConnection(
                     store
-#if NIX_IS_AT_LEAST(2,24,0)
                     , std::move(from)
                     , std::move(to)
-#else
-                    , from
-                    , to
-#endif
                     , trusted
                     , recursive
-#if ! NIX_IS_AT_LEAST(2,14,0)
-                    , authHook
-#endif
                     );
             });
         } catch (Interrupted & e) {
             return 0;
         } catch (Error & error) {
             ErrorInfo ei = error.info();
-#if NIX_IS_AT_LEAST(2,24,0)
             ei.msg = HintFmt("hercules-ci-nix-daemon: error processing connection: %1%", ei.msg.str());
-#else
-            ei.msg = hintfmt("hercules-ci-nix-daemon: error processing connection: %1%", ei.msg.str());
-#endif
             logError(ei);
         }
     }

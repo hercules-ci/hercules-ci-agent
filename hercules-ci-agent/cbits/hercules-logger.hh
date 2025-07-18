@@ -1,17 +1,9 @@
 #pragma once
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
 #include <nix/util/error.hh>
 #include <nix/util/logging.hh>
 #include <nix/util/sync.hh>
 #include <nix/main/shared.hh>
-#else
-#include <nix/config.h>
-#include <nix/error.hh>
-#include <nix/shared.hh>
-#include <nix/sync.hh>
-#include <nix/logging.hh>
-#endif
 
 
 #include <queue>
@@ -45,11 +37,7 @@ private:
     Fields fields;
   };
 
-#if NIX_IS_AT_LEAST(2, 15, 0)
   void log(nix::Verbosity lvl, const std::string_view s) override;
-#else
-  void log(nix::Verbosity lvl, const nix::FormatOrString & fs) override;
-#endif
   void startActivity(nix::ActivityId act, nix::Verbosity lvl, nix::ActivityType type,
       const std::string & s, const Fields & fields, nix::ActivityId parent) override;
   void stopActivity(nix::ActivityId act) override;

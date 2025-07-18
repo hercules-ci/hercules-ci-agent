@@ -189,8 +189,6 @@ C.include "<cstring>"
 
 C.include "<variant>"
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
-
 C.include "<nix/store/store-api.hh>"
 C.include "<nix/store/derivations.hh>"
 C.include "<nix/store/globals.hh>"
@@ -198,43 +196,6 @@ C.include "<nix/store/path.hh>"
 C.include "<nix/store/worker-protocol.hh>"
 C.include "<nix/store/path-with-outputs.hh>"
 C.include "<nix/util/signals.hh>"
-
-#else
-
-C.include "<nix/config.h>"
-
-C.include "<nix/shared.hh>"
-
-C.include "<nix/store-api.hh>"
-
-C.include "<nix/get-drvs.hh>"
-
-C.include "<nix/derivations.hh>"
-
-C.include "<nix/globals.hh>"
-
-C.include "<nix/path.hh>"
-
-C.include "<nix/worker-protocol.hh>"
-
-C.include "<nix/path-with-outputs.hh>"
-
-C.include "<nix/hash.hh>"
-
-#  if NIX_IS_AT_LEAST(2,19,0)
-
-C.include "<nix/signals.hh>"
-
-C.include "<nix/hash.hh>"
-
-#  endif
-
-#  if ! NIX_IS_AT_LEAST(2,20,0)
-
-C.include "<nix/nar-info-disk-cache.hh>"
-
-#  endif
-#endif
 
 C.include "hercules-ci-cnix/store.hxx"
 
@@ -603,7 +564,6 @@ data HashType = MD5 | SHA1 | SHA256 | SHA512
   deriving (Eq, Show)
 
 getDerivationOutputs :: Store -> ByteString -> Derivation -> IO [DerivationOutput]
-#if NIX_IS_AT_LEAST(2, 24, 0)
 getDerivationOutputs (Store store) drvName (Derivation derivationFPtr) =
   withForeignPtr derivationFPtr \derivation ->
   withDelete
@@ -774,356 +734,6 @@ getDerivationOutputs (Store store) drvName (Derivation derivationFPtr) =
                     )
           )
             <*> continue
-#else
--- < 2.24
-getDerivationOutputs (Store store) drvName (Derivation derivationFPtr) =
-  withForeignPtr derivationFPtr \derivation ->
-  withDelete
-    [C.exp| DerivationOutputsIterator* {
-      new DerivationOutputsIterator($(Derivation *derivation)->outputs.begin())
-    }|] \i ->
-    fix $ \continue -> do
-      isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationOutputsIterator *i) == $(Derivation *derivation)->outputs.end() }|]
-      if isEnd
-        then pure []
-        else
-          ( mask_ do
-              alloca \nameP -> alloca \pathP -> alloca \typP -> alloca \fimP ->
-                alloca \hashTypeP -> alloca \hashValueP -> alloca \hashSizeP -> do
-                  [C.throwBlock| void {
-                    Store &store = **$(refStore *store);
-                    std::string drvName = std::string($bs-ptr:drvName, $bs-len:drvName);
-                    nix::DerivationOutputs::iterator &i = *$(DerivationOutputsIterator *i);
-                    const char *&name = *$(const char **nameP);
-                    int &typ = *$(int *typP);
-                    StorePath *& path = *$(nix::StorePath **pathP);
-                    int &fim = *$(int *fimP);
-                    int &hashType = *$(int *hashTypeP);
-                    char *&hashValue = *$(char **hashValueP);
-                    int &hashSize = *$(int *hashSizeP);
-
-                    std::string nameString = i->first;
-                    name = stringdup(nameString);
-                    path = nullptr;
-                    std::visit(overloaded {
-#if NIX_IS_AT_LEAST(2, 18, 0)
-                      [&](DerivationOutput::InputAddressed doi) -> void {
-                        typ = 0;
-                        path = new StorePath(doi.path);
-                      },
-                      [&](DerivationOutput::CAFixed dof) -> void {
-                        typ = 1;
-                        path = new StorePath(dof.path(store, $(Derivation *derivation)->name, nameString));
-                        std::visit(overloaded {
-                          [&](nix::FileIngestionMethod fim_) -> void {
-                            switch (fim_) {
-                              case nix::FileIngestionMethod::Flat:
-                                fim = 0;
-                                break;
-                              case nix::FileIngestionMethod::Recursive:
-                                fim = 1;
-                                break;
-                              default:
-                                fim = -1;
-                                break;
-                            }
-                          },
-                          [&](nix::TextIngestionMethod) -> void {
-                            // FIXME (RFC 92)
-                            fim = -1;
-                          }
-                        }, dof.ca.method.raw);
-
-                        const Hash & hash = dof.ca.hash;
-
-#if NIX_IS_AT_LEAST(2, 20, 0)
-                        switch (hash.algo) {
-                          case HashAlgorithm::MD5:
-                            hashType = 0;
-                            break;
-                          case HashAlgorithm::SHA1:
-                            hashType = 1;
-                            break;
-                          case HashAlgorithm::SHA256:
-                            hashType = 2;
-                            break;
-                          case HashAlgorithm::SHA512:
-                            hashType = 3;
-                            break;
-#else
-                        switch (hash.type) {
-                          case htMD5:
-                            hashType = 0;
-                            break;
-                          case htSHA1:
-                            hashType = 1;
-                            break;
-                          case htSHA256:
-                            hashType = 2;
-                            break;
-                          case htSHA512:
-                            hashType = 3;
-                            break;
-#endif
-                          default:
-                            hashType = -1;
-                            break;
-                        }
-                        hashSize = hash.hashSize;
-                        hashValue = (char*)malloc(hashSize);
-                        std::memcpy((void*)(hashValue),
-                                    (void*)(hash.hash),
-                                    hashSize);
-                      },
-                      [&](DerivationOutput::CAFloating dof) -> void {
-                        typ = 2;
-                        std::visit(overloaded {
-                          [&](nix::FileIngestionMethod fim_) -> void {
-                            switch (fim_) {
-                              case nix::FileIngestionMethod::Flat:
-                                fim = 0;
-                                break;
-                              case nix::FileIngestionMethod::Recursive:
-                                fim = 1;
-                                break;
-                              default:
-                                fim = -1;
-                                break;
-                            }
-                          },
-                          [&](nix::TextIngestionMethod) -> void {
-                            // FIXME (RFC 92)
-                            fim = -1;
-                          }
-                        }, dof.method.raw);
-#if NIX_IS_AT_LEAST(2, 20, 0)
-                        switch (dof.hashAlgo) {
-                          case HashAlgorithm::MD5:
-                            hashType = 0;
-                            break;
-                          case HashAlgorithm::SHA1:
-                            hashType = 1;
-                            break;
-                          case HashAlgorithm::SHA256:
-                            hashType = 2;
-                            break;
-                          case HashAlgorithm::SHA512:
-                            hashType = 3;
-                            break;
-#else
-                        switch (dof.hashType) {
-                          case htMD5:
-                            hashType = 0;
-                            break;
-                          case htSHA1:
-                            hashType = 1;
-                            break;
-                          case htSHA256:
-                            hashType = 2;
-                            break;
-                          case htSHA512:
-                            hashType = 3;
-                            break;
-#endif
-                          default:
-                            hashType = -1;
-                            break;
-                        }
-                      },
-                      [&](DerivationOutput::Deferred) -> void {
-                        typ = 3;
-                      },
-                      [&](DerivationOutput::Impure) -> void {
-                        typ = 4;
-                      },
-                    },
-                    i->second.raw
-#else
-                      [&](DerivationOutputInputAddressed doi) -> void {
-                        typ = 0;
-                        path = new StorePath(doi.path);
-                      },
-                      [&](DerivationOutputCAFixed dof) -> void {
-                        typ = 1;
-                        path = new StorePath(dof.path(store, $(Derivation *derivation)->name, nameString));
-#if NIX_IS_AT_LEAST(2, 16, 0)
-                        std::visit(overloaded {
-                          [&](nix::FileIngestionMethod fim_) -> void {
-                            switch (fim_) {
-                              case nix::FileIngestionMethod::Flat:
-                                fim = 0;
-                                break;
-                              case nix::FileIngestionMethod::Recursive:
-                                fim = 1;
-                                break;
-                              default:
-                                fim = -1;
-                                break;
-                            }
-                          },
-                          [&](nix::TextIngestionMethod) -> void {
-                            // FIXME (RFC 92)
-                            fim = -1;
-                          }
-#  if NIX_IS_AT_LEAST(2, 17, 0)
-                        }, dof.ca.method.raw);
-#  else
-                        }, dof.ca.getMethod().raw);
-#  endif
-#else
-                        switch (dof.hash.method) {
-                          case nix::FileIngestionMethod::Flat:
-                            fim = 0;
-                            break;
-                          case nix::FileIngestionMethod::Recursive:
-                            fim = 1;
-                            break;
-                          default:
-                            fim = -1;
-                            break;
-                        }
-#endif
-
-#if NIX_IS_AT_LEAST(2, 17, 0)
-                        const Hash & hash = dof.ca.hash;
-#elif NIX_IS_AT_LEAST(2, 16, 0)
-                        const Hash & hash = dof.ca.getHash();
-#else
-                        const Hash & hash = dof.hash.hash;
-#endif
-                        switch (hash.type) {
-                          case htMD5: 
-                            hashType = 0;
-                            break;
-                          case htSHA1: 
-                            hashType = 1;
-                            break;
-                          case htSHA256: 
-                            hashType = 2;
-                            break;
-                          case htSHA512: 
-                            hashType = 3;
-                            break;
-                          default:
-                            hashType = -1;
-                            break;
-                        }
-                        hashSize = hash.hashSize;
-                        hashValue = (char*)malloc(hashSize);
-                        std::memcpy((void*)(hashValue),
-                                    (void*)(hash.hash),
-                                    hashSize);
-                      },
-                      [&](DerivationOutputCAFloating dof) -> void {
-                        typ = 2;
-#if NIX_IS_AT_LEAST(2, 16, 0)
-                        std::visit(overloaded {
-                          [&](nix::FileIngestionMethod fim_) -> void {
-                            switch (fim_) {
-                              case nix::FileIngestionMethod::Flat:
-                                fim = 0;
-                                break;
-                              case nix::FileIngestionMethod::Recursive:
-                                fim = 1;
-                                break;
-                              default:
-                                fim = -1;
-                                break;
-                            }
-                          },
-                          [&](nix::TextIngestionMethod) -> void {
-                            // FIXME (RFC 92)
-                            fim = -1;
-                          }
-                        }, dof.method.raw);
-#else
-                        switch (dof.method) {
-                          case nix::FileIngestionMethod::Flat:
-                            fim = 0;
-                            break;
-                          case nix::FileIngestionMethod::Recursive:
-                            fim = 1;
-                            break;
-                          default:
-                            fim = -1;
-                            break;
-                        }
-#endif
-                        switch (dof.hashType) {
-                          case htMD5: 
-                            hashType = 0;
-                            break;
-                          case htSHA1: 
-                            hashType = 1;
-                            break;
-                          case htSHA256: 
-                            hashType = 2;
-                            break;
-                          case htSHA512: 
-                            hashType = 3;
-                            break;
-                          default:
-                            hashType = -1;
-                            break;
-                        }
-                      },
-                      [&](DerivationOutputDeferred) -> void {
-                        typ = 3;
-                      },
-#if NIX_IS_AT_LEAST(2,8,0)
-                      [&](DerivationOutputImpure) -> void {
-                        typ = 4;
-                      },
-#endif
-                    },
-#if NIX_IS_AT_LEAST(2,8,0)
-                      i->second.raw()
-#else
-                      i->second.output
-#endif
-#endif
-                    );
-                    i++;
-                  }|]
-                  name <- unsafePackMallocCString =<< peek nameP
-                  path <- nullableMoveToForeignPtrWrapper =<< peek pathP
-                  typ <- peek typP
-                  let getFileIngestionMethod = peek fimP <&> \case 0 -> Flat; 1 -> Recursive; _ -> panic "getDerivationOutputs: unknown fim"
-                      getHashType =
-                        peek hashTypeP <&> \case
-                          0 -> MD5
-                          1 -> SHA1
-                          2 -> SHA256
-                          3 -> SHA512
-                          _ -> panic "getDerivationOutputs: unknown hashType"
-                  detail <- case typ of
-                    0 -> pure $ DerivationOutputInputAddressed (fromMaybe (panic "getDerivationOutputs: impossible DOIA path missing") path)
-                    1 -> do
-                      hashValue <- peek hashValueP
-                      hashSize <- peek hashSizeP
-                      hashString <- SBS.packCStringLen (hashValue, fromIntegral hashSize)
-                      free hashValue
-                      hashType <- getHashType
-                      fim <- getFileIngestionMethod
-                      pure $ DerivationOutputCAFixed (FixedOutputHash fim (Hash hashType hashString)) (fromMaybe (panic "getDerivationOutputs: impossible DOCF path missing") path)
-                    2 -> do
-                      hashType <- getHashType
-                      fim <- getFileIngestionMethod
-                      pure $ DerivationOutputCAFloating fim hashType
-                    3 -> pure DerivationOutputDeferred
-                    4 -> panic "getDerivationOutputs: impure derivations not supported yet"
-                    _ -> panic "getDerivationOutputs: impossible getDerivationOutputs typ"
-                  pure
-                    ( DerivationOutput
-                        { derivationOutputName = name,
-                          derivationOutputPath = path,
-                          derivationOutputDetail = detail
-                        }
-                        :
-                    )
-          )
-            <*> continue
-#endif
 
 instance Delete DerivationOutputsIterator where
   delete a = [C.block| void { delete $(DerivationOutputsIterator *a); }|]
@@ -1178,7 +788,6 @@ getDerivationInputs _ = getDerivationInputs'
 
 -- | Get the inputs of a derivation, ignoring dependencies on outputs of outputs (RFC 92 inputs).
 getDerivationInputs' :: Derivation -> IO [(StorePath, [ByteString])]
-#if NIX_IS_AT_LEAST(2, 18, 0)
 getDerivationInputs' (Derivation derivationFPtr) =
   withForeignPtr derivationFPtr \derivation ->
   withDelete
@@ -1213,36 +822,6 @@ getDerivationInputs' (Derivation derivationFPtr) =
               toByteStrings
           [C.block| void { (*$(DerivationInputsIterator *i))++; }|]
           ((name, outs) :) <$> continue
-#else
-getDerivationInputs' (Derivation derivationFPtr) =
-  withForeignPtr derivationFPtr \derivation ->
-  withDelete
-    [C.exp| DerivationInputsIterator* {
-      new DerivationInputsIterator($(Derivation *derivation)->inputDrvs.begin())
-    }|]
-    $ \i -> fix $ \continue -> do
-      isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationInputsIterator *i) == $(Derivation *derivation)->inputDrvs.end() }|]
-      if isEnd
-        then pure []
-        else do
-          name <-
-            [C.throwBlock| nix::StorePath *{
-              return new StorePath((*$(DerivationInputsIterator *i))->first);
-            }|]
-              >>= moveToForeignPtrWrapper
-          outs <-
-            withDelete
-              [C.block| Strings*{ 
-                Strings *r = new Strings();
-                for (auto i : (*$(DerivationInputsIterator *i))->second) {
-                  r->push_back(i);
-                }
-                return r;
-              }|]
-              toByteStrings
-          [C.block| void { (*$(DerivationInputsIterator *i))++; }|]
-          ((name, outs) :) <$> continue
-#endif
 
 instance Delete DerivationInputsIterator where
   delete a = [C.block| void { delete $(DerivationInputsIterator *a); }|]
@@ -1413,14 +992,10 @@ signPath (Store store) secretKey (StorePath path) =
 
     auto info2(*currentInfo);
     info2.sigs.clear();
-#if NIX_IS_AT_LEAST(2, 20, 0)
     {
       auto signer = std::make_unique<LocalSigner>(SecretKey { secretKey });
       info2.sign(*store, *signer);
     }
-#else
-    info2.sign(*store, secretKey);
-#endif
     assert(!info2.sigs.empty());
     auto sig = *info2.sigs.begin();
 
@@ -1482,7 +1057,6 @@ queryPathInfoFromClientCache ::
   IO (Maybe (Maybe (ForeignPtr (Ref ValidPathInfo))))
 queryPathInfoFromClientCache (Store store) (StorePath pathFPtr) =
   withForeignPtr pathFPtr \path ->
-#if NIX_IS_AT_LEAST(2, 20, 0)
   alloca \isKnownP -> do
     mvpi <- [C.throwBlock| refValidPathInfo* {
         ReceiveInterrupts _;
@@ -1507,40 +1081,6 @@ queryPathInfoFromClientCache (Store store) (StorePath pathFPtr) =
     isKnown <- peek isKnownP <&> (/= 0)
     for (guard isKnown) \_ -> do
       mvpi & traverseNonNull toForeignPtr
-#else
-  alloca \isKnownP -> do
-    mvpi <- [C.throwBlock| refValidPathInfo* {
-        ReceiveInterrupts _;
-        Store &store = **$(refStore* store);
-        StorePath &path = *$(nix::StorePath *path);
-        bool &isKnown = *$(bool* isKnownP);
-
-        std::string uri = store.getUri();
-        ref<NarInfoDiskCache> cache = nix::getNarInfoDiskCache();
-
-        // std::pair<nix::NarInfoDiskCache::Outcome, std::shared_ptr<NarInfo>>
-        auto [outcome, maybeNarInfo] =
-          cache->lookupNarInfo(uri, std::string(path.hashPart()));
-
-        if (outcome == nix::NarInfoDiskCache::oValid) {
-          assert(maybeNarInfo);
-          isKnown = true;
-          return new refValidPathInfo(maybeNarInfo);
-        }
-        else if (outcome == nix::NarInfoDiskCache::oInvalid) {
-          isKnown = true;
-          return nullptr;
-        }
-        else {
-          // nix::NarInfoDiskCache::oUnknown or unexpected value
-          isKnown = false;
-          return nullptr;
-        }
-      }|]
-    isKnown <- peek isKnownP <&> (/= 0)
-    for (guard isKnown) \_ -> do
-      mvpi & traverseNonNull toForeignPtr
-#endif
 
 instance Finalizer (Ref ValidPathInfo) where
   finalizer = finalizeRefValidPathInfo -- must be CAF
@@ -1569,13 +1109,7 @@ validPathInfoNarHash32 :: ForeignPtr (Ref ValidPathInfo) -> IO ByteString
 validPathInfoNarHash32 vpi =
   unsafePackMallocCString
     =<< [C.block| const char *{
-#if NIX_IS_AT_LEAST(2,20,0)
       std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::HashFormat::Nix32, true));
-#elif NIX_IS_AT_LEAST(2,19,0)
-      std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::HashFormat::Base32, true));
-#else
-      std::string s((*$fptr-ptr:(refValidPathInfo* vpi))->narHash.to_string(nix::Base32, true));
-#endif
       return stringdup(s);
     }|]
 

@@ -6,7 +6,6 @@ void HerculesLogger::push(std::unique_ptr<LogEntry> entry) {
   wakeup.notify_one();
 }
 
-#if NIX_IS_AT_LEAST(2, 15, 0)
 void HerculesLogger::log(nix::Verbosity lvl, std::string_view s) {
   push(std::make_unique<LogEntry>(LogEntry {
     .entryType = 1,
@@ -14,17 +13,6 @@ void HerculesLogger::log(nix::Verbosity lvl, std::string_view s) {
     .text = std::string(s)
   }));
 }
-#else
-void HerculesLogger::log(nix::Verbosity lvl, const nix::FormatOrString & fs) {
-  push(std::make_unique<LogEntry>(LogEntry {
-    .entryType = 1,
-    .level = lvl,
-    .text = fs.s
-  }));
-}
-#endif
-
-
 
 // TODO structured
 void HerculesLogger::logEI(const nix::ErrorInfo & ei) {

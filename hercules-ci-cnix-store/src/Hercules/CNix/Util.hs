@@ -25,17 +25,7 @@ import Prelude ()
 
 C.context context
 
-#if NIX_IS_AT_LEAST(2, 28, 0)
-
 C.include "<nix/util/signals.hh>"
-
-#else
-C.include "<nix/config.h>"
-C.include "<nix/util.hh>"
-#  if NIX_IS_AT_LEAST(2,19,0)
-C.include "<nix/signals.hh>"
-#  endif
-#endif
 
 C.include "signals.hxx"
 
@@ -49,15 +39,9 @@ setInterruptThrown =
 
 triggerInterrupt :: IO ()
 triggerInterrupt =
-#if NIX_IS_AT_LEAST(2,24,0)
   [C.throwBlock| void {
     nix::unix::triggerInterrupt();
   } |]
-#else
-  [C.throwBlock| void {
-    nix::triggerInterrupt();
-  } |]
-#endif
 
 -- | Install a signal handler that will put Nix into the interrupted state and
 -- throws 'UserInterrupt' in the main thread (as is usual), assuming this

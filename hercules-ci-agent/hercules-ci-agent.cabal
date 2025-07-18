@@ -20,9 +20,6 @@ extra-source-files:
     data/default-herculesCI-for-flake.nix
     testdata/vm-test-run-agent-test.drv
 
-flag nix-2_15
-  description: Build for Nix >=2.15.0
-  default: False
 
 flag ide
   description: Whether to enable IDE workarounds. You shouldn't need this.
@@ -59,12 +56,8 @@ common rts
 
 -- match the C++ language standard Nix is using
 common cxx-opts
-  if flag(nix-2_15)
-    cxx-options:
-      -std=c++2a
-  else
-    cxx-options:
-      -std=c++17
+  cxx-options:
+    -std=c++2a
 
   cxx-options:
     -Wall
@@ -77,16 +70,11 @@ common cxx-opts
   if impl(ghc >= 8.10)
     ghc-options:
       -optcxx-Wall
-    if flag(nix-2_15)
-      ghc-options:
-        -optcxx-std=c++2a
-    else
-      ghc-options:
-        -optcxx-std=c++17
+      -optcxx-std=c++2a
   else
     -- Remove soon
     ghc-options:
-      -optc-std=c++17
+      -optc-std=c++2a
       -optc-Wall
     if os(darwin)
       ghc-options: -pgmc=clang++
@@ -389,10 +377,10 @@ executable hercules-ci-agent-worker
     , uuid
     , vector
   pkgconfig-depends:
-      nix-store >= 2.0
-    , nix-expr >= 2.0
+      nix-store >= 2.28
+    , nix-expr >= 2.28
     -- TODO: replace stack overflow detection and remove nix-main
-    , nix-main >= 2.0
+    , nix-main >= 2.28
   default-language: Haskell2010
 
 test-suite hercules-ci-agent-unit-tests
@@ -485,5 +473,5 @@ executable hercules-ci-nix-daemon
   default-language: Haskell2010
   hs-source-dirs: hercules-ci-nix-daemon
   pkgconfig-depends:
-      nix-store >= 2.0
-    , nix-main >= 2.0
+      nix-store >= 2.28
+    , nix-main >= 2.28
