@@ -5,6 +5,10 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## 0.5.0.0 - 2025-07-18
+
+- `init` now installs synchronous signal handlers for you. You may remove your call to `installDefaultSigINTHandler`.
+
 ## 0.4.0.0 - 2025-05-05
 
 - **REMOVE** `evalArgs`. This removes a dependency on the otherwise unused nix-cmd library. Use `valueFromExpressionString` and a library like `optparse-applicative` instead to create a nicer user experience.
