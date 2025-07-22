@@ -197,6 +197,10 @@ C.include "<nix/store/worker-protocol.hh>"
 C.include "<nix/store/path-with-outputs.hh>"
 C.include "<nix/util/signals.hh>"
 
+#if NIX_IS_AT_LEAST(2, 29, 0)
+C.include "<nix/store/store-open.hh>"
+#endif
+
 C.include "hercules-ci-cnix/store.hxx"
 
 C.include "hercules-ci-cnix/string.hxx"
@@ -222,7 +226,7 @@ openStore :: IO Store
 openStore =
   coerce
     [C.throwBlock| refStore * {
-      refStore s = openStore();
+      refStore s = nix::openStore();
       return new refStore(s);
     } |]
 
@@ -251,7 +255,7 @@ withStoreFromURI storeURIText f = do
   liftIO $
     withDelete
       [C.throwBlock| refStore* {
-        refStore s = openStore($bs-cstr:storeURI);
+        refStore s = nix::openStore($bs-cstr:storeURI);
         return new refStore(s);
       }|]
       (unlift . f . Store)
@@ -445,8 +449,9 @@ newStorePathWithOutputs storePath outputs = do
   set <- Std.Set.new
   for_ outputs (\o -> Std.String.withString o (Std.Set.insertP set))
   moveToForeignPtrWrapper
-    =<< [C.exp| nix::StorePathWithOutputs * {
-    new StorePathWithOutputs {*$fptr-ptr:(nix::StorePath *storePath), *$fptr-ptr:(std::set<std::string>* set)}
+    =<< [C.throwBlock| nix::StorePathWithOutputs * {
+    auto nixSet = nix::StringSet{$fptr-ptr:(std::set<std::string>* set)->begin(), $fptr-ptr:(std::set<std::string>* set)->end()};
+    return new StorePathWithOutputs {*$fptr-ptr:(nix::StorePath *storePath), nixSet};
   }|]
 
 getStorePath :: StorePathWithOutputs -> IO StorePath
@@ -795,7 +800,13 @@ getDerivationInputs' (Derivation derivationFPtr) =
       new DerivationInputsIterator($(Derivation *derivation)->inputDrvs.map.begin())
     }|]
     $ \i -> fix $ \continue -> do
-      isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationInputsIterator *i) == $(Derivation *derivation)->inputDrvs.map.end() }|]
+      isEnd <- (0 /=) <$> [C.exp| bool { 
+#if NIX_IS_AT_LEAST(2, 29, 0)
+        (*$(DerivationInputsIterator *i)) == $(Derivation *derivation)->inputDrvs.map.end()
+#else
+        *$(DerivationInputsIterator *i) == $(Derivation *derivation)->inputDrvs.map.end()
+#endif
+      }|]
       if isEnd
         then pure []
         else do

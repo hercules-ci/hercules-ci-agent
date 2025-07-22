@@ -62,11 +62,20 @@ byteStringList x =
     >>= traverse Std.String.copyToByteString
 
 getExtraPlatforms :: IO (Set ByteString)
+#if NIX_IS_AT_LEAST(2, 29, 0)
 getExtraPlatforms =
   byteStringSet
     [C.block| std::set<std::string>*{
-      return new nix::StringSet(nix::settings.extraPlatforms.get());
+      auto extraPlatforms = nix::settings.extraPlatforms.get();
+      return new std::set<std::string>(extraPlatforms.begin(), extraPlatforms.end());
     }|]
+#else
+getExtraPlatforms =
+  byteStringSet
+    [C.block| std::set<std::string>*{
+      return new std::set<std::string>(nix::settings.extraPlatforms.get());
+    }|]
+#endif
 
 getSystem :: IO ByteString
 getSystem =
@@ -76,11 +85,20 @@ getSystem =
     }|]
 
 getSystemFeatures :: IO (Set ByteString)
+#if NIX_IS_AT_LEAST(2, 29, 0)
 getSystemFeatures =
   byteStringSet
     [C.block| std::set<std::string>*{
-      return new nix::StringSet(nix::settings.systemFeatures.get());
+      auto systemFeatures = nix::settings.systemFeatures.get();
+      return new std::set<std::string>(systemFeatures.begin(), systemFeatures.end());
     }|]
+#else
+getSystemFeatures =
+  byteStringSet
+    [C.block| std::set<std::string>*{
+      return new std::set<std::string>(nix::settings.systemFeatures.get());
+    }|]
+#endif
 
 getMaxBuildJobs :: IO Word
 getMaxBuildJobs = do
