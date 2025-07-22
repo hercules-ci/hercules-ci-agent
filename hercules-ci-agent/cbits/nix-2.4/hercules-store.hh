@@ -11,11 +11,6 @@
 
 using FSAccessor = nix::SourceAccessor;
 
-#if NIX_IS_AT_LEAST(2, 29, 0)
-using Params = nix::Store::Config::Params;
-#else
-using Params = nix::Store::Params;
-#endif
 
 using namespace nix;
 
@@ -23,7 +18,7 @@ class WrappingStore : public Store {
  public:
   ref<Store> wrappedStore;
 
-  WrappingStore(const Params & params, ref<Store> storeToWrap);
+  WrappingStore(ref<Store> storeToWrap);
 
 
   virtual ~WrappingStore();
@@ -130,7 +125,7 @@ public:
   StorePathSet ensuredPaths;
   void (* builderCallback)(std::vector<nix::StorePathWithOutputs>*, std::exception_ptr *exceptionToThrow);
 
-  HerculesStore(const Params & params, ref<Store> storeToWrap);
+  HerculesStore(ref<Store> storeToWrap);
 
 #if !NIX_IS_AT_LEAST(2, 29, 0)
   virtual const std::string name() override;

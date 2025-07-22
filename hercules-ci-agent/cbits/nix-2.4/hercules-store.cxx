@@ -16,11 +16,11 @@
 using namespace nix;
 
 #if NIX_IS_AT_LEAST(2, 29, 0)
-WrappingStore::WrappingStore(const Params& params, ref<Store> storeToWrap)
+WrappingStore::WrappingStore(ref<Store> storeToWrap)
     : Store(storeToWrap->config), wrappedStore(storeToWrap) {}
 #else
-WrappingStore::WrappingStore(const Params& params, ref<Store> storeToWrap)
-    : Store(params), wrappedStore(storeToWrap) {}
+WrappingStore::WrappingStore(ref<Store> storeToWrap)
+    : Store({}), wrappedStore(storeToWrap) {}
 #endif
 
 WrappingStore::~WrappingStore() {}
@@ -186,12 +186,12 @@ std::optional<TrustedFlag> WrappingStore::isTrustedClient() {
 /////
 
 #if NIX_IS_AT_LEAST(2, 29, 0)
-HerculesStore::HerculesStore(const Params& params, ref<Store> storeToWrap)
-    : WrappingStore(params, storeToWrap) {}
+HerculesStore::HerculesStore(ref<Store> storeToWrap)
+    : WrappingStore(storeToWrap) {}
 #else
-HerculesStore::HerculesStore(const Params& params, ref<Store> storeToWrap)
-    : StoreConfig(params)
-    , WrappingStore(params, storeToWrap) {}
+HerculesStore::HerculesStore(ref<Store> storeToWrap)
+    : StoreConfig(nix::StringMap {})
+    , WrappingStore(storeToWrap) {}
 #endif
 
 #if !NIX_IS_AT_LEAST(2, 29, 0)
