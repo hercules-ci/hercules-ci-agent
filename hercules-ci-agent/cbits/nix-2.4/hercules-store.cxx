@@ -10,7 +10,6 @@
 #include <nix/store/store-api.hh>
 #include <nix/util/callback.hh>
 #include <nix/expr/get-drvs.hh>
-#include <nix/main/shared.hh>
 
 #include "hercules-store.hh"
 

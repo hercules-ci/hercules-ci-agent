@@ -3,11 +3,10 @@
 #include <nix/util/error.hh>
 #include <nix/util/logging.hh>
 #include <nix/util/sync.hh>
-#include <nix/main/shared.hh>
-
 
 #include <queue>
 #include <string>
+#include <sstream>
 
 class HerculesLogger final : public nix::Logger {
 

@@ -36,8 +36,6 @@ C.context context
 
 C.include "<cstring>"
 
-C.include "<nix/main/shared.hh>"
-
 C.include "hercules-aliases.h"
 
 C.using "namespace nix"
