@@ -15,8 +15,13 @@
 
 using namespace nix;
 
+#if NIX_IS_AT_LEAST(2, 29, 0)
+WrappingStore::WrappingStore(const Params& params, ref<Store> storeToWrap)
+    : Store(storeToWrap->config), wrappedStore(storeToWrap) {}
+#else
 WrappingStore::WrappingStore(const Params& params, ref<Store> storeToWrap)
     : Store(params), wrappedStore(storeToWrap) {}
+#endif
 
 WrappingStore::~WrappingStore() {}
 
@@ -180,13 +185,20 @@ std::optional<TrustedFlag> WrappingStore::isTrustedClient() {
 
 /////
 
+#if NIX_IS_AT_LEAST(2, 29, 0)
+HerculesStore::HerculesStore(const Params& params, ref<Store> storeToWrap)
+    : WrappingStore(params, storeToWrap) {}
+#else
 HerculesStore::HerculesStore(const Params& params, ref<Store> storeToWrap)
     : StoreConfig(params)
     , WrappingStore(params, storeToWrap) {}
+#endif
 
+#if !NIX_IS_AT_LEAST(2, 29, 0)
 const std::string HerculesStore::name() {
   return "wrapped " + wrappedStore->name();
 }
+#endif
 
 void HerculesStore::queryRealisationUncached(const DrvOutput &drvOutput,
   Callback<std::shared_ptr<const Realisation>> callback) noexcept {

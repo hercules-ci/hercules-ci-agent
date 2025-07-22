@@ -11,6 +11,12 @@
 
 using FSAccessor = nix::SourceAccessor;
 
+#if NIX_IS_AT_LEAST(2, 29, 0)
+using Params = nix::Store::Config::Params;
+#else
+using Params = nix::Store::Params;
+#endif
+
 using namespace nix;
 
 class WrappingStore : public Store {
@@ -126,7 +132,9 @@ public:
 
   HerculesStore(const Params & params, ref<Store> storeToWrap);
 
+#if !NIX_IS_AT_LEAST(2, 29, 0)
   virtual const std::string name() override;
+#endif
 
   // Overrides
 
