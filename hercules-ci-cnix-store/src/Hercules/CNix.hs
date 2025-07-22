@@ -38,7 +38,6 @@ C.context context
 C.include "<nix/util/config-global.hh>"
 C.include "<nix/store/derivations.hh>"
 C.include "<nix/store/globals.hh>"
-C.include "<nix/main/shared.hh>"
 
 C.include "<gc/gc.h>"
 C.include "<gc/gc_cpp.h>"
