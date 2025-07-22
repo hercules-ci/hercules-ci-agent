@@ -45,9 +45,8 @@ module Hercules.CNix.Store
     validPathInfoDeriver',
     validPathInfoReferences,
     validPathInfoReferences',
-
     computeFSClosure,
-    ClosureParams(..),
+    ClosureParams (..),
     defaultClosureParams,
 
     -- * Realisation
@@ -81,7 +80,6 @@ module Hercules.CNix.Store
     getDerivationSources',
     getDerivationInputs,
     getDerivationInputs',
-
     getDerivationOutputNames,
     DerivationOutput (..),
     DerivationOutputDetail (..),
@@ -102,6 +100,7 @@ module Hercules.CNix.Store
     HashType (..),
 
     -- * Utilities
+
     --
     -- To be moved and deprecated
     Strings,
@@ -154,6 +153,8 @@ import Foreign.ForeignPtr
 import Foreign.ForeignPtr.Unsafe (unsafeForeignPtrToPtr)
 import Foreign.Storable (peek)
 import Hercules.CNix.Encapsulation (HasEncapsulation (..), nullableMoveToForeignPtrWrapper)
+import Hercules.CNix.Memory (Delete (delete), Finalizer (finalizer), toForeignPtr, withDelete)
+import qualified Hercules.CNix.Memory
 import Hercules.CNix.Std.Set (StdSet, stdSetCtx)
 import qualified Hercules.CNix.Std.Set as Std.Set
 import Hercules.CNix.Std.String (stdStringCtx)
@@ -174,8 +175,6 @@ import Hercules.CNix.Store.Context
     unsafeMallocBS,
   )
 import qualified Hercules.CNix.Store.Context as C hiding (context)
-import Hercules.CNix.Memory (Delete(delete), Finalizer (finalizer), withDelete, toForeignPtr)
-import qualified Hercules.CNix.Memory
 import Hercules.CNix.Store.Instances ()
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Inline.Cpp.Exception as C
@@ -233,7 +232,7 @@ openStore =
 releaseStore :: Store -> IO ()
 releaseStore (Store store) = delete store
 
-withStore :: MonadUnliftIO m => (Store -> m a) -> m a
+withStore :: (MonadUnliftIO m) => (Store -> m a) -> m a
 withStore m = do
   UnliftIO ul <- askUnliftIO
   liftIO $ withStore' $ \a -> ul (m a)
@@ -245,7 +244,7 @@ withStore' =
   bracket openStore releaseStore
 
 withStoreFromURI ::
-  MonadUnliftIO m =>
+  (MonadUnliftIO m) =>
   Text ->
   (Store -> m r) ->
   m r
@@ -260,37 +259,37 @@ withStoreFromURI storeURIText f = do
       }|]
       (unlift . f . Store)
 
-storeUri :: MonadIO m => Store -> m ByteString
+storeUri :: (MonadIO m) => Store -> m ByteString
 storeUri (Store store) = liftIO do
-  BS.unsafePackMallocCString =<<
-    [C.block| const char* {
-       std::string uri = (*$(refStore* store))->getUri();
-       return stringdup(uri);
-     } |]
+  BS.unsafePackMallocCString
+    =<< [C.block| const char* {
+      std::string uri = (*$(refStore* store))->getUri();
+      return stringdup(uri);
+    }|]
 
 -- | Usually @"/nix/store"@
-storeDir :: MonadIO m => Store -> m ByteString
+storeDir :: (MonadIO m) => Store -> m ByteString
 storeDir (Store store) = liftIO do
-  BS.unsafePackMallocCString =<<
-    [C.block| const char* {
-       std::string uri = (*$(refStore* store))->storeDir;
-       return stringdup(uri);
-     } |]
+  BS.unsafePackMallocCString
+    =<< [C.block| const char* {
+      std::string uri = (*$(refStore* store))->storeDir;
+      return stringdup(uri);
+    }|]
 
 getStoreProtocolVersion :: Store -> IO Int
 getStoreProtocolVersion (Store store) =
   fromIntegral
     <$> [C.throwBlock| int {
-       Store &store = **$(refStore* store);
-       return store.getProtocol();
-     } |]
+      Store &store = **$(refStore* store);
+      return store.getProtocol();
+    }|]
 
 getClientProtocolVersion :: IO Int
 getClientProtocolVersion =
   fromIntegral
     <$> [C.throwBlock| int {
-       return PROTOCOL_VERSION;
-     } |]
+      return PROTOCOL_VERSION;
+    }|]
 
 -- | Store-agnostic store path representation: hash and name. Does not have a storedir or subpath inside the store path.
 newtype StorePath = StorePath (ForeignPtr NixStorePath)
@@ -450,20 +449,22 @@ newStorePathWithOutputs storePath outputs = do
   for_ outputs (\o -> Std.String.withString o (Std.Set.insertP set))
   moveToForeignPtrWrapper
     =<< [C.throwBlock| nix::StorePathWithOutputs * {
-    auto nixSet = nix::StringSet{$fptr-ptr:(std::set<std::string>* set)->begin(), $fptr-ptr:(std::set<std::string>* set)->end()};
-    return new StorePathWithOutputs {*$fptr-ptr:(nix::StorePath *storePath), nixSet};
-  }|]
+      auto nixSet = nix::StringSet{$fptr-ptr:(std::set<std::string>* set)->begin(), $fptr-ptr:(std::set<std::string>* set)->end()};
+      return new StorePathWithOutputs {*$fptr-ptr:(nix::StorePath *storePath), nixSet};
+    }|]
 
 getStorePath :: StorePathWithOutputs -> IO StorePath
 getStorePath swo = mask_ do
   moveToForeignPtrWrapper
     =<< [C.exp| nix::StorePath * {
-    new StorePath($fptr-ptr:(nix::StorePathWithOutputs *swo)->path)
-  }|]
+      new StorePath($fptr-ptr:(nix::StorePathWithOutputs *swo)->path)
+    }|]
 
 getOutputs :: StorePathWithOutputs -> IO [ByteString]
 getOutputs swo = mask_ do
-  traverse Std.String.moveToByteString =<< toListP =<< moveToForeignPtrWrapper
+  traverse Std.String.moveToByteString
+    =<< toListP
+    =<< moveToForeignPtrWrapper
     =<< [C.throwBlock| std::vector<std::string>* {
       auto r = new std::vector<std::string>();
       for (auto s : $fptr-ptr:(nix::StorePathWithOutputs *swo)->outputs)
@@ -496,11 +497,12 @@ finalizeDerivation :: FinalizerPtr C.Derivation
 finalizeDerivation =
   unsafePerformIO
     [C.exp|
-    void (*)(Derivation *) {
-      [](Derivation *v) {
-        delete v;
+      void (*)(Derivation *) {
+        [](Derivation *v) {
+          delete v;
+        }
       }
-    } |]
+    |]
 {-# DEPRECATED finalizeDerivation "Use 'finalizer' instead" #-}
 
 getDerivation :: Store -> StorePath -> IO Derivation
@@ -512,7 +514,7 @@ getDerivation (Store store) (StorePath spwo) = do
       return new Derivation(
           store.derivationFromPath(*$fptr-ptr:(nix::StorePath *spwo))
         );
-    } |]
+    }|]
 
 -- Useful for testing
 getDerivationFromString ::
@@ -571,174 +573,175 @@ data HashType = MD5 | SHA1 | SHA256 | SHA512
 getDerivationOutputs :: Store -> ByteString -> Derivation -> IO [DerivationOutput]
 getDerivationOutputs (Store store) drvName (Derivation derivationFPtr) =
   withForeignPtr derivationFPtr \derivation ->
-  withDelete
-    [C.exp| DerivationOutputsIterator* {
+    withDelete
+      [C.exp| DerivationOutputsIterator* {
       new DerivationOutputsIterator($(Derivation *derivation)->outputs.begin())
-    }|] \i ->
-    fix $ \continue -> do
-      isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationOutputsIterator *i) == $(Derivation *derivation)->outputs.end() }|]
-      if isEnd
-        then pure []
-        else
-          ( mask_ do
-              alloca \nameP -> alloca \pathP -> alloca \typP -> alloca \fimP ->
-                alloca \hashTypeP -> alloca \hashValueP -> alloca \hashSizeP -> do
-                  [C.throwBlock| void {
-                    Store &store = **$(refStore *store);
-                    std::string drvName = std::string($bs-ptr:drvName, $bs-len:drvName);
-                    nix::DerivationOutputs::iterator &i = *$(DerivationOutputsIterator *i);
-                    const char *&name = *$(const char **nameP);
-                    int &typ = *$(int *typP);
-                    StorePath *& path = *$(nix::StorePath **pathP);
-                    int &fim = *$(int *fimP);
-                    int &hashType = *$(int *hashTypeP);
-                    char *&hashValue = *$(char **hashValueP);
-                    int &hashSize = *$(int *hashSizeP);
+    }|]
+      \i ->
+        fix $ \continue -> do
+          isEnd <- (0 /=) <$> [C.exp| bool { *$(DerivationOutputsIterator *i) == $(Derivation *derivation)->outputs.end() }|]
+          if isEnd
+            then pure []
+            else
+              ( mask_ do
+                  alloca \nameP -> alloca \pathP -> alloca \typP -> alloca \fimP ->
+                    alloca \hashTypeP -> alloca \hashValueP -> alloca \hashSizeP -> do
+                      [C.throwBlock| void {
+                        Store &store = **$(refStore *store);
+                        std::string drvName = std::string($bs-ptr:drvName, $bs-len:drvName);
+                        nix::DerivationOutputs::iterator &i = *$(DerivationOutputsIterator *i);
+                        const char *&name = *$(const char **nameP);
+                        int &typ = *$(int *typP);
+                        StorePath *& path = *$(nix::StorePath **pathP);
+                        int &fim = *$(int *fimP);
+                        int &hashType = *$(int *hashTypeP);
+                        char *&hashValue = *$(char **hashValueP);
+                        int &hashSize = *$(int *hashSizeP);
 
-                    std::string nameString = i->first;
-                    name = stringdup(nameString);
-                    path = nullptr;
-                    std::visit(overloaded {
-                      [&](DerivationOutput::InputAddressed doi) -> void {
-                        typ = 0;
-                        path = new StorePath(doi.path);
-                      },
-                      [&](DerivationOutput::CAFixed dof) -> void {
-                        typ = 1;
-                        path = new StorePath(dof.path(store, $(Derivation *derivation)->name, nameString));
-                        switch (dof.ca.method.raw) {
-                          case ContentAddressMethod::Raw::Text:
-                            // FIXME (RFC 92)
-                            fim = -1;
-                            break;
-                          case ContentAddressMethod::Raw::Flat:
-                            fim = 0;
-                            break;
-                          case ContentAddressMethod::Raw::NixArchive:
-                            fim = 1;
-                            break;
-                          case ContentAddressMethod::Raw::Git:
-                            // FIXME (git-hashing)
-                            fim = -1;
-                            break;
-                          default:
-                            fim = -1;
-                            break;
-                        }
+                        std::string nameString = i->first;
+                        name = stringdup(nameString);
+                        path = nullptr;
+                        std::visit(overloaded {
+                          [&](DerivationOutput::InputAddressed doi) -> void {
+                            typ = 0;
+                            path = new StorePath(doi.path);
+                          },
+                          [&](DerivationOutput::CAFixed dof) -> void {
+                            typ = 1;
+                            path = new StorePath(dof.path(store, $(Derivation *derivation)->name, nameString));
+                            switch (dof.ca.method.raw) {
+                              case ContentAddressMethod::Raw::Text:
+                                // FIXME (RFC 92)
+                                fim = -1;
+                                break;
+                              case ContentAddressMethod::Raw::Flat:
+                                fim = 0;
+                                break;
+                              case ContentAddressMethod::Raw::NixArchive:
+                                fim = 1;
+                                break;
+                              case ContentAddressMethod::Raw::Git:
+                                // FIXME (git-hashing)
+                                fim = -1;
+                                break;
+                              default:
+                                fim = -1;
+                                break;
+                            }
 
-                        const Hash & hash = dof.ca.hash;
+                            const Hash & hash = dof.ca.hash;
 
-                        switch (hash.algo) {
-                          case HashAlgorithm::MD5:
-                            hashType = 0;
-                            break;
-                          case HashAlgorithm::SHA1:
-                            hashType = 1;
-                            break;
-                          case HashAlgorithm::SHA256:
-                            hashType = 2;
-                            break;
-                          case HashAlgorithm::SHA512:
-                            hashType = 3;
-                            break;
-                          default:
-                            hashType = -1;
-                            break;
-                        }
-                        hashSize = hash.hashSize;
-                        hashValue = (char*)malloc(hashSize);
-                        std::memcpy((void*)(hashValue),
-                                    (void*)(hash.hash),
-                                    hashSize);
-                      },
-                      [&](DerivationOutput::CAFloating dof) -> void {
-                        typ = 2;
-                        switch(dof.method.raw) {
-                          case ContentAddressMethod::Raw::Text:
-                            // FIXME (RFC 92)
-                            fim = -1;
-                            break;
-                          case ContentAddressMethod::Raw::Flat:
-                            fim = 0;
-                            break;
-                          case ContentAddressMethod::Raw::NixArchive:
-                            fim = 1;
-                            break;
-                          case ContentAddressMethod::Raw::Git:
-                            // FIXME (git-hashing)
-                            fim = -1;
-                            break;
-                          default:
-                            fim = -1;
-                            break;
-                        }
-                        switch (dof.hashAlgo) {
-                          case HashAlgorithm::MD5:
-                            hashType = 0;
-                            break;
-                          case HashAlgorithm::SHA1:
-                            hashType = 1;
-                            break;
-                          case HashAlgorithm::SHA256:
-                            hashType = 2;
-                            break;
-                          case HashAlgorithm::SHA512:
-                            hashType = 3;
-                            break;
-                          default:
-                            hashType = -1;
-                            break;
-                        }
-                      },
-                      [&](DerivationOutput::Deferred) -> void {
-                        typ = 3;
-                      },
-                      [&](DerivationOutput::Impure) -> void {
-                        typ = 4;
-                      },
-                    },
-                    i->second.raw
-                    );
-                    i++;
-                  }|]
-                  name <- unsafePackMallocCString =<< peek nameP
-                  path <- nullableMoveToForeignPtrWrapper =<< peek pathP
-                  typ <- peek typP
-                  let getFileIngestionMethod = peek fimP <&> \case 0 -> Flat; 1 -> Recursive; _ -> panic "getDerivationOutputs: unknown fim"
-                      getHashType =
-                        peek hashTypeP <&> \case
-                          0 -> MD5
-                          1 -> SHA1
-                          2 -> SHA256
-                          3 -> SHA512
-                          _ -> panic "getDerivationOutputs: unknown hashType"
-                  detail <- case typ of
-                    0 -> pure $ DerivationOutputInputAddressed (fromMaybe (panic "getDerivationOutputs: impossible DOIA path missing") path)
-                    1 -> do
-                      hashValue <- peek hashValueP
-                      hashSize <- peek hashSizeP
-                      hashString <- SBS.packCStringLen (hashValue, fromIntegral hashSize)
-                      free hashValue
-                      hashType <- getHashType
-                      fim <- getFileIngestionMethod
-                      pure $ DerivationOutputCAFixed (FixedOutputHash fim (Hash hashType hashString)) (fromMaybe (panic "getDerivationOutputs: impossible DOCF path missing") path)
-                    2 -> do
-                      hashType <- getHashType
-                      fim <- getFileIngestionMethod
-                      pure $ DerivationOutputCAFloating fim hashType
-                    3 -> pure DerivationOutputDeferred
-                    4 -> panic "getDerivationOutputs: impure derivations not supported yet"
-                    _ -> panic "getDerivationOutputs: impossible getDerivationOutputs typ"
-                  pure
-                    ( DerivationOutput
-                        { derivationOutputName = name,
-                          derivationOutputPath = path,
-                          derivationOutputDetail = detail
-                        }
-                        :
-                    )
-          )
-            <*> continue
+                            switch (hash.algo) {
+                              case HashAlgorithm::MD5:
+                                hashType = 0;
+                                break;
+                              case HashAlgorithm::SHA1:
+                                hashType = 1;
+                                break;
+                              case HashAlgorithm::SHA256:
+                                hashType = 2;
+                                break;
+                              case HashAlgorithm::SHA512:
+                                hashType = 3;
+                                break;
+                              default:
+                                hashType = -1;
+                                break;
+                            }
+                            hashSize = hash.hashSize;
+                            hashValue = (char*)malloc(hashSize);
+                            std::memcpy((void*)(hashValue),
+                                        (void*)(hash.hash),
+                                        hashSize);
+                          },
+                          [&](DerivationOutput::CAFloating dof) -> void {
+                            typ = 2;
+                            switch(dof.method.raw) {
+                              case ContentAddressMethod::Raw::Text:
+                                // FIXME (RFC 92)
+                                fim = -1;
+                                break;
+                              case ContentAddressMethod::Raw::Flat:
+                                fim = 0;
+                                break;
+                              case ContentAddressMethod::Raw::NixArchive:
+                                fim = 1;
+                                break;
+                              case ContentAddressMethod::Raw::Git:
+                                // FIXME (git-hashing)
+                                fim = -1;
+                                break;
+                              default:
+                                fim = -1;
+                                break;
+                            }
+                            switch (dof.hashAlgo) {
+                              case HashAlgorithm::MD5:
+                                hashType = 0;
+                                break;
+                              case HashAlgorithm::SHA1:
+                                hashType = 1;
+                                break;
+                              case HashAlgorithm::SHA256:
+                                hashType = 2;
+                                break;
+                              case HashAlgorithm::SHA512:
+                                hashType = 3;
+                                break;
+                              default:
+                                hashType = -1;
+                                break;
+                            }
+                          },
+                          [&](DerivationOutput::Deferred) -> void {
+                            typ = 3;
+                          },
+                          [&](DerivationOutput::Impure) -> void {
+                            typ = 4;
+                          },
+                        },
+                        i->second.raw
+                        );
+                        i++;
+                      }|]
+                      name <- unsafePackMallocCString =<< peek nameP
+                      path <- nullableMoveToForeignPtrWrapper =<< peek pathP
+                      typ <- peek typP
+                      let getFileIngestionMethod = peek fimP <&> \case 0 -> Flat; 1 -> Recursive; _ -> panic "getDerivationOutputs: unknown fim"
+                          getHashType =
+                            peek hashTypeP <&> \case
+                              0 -> MD5
+                              1 -> SHA1
+                              2 -> SHA256
+                              3 -> SHA512
+                              _ -> panic "getDerivationOutputs: unknown hashType"
+                      detail <- case typ of
+                        0 -> pure $ DerivationOutputInputAddressed (fromMaybe (panic "getDerivationOutputs: impossible DOIA path missing") path)
+                        1 -> do
+                          hashValue <- peek hashValueP
+                          hashSize <- peek hashSizeP
+                          hashString <- SBS.packCStringLen (hashValue, fromIntegral hashSize)
+                          free hashValue
+                          hashType <- getHashType
+                          fim <- getFileIngestionMethod
+                          pure $ DerivationOutputCAFixed (FixedOutputHash fim (Hash hashType hashString)) (fromMaybe (panic "getDerivationOutputs: impossible DOCF path missing") path)
+                        2 -> do
+                          hashType <- getHashType
+                          fim <- getFileIngestionMethod
+                          pure $ DerivationOutputCAFloating fim hashType
+                        3 -> pure DerivationOutputDeferred
+                        4 -> panic "getDerivationOutputs: impure derivations not supported yet"
+                        _ -> panic "getDerivationOutputs: impossible getDerivationOutputs typ"
+                      pure
+                        ( DerivationOutput
+                            { derivationOutputName = name,
+                              derivationOutputPath = path,
+                              derivationOutputDetail = detail
+                            }
+                            :
+                        )
+              )
+                <*> continue
 
 instance Delete DerivationOutputsIterator where
   delete a = [C.block| void { delete $(DerivationOutputsIterator *a); }|]
@@ -749,17 +752,17 @@ deleteDerivationOutputsIterator = delete
 
 getDerivationPlatform :: Derivation -> IO ByteString
 getDerivationPlatform derivation =
-  BS.unsafePackMallocCString =<<
-    [C.exp| const char* {
-       stringdup($fptr-ptr:(Derivation *derivation)->platform)
-     } |]
+  BS.unsafePackMallocCString
+    =<< [C.exp| const char* {
+      stringdup($fptr-ptr:(Derivation *derivation)->platform)
+    }|]
 
 getDerivationBuilder :: Derivation -> IO ByteString
 getDerivationBuilder derivation =
-  BS.unsafePackMallocCString =<<
-    [C.exp| const char* {
-       stringdup($fptr-ptr:(Derivation *derivation)->builder)
-     } |]
+  BS.unsafePackMallocCString
+    =<< [C.exp| const char* {
+      stringdup($fptr-ptr:(Derivation *derivation)->builder)
+    }|]
 
 getDerivationArguments :: Derivation -> IO [ByteString]
 getDerivationArguments derivation =
@@ -795,44 +798,48 @@ getDerivationInputs _ = getDerivationInputs'
 getDerivationInputs' :: Derivation -> IO [(StorePath, [ByteString])]
 getDerivationInputs' (Derivation derivationFPtr) =
   withForeignPtr derivationFPtr \derivation ->
-  withDelete
-    [C.exp| DerivationInputsIterator* {
-      new DerivationInputsIterator($(Derivation *derivation)->inputDrvs.map.begin())
-    }|]
-    $ \i -> fix $ \continue -> do
-      isEnd <- (0 /=) <$> [C.exp| bool { 
-#if NIX_IS_AT_LEAST(2, 29, 0)
-        (*$(DerivationInputsIterator *i)) == $(Derivation *derivation)->inputDrvs.map.end()
-#else
-        *$(DerivationInputsIterator *i) == $(Derivation *derivation)->inputDrvs.map.end()
-#endif
+    withDelete
+      [C.exp| DerivationInputsIterator* {
+        new DerivationInputsIterator($(Derivation *derivation)->inputDrvs.map.begin())
       }|]
-      if isEnd
-        then pure []
-        else do
-          name <-
-            [C.throwBlock| nix::StorePath *{
-              return new StorePath((*$(DerivationInputsIterator *i))->first);
-            }|]
-              >>= moveToForeignPtrWrapper
-          outs <-
-            withDelete
-              [C.block| Strings* {
-                Strings *r = new Strings();
-
-                for (const auto & i : (*$(DerivationInputsIterator *i))->second.value) {
-                  r->push_back(i);
-                }
-
-                // for (const auto &i : iter->second.childMap) {
-                // TODO (RFC 92)
-                //}
-
-                return r;
+      $ \i -> fix $ \continue -> do
+        isEnd <- checkIteratorEnd i derivation
+        if isEnd
+          then pure []
+          else do
+            name <-
+              [C.throwBlock| nix::StorePath *{
+                return new StorePath((*$(DerivationInputsIterator *i))->first);
               }|]
-              toByteStrings
-          [C.block| void { (*$(DerivationInputsIterator *i))++; }|]
-          ((name, outs) :) <$> continue
+                >>= moveToForeignPtrWrapper
+            outs <-
+              withDelete
+                [C.block| Strings* {
+                  Strings *r = new Strings();
+
+                  for (const auto & i : (*$(DerivationInputsIterator *i))->second.value) {
+                    r->push_back(i);
+                  }
+
+                  // for (const auto &i : iter->second.childMap) {
+                  // TODO (RFC 92)
+                  //}
+
+                  return r;
+                }|]
+                toByteStrings
+            [C.block| void { (*$(DerivationInputsIterator *i))++; }|]
+            ((name, outs) :) <$> continue
+  where
+#if NIX_IS_AT_LEAST(2, 29, 0)
+    checkIteratorEnd i derivation = (0 /=) <$> [C.exp| bool {
+      (*$(DerivationInputsIterator *i)) == $(Derivation *derivation)->inputDrvs.map.end()
+    }|]
+#else
+    checkIteratorEnd i derivation = (0 /=) <$> [C.exp| bool {
+      *$(DerivationInputsIterator *i) == $(Derivation *derivation)->inputDrvs.map.end()
+    }|]
+#endif
 
 instance Delete DerivationInputsIterator where
   delete a = [C.block| void { delete $(DerivationInputsIterator *a); }|]
@@ -849,15 +856,16 @@ getDerivationEnv (Derivation fptr) =
 
 getDerivationOutputNames :: ForeignPtr C.Derivation -> IO [ByteString]
 getDerivationOutputNames fptr =
-  withForeignPtr fptr \ptr -> withDelete
-    [C.throwBlock| Strings* {
+  withForeignPtr fptr \ptr ->
+    withDelete
+      [C.throwBlock| Strings* {
       Strings *r = new Strings();
       for (auto i : $(Derivation *ptr)->outputs) {
         r->push_back(i.first);
       }
       return r;
     }|]
-    toByteStrings
+      toByteStrings
 
 instance Delete StringPairs where
   delete s = [C.block| void { delete $(StringPairs *s); }|]
@@ -976,12 +984,11 @@ finalizeSecretKey :: FinalizerPtr SecretKey
 {-# NOINLINE finalizeSecretKey #-}
 finalizeSecretKey =
   unsafePerformIO
-    [C.exp|
-    void (*)(SecretKey *) {
+    [C.exp| void (*)(SecretKey *) {
       [](SecretKey *v) {
         delete v;
       }
-    } |]
+    }|]
 {-# DEPRECATED finalizeSecretKey "Use 'finalizer' instead" #-}
 
 signPath ::
@@ -995,28 +1002,28 @@ signPath ::
 signPath (Store store) secretKey (StorePath path) =
   (== 1) <$> do
     [C.throwBlock| int {
-    ReceiveInterrupts _;
-    nix::ref<nix::Store> store = *$(refStore *store);
-    const StorePath &storePath = *$fptr-ptr:(nix::StorePath *path);
-    const SecretKey &secretKey = *$(SecretKey *secretKey);
-    auto currentInfo = store->queryPathInfo(storePath);
+      ReceiveInterrupts _;
+      nix::ref<nix::Store> store = *$(refStore *store);
+      const StorePath &storePath = *$fptr-ptr:(nix::StorePath *path);
+      const SecretKey &secretKey = *$(SecretKey *secretKey);
+      auto currentInfo = store->queryPathInfo(storePath);
 
-    auto info2(*currentInfo);
-    info2.sigs.clear();
-    {
-      auto signer = std::make_unique<LocalSigner>(SecretKey { secretKey });
-      info2.sign(*store, *signer);
-    }
-    assert(!info2.sigs.empty());
-    auto sig = *info2.sigs.begin();
+      auto info2(*currentInfo);
+      info2.sigs.clear();
+      {
+        auto signer = std::make_unique<LocalSigner>(SecretKey { secretKey });
+        info2.sign(*store, *signer);
+      }
+      assert(!info2.sigs.empty());
+      auto sig = *info2.sigs.begin();
 
-    if (currentInfo->sigs.count(sig)) {
-      return 0;
-    } else {
-      store->addSignatures(storePath, info2.sigs);
-      return 1;
-    }
-  }|]
+      if (currentInfo->sigs.count(sig)) {
+        return 0;
+      } else {
+        store->addSignatures(storePath, info2.sigs);
+        return 1;
+      }
+    }|]
 
 -- | Follow symlinks to the store and chop off the parts after the top-level store name
 followLinksToStorePath :: Store -> ByteString -> IO StorePath
@@ -1046,16 +1053,16 @@ queryPathInfo ::
   StorePath ->
   -- | ValidPathInfo or exception
   IO (ForeignPtr (Ref ValidPathInfo))
-queryPathInfo (Store store) (StorePath pathFPtr) = 
+queryPathInfo (Store store) (StorePath pathFPtr) =
   withForeignPtr pathFPtr \path -> do
-  vpi <-
-    [C.throwBlock| refValidPathInfo* {
-      ReceiveInterrupts _;
-      Store &store = **$(refStore* store);
-      StorePath &path = *$(nix::StorePath *path);
-      return new refValidPathInfo(store.queryPathInfo(path));
-    }|]
-  toForeignPtr vpi
+    vpi <-
+      [C.throwBlock| refValidPathInfo* {
+        ReceiveInterrupts _;
+        Store &store = **$(refStore* store);
+        StorePath &path = *$(nix::StorePath *path);
+        return new refValidPathInfo(store.queryPathInfo(path));
+      }|]
+    toForeignPtr vpi
 
 -- | Query only the local client cache ("narinfo cache") - does not query the actual store or daemon.
 --
@@ -1068,30 +1075,31 @@ queryPathInfoFromClientCache ::
   IO (Maybe (Maybe (ForeignPtr (Ref ValidPathInfo))))
 queryPathInfoFromClientCache (Store store) (StorePath pathFPtr) =
   withForeignPtr pathFPtr \path ->
-  alloca \isKnownP -> do
-    mvpi <- [C.throwBlock| refValidPathInfo* {
-        ReceiveInterrupts _;
-        Store &store = **$(refStore* store);
-        StorePath &path = *$(nix::StorePath *path);
-        bool &isKnown = *$(bool* isKnownP);
-        std::optional<std::shared_ptr<const ValidPathInfo>> maybeVPI =
-            store.queryPathInfoFromClientCache(path);
-        if (!maybeVPI) {
-          isKnown = false;
-          return nullptr;
-        }
-        else {
-          isKnown = true;
-          std::shared_ptr<const ValidPathInfo> &vpi = *maybeVPI;
-          if (vpi)
-            return new refValidPathInfo(vpi);
-          else
+    alloca \isKnownP -> do
+      mvpi <-
+        [C.throwBlock| refValidPathInfo* {
+          ReceiveInterrupts _;
+          Store &store = **$(refStore* store);
+          StorePath &path = *$(nix::StorePath *path);
+          bool &isKnown = *$(bool* isKnownP);
+          std::optional<std::shared_ptr<const ValidPathInfo>> maybeVPI =
+              store.queryPathInfoFromClientCache(path);
+          if (!maybeVPI) {
+            isKnown = false;
             return nullptr;
-        }
-      }|]
-    isKnown <- peek isKnownP <&> (/= 0)
-    for (guard isKnown) \_ -> do
-      mvpi & traverseNonNull toForeignPtr
+          }
+          else {
+            isKnown = true;
+            std::shared_ptr<const ValidPathInfo> &vpi = *maybeVPI;
+            if (vpi)
+              return new refValidPathInfo(vpi);
+            else
+              return nullptr;
+          }
+        }|]
+      isKnown <- peek isKnownP <&> (/= 0)
+      for (guard isKnown) \_ -> do
+        mvpi & traverseNonNull toForeignPtr
 
 instance Finalizer (Ref ValidPathInfo) where
   finalizer = finalizeRefValidPathInfo -- must be CAF
@@ -1100,10 +1108,9 @@ finalizeRefValidPathInfo :: FinalizerPtr (Ref ValidPathInfo)
 {-# NOINLINE finalizeRefValidPathInfo #-}
 finalizeRefValidPathInfo =
   unsafePerformIO
-    [C.exp|
-      void (*)(refValidPathInfo *) {
-        [](refValidPathInfo *v){ delete v; }
-      }|]
+    [C.exp| void (*)(refValidPathInfo *) {
+      [](refValidPathInfo *v){ delete v; }
+    }|]
 {-# DEPRECATED finalizeRefValidPathInfo "Use 'finalizer' instead" #-}
 
 -- | The narSize field of a ValidPathInfo struct. Source: path-info.hh / store-api.hh
@@ -1111,9 +1118,9 @@ validPathInfoNarSize :: ForeignPtr (Ref ValidPathInfo) -> Int64
 validPathInfoNarSize vpi =
   fromIntegral $
     toInteger
-      [C.pure| long
-        { (*$fptr-ptr:(refValidPathInfo* vpi))->narSize }
-      |]
+      [C.pure| long {
+        (*$fptr-ptr:(refValidPathInfo* vpi))->narSize
+      }|]
 
 -- | Copy the narHash field of a ValidPathInfo struct. Source: path-info.hh / store-api.hh
 validPathInfoNarHash32 :: ForeignPtr (Ref ValidPathInfo) -> IO ByteString
