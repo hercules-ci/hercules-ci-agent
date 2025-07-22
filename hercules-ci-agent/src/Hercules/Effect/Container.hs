@@ -8,6 +8,7 @@ import Control.Lens
 import Data.Aeson (Value (String), eitherDecode, encode, object, toJSON)
 import Data.Aeson.Lens
 import Data.ByteString qualified as BS
+import Data.ByteString.Char8 qualified as BS.Char8
 import Data.ByteString.Lazy qualified as BL
 import Data.Map qualified as M
 import Data.UUID.V4 qualified as UUID
@@ -148,7 +149,7 @@ run dir config = do
         )
         ( do
             let shovel =
-                  handleEOF (BS.hGetLine master) >>= \case
+                  handleEOF (BS.Char8.hGetLine master) >>= \case
                     "" -> pass
                     someBytes | "@nix" `BS.isPrefixOf` someBytes -> do
                       -- TODO use it (example @nix { "action": "setPhase", "phase": "effectPhase" })
