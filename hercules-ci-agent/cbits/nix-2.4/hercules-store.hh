@@ -104,9 +104,13 @@ public:
       StorePathSet & out, bool flipDirection = false,
       bool includeOutputs = false, bool includeDerivers = false) override;
 
+#if NIX_IS_AT_LEAST(2, 30, 0)
+  virtual MissingPaths queryMissing(const std::vector<DerivedPath> & targets) override;
+#else
   virtual void queryMissing(const std::vector<DerivedPath> & targets,
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) override;
+#endif
 
 
   virtual unsigned int getProtocol() override;
@@ -146,9 +150,13 @@ public:
   virtual BuildResult buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
       BuildMode buildMode = bmNormal) override;
 
+#if NIX_IS_AT_LEAST(2, 30, 0)
+  virtual MissingPaths queryMissing(const std::vector<DerivedPath> & targets) override;
+#else
   virtual void queryMissing(const std::vector<DerivedPath> & targets,
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) override;
+#endif
 
   // Additions
 

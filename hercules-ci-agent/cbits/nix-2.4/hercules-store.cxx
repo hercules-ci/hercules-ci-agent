@@ -158,12 +158,18 @@ void WrappingStore::computeFSClosure(const StorePathSet& paths,
                                  includeDerivers);
 }
 
+#if NIX_IS_AT_LEAST(2, 30, 0)
+MissingPaths WrappingStore::queryMissing(const std::vector<DerivedPath> & targets) {
+  return wrappedStore->queryMissing(targets);
+}
+#else
 void WrappingStore::queryMissing(const std::vector<DerivedPath> & targets,
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) {
   wrappedStore->queryMissing(targets, willBuild, willSubstitute, unknown,
                              downloadSize, narSize);
 }
+#endif
 
 
 void WrappingStore::connect() {
@@ -227,10 +233,17 @@ void HerculesStore::ensurePath(const StorePath& path) {
 };
 
 // Avoid substituting in evaluator, see `ensurePath` for more details
+#if NIX_IS_AT_LEAST(2, 30, 0)
+MissingPaths HerculesStore::queryMissing(const std::vector<DerivedPath> & targets) {
+  throw nix::Error("HerculesStore::queryMissing is not implemented");
+  return MissingPaths{};
+}
+#else
 void HerculesStore::queryMissing(const std::vector<DerivedPath> & targets,
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) {
-};
+}
+#endif
 
 void HerculesStore::buildPaths(const std::vector<DerivedPath> & derivedPaths, BuildMode buildMode, std::shared_ptr<Store> evalStore) {
   std::exception_ptr exceptionToThrow(nullptr);
