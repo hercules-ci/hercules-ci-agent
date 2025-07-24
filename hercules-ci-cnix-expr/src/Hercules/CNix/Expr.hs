@@ -438,12 +438,26 @@ getAttrBool evalState attrset attrName = do
       Right _ -> do
         pure $ Right Nothing
 
+#if NIX_IS_AT_LEAST(2, 30, 0)
+getList :: Value NixList -> IO [RawValue]
+getList (Value (RawValue nixList)) = do
+  len <- [C.exp| int { $(Value *nixList)->listSize() }|]
+  bracket
+    [C.exp| ListViewType * { new ListViewType($(Value *nixList)->listView()) }|]
+    (\listView -> [C.exp| void { delete $(ListViewType *listView) }|])
+    (\listView -> do
+      let getElem i = mkRawValue =<< [C.exp| Value * { (*$(ListViewType *listView))[$(int i)] }|]
+      for [0 .. (len - 1)] \i -> do
+        getElem i
+    )
+#else
 getList :: Value NixList -> IO [RawValue]
 getList (Value (RawValue nixList)) = do
   len <- [C.exp| int { $(Value *nixList)->listSize() }|]
   let getElem i = mkRawValue =<< [C.exp| Value * { $(Value *nixList)->listElems()[$(int i)] }|]
   for [0 .. (len - 1)] \i -> do
     getElem i
+#endif
 
 getAttrList :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Either SomeException (Maybe [RawValue]))
 getAttrList evalState attrset attrName = do
