@@ -79,7 +79,7 @@ library
       include
       cbits
   pkgconfig-depends:
-      nix-store >= 2.28 && < 2.30
+      nix-store >= 2.28 && < 2.31
   install-includes:
       hercules-ci-cnix/store.hxx
       hercules-ci-cnix/string.hxx
