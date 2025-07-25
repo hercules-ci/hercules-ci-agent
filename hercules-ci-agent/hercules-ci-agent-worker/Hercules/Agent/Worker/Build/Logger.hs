@@ -35,7 +35,6 @@ C.context context
 
 C.include "<cstring>"
 
-
 C.include "<hercules-ci-cnix/string.hxx>"
 
 C.include "hercules-aliases.h"

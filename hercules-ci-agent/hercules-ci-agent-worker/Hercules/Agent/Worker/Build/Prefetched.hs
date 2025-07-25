@@ -37,6 +37,10 @@ C.include "<nix/store/path-with-outputs.hh>"
 C.include "<nix/store/store-api.hh>"
 C.include "<nix/util/signals.hh>"
 
+#if NIX_IS_AT_LEAST(2, 29, 0)
+C.include "<nix/store/store-open.hh>"
+#endif
+
 C.include "<hercules-ci-cnix/store.hxx>"
 
 C.include "<hercules-ci-cnix/string.hxx>"

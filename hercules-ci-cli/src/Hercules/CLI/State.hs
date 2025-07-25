@@ -54,11 +54,7 @@ getCommandParser = do
       bytes <- retryStreamOnFail "state get" (\token -> getStateData projectStateClient name versionMaybe token) \case
         Left e -> throwIO e
         Right (Headers stream headers) -> do
-#if MIN_VERSION_servant(0,20,0)
-          s <- fromSourceIO stream
-#else
-          let s = fromSourceIO stream
-#endif
+          s <- getSource stream
           bl <- runConduitRes $ s .| mapC (BB.byteString . fromRawBytes) .| sinkLazyBuilder
           let lenH :: ResponseHeader "Content-Length" Integer
               lenH `HCons` _ = headers
@@ -72,6 +68,12 @@ getCommandParser = do
       case file of
         "-" -> BS.putStr bytes
         _ -> BS.writeFile file bytes
+  where
+#if MIN_VERSION_servant(0,20,0)
+    getSource stream = fromSourceIO stream
+#else
+    getSource stream = pure $ fromSourceIO stream
+#endif
 putCommandParser = do
   projectMaybe <- optional projectOption
   name <- nameOption

@@ -1,7 +1,7 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE CPP #-}
 
 module Hercules.CNix.Expr.Typed
   ( Value (..),
@@ -137,8 +137,8 @@ match' es v = match es v >>= \case Left e -> throwIO e; Right a -> pure a
 
 getBool :: Value Bool -> IO Bool
 getBool (Value (RawValue v)) =
-  (0 /=) <$>
-    [C.exp| int { $(Value *v)->boolean() ? 1 : 0 }|]
+  (0 /=)
+    <$> [C.exp| int { $(Value *v)->boolean() ? 1 : 0 }|]
 
 getInt :: Value NixInt -> IO Int64
 getInt (Value (RawValue v)) =
@@ -154,8 +154,8 @@ getStringIgnoreContext (Value (RawValue v)) =
 
 hasContext :: Value NixString -> IO Bool
 hasContext (Value (RawValue v)) =
-  (0 /=) <$>
-    [C.exp| int { $(Value *v)->context() ? 1 : 0 }|]
+  (0 /=)
+    <$> [C.exp| int { $(Value *v)->context() ? 1 : 0 }|]
 
 class CheckType a where
   checkType :: Ptr EvalState -> RawValue -> IO (Maybe (Value a))

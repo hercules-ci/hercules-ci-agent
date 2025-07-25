@@ -33,6 +33,8 @@ data BindingsBuilder'
 
 data ListBuilder'
 
+data ListViewType'
+
 context :: C.Context
 context =
   C.cppCtx
@@ -57,4 +59,6 @@ evalContext =
           =: [t|BindingsBuilder'|]
           <> C.TypeName "ListBuilder"
           =: [t|ListBuilder'|]
+          <> C.TypeName "ListViewType"
+          =: [t|ListViewType'|]
     }

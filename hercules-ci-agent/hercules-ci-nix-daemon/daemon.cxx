@@ -13,6 +13,10 @@
 #include <nix/store/daemon.hh>
 #include <nix/main/shared.hh>
 
+#if NIX_IS_AT_LEAST(2, 29, 0)
+#include <nix/store/store-open.hh>
+#endif
+
 using namespace nix;
 
 using nix::unix::closeOnExec;

@@ -9,15 +9,15 @@ import Data.Map qualified as M
 import Data.Vector (Vector)
 import Hercules.API.Agent.Build qualified as API.Build
 import Hercules.API.Agent.Build.BuildEvent qualified as BuildEvent
-import Hercules.API.Agent.OutputInfo
-  ( OutputInfo,
-  )
-import Hercules.API.Agent.OutputInfo qualified as OutputInfo
 import Hercules.API.Agent.Build.BuildEvent.Pushed qualified as Pushed
 import Hercules.API.Agent.Build.BuildTask
   ( BuildTask,
   )
 import Hercules.API.Agent.Build.BuildTask qualified as BuildTask
+import Hercules.API.Agent.OutputInfo
+  ( OutputInfo,
+  )
+import Hercules.API.Agent.OutputInfo qualified as OutputInfo
 import Hercules.API.Logs.LogEntry (LogEntry)
 import Hercules.API.Servant (noContent)
 import Hercules.API.TaskStatus (TaskStatus)
@@ -38,12 +38,12 @@ import Hercules.Agent.WorkerProtocol.Command qualified as Command
 import Hercules.Agent.WorkerProtocol.Command.Build qualified as Command.Build
 import Hercules.Agent.WorkerProtocol.Event qualified as Event
 import Hercules.Agent.WorkerProtocol.Event.BuildResult qualified as BuildResult
+import Hercules.Agent.WorkerProtocol.OutputInfo qualified as Proto
 import Hercules.Agent.WorkerProtocol.ViaJSON (ViaJSON (ViaJSON))
 import Hercules.CNix.Store qualified as CNix
 import Hercules.Error (defaultRetry)
 import Protolude
 import System.Process
-import qualified Hercules.Agent.WorkerProtocol.OutputInfo as Proto
 
 performBuild :: (Vector LogEntry -> IO ()) -> BuildTask.BuildTask -> App TaskStatus
 performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath" buildTask.derivationPath) $ do
@@ -106,11 +106,7 @@ performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath"
     Just BuildResult.BuildSuccess {outputs = outs'} -> do
       let outs = convertOutputs (BuildTask.derivationPath buildTask) outs'
       reportOutputInfos buildTask outs
-#if MIN_VERSION_cachix(1, 4, 0) && ! MIN_VERSION_cachix(1, 5, 0)
-      CNix.withStore $ \store -> push store buildTask outs
-#else
-      asks (Cachix.Env.store . Env.cachixEnv) >>= \store -> push store buildTask outs
-#endif
+      pushToStore buildTask outs
       reportSuccess buildTask
       pure $ TaskStatus.Successful ()
     Just BuildResult.BuildFailure {errorMessage = errorMessage} ->
@@ -118,6 +114,15 @@ performBuild sendLogEntries buildTask = katipAddContext (sl "taskDerivationPath"
         logLocM DebugS "Build failed"
         pure $ TaskStatus.Terminated ()
     Nothing -> pure $ TaskStatus.Exceptional "Build did not complete"
+
+-- | Push outputs to the store using the appropriate method based on cachix version
+pushToStore :: BuildTask -> Map Text OutputInfo -> App ()
+pushToStore buildTask outs = do
+#if MIN_VERSION_cachix(1, 4, 0) && ! MIN_VERSION_cachix(1, 5, 0)
+  CNix.withStore $ \store -> push store buildTask outs
+#else
+  asks (Cachix.Env.store . Env.cachixEnv) >>= \store -> push store buildTask outs
+#endif
 
 convertOutputs :: Text -> [Proto.OutputInfo] -> Map Text OutputInfo
 convertOutputs deriver = foldMap $ \oi ->
@@ -127,13 +132,13 @@ convertOutputs deriver = foldMap $ \oi ->
 convertOutputInfo :: Text -> Proto.OutputInfo -> OutputInfo
 convertOutputInfo deriver oi =
   OutputInfo.OutputInfo
-      { OutputInfo.deriver = deriver,
-        name = decodeUtf8With lenientDecode oi.name,
-        path = decodeUtf8With lenientDecode oi.path,
-        size = fromIntegral oi.size,
-        hash = decodeUtf8With lenientDecode oi.hash,
-        references = Just (decodeUtf8With lenientDecode <$> oi.references)
-      }
+    { OutputInfo.deriver = deriver,
+      name = decodeUtf8With lenientDecode oi.name,
+      path = decodeUtf8With lenientDecode oi.path,
+      size = fromIntegral oi.size,
+      hash = decodeUtf8With lenientDecode oi.hash,
+      references = Just (decodeUtf8With lenientDecode <$> oi.references)
+    }
 
 push :: CNix.Store -> BuildTask -> Map Text OutputInfo -> App ()
 push store buildTask outs = do
