@@ -35,13 +35,13 @@ setInterruptThrown :: IO ()
 setInterruptThrown =
   [C.throwBlock| void {
     nix::setInterruptThrown();
-  } |]
+  }|]
 
 triggerInterrupt :: IO ()
 triggerInterrupt =
   [C.throwBlock| void {
     nix::unix::triggerInterrupt();
-  } |]
+  }|]
 
 -- | Install a signal handler that will put Nix into the interrupted state and
 -- throws 'UserInterrupt' in the main thread (as is usual), assuming this
@@ -67,7 +67,8 @@ installDefaultSigINTHandler = do
   for_ [sigINT, sigTERM, sigHUP] \sig -> do
     result <- [C.exp| int { hercules_install_signal_handler($(int sig)) } |]
     when (result /= 0) $
-      panic $ "Failed to install synchronous signal handler for signal " <> show sig
+      panic $
+        "Failed to install synchronous signal handler for signal " <> show sig
 
   -- Install dummy SIGUSR1 handler for Nix interrupt signal propagation
   -- (installHandler uses process-wide sigprocmask, so this should apply to all
@@ -89,7 +90,7 @@ createInterruptCallback onInterrupt = do
   -- leaks onInterruptPtr
   [C.throwBlock| void {
     nix::createInterruptCallback($(void (*onInterruptPtr)()));
-  } |]
+  }|]
 
 #ifndef __GHCIDE__
 foreign import ccall "wrapper"

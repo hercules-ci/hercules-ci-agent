@@ -6,25 +6,25 @@ module Hercules.Agent.Cachix
   )
 where
 
-import qualified Cachix.Client.Push as Cachix.Push
-import Cachix.Types.BinaryCache (CompressionMethod(XZ))
+import Cachix.Client.Push qualified as Cachix.Push
+import Cachix.Types.BinaryCache (CompressionMethod (XZ))
 #if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
 import qualified Cachix.Client.Store
 import qualified Cachix.Client.Store as Cachix
 #endif
-import qualified Data.Conduit as Conduit
 import Control.Monad.IO.Unlift
-import qualified Data.Map as M
-import qualified Hercules.Agent.Cachix.Env as Agent.Cachix
+import Data.Conduit qualified as Conduit
+import Data.Map qualified as M
+import Hercules.Agent.Cachix.Env qualified as Agent.Cachix
 import Hercules.Agent.Cachix.Info (activePushCaches)
 import Hercules.Agent.Env as Agent.Env hiding (activePushCaches)
-import qualified Hercules.Agent.EnvironmentInfo as EnvInfo
+import Hercules.Agent.EnvironmentInfo qualified as EnvInfo
 import Hercules.Agent.Log
+import Hercules.CNix qualified as CNix
 import Hercules.CNix.Store (StorePath)
 import Hercules.Error
-import qualified Hercules.Formats.CachixCache as CachixCache
+import Hercules.Formats.CachixCache qualified as CachixCache
 import Protolude
-import qualified Hercules.CNix as CNix
 #if MIN_VERSION_cachix(1,7,2)
 import qualified Cachix.Client.OptionsParser as Opts
 #endif
@@ -42,62 +42,127 @@ push nixStore cache paths workers = withNamedContext "cache" cache $ do
       maybeToEither (FatalError $ "Cache not found " <> cache) $
         M.lookup cache pushCaches
   ul <- askUnliftIO
-  let pushParams =
-        Cachix.Push.PushParams
-          { pushParamsName = Agent.Cachix.pushCacheName pushCache,
-            pushParamsSecret = Agent.Cachix.pushCacheSecret pushCache,
-            pushParamsStore = cachixStore,
-#if MIN_VERSION_cachix(1,6,0)
-            pushOnClosureAttempt = \_ missing -> return missing,
-#endif
-            pushParamsClientEnv = clientEnv,
-            pushParamsStrategy = \storePath ->
-#if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
-              let ctx = withNamedContext "path" (Cachix.getPath storePath)
-#else
-              let ctx = withNamedContext "path" (show storePath :: Text)
-#endif
-               in Cachix.Push.PushStrategy
-                    { onAlreadyPresent = pass,
-                      onAttempt = \retryStatus size ->
-                        ctx $
-                          withNamedContext "size" size $
-                            withNamedContext "retry" (show retryStatus :: Text) $
-                              logLocM DebugS "pushing",
-#if MIN_VERSION_cachix(1,3,0)
-                      on401 = \err -> throwIO $ FatalError $ "Cachix push is unauthorized: " <> show err,
-#else
-                      on401 = throwIO $ FatalError "Cachix push is unauthorized",
-#endif
-                      onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
-                      onDone = ctx $ logLocM DebugS "push done",
-#if MIN_VERSION_cachix(1,1,0)
-                      compressionMethod = XZ,
-                      compressionLevel = 2,
-#else
-                      withXzipCompressor = Cachix.Push.defaultWithXzipCompressor,
-#endif
-#if MIN_VERSION_cachix(1,6,0)
-                      onUncompressedNARStream = \_ _ -> Conduit.awaitForever Conduit.yield,
-#endif
-#if MIN_VERSION_cachix(1,7,2)
-                      chunkSize = Opts.defaultChunkSize,
-                      numConcurrentChunks = Opts.defaultNumConcurrentChunks,
-#endif
-                      omitDeriver = False
-                    }
-          }
-#if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
-  paths' <- paths & traverse (convertPath nixStore)
-#else
-  let paths' = paths
-      _ = nixStore -- silence unused warning
-#endif
+  let pushParams = makePushParams pushCache cachixStore clientEnv
+  paths' <- convertPaths nixStore paths
   void $
     Cachix.Push.pushClosure
       (\f l -> liftIO $ Cachix.Push.mapConcurrentlyBounded workers (fmap (unliftIO ul) f) l)
       pushParams
       paths'
+  where
+#if MIN_VERSION_cachix(1,6,0)
+    makePushParams pushCache cachixStore clientEnv =
+      Cachix.Push.PushParams
+        { pushParamsName = Agent.Cachix.pushCacheName pushCache,
+          pushParamsSecret = Agent.Cachix.pushCacheSecret pushCache,
+          pushParamsStore = cachixStore,
+          pushOnClosureAttempt = \_ missing -> return missing,
+          pushParamsClientEnv = clientEnv,
+          pushParamsStrategy = makePushStrategy
+        }
+#else
+    makePushParams pushCache cachixStore clientEnv =
+      Cachix.Push.PushParams
+        { pushParamsName = Agent.Cachix.pushCacheName pushCache,
+          pushParamsSecret = Agent.Cachix.pushCacheSecret pushCache,
+          pushParamsStore = cachixStore,
+          pushParamsClientEnv = clientEnv,
+          pushParamsStrategy = makePushStrategy
+        }
+#endif
+
+#if MIN_VERSION_cachix(1,7,2)
+    makePushStrategy storePath =
+      let ctx = makeContextForPath storePath
+       in Cachix.Push.PushStrategy
+            { onAlreadyPresent = pass,
+              onAttempt = \retryStatus size ->
+                ctx $
+                  withNamedContext "size" size $
+                    withNamedContext "retry" (show retryStatus :: Text) $
+                      logLocM DebugS "pushing",
+              on401 = makeOn401Handler,
+              onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
+              onDone = ctx $ logLocM DebugS "push done",
+              compressionMethod = XZ,
+              compressionLevel = 2,
+              onUncompressedNARStream = \_ _ -> Conduit.awaitForever Conduit.yield,
+              chunkSize = Opts.defaultChunkSize,
+              numConcurrentChunks = Opts.defaultNumConcurrentChunks,
+              omitDeriver = False
+            }
+#elif MIN_VERSION_cachix(1,6,0)
+    makePushStrategy storePath =
+      let ctx = makeContextForPath storePath
+       in Cachix.Push.PushStrategy
+            { onAlreadyPresent = pass,
+              onAttempt = \retryStatus size ->
+                ctx $
+                  withNamedContext "size" size $
+                    withNamedContext "retry" (show retryStatus :: Text) $
+                      logLocM DebugS "pushing",
+              on401 = makeOn401Handler,
+              onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
+              onDone = ctx $ logLocM DebugS "push done",
+              compressionMethod = XZ,
+              compressionLevel = 2,
+              onUncompressedNARStream = \_ _ -> Conduit.awaitForever Conduit.yield,
+              omitDeriver = False
+            }
+#elif MIN_VERSION_cachix(1,1,0)
+    makePushStrategy storePath =
+      let ctx = makeContextForPath storePath
+       in Cachix.Push.PushStrategy
+            { onAlreadyPresent = pass,
+              onAttempt = \retryStatus size ->
+                ctx $
+                  withNamedContext "size" size $
+                    withNamedContext "retry" (show retryStatus :: Text) $
+                      logLocM DebugS "pushing",
+              on401 = makeOn401Handler,
+              onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
+              onDone = ctx $ logLocM DebugS "push done",
+              compressionMethod = XZ,
+              compressionLevel = 2,
+              omitDeriver = False
+            }
+#else
+    makePushStrategy storePath =
+      let ctx = makeContextForPath storePath
+       in Cachix.Push.PushStrategy
+            { onAlreadyPresent = pass,
+              onAttempt = \retryStatus size ->
+                ctx $
+                  withNamedContext "size" size $
+                    withNamedContext "retry" (show retryStatus :: Text) $
+                      logLocM DebugS "pushing",
+              on401 = makeOn401Handler,
+              onError = \err -> throwIO $ FatalError $ "Error pushing to cachix: " <> show err,
+              onDone = ctx $ logLocM DebugS "push done",
+              withXzipCompressor = Cachix.Push.defaultWithXzipCompressor,
+              omitDeriver = False
+            }
+#endif
+
+#if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
+    makeContextForPath storePath = withNamedContext "path" (Cachix.getPath storePath)
+#else
+    makeContextForPath storePath = withNamedContext "path" (show storePath :: Text)
+#endif
+
+#if MIN_VERSION_cachix(1,3,0)
+    makeOn401Handler = \err -> throwIO $ FatalError $ "Cachix push is unauthorized: " <> show err
+#else
+    makeOn401Handler = throwIO $ FatalError "Cachix push is unauthorized"
+#endif
+
+#if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
+    convertPaths nixStore paths = paths & traverse (convertPath nixStore)
+#else
+    convertPaths nixStore paths = do
+      let _ = nixStore -- silence unused warning
+      pure paths
+#endif
 
 #if MIN_VERSION_cachix(1,4,0) && ! MIN_VERSION_cachix(1,5,0)
 

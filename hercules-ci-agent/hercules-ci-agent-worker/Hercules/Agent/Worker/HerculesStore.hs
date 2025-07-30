@@ -49,7 +49,7 @@ withHerculesStore (Store wrappedStore) =
     ( liftIO
         [C.block| refHerculesStore* {
           refStore &s = *$(refStore *wrappedStore);
-          refHerculesStore hs(new HerculesStore({}, s));
+          refHerculesStore hs(new HerculesStore(s));
           return new refHerculesStore(hs);
         } |]
     )

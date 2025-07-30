@@ -10,18 +10,8 @@ toplevel@{ withSystem, ... }:
         # TODO: hlint.enable = true;
         ormolu.enable = true;
         ormolu.excludes = [
-          # CPP
-          "Hercules/Agent/Build.hs"
-          "Hercules/Agent/Cachix.hs"
-          "Hercules/Agent/Compat.hs"
-          "Hercules/Agent/StoreFFI.hs"
-          "Hercules/Agent/Worker/Build/Logger.hs"
-          "Hercules/CNix/Expr.hs" # parse error in quasiquotation
-          "Hercules/CNix/Store.hs" # parse error in quasiquotation + CPP
-          "Hercules/CLI/State.hs"
-          "Hercules/CNix/Expr/Context.hs"
-          "Hercules/CNix/Expr/Typed.hs"
-          "Hercules/CNix/Util.hs"
+          # If ormolu's CPP support becomes difficult to handle again, add file paths here,
+          # or use its magic comments (see its README).
         ];
         shellcheck.enable = true;
         nixpkgs-fmt.enable = true;

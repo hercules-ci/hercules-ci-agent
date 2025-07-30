@@ -11,13 +11,14 @@
 
 using FSAccessor = nix::SourceAccessor;
 
+
 using namespace nix;
 
 class WrappingStore : public Store {
  public:
   ref<Store> wrappedStore;
 
-  WrappingStore(const Params & params, ref<Store> storeToWrap);
+  WrappingStore(ref<Store> storeToWrap);
 
 
   virtual ~WrappingStore();
@@ -103,9 +104,13 @@ public:
       StorePathSet & out, bool flipDirection = false,
       bool includeOutputs = false, bool includeDerivers = false) override;
 
+#if NIX_IS_AT_LEAST(2, 30, 0)
+  virtual MissingPaths queryMissing(const std::vector<DerivedPath> & targets) override;
+#else
   virtual void queryMissing(const std::vector<DerivedPath> & targets,
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) override;
+#endif
 
 
   virtual unsigned int getProtocol() override;
@@ -124,9 +129,11 @@ public:
   StorePathSet ensuredPaths;
   void (* builderCallback)(std::vector<nix::StorePathWithOutputs>*, std::exception_ptr *exceptionToThrow);
 
-  HerculesStore(const Params & params, ref<Store> storeToWrap);
+  HerculesStore(ref<Store> storeToWrap);
 
+#if !NIX_IS_AT_LEAST(2, 29, 0)
   virtual const std::string name() override;
+#endif
 
   // Overrides
 
@@ -143,9 +150,13 @@ public:
   virtual BuildResult buildDerivation(const StorePath & drvPath, const BasicDerivation & drv,
       BuildMode buildMode = bmNormal) override;
 
+#if NIX_IS_AT_LEAST(2, 30, 0)
+  virtual MissingPaths queryMissing(const std::vector<DerivedPath> & targets) override;
+#else
   virtual void queryMissing(const std::vector<DerivedPath> & targets,
       StorePathSet & willBuild, StorePathSet & willSubstitute, StorePathSet & unknown,
       uint64_t & downloadSize, uint64_t & narSize) override;
+#endif
 
   // Additions
 

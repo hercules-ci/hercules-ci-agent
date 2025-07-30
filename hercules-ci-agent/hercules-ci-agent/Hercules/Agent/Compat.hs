@@ -2,7 +2,7 @@
 
 module Hercules.Agent.Compat (katipLevel) where
 
-import qualified Katip as K
+import Katip qualified as K
 import Protolude
 
 katipLevel :: K.Severity -> K.PermitFunc
