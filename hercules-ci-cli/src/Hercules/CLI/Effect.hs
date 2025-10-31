@@ -75,10 +75,32 @@ runParser :: Optparse.Parser (IO ())
 runParser = do
   opts <- effectOptionsParser
   pure $ runAuthenticatedOrDummy (eoRequireToken opts) do
-    withNix \store evalState -> do
-      ref <- liftIO $ computeRef (eoRef opts)
-      derivation <- getEffectDrv store evalState (eoProjectPath opts) ref (eoAttribute opts)
-      runEffectImpl store derivation ref opts
+    -- Check if it's a direct derivation path
+    isDirectPath <- withNix \store _evalState -> do
+      storeDir <- liftIO $ CNix.storeDir store
+      pure $ decodeUtf8With lenientDecode storeDir `T.isPrefixOf` (eoAttribute opts)
+
+    if isDirectPath
+      then do
+        -- Direct derivation path - handle specially
+        withNix \store _evalState -> do
+          ref <- liftIO $ computeRef (eoRef opts)
+          derivation <- liftIO $ do
+            -- Support derivation in arbitrary location
+            -- Used in hercules-ci-effects test runner
+            let path = eoAttribute opts
+            contents <- BS.readFile $ toS path
+            let stripDrv s = fromMaybe s (T.stripSuffix ".drv" s)
+            CNix.getDerivationFromString store (path & T.takeWhileEnd (/= '/') & stripDrv & encodeUtf8) contents
+          prepareDerivation store derivation
+          runEffectImpl store derivation ref opts
+      else do
+        -- Normal effect attribute - use withEffectDerivation
+        withEffectDerivation opts $ \store _evalState drvPath ref -> do
+          -- Get the full derivation from the path
+          derivation <- liftIO $ CNix.getDerivation store drvPath
+          prepareDerivation store derivation
+          runEffectImpl store derivation ref opts
 
 -- Execute an effect derivation
 runEffectImpl :: Store -> Derivation -> Text -> EffectOptions -> RIO (HerculesClientToken, HerculesClientEnv) ()
@@ -159,25 +181,23 @@ loadGitToken name _noDetail = do
     M.fromList
       [token <&> A.String]
 
-getEffectDrv :: Store -> Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO (HerculesClientToken, HerculesClientEnv) Derivation
-getEffectDrv store evalState projectOptionMaybe ref attr = do
-  storeDir <- liftIO $ CNix.storeDir store
-  derivation <-
-    if decodeUtf8With lenientDecode storeDir `T.isPrefixOf` attr
-      then liftIO $ do
-        -- Support derivation in arbitrary location
-        -- Used in hercules-ci-effects test runner
-        let path = attr
-        contents <- BS.readFile $ toS path
-        let stripDrv s = fromMaybe s (T.stripSuffix ".drv" s)
-        CNix.getDerivationFromString store (path & T.takeWhileEnd (/= '/') & stripDrv & encodeUtf8) contents
-      else do
-        drvPath <- evaluateEffectPath evalState projectOptionMaybe ref attr
-        liftIO $ CNix.getDerivation store drvPath
-  prepareDerivation store derivation
-  pure derivation
+-- Higher-order function to evaluate effect and pass its path to a callback
+withEffectDerivation :: EffectOptions -> (Store -> Ptr EvalState -> CNix.StorePath -> Text -> RIO (HerculesClientToken, HerculesClientEnv) a) -> RIO (HerculesClientToken, HerculesClientEnv) a
+withEffectDerivation opts callback = do
+  withNix \store evalState -> do
+    ref <- liftIO $ computeRef (eoRef opts)
+    storeDir <- liftIO $ CNix.storeDir store
+    drvPath <-
+      if decodeUtf8With lenientDecode storeDir `T.isPrefixOf` (eoAttribute opts)
+        then do
+          -- Support derivation in arbitrary location
+          -- Used in hercules-ci-effects test runner
+          let path = eoAttribute opts
+          liftIO $ CNix.parseStorePath store (encodeUtf8 path)
+        else evaluateEffectPath evalState (eoProjectPath opts) ref (eoAttribute opts)
+    callback store evalState drvPath ref
 
--- Evaluate an effect attribute and return its derivation path
+-- Shared logic to evaluate an effect attribute and get its derivation path
 evaluateEffectPath :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO r CNix.StorePath
 evaluateEffectPath evalState projectOptionMaybe ref attr = do
   args <- liftIO $ createHerculesCIArgs (Just ref)
