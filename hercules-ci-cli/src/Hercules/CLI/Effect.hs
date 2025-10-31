@@ -46,7 +46,7 @@ import UnliftIO.Async (wait, withAsync)
 import UnliftIO.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
 import UnliftIO.Temporary (withTempDirectory)
 
-commandParser, runParser :: Optparse.Parser (IO ())
+commandParser :: Optparse.Parser (IO ())
 commandParser =
   subparser
     ( mkCommand
@@ -54,29 +54,44 @@ commandParser =
         (Optparse.progDesc "Run an effect")
         runParser
     )
-runParser = do
+
+-- Common options for both run and eval
+data EffectOptions = EffectOptions
+  { eoAttribute :: Text,
+    eoProjectPath :: Maybe ProjectPath,
+    eoRef :: Maybe Text,
+    eoRequireToken :: Bool
+  }
+
+effectOptionsParser :: Optparse.Parser EffectOptions
+effectOptionsParser = do
   attr <- ciAttributeArgument
   projectOptionMaybe <- optional projectOption
   refMaybe <- asRefOptions
   requireToken <- Optparse.flag True False (long "no-token" <> help "Don't get an API token. Disallows access to state files, but can run in untrusted environment or unconfigured repo.")
-  pure $ runAuthenticatedOrDummy requireToken do
+  pure $ EffectOptions attr projectOptionMaybe refMaybe requireToken
+
+runParser :: Optparse.Parser (IO ())
+runParser = do
+  opts <- effectOptionsParser
+  pure $ runAuthenticatedOrDummy (eoRequireToken opts) do
     let getProjectInfo =
-          case projectOptionMaybe of
+          case eoProjectPath opts of
             Just x
-              | not requireToken ->
+              | not (eoRequireToken opts) ->
                   pure
                     ProjectData
                       { pdProjectPath = Just x,
                         pdProjectId = Nothing,
                         pdToken = Nothing
                       }
-            _ -> getProjectEffectData projectOptionMaybe requireToken
+            _ -> getProjectEffectData (eoProjectPath opts) (eoRequireToken opts)
     withAsync getProjectInfo \projectPathAsync -> do
       withNix \store evalState -> do
-        ref <- liftIO $ computeRef refMaybe
-        derivation <- getEffectDrv store evalState projectOptionMaybe ref attr
+        ref <- liftIO $ computeRef (eoRef opts)
+        derivation <- getEffectDrv store evalState (eoProjectPath opts) ref (eoAttribute opts)
         isDefaultBranch <-
-          if requireToken
+          if eoRequireToken opts
             then liftIO Git.getIsDefault
             else pure True
 
