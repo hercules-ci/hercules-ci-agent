@@ -27,7 +27,7 @@ import qualified Hercules.CLI.Git as Git
 import Hercules.CLI.JSON (askPasswordWithKey)
 import Hercules.CLI.Nix (ciNixAttributeCompleter, computeRef, createHerculesCIArgs, resolveInputs, withNix)
 import Hercules.CLI.Options (flatCompleter, mkCommand, subparser)
-import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption, projectPathOwner, projectPathProject, projectPathText)
+import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, getProjectPath, projectOption, projectPathOwner, projectPathProject, projectPathText)
 import Hercules.CLI.Secret (getSecretsFilePath)
 import Hercules.CNix (Store)
 import Hercules.CNix.Expr (EvalState, Match (IsAttrs), Value (rtValue), getAttrBool, getDrvFile, match)
@@ -213,11 +213,15 @@ evalParser = do
 -- Shared logic to evaluate an effect attribute and get its derivation path
 evaluateEffectPath :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO r CNix.StorePath
 evaluateEffectPath evalState projectOptionMaybe ref attr = do
-  args <- liftIO $ createHerculesCIArgs (Just ref)
+  -- Resolve project path (infer from API if not provided)
+  -- When projectOptionMaybe is Just, getProjectPath returns it immediately without API call
+  -- When projectOptionMaybe is Nothing, getProjectPath calls the API to infer the project
+  projectPath <- getProjectPath projectOptionMaybe
+  args <- liftIO $ createHerculesCIArgs (Just ref) (Just projectPath)
   let attrPath = attributePathFromString attr
       nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
   uio <- askUnliftIO
-  valMaybe <- liftIO $ getVirtualValueByPath evalState (toS nixFile) args (resolveInputs uio evalState projectOptionMaybe) (map encodeUtf8 attrPath)
+  valMaybe <- liftIO $ getVirtualValueByPath evalState (toS nixFile) args (resolveInputs uio evalState (Just projectPath)) (map encodeUtf8 attrPath)
   attrValue <- case valMaybe of
     Nothing -> exitMsg $ "Could not find an attribute at path " <> show attrPath <> " in " <> nixFile
     Just v -> liftIO (match evalState v) >>= escalate
