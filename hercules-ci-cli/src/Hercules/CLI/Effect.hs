@@ -166,32 +166,30 @@ getEffectDrv store evalState projectOptionMaybe ref attr = do
         contents <- BS.readFile $ toS path
         let stripDrv s = fromMaybe s (T.stripSuffix ".drv" s)
         CNix.getDerivationFromString store (path & T.takeWhileEnd (/= '/') & stripDrv & encodeUtf8) contents
-      else evaluateEffectDerivation evalState store projectOptionMaybe ref attr
+      else do
+        drvPath <- evaluateEffectPath evalState projectOptionMaybe ref attr
+        liftIO $ CNix.getDerivation store drvPath
   prepareDerivation store derivation
   pure derivation
 
-evaluateEffectDerivation :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Store -> Maybe ProjectPath -> Text -> Text -> RIO r Derivation
-evaluateEffectDerivation evalState store projectOptionMaybe ref attr = do
+-- Evaluate an effect attribute and return its derivation path
+evaluateEffectPath :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO r CNix.StorePath
+evaluateEffectPath evalState projectOptionMaybe ref attr = do
   args <- liftIO $ createHerculesCIArgs (Just ref)
   let attrPath = attributePathFromString attr
       nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
   uio <- askUnliftIO
   valMaybe <- liftIO $ getVirtualValueByPath evalState (toS nixFile) args (resolveInputs uio evalState projectOptionMaybe) (map encodeUtf8 attrPath)
-  -- valMaybe <- liftIO $ attrByPath evalState rootValue
   attrValue <- case valMaybe of
-    Nothing -> do
-      exitMsg $ "Could not find an attribute at path " <> show attrPath <> " in " <> nixFile
+    Nothing -> exitMsg $ "Could not find an attribute at path " <> show attrPath <> " in " <> nixFile
     Just v -> liftIO (match evalState v) >>= escalate
   effectAttrs <- case attrValue of
     IsAttrs attrs -> pure attrs
-    _ -> do
-      exitMsg $ "Attribute is not an Effect at path " <> show attrPath <> " in " <> nixFile
-
+    _ -> exitMsg $ "Attribute is not an Effect at path " <> show attrPath <> " in " <> nixFile
   isEffect <- liftIO $ getAttrBool evalState effectAttrs "isEffect" >>= escalate
   when (isEffect /= Just True) do
     exitMsg $ "Attribute is not an Effect at path " <> show attrPath <> " in " <> nixFile
-  drvPath <- getDrvFile evalState (rtValue effectAttrs)
-  liftIO $ CNix.getDerivation store drvPath
+  getDrvFile evalState (rtValue effectAttrs)
 
 prepareDerivation :: (MonadIO m) => Store -> Derivation -> m ()
 prepareDerivation store derivation = do
