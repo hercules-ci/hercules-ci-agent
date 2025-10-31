@@ -496,6 +496,7 @@
                     then config.devShells.internal
                     else pkgs.mkShell { };
                   shell = baseShell.overrideAttrs (o: {
+                    strictDeps = true;
                     NIX_PATH = "nixpkgs=${pkgs.path}";
                     NIXPKGSBALL = pkgs.callPackage ./tests/nixpkgsball.nix { };
                     nativeBuildInputs =
