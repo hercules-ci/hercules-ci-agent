@@ -53,6 +53,10 @@ commandParser =
         "run"
         (Optparse.progDesc "Run an effect")
         runParser
+        <> mkCommand
+          "eval"
+          (Optparse.progDesc "Evaluate an effect and print its derivation path")
+          evalParser
     )
 
 -- Common options for both run and eval
@@ -196,6 +200,15 @@ withEffectDerivation opts callback = do
           liftIO $ CNix.parseStorePath store (encodeUtf8 path)
         else evaluateEffectPath evalState (eoProjectPath opts) ref (eoAttribute opts)
     callback store evalState drvPath ref
+
+evalParser :: Optparse.Parser (IO ())
+evalParser = do
+  opts <- effectOptionsParser
+  pure $ runAuthenticatedOrDummy (eoRequireToken opts) do
+    withEffectDerivation opts $ \store _evalState drvPath _ref -> do
+      -- For eval, just print the derivation path
+      drvPathBS <- liftIO $ CNix.storePathToPath store drvPath
+      liftIO $ putStrLn $ decodeUtf8With lenientDecode drvPathBS
 
 -- Shared logic to evaluate an effect attribute and get its derivation path
 evaluateEffectPath :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO r CNix.StorePath
