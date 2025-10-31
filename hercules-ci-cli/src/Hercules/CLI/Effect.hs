@@ -75,68 +75,73 @@ runParser :: Optparse.Parser (IO ())
 runParser = do
   opts <- effectOptionsParser
   pure $ runAuthenticatedOrDummy (eoRequireToken opts) do
-    let getProjectInfo =
-          case eoProjectPath opts of
-            Just x
-              | not (eoRequireToken opts) ->
-                  pure
-                    ProjectData
-                      { pdProjectPath = Just x,
-                        pdProjectId = Nothing,
-                        pdToken = Nothing
-                      }
-            _ -> getProjectEffectData (eoProjectPath opts) (eoRequireToken opts)
-    withAsync getProjectInfo \projectPathAsync -> do
-      withNix \store evalState -> do
-        ref <- liftIO $ computeRef (eoRef opts)
-        derivation <- getEffectDrv store evalState (eoProjectPath opts) ref (eoAttribute opts)
-        isDefaultBranch <-
-          if eoRequireToken opts
-            then liftIO Git.getIsDefault
-            else pure True
+    withNix \store evalState -> do
+      ref <- liftIO $ computeRef (eoRef opts)
+      derivation <- getEffectDrv store evalState (eoProjectPath opts) ref (eoAttribute opts)
+      runEffectImpl store derivation ref opts
 
-        drvEnv <- liftIO $ CNix.getDerivationEnv derivation
-        secretsMap <- case parseDrvSecretsMap drvEnv of
-          Left e -> exitMsg e
-          Right r -> pure r
-        serverSecrets <- loadServerSecrets secretsMap
+-- Execute an effect derivation
+runEffectImpl :: Store -> Derivation -> Text -> EffectOptions -> RIO (HerculesClientToken, HerculesClientEnv) ()
+runEffectImpl _store derivation ref opts = do
+  let getProjectInfo =
+        case eoProjectPath opts of
+          Just x
+            | not (eoRequireToken opts) ->
+                pure
+                  ProjectData
+                    { pdProjectPath = Just x,
+                      pdProjectId = Nothing,
+                      pdToken = Nothing
+                    }
+          _ -> getProjectEffectData (eoProjectPath opts) (eoRequireToken opts)
+  withAsync getProjectInfo \projectPathAsync -> do
+    isDefaultBranch <-
+      if eoRequireToken opts
+        then liftIO Git.getIsDefault
+        else pure True
 
-        apiBaseURL <- liftIO determineDefaultApiBaseUrl
-        ProjectData {pdProjectPath = projectPath, pdProjectId = projectId, pdToken = token} <- wait projectPathAsync
-        secretsJson <- liftIO $ traverse getSecretsFilePath projectPath
+    drvEnv <- liftIO $ CNix.getDerivationEnv derivation
+    secretsMap <- case parseDrvSecretsMap drvEnv of
+      Left e -> exitMsg e
+      Right r -> pure r
+    serverSecrets <- loadServerSecrets secretsMap
 
-        logEnv <- liftIO $ initLogEnv mempty "hci"
-        -- withSystemTempDirectory "hci":
-        --     ERRO[0000] container_linux.go:370: starting container process caused: process_linux.go:459: container init caused: rootfs_linux.go:59: mounting "/run/user/1000/hci6017/secrets" to rootfs at "/run/user/1000/hci6017/runc-state/rootfs/secrets" caused: operation not permitted
-        dataDir <- liftIO $ getAppUserDataDirectory "hercules-ci"
-        createDirectoryIfMissing True dataDir
-        let secretContextMaybe =
-              projectPath <&> \p ->
-                Secret.SecretContext
-                  { ownerName = projectPathOwner p,
-                    repoName = projectPathProject p,
-                    isDefaultBranch = isDefaultBranch,
-                    ref = ref
-                  }
-        exitCode <- withTempDirectory dataDir "tmp-effect-" \workDir -> do
-          runKatipContextT logEnv () mempty $
-            runEffect
-              RunEffectParams
-                { runEffectDerivation = derivation,
-                  runEffectToken = token,
-                  runEffectSecretsConfigPath = secretsJson,
-                  runEffectServerSecrets = serverSecrets,
-                  runEffectApiBaseURL = apiBaseURL,
-                  runEffectDir = workDir,
-                  runEffectProjectId = projectId,
-                  runEffectProjectPath = projectPathText <$> projectPath,
-                  runEffectSecretContext = secretContextMaybe,
-                  runEffectUseNixDaemonProxy = False, -- FIXME Enable proxy for ci/dev parity. Requires access to agent binaries. Unified executable?
-                  runEffectExtraNixOptions = [],
-                  runEffectFriendly = True,
-                  runEffectConfiguredMountables = mempty -- FIXME: provide hosts?
-                }
-        throwIO exitCode
+    apiBaseURL <- liftIO determineDefaultApiBaseUrl
+    ProjectData {pdProjectPath = projectPath, pdProjectId = projectId, pdToken = token} <- wait projectPathAsync
+    secretsJson <- liftIO $ traverse getSecretsFilePath projectPath
+
+    logEnv <- liftIO $ initLogEnv mempty "hci"
+    -- withSystemTempDirectory "hci":
+    --     ERRO[0000] container_linux.go:370: starting container process caused: process_linux.go:459: container init caused: rootfs_linux.go:59: mounting "/run/user/1000/hci6017/secrets" to rootfs at "/run/user/1000/hci6017/runc-state/rootfs/secrets" caused: operation not permitted
+    dataDir <- liftIO $ getAppUserDataDirectory "hercules-ci"
+    createDirectoryIfMissing True dataDir
+    let secretContextMaybe =
+          projectPath <&> \p ->
+            Secret.SecretContext
+              { ownerName = projectPathOwner p,
+                repoName = projectPathProject p,
+                isDefaultBranch = isDefaultBranch,
+                ref = ref
+              }
+    exitCode <- withTempDirectory dataDir "tmp-effect-" \workDir -> do
+      runKatipContextT logEnv () mempty $
+        runEffect
+          RunEffectParams
+            { runEffectDerivation = derivation,
+              runEffectToken = token,
+              runEffectSecretsConfigPath = secretsJson,
+              runEffectServerSecrets = serverSecrets,
+              runEffectApiBaseURL = apiBaseURL,
+              runEffectDir = workDir,
+              runEffectProjectId = projectId,
+              runEffectProjectPath = projectPathText <$> projectPath,
+              runEffectSecretContext = secretContextMaybe,
+              runEffectUseNixDaemonProxy = False, -- FIXME Enable proxy for ci/dev parity. Requires access to agent binaries. Unified executable?
+              runEffectExtraNixOptions = [],
+              runEffectFriendly = True,
+              runEffectConfiguredMountables = mempty -- FIXME: provide hosts?
+            }
+    throwIO exitCode
 
 loadServerSecrets :: Map Text AttributeEffectEvent.SecretRef -> RIO r (Sensitive (Map Text (Map Text A.Value)))
 loadServerSecrets secrets = secrets & M.traverseMaybeWithKey loadServerSecret <&> Sensitive
