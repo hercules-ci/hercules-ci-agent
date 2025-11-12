@@ -21,6 +21,7 @@ library
     build-depends:
       base ==4.*
       , Cabal >= 2.2.0.0
+      , containers
       , process
       , lens
     hs-source-dirs:   src
