@@ -94,6 +94,7 @@ data BuildResult = BuildResult
   }
   deriving (Show)
 
+{- ORMOLU_DISABLE -}
 getDerivation :: Store -> StorePath -> IO (Maybe Derivation)
 getDerivation (Store store) derivationPath =
   nullableMoveToForeignPtrWrapper
@@ -112,16 +113,29 @@ getDerivation (Store store) derivationPath =
         } catch (nix::Interrupted &e) {
           throw e;
         } catch (nix::Error &e) {
+#if NIX_IS_AT_LEAST(2, 31, 0)
+          printTalkative("ignoring exception during drv lookup in %s: %s", currentStore->config.getHumanReadableURI().c_str(), e.what());
+#else
           printTalkative("ignoring exception during drv lookup in %s: %s", currentStore->getUri(), e.what());
+#endif
         } catch (std::exception &e) {
+#if NIX_IS_AT_LEAST(2, 31, 0)
+          printTalkative("ignoring exception during drv lookup in %s: %s", currentStore->config.getHumanReadableURI().c_str(), e.what());
+#else
           printTalkative("ignoring exception during drv lookup in %s: %s", currentStore->getUri(), e.what());
+#endif
         } catch (...) {
           // FIXME: remove this and make the "specific" catches above work on darwin
+#if NIX_IS_AT_LEAST(2, 31, 0)
+          printTalkative("ignoring unknown exception during drv lookup in %s: %s", currentStore->config.getHumanReadableURI().c_str());
+#else
           printTalkative("ignoring unknown exception during drv lookup in %s: %s", currentStore->getUri());
+#endif
         }
       }
       return derivation;
     }|]
+{- ORMOLU_ENABLE -}
 
 -- | @buildDerivation derivationPath derivationText@
 buildDerivation :: Store -> StorePath -> Derivation -> Maybe [ByteString] -> IO BuildResult

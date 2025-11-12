@@ -23,7 +23,9 @@ class WrappingStore : public Store {
 
   virtual ~WrappingStore();
 
+#if !NIX_IS_AT_LEAST(2, 31, 0)
   virtual std::string getUri() override;
+#endif
 
 protected:
 

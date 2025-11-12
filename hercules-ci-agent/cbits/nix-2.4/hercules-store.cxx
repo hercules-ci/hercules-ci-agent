@@ -25,9 +25,11 @@ WrappingStore::WrappingStore(ref<Store> storeToWrap)
 
 WrappingStore::~WrappingStore() {}
 
+#if !NIX_IS_AT_LEAST(2, 31, 0)
 std::string WrappingStore::getUri() {
   return "wrapped:" + wrappedStore->getUri();
-};
+}
+#endif
 
 bool WrappingStore::isValidPathUncached(const StorePath & path) {
   return wrappedStore->isValidPath(path);  // caches again. Not much we can do.
