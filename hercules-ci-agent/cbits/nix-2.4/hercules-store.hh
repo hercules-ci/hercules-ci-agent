@@ -100,6 +100,11 @@ public:
 
   virtual ref<FSAccessor> getFSAccessor(bool requireValidPath) override;
 
+#if NIX_IS_AT_LEAST(2, 32, 0)
+  virtual void registerDrvOutput(const Realisation & output) override;
+  virtual std::shared_ptr<SourceAccessor> getFSAccessor(const StorePath & path, bool requireValidPath = true) override;
+#endif
+
   virtual void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 
   virtual void computeFSClosure(const StorePathSet & paths,

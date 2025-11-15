@@ -116,11 +116,11 @@ library
     extra-libraries:
         boost_context
   pkgconfig-depends:
-      nix-store >= 2.28
-    , nix-expr >= 2.28
+      nix-store >= 2.28 && < 2.33
+    , nix-expr >= 2.28 && < 2.33
     -- TODO: replace nix-main stack overflow detection?
-    , nix-main >= 2.28
-    , nix-flake >= 2.28
+    , nix-main >= 2.28 && < 2.33
+    , nix-flake >= 2.28 && < 2.33
 
 
 test-suite hercules-ci-cnix-expr-unit-tests

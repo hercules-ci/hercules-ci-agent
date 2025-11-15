@@ -398,10 +398,10 @@ executable hercules-ci-agent-worker
     , uuid
     , vector
   pkgconfig-depends:
-      nix-store >= 2.28
-    , nix-expr >= 2.28
+      nix-store >= 2.28 && < 2.33
+    , nix-expr >= 2.28 && < 2.33
     -- TODO: replace stack overflow detection and remove nix-main
-    , nix-main >= 2.28
+    , nix-main >= 2.28 && < 2.33
   default-language: Haskell2010
 
 test-suite hercules-ci-agent-unit-tests
@@ -492,5 +492,5 @@ executable hercules-ci-nix-daemon
   main-is: hercules-ci-nix-daemon/daemon.cxx
   default-language: Haskell2010
   pkgconfig-depends:
-      nix-store >= 2.28 && < 2.32
-    , nix-main >= 2.28 && < 2.32
+      nix-store >= 2.28 && < 2.33
+    , nix-main >= 2.28 && < 2.33

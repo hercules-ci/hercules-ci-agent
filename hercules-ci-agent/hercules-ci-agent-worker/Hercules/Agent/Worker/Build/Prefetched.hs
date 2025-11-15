@@ -138,6 +138,7 @@ getDerivation (Store store) derivationPath =
 {- ORMOLU_ENABLE -}
 
 -- | @buildDerivation derivationPath derivationText@
+{- ORMOLU_DISABLE -}
 buildDerivation :: Store -> StorePath -> Derivation -> Maybe [ByteString] -> IO BuildResult
 buildDerivation (Store store) derivationPath derivation extraInputs =
   let extraInputsMerged = C8.intercalate "\n" (fromMaybe [] extraInputs)
@@ -193,6 +194,71 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
 
         nix::BuildResult result = store.buildDerivation(derivationPath, *derivation);
 
+#if NIX_IS_AT_LEAST(2, 32, 0)
+        if (auto *success = result.tryGetSuccess()) {
+          switch (success->status) {
+            case nix::BuildResult::Success::Built:
+              status = 0;
+              break;
+            case nix::BuildResult::Success::Substituted:
+              status = 1;
+              break;
+            case nix::BuildResult::Success::AlreadyValid:
+              status = 2;
+              break;
+            case nix::BuildResult::Success::ResolvesToAlreadyValid:
+              status = 13;
+              break;
+            default:
+              status = -1;
+              break;
+          }
+        } else if (auto *failure = result.tryGetFailure()) {
+          switch (failure->status) {
+            case nix::BuildResult::Failure::PermanentFailure:
+              status = 3;
+              break;
+            case nix::BuildResult::Failure::InputRejected:
+              status = 4;
+              break;
+            case nix::BuildResult::Failure::OutputRejected:
+              status = 5;
+              break;
+            case nix::BuildResult::Failure::TransientFailure:
+              status = 6;
+              break;
+            case nix::BuildResult::Failure::CachedFailure:
+              status = 7;
+              break;
+            case nix::BuildResult::Failure::TimedOut:
+              status = 8;
+              break;
+            case nix::BuildResult::Failure::MiscFailure:
+              status = 9;
+              break;
+            case nix::BuildResult::Failure::DependencyFailed:
+              status = 10;
+              break;
+            case nix::BuildResult::Failure::LogLimitExceeded:
+              status = 11;
+              break;
+            case nix::BuildResult::Failure::NotDeterministic:
+              status = 12;
+              break;
+            case nix::BuildResult::Failure::NoSubstituters:
+              status = 14;
+              break;
+            case nix::BuildResult::Failure::HashMismatch:
+              status = 15;
+              break;
+            default:
+              status = -2;
+              break;
+          }
+        } else {
+          status = -3;
+        }
+#else
         switch (result.status) {
           case nix::BuildResult::Built:
             status = 0;
@@ -237,9 +303,25 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
             status = result.success() ? -1 : -2;
             break;
         }
+#endif
+#if NIX_IS_AT_LEAST(2, 32, 0)
+        auto *successPtr = result.tryGetSuccess();
+        auto *failurePtr = result.tryGetFailure();
+        assert(!(successPtr && failurePtr)); // Both can't be true
+        assert(successPtr || failurePtr);    // One must be true
+
+        success = successPtr != nullptr;
+        if (failurePtr) {
+          printError(failurePtr->errorMsg);
+          errorMessage = stringdup(failurePtr->errorMsg);
+        } else {
+          errorMessage = stringdup("");
+        }
+#else
         printError(result.errorMsg);
         success = result.success();
         errorMessage = stringdup(result.errorMsg);
+#endif
         startTime = result.startTime;
         stopTime = result.stopTime;
       }
@@ -259,3 +341,4 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
                       stopTime = stopTimeValue,
                       errorMessage = toS errorMessageValue
                     }
+{- ORMOLU_ENABLE -}

@@ -191,6 +191,16 @@ std::optional<TrustedFlag> WrappingStore::isTrustedClient() {
   return wrappedStore->isTrustedClient();
 }
 
+#if NIX_IS_AT_LEAST(2, 32, 0)
+void WrappingStore::registerDrvOutput(const Realisation & output) {
+  wrappedStore->registerDrvOutput(output);
+}
+
+std::shared_ptr<SourceAccessor> WrappingStore::getFSAccessor(const StorePath & path, bool requireValidPath) {
+  return wrappedStore->getFSAccessor(path, requireValidPath);
+}
+#endif
+
 /////
 
 #if NIX_IS_AT_LEAST(2, 29, 0)
