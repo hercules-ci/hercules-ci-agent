@@ -5,6 +5,10 @@
   inputs.flake-parts.url = "github:hercules-ci/flake-parts";
   inputs.flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
   inputs.haskell-flake.url = "github:srid/haskell-flake";
+  inputs.hs-bindgen.url = "github:hercules-ci/hs-bindgen/avoid-template-haskell";
+  inputs.hs-bindgen.flake = false;
+  inputs.libclang-bindings.url = "github:well-typed/libclang";
+  inputs.libclang-bindings.flake = false;
 
   # Optional. Omit to use nixpkgs' nix
   # inputs.nix = {
@@ -282,6 +286,16 @@
                   # Slightly faster and does not create deps: source-drv -> inputs
                   defaults.settings.local.impl.buildFromSdist = [ (project.config.basePackages.buildFromCabalSdist) ];
 
+                  # hs-bindgen packages
+                  packages = {
+                    hs-bindgen.source = inputs.hs-bindgen + "/hs-bindgen";
+                    hs-bindgen-runtime.source = inputs.hs-bindgen + "/hs-bindgen-runtime";
+                    c-expr-dsl.source = inputs.hs-bindgen + "/c-expr-dsl";
+                    c-expr-runtime.source = inputs.hs-bindgen + "/c-expr-runtime";
+                    ansi-diff.source = inputs.hs-bindgen + "/ansi-diff";
+                    libclang-bindings.source = inputs.libclang-bindings;
+                  };
+
                   devShell.extraLibraries = hp: {
                     inherit (hp) releaser
                       ascii-progress
@@ -444,6 +458,12 @@
                         (x: x.overrideAttrs (o: {
                           passthru = o.passthru // { nixPackage = nix; };
                         }))
+                        # Add clang/llvm and hs-bindgen for code generation
+                        (h.addBuildTools [
+                          pkgs.llvmPackages.clang
+                          pkgs.llvmPackages.llvm
+                          self.hs-bindgen
+                        ])
                       ];
 
                       # # Dodge build failures of components we don't need.
@@ -468,8 +488,24 @@
                       # releaser = super.callCabal2nix "releaser" (builtins.getFlake "github:hercules-ci/haskell-releaser?rev=e50360ec896fcb6ad724566aece6625973419e8d") { };
 
                       # cabal2nix injects pkg-config dependencies by looking them up in the Haskell package set _or_ `pkgs`
-                      # It does not know about the `nix-flake` pkg-config module yet.
+                      # It does not know about the `nix-flake` and `nix-store-c` pkg-config modules yet.
                       nix-flake = nix;
+                      nix-store-c = nix;
+
+                      # hs-bindgen dependencies that are marked broken in nixpkgs
+                      debruijn = h.dontCheck (h.doJailbreak (h.unmarkBroken super.debruijn));
+                      skew-list = h.dontCheck (h.doJailbreak (h.unmarkBroken super.skew-list));
+
+                      # libclang-bindings needs llvm and libclang - use llvmPackages set
+                      libclang-bindings = h.addExtraLibrary pkgs.llvmPackages.libclang (
+                        h.addBuildTools [ pkgs.llvmPackages.llvm pkgs.llvmPackages.clang ] super.libclang-bindings
+                      );
+
+                      # c-expr-runtime tests require musl headers (see hs-bindgen's own packaging)
+                      c-expr-runtime = h.dontCheck super.c-expr-runtime;
+
+                      # hs-bindgen tests require system headers and have chicken-egg CLI dependency
+                      hs-bindgen = h.dontCheck super.hs-bindgen;
 
                     })
                   ];
@@ -505,6 +541,9 @@
                         pkgs.nixpkgs-fmt
                         pkgs.pre-commit
                         # pkgs.valgrind (broken on x86_64-darwin)
+                        # For hs-bindgen-cli
+                        pkgs.llvmPackages.clang
+                        pkgs.llvmPackages.llvm
                       ] ++ lib.optionals shellWithHaskell [
                         haskellPackages.haskell-language-server
                         pkgs.haskellPackages.implicit-hie # gen-hie

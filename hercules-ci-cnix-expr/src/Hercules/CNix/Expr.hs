@@ -120,6 +120,12 @@ C.include "hercules-ci-cnix/expr.hxx"
 
 C.include "hercules-ci-cnix/string.hxx"
 
+-- C API internals header to access C++ Store from C API Store
+C.include "<nix_api_store_internal.h>"
+
+-- Create a typedef to disambiguate C API Store from nix::Store
+C.verbatim "typedef ::Store nix_store;"
+
 C.include "<gc/gc.h>"
 
 C.include "<gc/gc_cpp.h>"
@@ -261,7 +267,7 @@ newEvalState (Store store) =
   liftIO
     [C.throwBlock| EvalState* {
       nix::LookupPath emptyLookupPath;
-      return new EvalState(emptyLookupPath, *$(refStore* store), fetchSettings, evalSettings);
+      return new EvalState(emptyLookupPath, $(nix_store* store)->ptr, fetchSettings, evalSettings);
   } |]
 
 -- | (private) Don't leak it.
@@ -417,12 +423,12 @@ getDrvFile evalState (RawValue v) = liftIO do
       if (!drvInfo)
         throw EvalError(state, "Not a valid derivation");
 
-      StorePath storePath = drvInfo->requireDrvPath();
+      nix::StorePath storePath = drvInfo->requireDrvPath();
 
       // write it (?)
       auto drv = state.store->derivationFromPath(storePath);
 
-      return new StorePath(storePath);
+      return new nix::StorePath(storePath);
     }|]
 
 getAttrBool :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Either SomeException (Maybe Bool))

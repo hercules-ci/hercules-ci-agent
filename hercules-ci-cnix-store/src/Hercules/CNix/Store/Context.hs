@@ -7,6 +7,8 @@ module Hercules.CNix.Store.Context where
 import Data.ByteString.Unsafe (unsafePackMallocCString)
 import qualified Data.Map as M
 import qualified Foreign.C.String
+-- Import C API Store type for inline-c context
+import qualified Hercules.CNix.Nix.API.Store as CAPI
 import qualified Language.C.Inline.Context as C
 import qualified Language.C.Inline.Cpp as C
 import qualified Language.C.Types as C
@@ -52,7 +54,8 @@ context =
     <> C.bsCtx
     <> mempty
       { C.ctxTypesTable =
-          M.singleton (C.TypeName "refStore") [t|Ref NixStore|]
+          M.singleton (C.TypeName "nix_store") [t|CAPI.Store|]
+            <> M.singleton (C.TypeName "refStore") [t|Ref NixStore|]
             <> M.singleton (C.TypeName "nix::StorePath") [t|NixStorePath|]
             <> M.singleton (C.TypeName "nix::StorePathWithOutputs") [t|NixStorePathWithOutputs|]
             <> M.singleton (C.TypeName "refValidPathInfo") [t|Ref ValidPathInfo|]

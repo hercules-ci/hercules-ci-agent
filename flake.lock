@@ -35,6 +35,39 @@
         "type": "github"
       }
     },
+    "hs-bindgen": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1763740177,
+        "narHash": "sha256-tyEDNLCBb2jJhBJ478MG+QD2yhOWzbi1Sm3jS5oTmn0=",
+        "owner": "hercules-ci",
+        "repo": "hs-bindgen",
+        "rev": "4eb901ee196b81d39d67755ac62343e263b6519e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "ref": "avoid-template-haskell",
+        "repo": "hs-bindgen",
+        "type": "github"
+      }
+    },
+    "libclang-bindings": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1763640650,
+        "narHash": "sha256-ZUWm6FX9Dgt/e/DN9k8NfdZkoZIIvfh4HYfdN/0tdEE=",
+        "owner": "well-typed",
+        "repo": "libclang",
+        "rev": "b62972c5a4227f92ac7af7df60af52f9ead7bd35",
+        "type": "github"
+      },
+      "original": {
+        "owner": "well-typed",
+        "repo": "libclang",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1759036355,
@@ -55,6 +88,8 @@
       "inputs": {
         "flake-parts": "flake-parts",
         "haskell-flake": "haskell-flake",
+        "hs-bindgen": "hs-bindgen",
+        "libclang-bindings": "libclang-bindings",
         "nixpkgs": "nixpkgs"
       }
     }
