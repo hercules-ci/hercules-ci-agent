@@ -45,6 +45,12 @@ C.include "<hercules-ci-cnix/store.hxx>"
 
 C.include "<hercules-ci-cnix/string.hxx>"
 
+-- C API internals header to access C++ Store from C API Store
+C.include "<nix_api_store_internal.h>"
+
+-- Create a typedef to disambiguate C API Store from nix::Store
+C.verbatim "typedef ::Store nix_store;"
+
 C.using "namespace nix"
 
 C.using "namespace hercules_ci_cnix"
@@ -99,9 +105,9 @@ getDerivation (Store store) derivationPath =
   nullableMoveToForeignPtrWrapper
     =<< [C.throwBlock| Derivation *{
       ReceiveInterrupts _;
-      StorePath derivationPath = *$fptr-ptr:(nix::StorePath *derivationPath);
+      nix::StorePath derivationPath = *$fptr-ptr:(nix::StorePath *derivationPath);
       std::list<nix::ref<nix::Store>> stores = getDefaultSubstituters();
-      stores.push_front(*$(refStore* store));
+      stores.push_front($(nix_store* store)->ptr);
 
       nix::Derivation *derivation = nullptr;
 
@@ -135,13 +141,13 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
               alloca $ \errorMessagePtr -> do
                 [C.throwBlock| void {
       ReceiveInterrupts _;
-      Store &store = **$(refStore* store);
+      nix::Store &store = *$(nix_store* store)->ptr;
       bool &success = *$(bool *successPtr);
       int &status = *$(int *statusPtr);
       const char *&errorMessage = *$(const char **errorMessagePtr);
       time_t &startTime = *$(time_t *startTimePtr);
       time_t &stopTime = *$(time_t *stopTimePtr);
-      StorePath derivationPath = *$fptr-ptr:(nix::StorePath *derivationPath);
+      nix::StorePath derivationPath = *$fptr-ptr:(nix::StorePath *derivationPath);
 
       if ($(bool materializeDerivation)) {
         store.addTempRoot(derivationPath);

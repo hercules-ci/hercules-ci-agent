@@ -38,6 +38,12 @@ C.include "<cstring>"
 
 C.include "hercules-aliases.h"
 
+-- C API internals header to access C++ Store from C API Store
+C.include "<nix_api_store_internal.h>"
+
+-- Create a typedef to disambiguate C API Store from nix::Store
+C.verbatim "typedef ::Store nix_store;"
+
 C.using "namespace nix"
 
 withHerculesStore ::
@@ -48,7 +54,7 @@ withHerculesStore (Store wrappedStore) =
   bracket
     ( liftIO
         [C.block| refHerculesStore* {
-          refStore &s = *$(refStore *wrappedStore);
+          refStore &s = $(nix_store *wrappedStore)->ptr;
           refHerculesStore hs(new HerculesStore(s));
           return new refHerculesStore(hs);
         } |]
