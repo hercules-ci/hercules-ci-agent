@@ -125,7 +125,7 @@ in
 
         Otherwise:
         - User: `hercules-ci-agent` (on darwin we use same username)
-        - Default base directory: `/var/lib/hercules-ci-agent-''${name}`
+        - Default base directory: `/var/lib/hercules-ci-agent/''${name}`
       '';
     };
   };
