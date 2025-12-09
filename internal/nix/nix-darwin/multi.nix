@@ -84,8 +84,8 @@ let
               serviceConfig.RunAtLoad = true;
               serviceConfig.StandardErrorPath = cfg.logFile;
               serviceConfig.StandardOutPath = cfg.logFile;
-              serviceConfig.GroupName = cfg.user;
-              serviceConfig.UserName = cfg.group;
+              serviceConfig.UserName = cfg.user;
+              serviceConfig.GroupName = cfg.group;
               serviceConfig.WorkingDirectory = cfg.baseDirectory;
               serviceConfig.WatchPaths = [
                 cfg.settings.staticSecretsDirectory
