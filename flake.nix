@@ -377,6 +377,11 @@
                             echo Setup version:
                             ./Setup --version
                           '';
+                          preBuild = lib.optionalString pkgs.stdenv.isDarwin ''
+                            # Preload nix libraries for Template Haskell on Darwin
+                            export DYLD_INSERT_LIBRARIES="$(pkg-config --variable=libdir nix-store)/libnixstore.dylib:$(pkg-config --variable=libdir nix-util)/libnixutil.dylib"
+                            echo "DYLD_INSERT_LIBRARIES=$DYLD_INSERT_LIBRARIES"
+                          '' + (o.preBuild or "");
                           postInstall = ''
                             ${o.postInstall or ""}
                             mkdir -p $out/libexec
