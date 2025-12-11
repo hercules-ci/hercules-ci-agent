@@ -124,8 +124,9 @@ public:
 
   virtual void connect() override;
 
+#if !NIX_IS_AT_LEAST(2, 33, 0)
   virtual Path toRealPath(const Path & storePath) override;
-
+#endif
 
   virtual std::optional<TrustedFlag> isTrustedClient() override;
 
@@ -144,8 +145,13 @@ public:
 
   // Overrides
 
+#if NIX_IS_AT_LEAST(2, 33, 0)
+  virtual void queryRealisationUncached(const DrvOutput &,
+        Callback<std::shared_ptr<const UnkeyedRealisation>> callback) noexcept override;
+#else
   virtual void queryRealisationUncached(const DrvOutput &,
         Callback<std::shared_ptr<const Realisation>> callback) noexcept override;
+#endif
 
   virtual void ensurePath(const StorePath & path) override;
 

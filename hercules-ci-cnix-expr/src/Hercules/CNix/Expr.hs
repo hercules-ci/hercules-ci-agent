@@ -568,6 +568,7 @@ apply (RawValue f) (RawValue a) = do
       return r;
     }|]
 
+{- ORMOLU_DISABLE -}
 mkPath :: Ptr EvalState -> ByteString -> IO (Value NixPath)
 mkPath evalState path =
   Value
@@ -576,10 +577,15 @@ mkPath evalState path =
               Value *r = new (NoGC) Value();
               std::string s($bs-ptr:path, $bs-len:path);
               EvalState & state = *$(EvalState *evalState);
+#if NIX_IS_AT_LEAST(2, 33, 0)
+              r->mkPath(state.rootPath(CanonPath(s)), state.mem);
+#else
               r->mkPath(state.rootPath(CanonPath(s)));
+#endif
               return r;
           }|]
         )
+{- ORMOLU_ENABLE -}
 
 getFlakeFromFlakeRef :: Ptr EvalState -> ByteString -> IO RawValue
 getFlakeFromFlakeRef evalState flakeRef = do
@@ -779,15 +785,25 @@ instance ToValue Double where
   type NixTypeFor Double = NixFloat
   toValue es f = toValue es (fromRational (toRational f) :: C.CDouble)
 
+{- ORMOLU_DISABLE -}
 -- | Nix String
 instance ToValue ByteString where
   type NixTypeFor ByteString = NixString
-  toValue _ s =
+  toValue evalState s =
     -- TODO simplify when r->mkString(string_view) is safe in all supported Nix versions
     coerce
       <$> [C.block| Value *{
         Value *r = new (NoGC) Value();
         std::string_view s($bs-ptr:s, $bs-len:s);
+#if NIX_IS_AT_LEAST(2, 33, 0)
+        EvalState &evalState = *$(EvalState *evalState);
+        if (s.size() == 0) {
+          r->mkString(std::string_view(""), evalState.mem);
+        }
+        else {
+          r->mkString(std::string_view(GC_STRNDUP(s.data(), s.size()), s.size()), evalState.mem);
+        }
+#else
         // If empty, the pointer may be invalid; don't use it.
         if (s.size() == 0) {
           r->mkString("");
@@ -795,8 +811,10 @@ instance ToValue ByteString where
         else {
           r->mkString(GC_STRNDUP(s.data(), s.size()));
         }
+#endif
         return r;
       }|]
+{- ORMOLU_ENABLE -}
 
 -- | Nix String
 instance ToRawValue ByteString
@@ -914,7 +932,10 @@ instance (ToRawValue a) => ToValue (Vector a) where
           l = fromIntegral (length vec)
       b <-
         [C.block| ListBuilder* {
-#if NIX_IS_AT_LEAST(2, 32, 0)
+#if NIX_IS_AT_LEAST(2, 33, 0)
+          EvalState &evalState = *$(EvalState *evalState);
+          return new (NoGC) ListBuilder(evalState.mem, $(int l));
+#elif NIX_IS_AT_LEAST(2, 32, 0)
           return new (NoGC) ListBuilder($(int l));
 #else
           EvalState &evalState = *$(EvalState *evalState);

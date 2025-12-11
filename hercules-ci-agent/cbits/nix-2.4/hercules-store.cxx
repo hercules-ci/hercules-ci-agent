@@ -178,9 +178,11 @@ void WrappingStore::connect() {
   wrappedStore->connect();
 };
 
+#if !NIX_IS_AT_LEAST(2, 33, 0)
 Path WrappingStore::toRealPath(const Path& storePath) {
   return wrappedStore->toRealPath(storePath);
-};
+}
+#endif;
 
 unsigned int WrappingStore::getProtocol() {
   return wrappedStore->getProtocol();
@@ -218,10 +220,17 @@ const std::string HerculesStore::name() {
 }
 #endif
 
+#if NIX_IS_AT_LEAST(2, 33, 0)
+void HerculesStore::queryRealisationUncached(const DrvOutput &drvOutput,
+  Callback<std::shared_ptr<const UnkeyedRealisation>> callback) noexcept {
+  wrappedStore->queryRealisation(drvOutput, std::move(callback));
+}
+#else
 void HerculesStore::queryRealisationUncached(const DrvOutput &drvOutput,
   Callback<std::shared_ptr<const Realisation>> callback) noexcept {
   wrappedStore->queryRealisation(drvOutput, std::move(callback));
 }
+#endif
 
 void HerculesStore::ensurePath(const StorePath& path) {
   /* We avoid asking substituters for paths, since
