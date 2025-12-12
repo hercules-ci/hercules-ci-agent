@@ -107,8 +107,8 @@ mkSemanticTextCompleter f =
             -- so we only filter when necessary.
             pure
               [ item
-                | item@(_, suggestionText) <- r,
-                  input `T.isPrefixOf` suggestionText
+              | item@(_, suggestionText) <- r,
+                input `T.isPrefixOf` suggestionText
               ]
           else innerCompleter input
     )
@@ -135,8 +135,8 @@ mkAttributePathCompleter f =
             -- so we only filter when necessary.
             pure
               [ item
-                | item@(_, suggestionText) <- r,
-                  input `T.isPrefixOf` suggestionText
+              | item@(_, suggestionText) <- r,
+                input `T.isPrefixOf` suggestionText
               ]
           else innerCompleter input
     )
@@ -202,7 +202,7 @@ ciNixAttributeCompleter = mkAttributePathCompleter \(partialPath, partialCompone
                             matchIsDeriv <-
                               ma
                                 & traverse (isDerivation evalState)
-                                <&> fromMaybe False
+                                  <&> fromMaybe False
                             pure $
                               matches
                                 & map (\match -> (mempty {Optparse.cioAddSpace = matchIsDeriv, Optparse.cioFiles = False}, (partialPath ++ [match], not matchIsDeriv)))

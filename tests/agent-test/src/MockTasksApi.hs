@@ -321,12 +321,12 @@ getInOuts (ServerHandle st) drvPath = do
   drvs <- readIORef $ derivationInfos st
   pure
     [ outPath
-      | di <- toList $ drvs & M.lookup drvPath,
-        (dep, outs) <- DerivationInfo.inputDerivations di & M.toList,
-        depInfo <- toList $ drvs & M.lookup dep,
-        out <- outs,
-        outInfo <- depInfo & DerivationInfo.outputs & M.lookup out & toList,
-        outPath <- DerivationInfo.path outInfo & toList
+    | di <- toList $ drvs & M.lookup drvPath,
+      (dep, outs) <- DerivationInfo.inputDerivations di & M.toList,
+      depInfo <- toList $ drvs & M.lookup dep,
+      out <- outs,
+      outInfo <- depInfo & DerivationInfo.outputs & M.lookup out & toList,
+      outPath <- DerivationInfo.path outInfo & toList
     ]
 
 fixupEffectTask :: ServerHandle -> EffectTask.EffectTask -> Text -> IO EffectTask.EffectTask
@@ -621,8 +621,7 @@ makeRelative fp =
 sourceball ::
   Text ->
   Handler
-    ( Conduit.ConduitT i ByteString (ResourceT IO) ()
-    )
+    (Conduit.ConduitT i ByteString (ResourceT IO) ())
 sourceball "broken-tarball" = pure (Conduit.sourceLazy "i'm not a tarball")
 sourceball fname = do
   env <- liftIO getEnvironment

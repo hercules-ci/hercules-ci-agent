@@ -89,4 +89,4 @@ signClosure store key' pathSet = withForeignPtr key' \key -> do
       ( \path -> do
           CNix.signPath store key path
       )
-    <&> foldMap (\case True -> (1, 1); False -> (1, 0))
+      <&> foldMap (\case True -> (1, 1); False -> (1, 0))

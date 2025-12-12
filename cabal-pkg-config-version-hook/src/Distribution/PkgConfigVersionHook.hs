@@ -116,10 +116,10 @@ composeConfHook settings origHook = \(genericPackageDescription, hookedBuildInfo
         ]
       extraFlags =
         [ (mkFlagName (flagPrefixName settings ++ "-" ++ show major ++ "_" ++ show minor), (actualMajor, actualMinor) >= (major, minor))
-          | declaredFlag <- genericPackageDescription ^. genPackageFlags,
-            let rawName = unFlagName $ flagName declaredFlag,
-            rawVersion <- L.stripPrefix (flagPrefixName settings ++ "-") rawName & toList,
-            [major, minor] <- unambiguously parseFlagVersion rawVersion & toList
+        | declaredFlag <- genericPackageDescription ^. genPackageFlags,
+          let rawName = unFlagName $ flagName declaredFlag,
+          rawVersion <- L.stripPrefix (flagPrefixName settings ++ "-") rawName & toList,
+          [major, minor] <- unambiguously parseFlagVersion rawVersion & toList
         ]
       ghcDefines = map ("-optcxx" <>) defines <> map ("-optc" <>) defines
       setDefines comp x =
