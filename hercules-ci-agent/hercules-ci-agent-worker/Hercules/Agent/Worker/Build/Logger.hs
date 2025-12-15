@@ -239,7 +239,8 @@ convertAndDeleteFields fieldsPtr = flip
                 >>= \case
                   0 -> LogEntry.Int <$> peek uintPtr
                   1 ->
-                    LogEntry.String . decode
+                    LogEntry.String
+                      . decode
                       <$> (unsafePackMallocCString =<< peek stringPtr)
                   _ -> panic "convertAndDeleteFields invalid internal type"
 

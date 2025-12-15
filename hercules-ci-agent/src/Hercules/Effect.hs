@@ -283,13 +283,13 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
                 BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = toS forwardedSocketPath, readOnly = True}
               ]
                 ++ [ BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False}
-                     | not (isExtraBind "/etc")
+                   | not (isExtraBind "/etc")
                    ]
                 ++ [
-                     -- TODO: does this apply to crun?
-                     -- we cannot bind mount this read-only because of https://github.com/opencontainers/runc/issues/1523
-                     BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = False}
-                     | not (isExtraBind "/etc") && not (isExtraBind "/etc/resolv.conf")
+                   -- TODO: does this apply to crun?
+                   -- we cannot bind mount this read-only because of https://github.com/opencontainers/runc/issues/1523
+                   BindMount {pathInContainer = "/etc/resolv.conf", pathInHost = "/etc/resolv.conf", readOnly = False}
+                   | not (isExtraBind "/etc") && not (isExtraBind "/etc/resolv.conf")
                    ]
                 ++ extraBindMounts_,
             executable = decodeUtf8With lenientDecode drvBuilder,

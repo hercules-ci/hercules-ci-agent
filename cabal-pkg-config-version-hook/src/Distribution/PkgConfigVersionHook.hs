@@ -44,7 +44,7 @@ import Data.Function ((&))
 import qualified Data.List as L
 import Distribution.Simple (UserHooks (confHook))
 import Distribution.Simple.Setup (ConfigFlags, configConfigurationsFlags)
-import Distribution.Types.BuildInfo.Lens (ccOptions, cppOptions, cxxOptions)
+import Distribution.Types.BuildInfo.Lens (ccOptions, cppOptions, cxxOptions, options)
 import Distribution.Types.Flag (flagName, mkFlagAssignment, mkFlagName, unFlagName)
 import Distribution.Types.GenericPackageDescription.Lens
   ( GenericPackageDescription,
@@ -116,16 +116,18 @@ composeConfHook settings origHook = \(genericPackageDescription, hookedBuildInfo
         ]
       extraFlags =
         [ (mkFlagName (flagPrefixName settings ++ "-" ++ show major ++ "_" ++ show minor), (actualMajor, actualMinor) >= (major, minor))
-          | declaredFlag <- genericPackageDescription ^. genPackageFlags,
-            let rawName = unFlagName $ flagName declaredFlag,
-            rawVersion <- L.stripPrefix (flagPrefixName settings ++ "-") rawName & toList,
-            [major, minor] <- unambiguously parseFlagVersion rawVersion & toList
+        | declaredFlag <- genericPackageDescription ^. genPackageFlags,
+          let rawName = unFlagName $ flagName declaredFlag,
+          rawVersion <- L.stripPrefix (flagPrefixName settings ++ "-") rawName & toList,
+          [major, minor] <- unambiguously parseFlagVersion rawVersion & toList
         ]
+      ghcDefines = map ("-optcxx" <>) defines <> map ("-optc" <>) defines
       setDefines comp x =
         x
           & comp . cppOptions %~ (<> defines)
           & comp . ccOptions %~ (<> defines)
           & comp . cxxOptions %~ (<> defines)
+          & comp . options %~ fmap (<> ghcDefines)
       genericPackageDescription' =
         genericPackageDescription
           & setDefines (condLibrary . traverse . traverse)

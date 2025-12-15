@@ -36,7 +36,7 @@ mergeLeafPaths context items =
               (AK.fromText child .=)
                 <$> mergeLeafPaths (context ++ [child]) (map (first NEL.tail) (groupItem : groupItems))
           )
-        <&> object
+          <&> object
 
 showPath :: [Text] -> Text
 showPath [] = "the root"

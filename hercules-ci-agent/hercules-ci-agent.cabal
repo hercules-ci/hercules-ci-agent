@@ -17,13 +17,20 @@ extra-source-files:
     cbits/hercules-error.hh
     cbits/hercules-logger.hh
     cbits/nix-2.4/hercules-store.hh
+    cbits/nix-2.4/hercules-store.cxx
     data/default-herculesCI-for-flake.nix
     testdata/vm-test-run-agent-test.drv
+    hercules-ci-nix-daemon/daemon.cxx
 
 
 flag ide
   description: Whether to enable IDE workarounds. You shouldn't need this.
   default: False
+
+flag nix-2_31
+  description: nix-store >= 2.31
+  default: False
+  manual: False
 
 source-repository head
   type: git
@@ -56,8 +63,12 @@ common rts
 
 -- match the C++ language standard Nix is using
 common cxx-opts
-  cxx-options:
-    -std=c++2a
+  if flag(nix-2_31)
+    cxx-options:
+      -std=c++23
+  else
+    cxx-options:
+      -std=c++2a
 
   cxx-options:
     -Wall
@@ -70,12 +81,22 @@ common cxx-opts
   if impl(ghc >= 8.10)
     ghc-options:
       -optcxx-Wall
-      -optcxx-std=c++2a
+    if flag(nix-2_31)
+      ghc-options:
+        -optcxx-std=c++23
+    else
+      ghc-options:
+        -optcxx-std=c++2a
   else
     -- Remove soon
     ghc-options:
-      -optc-std=c++2a
       -optc-Wall
+    if flag(nix-2_31)
+      ghc-options:
+        -optc-std=c++23
+    else
+      ghc-options:
+        -optc-std=c++2a
     if os(darwin)
       ghc-options: -pgmc=clang++
 
@@ -377,10 +398,11 @@ executable hercules-ci-agent-worker
     , uuid
     , vector
   pkgconfig-depends:
-      nix-store >= 2.28
-    , nix-expr >= 2.28
+      nix-store >= 2.28 && < 2.34
+    , nix-expr >= 2.28 && < 2.34
+    , nix-flake >= 2.28 && < 2.34
     -- TODO: replace stack overflow detection and remove nix-main
-    , nix-main >= 2.28
+    , nix-main >= 2.28 && < 2.34
   default-language: Haskell2010
 
 test-suite hercules-ci-agent-unit-tests
@@ -468,10 +490,8 @@ test-suite hercules-ci-agent-unit-tests
 
 executable hercules-ci-nix-daemon
   import: cxx-opts
-  main-is: daemon.cxx
-  cxx-sources: hercules-ci-nix-daemon/daemon.cxx
+  main-is: hercules-ci-nix-daemon/daemon.cxx
   default-language: Haskell2010
-  hs-source-dirs: hercules-ci-nix-daemon
   pkgconfig-depends:
-      nix-store >= 2.28
-    , nix-main >= 2.28
+      nix-store >= 2.28 && < 2.34
+    , nix-main >= 2.28 && < 2.34

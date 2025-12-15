@@ -166,7 +166,7 @@ runCommandParser = do
                     (_, _, _, processHandle) <- System.Process.createProcess procSpec
                     System.Process.waitForProcess processHandle
                 )
-          )
+        )
           `UnliftIO.finally` do
             (_ :: NoContent) <- retryOnFail "lock release" (deleteLockLease stateClient leaseId)
             putErrText "hci: lock released"

@@ -23,7 +23,9 @@ class WrappingStore : public Store {
 
   virtual ~WrappingStore();
 
+#if !NIX_IS_AT_LEAST(2, 31, 0)
   virtual std::string getUri() override;
+#endif
 
 protected:
 
@@ -98,6 +100,11 @@ public:
 
   virtual ref<FSAccessor> getFSAccessor(bool requireValidPath) override;
 
+#if NIX_IS_AT_LEAST(2, 32, 0)
+  virtual void registerDrvOutput(const Realisation & output) override;
+  virtual std::shared_ptr<SourceAccessor> getFSAccessor(const StorePath & path, bool requireValidPath = true) override;
+#endif
+
   virtual void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
 
   virtual void computeFSClosure(const StorePathSet & paths,
@@ -117,8 +124,9 @@ public:
 
   virtual void connect() override;
 
+#if !NIX_IS_AT_LEAST(2, 33, 0)
   virtual Path toRealPath(const Path & storePath) override;
-
+#endif
 
   virtual std::optional<TrustedFlag> isTrustedClient() override;
 
@@ -137,8 +145,13 @@ public:
 
   // Overrides
 
+#if NIX_IS_AT_LEAST(2, 33, 0)
+  virtual void queryRealisationUncached(const DrvOutput &,
+        Callback<std::shared_ptr<const UnkeyedRealisation>> callback) noexcept override;
+#else
   virtual void queryRealisationUncached(const DrvOutput &,
         Callback<std::shared_ptr<const Realisation>> callback) noexcept override;
+#endif
 
   virtual void ensurePath(const StorePath & path) override;
 

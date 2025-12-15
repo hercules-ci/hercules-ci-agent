@@ -377,6 +377,11 @@
                             echo Setup version:
                             ./Setup --version
                           '';
+                          preBuild = lib.optionalString pkgs.stdenv.isDarwin ''
+                            # Preload nix libraries for Template Haskell on Darwin
+                            export DYLD_INSERT_LIBRARIES="$(pkg-config --variable=libdir nix-store)/libnixstore.dylib:$(pkg-config --variable=libdir nix-util)/libnixutil.dylib"
+                            echo "DYLD_INSERT_LIBRARIES=$DYLD_INSERT_LIBRARIES"
+                          '' + (o.preBuild or "");
                           postInstall = ''
                             ${o.postInstall or ""}
                             mkdir -p $out/libexec
@@ -534,9 +539,8 @@
                 # isx86_64: Don't run the VM tests on aarch64 to save time
                 // lib.optionalAttrs (pkgs.stdenv.isLinux && pkgs.stdenv.isx86_64)
                   {
-                    agent-functional-test = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = false; trusted = true; });
-                    agent-functional-test-untrusted = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = false; trusted = false; });
-                    # agent-functional-test-daemon-nixUnstable = pkgs.nixosTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = true; });
+                    agent-functional-test = pkgs.testers.runNixOSTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = false; trusted = true; });
+                    agent-functional-test-untrusted = pkgs.testers.runNixOSTest (import ./tests/agent-test.nix { flake = self; daemonIsNixUnstable = false; trusted = false; });
                     multi-example-eq = multi-example.eq;
                     multi-example-multi = multi-example.multi;
                   } // lib.optionalAttrs pkgs.stdenv.isDarwin {

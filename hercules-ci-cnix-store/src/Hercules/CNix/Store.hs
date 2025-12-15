@@ -259,13 +259,23 @@ withStoreFromURI storeURIText f = do
       }|]
       (unlift . f . Store)
 
+-- | Returns the human-readable URI. A more complete URI (with params)
+-- could be obtained via getReference().render() since Nix 2.31,
+-- but is currently not implemented.
+-- See https://github.com/NixOS/nix/commit/1b7ffa53af168aab255c9ee4c1ca5a192c269738
+{- ORMOLU_DISABLE -}
 storeUri :: (MonadIO m) => Store -> m ByteString
 storeUri (Store store) = liftIO do
   BS.unsafePackMallocCString
     =<< [C.block| const char* {
+#if NIX_IS_AT_LEAST(2, 31, 0)
+      std::string uri = (*$(refStore* store))->config.getHumanReadableURI();
+#else
       std::string uri = (*$(refStore* store))->getUri();
+#endif
       return stringdup(uri);
     }|]
+{- ORMOLU_ENABLE -}
 
 -- | Usually @"/nix/store"@
 storeDir :: (MonadIO m) => Store -> m ByteString

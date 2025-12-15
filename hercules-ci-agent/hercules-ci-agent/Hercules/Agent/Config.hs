@@ -83,7 +83,8 @@ deriving instance Show (Config 'Final)
 combiCodec :: Combi' (Config 'Input)
 combiCodec =
   Config
-    <$> opt (textAtKey "apiBaseUrl") .=. herculesApiBaseURL
+    <$> opt (textAtKey "apiBaseUrl")
+    .=. herculesApiBaseURL
     <*> opt (boolAtKey "nixUserIsTrusted") .=. nixUserIsTrusted
     <*> opt
       ( combi
@@ -129,7 +130,8 @@ combiCodec =
 mountableCodec :: Combi' Mountable
 mountableCodec =
   Mountable
-    <$> textAtKey "source" .=. Mountable.source
+    <$> textAtKey "source"
+    .=. Mountable.source
     <*> boolAtKey "readOnly" .=. Mountable.readOnly
     <*> combi
       ((throwImmediately . A.parseJSON) <$> Toml.embedJson "condition")

@@ -25,9 +25,11 @@ WrappingStore::WrappingStore(ref<Store> storeToWrap)
 
 WrappingStore::~WrappingStore() {}
 
+#if !NIX_IS_AT_LEAST(2, 31, 0)
 std::string WrappingStore::getUri() {
   return "wrapped:" + wrappedStore->getUri();
-};
+}
+#endif
 
 bool WrappingStore::isValidPathUncached(const StorePath & path) {
   return wrappedStore->isValidPath(path);  // caches again. Not much we can do.
@@ -176,9 +178,11 @@ void WrappingStore::connect() {
   wrappedStore->connect();
 };
 
+#if !NIX_IS_AT_LEAST(2, 33, 0)
 Path WrappingStore::toRealPath(const Path& storePath) {
   return wrappedStore->toRealPath(storePath);
-};
+}
+#endif;
 
 unsigned int WrappingStore::getProtocol() {
   return wrappedStore->getProtocol();
@@ -188,6 +192,16 @@ unsigned int WrappingStore::getProtocol() {
 std::optional<TrustedFlag> WrappingStore::isTrustedClient() {
   return wrappedStore->isTrustedClient();
 }
+
+#if NIX_IS_AT_LEAST(2, 32, 0)
+void WrappingStore::registerDrvOutput(const Realisation & output) {
+  wrappedStore->registerDrvOutput(output);
+}
+
+std::shared_ptr<SourceAccessor> WrappingStore::getFSAccessor(const StorePath & path, bool requireValidPath) {
+  return wrappedStore->getFSAccessor(path, requireValidPath);
+}
+#endif
 
 /////
 
@@ -206,10 +220,17 @@ const std::string HerculesStore::name() {
 }
 #endif
 
+#if NIX_IS_AT_LEAST(2, 33, 0)
+void HerculesStore::queryRealisationUncached(const DrvOutput &drvOutput,
+  Callback<std::shared_ptr<const UnkeyedRealisation>> callback) noexcept {
+  wrappedStore->queryRealisation(drvOutput, std::move(callback));
+}
+#else
 void HerculesStore::queryRealisationUncached(const DrvOutput &drvOutput,
   Callback<std::shared_ptr<const Realisation>> callback) noexcept {
   wrappedStore->queryRealisation(drvOutput, std::move(callback));
 }
+#endif
 
 void HerculesStore::ensurePath(const StorePath& path) {
   /* We avoid asking substituters for paths, since

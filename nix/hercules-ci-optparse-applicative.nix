@@ -12,11 +12,11 @@
 }:
 mkDerivation {
   pname = "hercules-ci-optparse-applicative";
-  version = "0.18.1.0";
+  version = "0.19.0.0";
   src = fetchgit {
     url = "https://github.com/hercules-ci/optparse-applicative";
-    sha256 = "1cgxc80zfgzk4rrhspnlj7790jb0ddq7ybj7qjan5xmjjir90763";
-    rev = "4b376562b51ee58b27171c3316d2d5ddac108deb";
+    hash = "sha256-cyqnj3U1IGXD2xS4sxQya3W3I3nbOMwW99kpIBPWGRk=";
+    rev = "b55bb38a2aea0cf776aec707cdce7c7418146077";
     fetchSubmodules = true;
   };
   libraryHaskellDepends = [

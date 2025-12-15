@@ -282,13 +282,19 @@ withEvalStateConduit ::
 withEvalStateConduit store = bracketP (newEvalState store) deleteEvalState
 
 -- | Insert an allowed path. Only has an effect when in restricted or pure mode.
+{- ORMOLU_DISABLE -}
 addAllowedPath :: Ptr EvalState -> ByteString -> IO ()
 addAllowedPath evalState path =
   [C.throwBlock| void {
     std::string path = std::string($bs-ptr:path, $bs-len:path);
     EvalState &evalState = *$(EvalState *evalState);
+#if NIX_IS_AT_LEAST(2, 32, 0)
+    evalState.allowPathLegacy(path);
+#else
     evalState.allowPath(path);
+#endif
   }|]
+{- ORMOLU_ENABLE -}
 
 addInternalAllowedPaths :: Ptr EvalState -> IO ()
 addInternalAllowedPaths _evalState = do
@@ -346,6 +352,7 @@ isFunctor evalState (RawValue v) =
           return $(EvalState *evalState)->isFunctor(*$(Value *v));
         }|]
 
+{- ORMOLU_DISABLE -}
 getRecurseForDerivations :: Ptr EvalState -> Value NixAttrs -> IO Bool
 getRecurseForDerivations evalState (Value (RawValue v)) =
   (0 /=)
@@ -353,6 +360,14 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
           Value *v = $(Value *v);
           EvalState &evalState = *$(EvalState *evalState);
           auto attrs = v->attrs();
+#if NIX_IS_AT_LEAST(2, 32, 0)
+          auto iter = attrs->get(evalState.s.recurseForDerivations);
+          if (!iter) {
+            return 0;
+          } else {
+            return evalState.forceBool(*iter->value, iter->pos, "while evaluating whether to traverse into an attribute set to find more derivations");
+          }
+#else
           // Bindings::const_iterator iter; // 2.24
           auto iter = attrs->find(evalState.sRecurseForDerivations);
           if (iter == attrs->end()) {
@@ -364,8 +379,11 @@ getRecurseForDerivations evalState (Value (RawValue v)) =
             // nixpkgs master 67e2de195a4aa0a50ffb1e1ba0b4fb531dca67dc
             return evalState.forceBool(*iter->value, iter->pos, "while evaluating whether to traverse into an attribute set to find more derivations");
           }
+#endif
         } |]
+{- ORMOLU_ENABLE -}
 
+{- ORMOLU_DISABLE -}
 getAttr :: Ptr EvalState -> Value NixAttrs -> ByteString -> IO (Maybe RawValue)
 getAttr evalState (Value (RawValue v)) k =
   mkNullableRawValue
@@ -374,6 +392,14 @@ getAttr evalState (Value (RawValue v)) k =
       EvalState &evalState = *$(EvalState *evalState);
       Symbol k = evalState.symbols.create($bs-cstr:k);
       auto attrs = v.attrs();
+#if NIX_IS_AT_LEAST(2, 32, 0)
+      auto iter = attrs->get(k);
+      if (!iter) {
+        return nullptr;
+      } else {
+        return iter->value;
+      }
+#else
       // Bindings::const_iterator iter; // 2.24
       auto iter = attrs->find(k);
       if (iter == attrs->end()) {
@@ -381,15 +407,43 @@ getAttr evalState (Value (RawValue v)) k =
       } else {
         return iter->value;
       }
+#endif
     }|]
+{- ORMOLU_ENABLE -}
 
 -- | Converts 'nullPtr' to 'Nothing'; actual values to @Just (a :: 'RawValue')@
 mkNullableRawValue :: Ptr Value' -> IO (Maybe RawValue)
 mkNullableRawValue p | p == nullPtr = pure Nothing
 mkNullableRawValue p = Just <$> mkRawValue p
 
+{- ORMOLU_DISABLE -}
 getAttrs :: Ptr EvalState -> Value NixAttrs -> IO (Map ByteString RawValue)
 getAttrs evalState (Value (RawValue v)) = do
+#if NIX_IS_AT_LEAST(2, 32, 0)
+  -- In Nix 2.32+, we need to collect all attrs in C++ since iteration changed
+  size <- [C.exp| size_t { $(Value *v)->attrs()->size() }|]
+  let collect :: C.CSize -> Map ByteString RawValue -> IO (Map ByteString RawValue)
+      collect i acc | i >= size = pure acc
+      collect i acc = do
+        name <-
+          BS.unsafePackMallocCString
+            =<< [C.block| const char *{
+              EvalState &evalState = *$(EvalState *evalState);
+              auto iter = $(Value *v)->attrs()->begin();
+              for (size_t j = 0; j < $(size_t i); j++) ++iter;
+              SymbolStr str = evalState.symbols[iter->name];
+              return stringdup(static_cast<std::string>(str));
+            }|]
+        value <- mkRawValue =<< [C.block| Value *{
+              auto iter = $(Value *v)->attrs()->begin();
+              for (size_t j = 0; j < $(size_t i); j++) ++iter;
+              return new (NoGC) Value(*iter->value);
+            }|]
+        let acc' = M.insert name value acc
+        seq acc' pass
+        collect (i + 1) acc'
+  collect 0 mempty
+#else
   begin <- [C.exp| const Attr *{ $(Value *v)->attrs()->begin() }|]
   end <- [C.exp| const Attr *{ $(Value *v)->attrs()->end() }|]
   let gather :: Map ByteString RawValue -> Ptr Attr' -> IO (Map ByteString RawValue)
@@ -407,6 +461,8 @@ getAttrs evalState (Value (RawValue v)) = do
         seq acc' pass
         gather acc' =<< [C.exp| Attr *{ &$(Attr *i)[1] }|]
   gather mempty begin
+#endif
+{- ORMOLU_ENABLE -}
 
 getDrvFile :: (MonadIO m) => Ptr EvalState -> RawValue -> m StorePath
 getDrvFile evalState (RawValue v) = liftIO do
@@ -512,6 +568,7 @@ apply (RawValue f) (RawValue a) = do
       return r;
     }|]
 
+{- ORMOLU_DISABLE -}
 mkPath :: Ptr EvalState -> ByteString -> IO (Value NixPath)
 mkPath evalState path =
   Value
@@ -520,10 +577,15 @@ mkPath evalState path =
               Value *r = new (NoGC) Value();
               std::string s($bs-ptr:path, $bs-len:path);
               EvalState & state = *$(EvalState *evalState);
+#if NIX_IS_AT_LEAST(2, 33, 0)
+              r->mkPath(state.rootPath(CanonPath(s)), state.mem);
+#else
               r->mkPath(state.rootPath(CanonPath(s)));
+#endif
               return r;
           }|]
         )
+{- ORMOLU_ENABLE -}
 
 getFlakeFromFlakeRef :: Ptr EvalState -> ByteString -> IO RawValue
 getFlakeFromFlakeRef evalState flakeRef = do
@@ -723,15 +785,25 @@ instance ToValue Double where
   type NixTypeFor Double = NixFloat
   toValue es f = toValue es (fromRational (toRational f) :: C.CDouble)
 
+{- ORMOLU_DISABLE -}
 -- | Nix String
 instance ToValue ByteString where
   type NixTypeFor ByteString = NixString
-  toValue _ s =
+  toValue evalState s =
     -- TODO simplify when r->mkString(string_view) is safe in all supported Nix versions
     coerce
       <$> [C.block| Value *{
         Value *r = new (NoGC) Value();
         std::string_view s($bs-ptr:s, $bs-len:s);
+#if NIX_IS_AT_LEAST(2, 33, 0)
+        EvalState &evalState = *$(EvalState *evalState);
+        if (s.size() == 0) {
+          r->mkString(std::string_view(""), evalState.mem);
+        }
+        else {
+          r->mkString(std::string_view(GC_STRNDUP(s.data(), s.size()), s.size()), evalState.mem);
+        }
+#else
         // If empty, the pointer may be invalid; don't use it.
         if (s.size() == 0) {
           r->mkString("");
@@ -739,8 +811,10 @@ instance ToValue ByteString where
         else {
           r->mkString(GC_STRNDUP(s.data(), s.size()));
         }
+#endif
         return r;
       }|]
+{- ORMOLU_ENABLE -}
 
 -- | Nix String
 instance ToRawValue ByteString
@@ -767,6 +841,7 @@ withBindingsBuilder evalState n f = do
       }|]
     Value <$> mkRawValue v
 
+{- ORMOLU_DISABLE -}
 withBindingsBuilder' :: (Integral n) => Ptr EvalState -> n -> (Ptr BindingsBuilder' -> IO a) -> IO a
 withBindingsBuilder' evalState n =
   let l :: C.CInt
@@ -774,9 +849,14 @@ withBindingsBuilder' evalState n =
    in bracket
         [C.block| BindingsBuilder* {
           auto &evalState = *$(EvalState *evalState);
+#if NIX_IS_AT_LEAST(2, 32, 0)
+          return new BindingsBuilder(evalState.buildBindings($(int l)));
+#else
           return new BindingsBuilder(evalState, evalState.allocBindings($(int l)));
+#endif
         }|]
         \bb -> [C.block| void { delete $(BindingsBuilder *bb); }|]
+{- ORMOLU_ENABLE -}
 
 instance (ToRawValue a) => ToValue (Map ByteString a) where
   type NixTypeFor (Map ByteString a) = NixAttrs
@@ -843,6 +923,7 @@ instance (ToRawValue a) => ToValue (H.HashMap Text a) where
 
 instance (ToRawValue a) => ToRawValue (Vector a)
 
+{- ORMOLU_DISABLE -}
 instance (ToRawValue a) => ToValue (Vector a) where
   type NixTypeFor (Vector a) = NixList
   toValue evalState vec =
@@ -851,8 +932,15 @@ instance (ToRawValue a) => ToValue (Vector a) where
           l = fromIntegral (length vec)
       b <-
         [C.block| ListBuilder* {
+#if NIX_IS_AT_LEAST(2, 33, 0)
+          EvalState &evalState = *$(EvalState *evalState);
+          return new (NoGC) ListBuilder(evalState.mem, $(int l));
+#elif NIX_IS_AT_LEAST(2, 32, 0)
+          return new (NoGC) ListBuilder($(int l));
+#else
           EvalState &evalState = *$(EvalState *evalState);
           return new (NoGC) ListBuilder(evalState, $(int l));
+#endif
         }|]
       vec & V.imapM_ \i a -> do
         RawValue aRaw <- toRawValue evalState a
@@ -868,6 +956,7 @@ instance (ToRawValue a) => ToValue (Vector a) where
           return v;
         }|]
       Value <$> mkRawValue v
+{- ORMOLU_ENABLE -}
 
 instance (ToRawValue a) => ToRawValue [a]
 
