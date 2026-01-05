@@ -4,7 +4,7 @@
 
 Run an effect locally.
 
-This commands pulls context from the repository and the Hercules CI API. See <<implicit-inputs>>.
+This command pulls context from the repository and (by default) the Hercules CI API. See <<implicit-inputs>>.
 
 == Parameters
 

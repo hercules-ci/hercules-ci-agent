@@ -1,5 +1,9 @@
 * xref:installation.adoc[Installation]
 * xref:environment.adoc[Environment]
+* xref:effect/eval.adoc[`hci effect eval`] +
+ifeval::[{descriptions} == true]
+Evaluate an effect and print its derivation path.
+endif::[]
 * xref:effect/run.adoc[`hci effect run`] +
 ifeval::[{descriptions} == true]
 Run an effect locally.
