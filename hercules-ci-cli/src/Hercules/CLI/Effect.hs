@@ -3,7 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Hercules.CLI.Effect where
+module Hercules.CLI.Effect (commandParser) where
 
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
