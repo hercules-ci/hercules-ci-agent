@@ -30,7 +30,7 @@ import Hercules.CLI.Options (flatCompleter, mkCommand, subparser)
 import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, getProjectPath, projectOption, projectPathOwner, projectPathProject, projectPathText)
 import Hercules.CLI.Secret (getSecretsFilePath)
 import Hercules.CNix (Store)
-import Hercules.CNix.Expr (EvalState, Match (IsAttrs), Value (rtValue), getAttrBool, getDrvFile, match)
+import Hercules.CNix.Expr (EvalState, Match (IsAttrs), RawValue, Value (rtValue), getAttrBool, getDrvFile, match)
 import qualified Hercules.CNix.Std.Vector as Std.Vector
 import Hercules.CNix.Store (Derivation, buildPaths, getDerivationInputs, newStorePathWithOutputs)
 import qualified Hercules.CNix.Store as CNix
@@ -210,18 +210,28 @@ evalParser = do
       drvPathBS <- liftIO $ CNix.storePathToPath store drvPath
       liftIO $ putStrLn $ decodeUtf8With lenientDecode drvPathBS
 
--- Shared logic to evaluate an effect attribute and get its derivation path
-evaluateEffectPath :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO r CNix.StorePath
-evaluateEffectPath evalState projectOptionMaybe ref attr = do
-  -- Resolve project path (infer from API if not provided)
-  -- When projectOptionMaybe is Just, getProjectPath returns it immediately without API call
-  -- When projectOptionMaybe is Nothing, getProjectPath calls the API to infer the project
+-- | Evaluate a herculesCI attribute path.
+-- Returns the value at the path (if found) and the nix file path for error messages.
+evalHerculesCIAttr ::
+  (Has HerculesClientToken r, Has HerculesClientEnv r) =>
+  Ptr EvalState ->
+  Maybe ProjectPath ->
+  Text ->
+  [Text] ->
+  RIO r (Maybe RawValue, Text)
+evalHerculesCIAttr evalState projectOptionMaybe ref attrPath = do
   projectPath <- getProjectPath projectOptionMaybe
   args <- liftIO $ createHerculesCIArgs (Just ref) (Just projectPath)
-  let attrPath = attributePathFromString attr
-      nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
+  let nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
   uio <- askUnliftIO
   valMaybe <- liftIO $ getVirtualValueByPath evalState (toS nixFile) args (resolveInputs uio evalState (Just projectPath)) (map encodeUtf8 attrPath)
+  pure (valMaybe, nixFile)
+
+-- | Evaluate an effect attribute and get its derivation path.
+evaluateEffectPath :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO r CNix.StorePath
+evaluateEffectPath evalState projectOptionMaybe ref attr = do
+  let attrPath = attributePathFromString attr
+  (valMaybe, nixFile) <- evalHerculesCIAttr evalState projectOptionMaybe ref attrPath
   attrValue <- case valMaybe of
     Nothing -> exitMsg $ "Could not find an attribute at path " <> show attrPath <> " in " <> nixFile
     Just v -> liftIO (match evalState v) >>= escalate
