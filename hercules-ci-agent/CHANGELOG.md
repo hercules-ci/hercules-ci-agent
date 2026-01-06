@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.8] - 2026-01-06
+
+### Added
+
+- Nix 2.29, 2.30, 2.31, 2.32, 2.33 support
+
 ## [0.10.7] - 2025-07-18
 
 ### Fixed
@@ -804,6 +810,11 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Initial release
 
+[0.10.8]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.10.7...hercules-ci-agent-0.10.8
+[0.10.7]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.10.6...hercules-ci-agent-0.10.7
+[0.10.6]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.10.5...hercules-ci-agent-0.10.6
+[0.10.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.10.4...hercules-ci-agent-0.10.5
+[0.10.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.10.3...hercules-ci-agent-0.10.4
 [0.10.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.10.2...hercules-ci-agent-0.10.3
 [0.10.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.10.1...hercules-ci-agent-0.10.2
 [0.10.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.12...hercules-ci-agent-0.10.1
