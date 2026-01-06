@@ -5,19 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.8.4.0 - 2024-05-19
+## [Unreleased]
+
+
+## [0.8.4.0] - 2024-05-19
 
 ### Added
 
 - `hercules-ci-api-openapi3` package in the flake, containing the experimental OpenAPI 3 spec
 - `operationId` to the endpoints in that spec
 
-## 0.8.3.0 - 2024-05-03
-
-### Fixed
-
-- Deduplicate OpenAPI3 security / jwt items
-- Replace bad generated OpenAPI3 identifier
+## [0.8.3.0] - 2024-05-03
 
 ### Added
 - `O3.ToParamSchema JobType`
@@ -30,34 +28,39 @@ deea4 doc: API / Find jobs: refer to per project endpoint
 - Document auth instructions in API description
 - Add `references` to `BuiltOutput`
 
-## 0.8.2.0 - 2024-02-12
+### Fixed
+
+- Deduplicate OpenAPI3 security / jwt items
+- Replace bad generated OpenAPI3 identifier
+
+## [0.8.2.0] - 2024-02-12
 
 ### Added
 
- - Experimental OpenAPI 3 generation
+- Experimental OpenAPI 3 generation
 
-## 0.8.1.0 - 2023-06-28
+## [0.8.1.0] - 2023-06-28
 
 ### Added
 
- - `getJob` (by id)
- - `projectJobEvaluationDiff` for diffing a pair of evaluations
- - `Job.{repo,owner,forge}Name`
+- `getJob` (by id)
+- `projectJobEvaluationDiff` for diffing a pair of evaluations
+- `Job.{repo,owner,forge}Name`
 
-## 0.8.0.0 - 2023-03-06
+## [0.8.0.0] - 2023-03-06
 
 ### Changed
 
- - `SourceHostingSite` was renamed to `Forge`
+- `SourceHostingSite` was renamed to `Forge`
 
 ### Added
 
- - GitLab endpoints
- - `onSchedule` information
- - Various small additions
+- GitLab endpoints
+- `onSchedule` information
+- Various small additions
 
 
-## 0.7.2.1 - 2022-12-29
+## [0.7.2.1] - 2022-12-29
 
 Maintenance and tooling update.
 
@@ -65,56 +68,56 @@ Maintenance and tooling update.
 
 ### Added
 
- - Add getJobSource to resolve extraInputs in hci
- - `PagedResponse`
- - `SimpleProject`
- - `SimpleRepo`
- - `ImmutableGitInput`
- - `JobType`
+- Add getJobSource to resolve extraInputs in hci
+- `PagedResponse`
+- `SimpleProject`
+- `SimpleRepo`
+- `ImmutableGitInput`
+- `JobType`
 
 ## [0.7.1.0] - 2021-09-06
 
 ### Added
 
- - Notification settings
- - Email info
- - State locks: opt-in locks to be used in conjunction with state files. Use of locks is not enforced.
+- Notification settings
+- Email info
+- State locks: opt-in locks to be used in conjunction with state files. Use of locks is not enforced.
 
 ### Changed
 
- - `DerivationOutput.outputPath` is now nullable when retrieving build info
+- `DerivationOutput.outputPath` is now nullable when retrieving build info
 
 ## [0.7.0.0] - 2021-06-22
 
 ### Added
 
- - Account: manageInstallationURL, installationIsSelection
- - AccountInstallationStatus
- - signOut
- - Agent labels
- - By name variations of account and state endpoints
+- Account: manageInstallationURL, installationIsSelection
+- AccountInstallationStatus
+- signOut
+- Agent labels
+- By name variations of account and state endpoints
 
-## [0.6.0.1] - 2020-04-21
+## [0.6.0.1] - 2021-04-21
 
 ### Fixed
 
- - A warning
+- A warning
 
-## [0.6.0.0] - 2020-03-07
+## [0.6.0.0] - 2021-03-07
 
 ### Added
 
- - Build logs
- - Evaluation log
- - Attribute types
- - Effects
- - State files
- - CLI authorization flow
- - Endpoint for resolving git urls to projects
+- Build logs
+- Evaluation log
+- Attribute types
+- Effects
+- State files
+- CLI authorization flow
+- Endpoint for resolving git urls to projects
 
 ### Changed
 
- - Adaptations to support servant streaming
+- Adaptations to support servant streaming
 
 ## [0.5.0.0] - 2020-01-30
 
@@ -161,10 +164,17 @@ Maintenance and tooling update.
 
 - requiredFeatures support
 
-## 0.1.0.0
+## [0.1.0.0] - 2019-03-27
 
 Initial release
 
+[0.8.4.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.8.3.0...hercules-ci-api-0.8.4.0
+[0.8.3.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.8.2.0...hercules-ci-api-0.8.3.0
+[0.8.2.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.8.1.0...hercules-ci-api-0.8.2.0
+[0.8.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.8.0.0...hercules-ci-api-0.8.1.0
+[0.8.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.7.2.1...hercules-ci-api-0.8.0.0
+[0.7.2.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.7.2.0...hercules-ci-api-0.7.2.1
+[0.7.2.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.7.1.0...hercules-ci-api-0.7.2.0
 [0.7.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.0.0...hercules-ci-api-0.7.1.0
 [0.7.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.0.1...hercules-ci-api-0.7.0.0
 [0.6.0.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.0.0...hercules-ci-api-0.6.0.1

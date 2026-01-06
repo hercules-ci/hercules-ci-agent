@@ -105,17 +105,18 @@ releasePackage pkg extraBumps = do
       cabalUploadDocs docs
       gitCommit $ releaseName
       gitTag releaseName
-      gitPush "origin"
-      gitPushTags "origin"
+      gitPush "upstream"
+      gitPushTags "upstream"
 
 cabalSdist2 :: FilePath -> IO FilePath
 cabalSdist2 dir = do
   logStep "Running $ cabal dist"
   -- cabalinfo <- cabalRead dir
   out <- lines <$> readProcess "cabal" ["v2-sdist", dir] mempty
-  sdistTarball <- case out of
-    ['W':'r':'o':'t':'e':_, path] -> pure path
-    _ -> error ("Unexpected cabal v2-sdist output: " <> show out)
+  -- Find the tarball path: look for "Wrote tarball sdist to" followed by a path
+  sdistTarball <- case dropWhile (not . ("Wrote tarball sdist to" `isPrefixOf`)) out of
+    [_, path] -> pure path
+    remaining -> error ("Unexpected cabal v2-sdist output: " <> show out <> "\nAfter filtering: " <> show remaining)
   -- let sdistTarball = "dist-newstyle/sdist/" <> name cabalinfo <> "-" <> version cabalinfo <> ".tar.gz"
   logStep $ "Created " <> sdistTarball
   return sdistTarball
