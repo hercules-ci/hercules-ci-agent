@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+
 ## [0.3.9] - 2026-01-06
 
 ### Added
@@ -194,3 +197,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [0.3.7]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cli-0.3.6...hercules-ci-cli-0.3.7
 [0.3.8]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cli-0.3.7...hercules-ci-cli-0.3.8
 [0.3.9]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cli-0.3.8...hercules-ci-cli-0.3.9
+[Unreleased]: https://github.com/hercules-ci/hercules-ci-agent/compare/stable...master

@@ -5,6 +5,9 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+
 ## [0.5.1.0] - 2024-02-12
 
 ### Added
@@ -157,3 +160,4 @@ Start of changelog
 [0.5.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-agent-0.4.6.1...hercules-ci-api-agent-0.5.0.0
 [0.5.0.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-agent-0.5.0.0...hercules-ci-api-agent-0.5.0.1
 [0.5.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-agent-0.5.0.1...hercules-ci-api-agent-0.5.1.0
+[Unreleased]: https://github.com/hercules-ci/hercules-ci-agent/compare/stable...master

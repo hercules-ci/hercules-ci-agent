@@ -5,6 +5,9 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+
 ## [0.5.1.0] - 2026-01-06
 
 - Nix support up to 2.33
@@ -188,3 +191,4 @@ Solve build warnings.
 [0.2.0.1]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.2.0.1/hercules-ci-cnix-expr
 [0.2.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.2.0.0/hercules-ci-cnix-expr
 [0.1.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.1.0.0/hercules-ci-cnix-expr
+[Unreleased]: https://github.com/hercules-ci/hercules-ci-agent/commits/master/hercules-ci-cnix-expr

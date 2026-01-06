@@ -5,6 +5,9 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+
 ## [0.4.1.0] - 2026-01-06
 
 ### Added
@@ -235,3 +238,4 @@ A dud.
 [0.2.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.2.0.0/hercules-ci-cnix-store
 [0.1.1.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.1.1.0/hercules-ci-cnix-store
 [0.1.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.1.0.0/hercules-ci-cnix-store
+[Unreleased]: https://github.com/hercules-ci/hercules-ci-agent/commits/master/hercules-ci-cnix-store
