@@ -1,7 +1,9 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE NoFieldSelectors #-}
 
 module Hercules.CLI.Effect (commandParser) where
 
@@ -11,11 +13,11 @@ import Data.Has (Has)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent as AttributeEffectEvent
-import Hercules.API.Attribute (attributePathFromString)
+import Hercules.API.Attribute (attributePathFromString, attributePathToString)
 import Hercules.API.Id (Id (Id, idUUID))
 import qualified Hercules.API.Projects as Projects
 import qualified Hercules.API.Projects.CreateUserEffectTokenResponse as CreateUserEffectTokenResponse
-import Hercules.Agent.NixFile (getVirtualValueByPath)
+import Hercules.Agent.NixFile (getHerculesCI, getVirtualValueByPath, homeExprRawValue, loadNixFile, resolveAndInvokeOutputs)
 import qualified Hercules.Agent.NixFile.GitSource as GitSource
 import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
@@ -30,7 +32,8 @@ import Hercules.CLI.Options (flatCompleter, mkCommand, subparser)
 import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, getProjectPath, projectOption, projectPathOwner, projectPathProject, projectPathText)
 import Hercules.CLI.Secret (getSecretsFilePath)
 import Hercules.CNix (Store)
-import Hercules.CNix.Expr (EvalState, Match (IsAttrs), Value (rtValue), getAttrBool, getDrvFile, match)
+import Hercules.CNix.Expr (EvalState, Match (IsAttrs), RawValue, Value (rtValue), getAttr, getAttrBool, getAttrs, getDrvFile, isDerivation, match, match')
+import Hercules.CNix.Expr.Schema (PSObject (value), dictionaryToMap, (#?))
 import qualified Hercules.CNix.Std.Vector as Std.Vector
 import Hercules.CNix.Store (Derivation, buildPaths, getDerivationInputs, newStorePathWithOutputs)
 import qualified Hercules.CNix.Store as CNix
@@ -57,72 +60,74 @@ commandParser =
           "eval"
           (Optparse.progDesc "Evaluate an effect and print its derivation path")
           evalParser
+        <> mkCommand
+          "list"
+          (Optparse.progDesc "List all effects in the configuration")
+          listParser
     )
 
--- Common options for both run and eval
-data EffectOptions = EffectOptions
-  { eoAttribute :: Text,
-    eoProjectPath :: Maybe ProjectPath,
-    eoRef :: Maybe Text,
-    eoRequireToken :: Bool
+-- Options for CI context (project, ref, token)
+data CIContextOptions = CIContextOptions
+  { projectPath :: Maybe ProjectPath,
+    ref :: Maybe Text,
+    requireToken :: Bool
   }
 
-effectOptionsParser :: Optparse.Parser EffectOptions
-effectOptionsParser = do
-  attr <- ciAttributeArgument
-  projectOptionMaybe <- optional projectOption
-  refMaybe <- asRefOptions
-  requireToken <- Optparse.flag True False (long "no-token" <> help "Don't get an API token. Disallows access to state files, but can run in untrusted environment or unconfigured repo.")
-  pure $ EffectOptions attr projectOptionMaybe refMaybe requireToken
+ciContextOptionsParser :: Optparse.Parser CIContextOptions
+ciContextOptionsParser = do
+  projectPath' <- optional projectOption
+  ref' <- asRefOptions
+  requireToken' <- Optparse.flag True False (long "no-token" <> help "Don't get an API token. Disallows access to state files, but can run in untrusted environment or unconfigured repo.")
+  pure $ CIContextOptions {projectPath = projectPath', ref = ref', requireToken = requireToken'}
 
 runParser :: Optparse.Parser (IO ())
 runParser = do
-  opts <- effectOptionsParser
-  pure $ runAuthenticatedOrDummy (eoRequireToken opts) do
+  attr <- ciAttributeArgument
+  opts <- ciContextOptionsParser
+  pure $ runAuthenticatedOrDummy opts.requireToken do
     -- Check if it's a direct derivation path
     isDirectPath <- withNix \store _evalState -> do
       storeDir <- liftIO $ CNix.storeDir store
-      pure $ decodeUtf8With lenientDecode storeDir `T.isPrefixOf` (eoAttribute opts)
+      pure $ decodeUtf8With lenientDecode storeDir `T.isPrefixOf` attr
 
     if isDirectPath
       then do
         -- Direct derivation path - handle specially
         withNix \store _evalState -> do
-          ref <- liftIO $ computeRef (eoRef opts)
+          ref <- liftIO $ computeRef opts.ref
           derivation <- liftIO $ do
             -- Support derivation in arbitrary location
             -- Used in hercules-ci-effects test runner
-            let path = eoAttribute opts
-            contents <- BS.readFile $ toS path
+            contents <- BS.readFile $ toS attr
             let stripDrv s = fromMaybe s (T.stripSuffix ".drv" s)
-            CNix.getDerivationFromString store (path & T.takeWhileEnd (/= '/') & stripDrv & encodeUtf8) contents
+            CNix.getDerivationFromString store (attr & T.takeWhileEnd (/= '/') & stripDrv & encodeUtf8) contents
           prepareDerivation store derivation
           runEffectImpl store derivation ref opts
       else do
         -- Normal effect attribute - use withEffectDerivation
-        withEffectDerivation opts $ \store _evalState drvPath ref -> do
+        withEffectDerivation attr opts $ \store _evalState drvPath ref -> do
           -- Get the full derivation from the path
           derivation <- liftIO $ CNix.getDerivation store drvPath
           prepareDerivation store derivation
           runEffectImpl store derivation ref opts
 
 -- Execute an effect derivation
-runEffectImpl :: Store -> Derivation -> Text -> EffectOptions -> RIO (HerculesClientToken, HerculesClientEnv) ()
+runEffectImpl :: Store -> Derivation -> Text -> CIContextOptions -> RIO (HerculesClientToken, HerculesClientEnv) ()
 runEffectImpl _store derivation ref opts = do
   let getProjectInfo =
-        case eoProjectPath opts of
+        case opts.projectPath of
           Just x
-            | not (eoRequireToken opts) ->
+            | not opts.requireToken ->
                 pure
                   ProjectData
                     { pdProjectPath = Just x,
                       pdProjectId = Nothing,
                       pdToken = Nothing
                     }
-          _ -> getProjectEffectData (eoProjectPath opts) (eoRequireToken opts)
+          _ -> getProjectEffectData opts.projectPath opts.requireToken
   withAsync getProjectInfo \projectPathAsync -> do
     isDefaultBranch <-
-      if eoRequireToken opts
+      if opts.requireToken
         then liftIO Git.getIsDefault
         else pure True
 
@@ -186,42 +191,119 @@ loadGitToken name _noDetail = do
       [token <&> A.String]
 
 -- Higher-order function to evaluate effect and pass its path to a callback
-withEffectDerivation :: EffectOptions -> (Store -> Ptr EvalState -> CNix.StorePath -> Text -> RIO (HerculesClientToken, HerculesClientEnv) a) -> RIO (HerculesClientToken, HerculesClientEnv) a
-withEffectDerivation opts callback = do
+withEffectDerivation :: Text -> CIContextOptions -> (Store -> Ptr EvalState -> CNix.StorePath -> Text -> RIO (HerculesClientToken, HerculesClientEnv) a) -> RIO (HerculesClientToken, HerculesClientEnv) a
+withEffectDerivation attr opts callback = do
   withNix \store evalState -> do
-    ref <- liftIO $ computeRef (eoRef opts)
+    ref <- liftIO $ computeRef opts.ref
     storeDir <- liftIO $ CNix.storeDir store
     drvPath <-
-      if decodeUtf8With lenientDecode storeDir `T.isPrefixOf` (eoAttribute opts)
+      if decodeUtf8With lenientDecode storeDir `T.isPrefixOf` attr
         then do
           -- Support derivation in arbitrary location
           -- Used in hercules-ci-effects test runner
-          let path = eoAttribute opts
-          liftIO $ CNix.parseStorePath store (encodeUtf8 path)
-        else evaluateEffectPath evalState (eoProjectPath opts) ref (eoAttribute opts)
+          liftIO $ CNix.parseStorePath store (encodeUtf8 attr)
+        else evaluateEffectPath evalState opts.projectPath ref attr
     callback store evalState drvPath ref
 
 evalParser :: Optparse.Parser (IO ())
 evalParser = do
-  opts <- effectOptionsParser
-  pure $ runAuthenticatedOrDummy (eoRequireToken opts) do
-    withEffectDerivation opts $ \store _evalState drvPath _ref -> do
+  attr <- ciAttributeArgument
+  opts <- ciContextOptionsParser
+  pure $ runAuthenticatedOrDummy opts.requireToken do
+    withEffectDerivation attr opts $ \store _evalState drvPath _ref -> do
       -- For eval, just print the derivation path
       drvPathBS <- liftIO $ CNix.storePathToPath store drvPath
       liftIO $ putStrLn $ decodeUtf8With lenientDecode drvPathBS
 
--- Shared logic to evaluate an effect attribute and get its derivation path
-evaluateEffectPath :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO r CNix.StorePath
-evaluateEffectPath evalState projectOptionMaybe ref attr = do
-  -- Resolve project path (infer from API if not provided)
-  -- When projectOptionMaybe is Just, getProjectPath returns it immediately without API call
-  -- When projectOptionMaybe is Nothing, getProjectPath calls the API to infer the project
+listParser :: Optparse.Parser (IO ())
+listParser = do
+  opts <- ciContextOptionsParser
+  pure $ runAuthenticatedOrDummy opts.requireToken do
+    withNix \_store evalState -> do
+      ref <- liftIO $ computeRef opts.ref
+      projectPath <- getProjectPath opts.projectPath
+      args <- liftIO $ createHerculesCIArgs (Just ref) (Just projectPath)
+      let nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
+      homeExprEither <- liftIO $ loadNixFile evalState (toS nixFile) (HerculesCIArgs.primaryRepo args)
+      homeExpr <- case homeExprEither of
+        Left err -> exitMsg $ toS err
+        Right h -> pure h
+
+      uio <- askUnliftIO
+      let resolveInputsFn = liftIO . resolveInputs uio evalState (Just projectPath)
+
+      flip runReaderT evalState do
+        herculesCIMaybe <- getHerculesCI homeExpr args
+        case herculesCIMaybe of
+          Nothing -> do
+            -- Traditional format: walk the root directly for effects
+            effects <- liftIO $ walkEffects evalState [] (homeExprRawValue homeExpr)
+            for_ effects \path ->
+              liftIO $ putStrLn $ attributePathToString path
+          Just hci -> do
+            -- Modern format: enumerate jobs using schema types
+            -- Effects are only allowed in the "effects" attribute
+            let listJobs handlerName handler = do
+                  jobs <- dictionaryToMap handler
+                  for_ (M.toList jobs) \(jobNameBS, job) -> do
+                    let jobName = decodeUtf8With lenientDecode jobNameBS
+                        prefix = [handlerName, jobName, "effects"]
+                    outputs <- resolveAndInvokeOutputs job resolveInputsFn
+                    effectsAttr <- liftIO $ getEffectsAttr evalState (value outputs)
+                    for_ effectsAttr \effectsValue -> do
+                      effects <- liftIO $ walkEffects evalState prefix effectsValue
+                      for_ effects \path ->
+                        liftIO $ putStrLn $ attributePathToString path
+            hci #? #onPush >>= traverse_ (listJobs "onPush")
+            hci #? #onSchedule >>= traverse_ (listJobs "onSchedule")
+
+-- | Get the "effects" attribute from an attrset, if it exists.
+getEffectsAttr :: Ptr EvalState -> RawValue -> IO (Maybe RawValue)
+getEffectsAttr evalState rawValue = do
+  match' evalState rawValue >>= \case
+    IsAttrs attrsValue -> getAttr evalState attrsValue "effects"
+    _ -> pure Nothing
+
+-- | Recursively walk the attribute tree and collect effect paths.
+walkEffects :: Ptr EvalState -> [Text] -> RawValue -> IO [[Text]]
+walkEffects evalState prefix rawValue = do
+  match' evalState rawValue >>= \case
+    IsAttrs attrsValue -> do
+      isDeriv <- isDerivation evalState rawValue
+      if isDeriv
+        then do
+          isEff <- getAttrBool evalState attrsValue "isEffect"
+          case isEff of
+            Right (Just True) -> pure [prefix]
+            _ -> pure []
+        else do
+          attrs <- getAttrs evalState attrsValue
+          fmap concat $ for (M.toList attrs) \(name, childValue) ->
+            walkEffects evalState (prefix ++ [decodeUtf8With lenientDecode name]) childValue
+    _ -> pure []
+
+-- | Evaluate a herculesCI attribute path.
+-- Returns the value at the path (if found) and the nix file path for error messages.
+evalHerculesCIAttr ::
+  (Has HerculesClientToken r, Has HerculesClientEnv r) =>
+  Ptr EvalState ->
+  Maybe ProjectPath ->
+  Text ->
+  [Text] ->
+  RIO r (Maybe RawValue, Text)
+evalHerculesCIAttr evalState projectOptionMaybe ref attrPath = do
   projectPath <- getProjectPath projectOptionMaybe
   args <- liftIO $ createHerculesCIArgs (Just ref) (Just projectPath)
-  let attrPath = attributePathFromString attr
-      nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
+  let nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
   uio <- askUnliftIO
   valMaybe <- liftIO $ getVirtualValueByPath evalState (toS nixFile) args (resolveInputs uio evalState (Just projectPath)) (map encodeUtf8 attrPath)
+  pure (valMaybe, nixFile)
+
+-- | Evaluate an effect attribute and get its derivation path.
+evaluateEffectPath :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO r CNix.StorePath
+evaluateEffectPath evalState projectOptionMaybe ref attr = do
+  let attrPath = attributePathFromString attr
+  (valMaybe, nixFile) <- evalHerculesCIAttr evalState projectOptionMaybe ref attrPath
   attrValue <- case valMaybe of
     Nothing -> exitMsg $ "Could not find an attribute at path " <> show attrPath <> " in " <> nixFile
     Just v -> liftIO (match evalState v) >>= escalate
