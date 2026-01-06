@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Fixed
+
+- `hci effect run`/`eval` now pass the `primaryRepo.owner` and `primaryRepo.name` fields correctly instead of `null`.
+
 ## 0.3.8 - 2025-07-18
 
 ### Fixed

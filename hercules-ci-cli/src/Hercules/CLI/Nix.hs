@@ -20,7 +20,7 @@ import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDef
 import Hercules.CLI.Common (runAuthenticated)
 import Hercules.CLI.Git (getGitRoot, getRef, getRev, getUpstreamURL, guessForgeTypeFromURL)
 import Hercules.CLI.Options (scanOption)
-import Hercules.CLI.Project (ProjectPath (projectPathProject), getProjectPath, projectPathReadM, projectResourceClientByPath)
+import Hercules.CLI.Project (ProjectPath (projectPathOwner, projectPathProject), getProjectPath, projectPathReadM, projectResourceClientByPath)
 import Hercules.CNix (Store)
 import Hercules.CNix.Expr as Expr (EvalState, Match (IsAttrs), NixAttrs, RawValue, Value, getAttr, getAttrs, getFlakeFromGit, init, isDerivation, match', toValue, withEvalState, withStore)
 import qualified Hercules.CNix.Util as CNix.Util
@@ -31,8 +31,8 @@ import Protolude hiding (evalState)
 import RIO (RIO)
 import UnliftIO (MonadUnliftIO, UnliftIO (UnliftIO), askUnliftIO)
 
-createHerculesCIArgs :: Maybe Text -> IO HerculesCIArgs
-createHerculesCIArgs passedRef = do
+createHerculesCIArgs :: Maybe Text -> Maybe ProjectPath -> IO HerculesCIArgs
+createHerculesCIArgs passedRef maybeProjectPath = do
   gitRoot <- getGitRoot
   gitRev <- getRev
   ref <- computeRef passedRef
@@ -52,8 +52,8 @@ createHerculesCIArgs passedRef = do
             remoteSshUrl = remoteSshUrl,
             webUrl = guessWebUrlFromHttpUrl <$> remoteHttpUrl,
             forgeType = guessForgeTypeFromURL upstreamURL,
-            owner = Nothing {- TODO; agent only for now -},
-            name = Nothing {- TODO; agent only for now -}
+            owner = maybeProjectPath <&> projectPathOwner,
+            name = maybeProjectPath <&> projectPathProject
           }
   url <- determineDefaultApiBaseUrl
   pure $ HerculesCIArgs.fromGitSource gitSource HerculesCIArgs.HerculesCIMeta {apiBaseUrl = url, ciSystems = CISystems Nothing}
@@ -69,19 +69,23 @@ resolveInputs ::
   Maybe ProjectPath ->
   Map ByteString InputDeclaration ->
   IO (Value NixAttrs)
-resolveInputs uio evalState projectMaybe inputs = do
-  projectPath <- unliftIO uio $ getProjectPath projectMaybe
-  let resolveInput :: ByteString -> InputDeclaration -> IO RawValue
-      resolveInput _name (SiblingInput input) = unliftIO uio do
-        let resourceClient = projectResourceClientByPath (projectPath {projectPathProject = InputDeclaration.project input})
-            jobNames = []
-        immutableGitInput <- retryOnFail "get job source" (getJobSource resourceClient (InputDeclaration.ref input) jobNames)
-        liftIO $ mkImmutableGitInputFlakeThunk evalState immutableGitInput
-      resolveInput _name InputDeclaration.BogusInput {} = panic "resolveInput: not implemented yet"
-  inputs
-    & M.mapWithKey (,)
-    & mapConcurrently (uncurry resolveInput)
-    & (>>= toValue evalState)
+resolveInputs uio evalState projectMaybe inputDeclarations = do
+  inputValueMap <-
+    if M.null inputDeclarations
+      then pure mempty
+      else do
+        projectPath <- unliftIO uio $ getProjectPath projectMaybe
+        let resolveInput :: ByteString -> InputDeclaration -> IO RawValue
+            resolveInput _name (SiblingInput input) = unliftIO uio do
+              let resourceClient = projectResourceClientByPath (projectPath {projectPathProject = InputDeclaration.project input})
+                  jobNames = []
+              immutableGitInput <- retryOnFail "get job source" (getJobSource resourceClient (InputDeclaration.ref input) jobNames)
+              liftIO $ mkImmutableGitInputFlakeThunk evalState immutableGitInput
+            resolveInput _name InputDeclaration.BogusInput {} = panic "resolveInput: not implemented yet"
+        inputDeclarations
+          & M.mapWithKey (,)
+          & mapConcurrently (uncurry resolveInput)
+  toValue evalState inputValueMap
 
 refBranchToRef :: Maybe Text -> Maybe Text -> Maybe Text
 refBranchToRef ref branch = ref <|> (("refs/heads/" <>) <$> branch)
@@ -176,7 +180,7 @@ ciNixAttributeCompleter = mkAttributePathCompleter \(partialPath, partialCompone
       scanOption "--project" <&> \maybeStr -> do
         s <- maybeStr
         rightToMaybe (runExcept (runReaderT (unReadM projectPathReadM) (toS s)))
-    args <- createHerculesCIArgs ref
+    args <- createHerculesCIArgs ref projectMaybe
     runAuthenticated do
       uio <- askUnliftIO
       liftIO $

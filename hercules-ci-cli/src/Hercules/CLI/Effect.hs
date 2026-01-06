@@ -3,7 +3,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Hercules.CLI.Effect where
+module Hercules.CLI.Effect (commandParser) where
 
 import qualified Data.Aeson as A
 import qualified Data.ByteString as BS
@@ -27,7 +27,7 @@ import qualified Hercules.CLI.Git as Git
 import Hercules.CLI.JSON (askPasswordWithKey)
 import Hercules.CLI.Nix (ciNixAttributeCompleter, computeRef, createHerculesCIArgs, resolveInputs, withNix)
 import Hercules.CLI.Options (flatCompleter, mkCommand, subparser)
-import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, projectOption, projectPathOwner, projectPathProject, projectPathText)
+import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, getProjectPath, projectOption, projectPathOwner, projectPathProject, projectPathText)
 import Hercules.CLI.Secret (getSecretsFilePath)
 import Hercules.CNix (Store)
 import Hercules.CNix.Expr (EvalState, Match (IsAttrs), Value (rtValue), getAttrBool, getDrvFile, match)
@@ -46,82 +46,128 @@ import UnliftIO.Async (wait, withAsync)
 import UnliftIO.Directory (createDirectoryIfMissing, getAppUserDataDirectory)
 import UnliftIO.Temporary (withTempDirectory)
 
-commandParser, runParser :: Optparse.Parser (IO ())
+commandParser :: Optparse.Parser (IO ())
 commandParser =
   subparser
     ( mkCommand
         "run"
         (Optparse.progDesc "Run an effect")
         runParser
+        <> mkCommand
+          "eval"
+          (Optparse.progDesc "Evaluate an effect and print its derivation path")
+          evalParser
     )
-runParser = do
+
+-- Common options for both run and eval
+data EffectOptions = EffectOptions
+  { eoAttribute :: Text,
+    eoProjectPath :: Maybe ProjectPath,
+    eoRef :: Maybe Text,
+    eoRequireToken :: Bool
+  }
+
+effectOptionsParser :: Optparse.Parser EffectOptions
+effectOptionsParser = do
   attr <- ciAttributeArgument
   projectOptionMaybe <- optional projectOption
   refMaybe <- asRefOptions
   requireToken <- Optparse.flag True False (long "no-token" <> help "Don't get an API token. Disallows access to state files, but can run in untrusted environment or unconfigured repo.")
-  pure $ runAuthenticatedOrDummy requireToken do
-    let getProjectInfo =
-          case projectOptionMaybe of
-            Just x
-              | not requireToken ->
-                  pure
-                    ProjectData
-                      { pdProjectPath = Just x,
-                        pdProjectId = Nothing,
-                        pdToken = Nothing
-                      }
-            _ -> getProjectEffectData projectOptionMaybe requireToken
-    withAsync getProjectInfo \projectPathAsync -> do
-      withNix \store evalState -> do
-        ref <- liftIO $ computeRef refMaybe
-        derivation <- getEffectDrv store evalState projectOptionMaybe ref attr
-        isDefaultBranch <-
-          if requireToken
-            then liftIO Git.getIsDefault
-            else pure True
+  pure $ EffectOptions attr projectOptionMaybe refMaybe requireToken
 
-        drvEnv <- liftIO $ CNix.getDerivationEnv derivation
-        secretsMap <- case parseDrvSecretsMap drvEnv of
-          Left e -> exitMsg e
-          Right r -> pure r
-        serverSecrets <- loadServerSecrets secretsMap
+runParser :: Optparse.Parser (IO ())
+runParser = do
+  opts <- effectOptionsParser
+  pure $ runAuthenticatedOrDummy (eoRequireToken opts) do
+    -- Check if it's a direct derivation path
+    isDirectPath <- withNix \store _evalState -> do
+      storeDir <- liftIO $ CNix.storeDir store
+      pure $ decodeUtf8With lenientDecode storeDir `T.isPrefixOf` (eoAttribute opts)
 
-        apiBaseURL <- liftIO determineDefaultApiBaseUrl
-        ProjectData {pdProjectPath = projectPath, pdProjectId = projectId, pdToken = token} <- wait projectPathAsync
-        secretsJson <- liftIO $ traverse getSecretsFilePath projectPath
+    if isDirectPath
+      then do
+        -- Direct derivation path - handle specially
+        withNix \store _evalState -> do
+          ref <- liftIO $ computeRef (eoRef opts)
+          derivation <- liftIO $ do
+            -- Support derivation in arbitrary location
+            -- Used in hercules-ci-effects test runner
+            let path = eoAttribute opts
+            contents <- BS.readFile $ toS path
+            let stripDrv s = fromMaybe s (T.stripSuffix ".drv" s)
+            CNix.getDerivationFromString store (path & T.takeWhileEnd (/= '/') & stripDrv & encodeUtf8) contents
+          prepareDerivation store derivation
+          runEffectImpl store derivation ref opts
+      else do
+        -- Normal effect attribute - use withEffectDerivation
+        withEffectDerivation opts $ \store _evalState drvPath ref -> do
+          -- Get the full derivation from the path
+          derivation <- liftIO $ CNix.getDerivation store drvPath
+          prepareDerivation store derivation
+          runEffectImpl store derivation ref opts
 
-        logEnv <- liftIO $ initLogEnv mempty "hci"
-        -- withSystemTempDirectory "hci":
-        --     ERRO[0000] container_linux.go:370: starting container process caused: process_linux.go:459: container init caused: rootfs_linux.go:59: mounting "/run/user/1000/hci6017/secrets" to rootfs at "/run/user/1000/hci6017/runc-state/rootfs/secrets" caused: operation not permitted
-        dataDir <- liftIO $ getAppUserDataDirectory "hercules-ci"
-        createDirectoryIfMissing True dataDir
-        let secretContextMaybe =
-              projectPath <&> \p ->
-                Secret.SecretContext
-                  { ownerName = projectPathOwner p,
-                    repoName = projectPathProject p,
-                    isDefaultBranch = isDefaultBranch,
-                    ref = ref
-                  }
-        exitCode <- withTempDirectory dataDir "tmp-effect-" \workDir -> do
-          runKatipContextT logEnv () mempty $
-            runEffect
-              RunEffectParams
-                { runEffectDerivation = derivation,
-                  runEffectToken = token,
-                  runEffectSecretsConfigPath = secretsJson,
-                  runEffectServerSecrets = serverSecrets,
-                  runEffectApiBaseURL = apiBaseURL,
-                  runEffectDir = workDir,
-                  runEffectProjectId = projectId,
-                  runEffectProjectPath = projectPathText <$> projectPath,
-                  runEffectSecretContext = secretContextMaybe,
-                  runEffectUseNixDaemonProxy = False, -- FIXME Enable proxy for ci/dev parity. Requires access to agent binaries. Unified executable?
-                  runEffectExtraNixOptions = [],
-                  runEffectFriendly = True,
-                  runEffectConfiguredMountables = mempty -- FIXME: provide hosts?
-                }
-        throwIO exitCode
+-- Execute an effect derivation
+runEffectImpl :: Store -> Derivation -> Text -> EffectOptions -> RIO (HerculesClientToken, HerculesClientEnv) ()
+runEffectImpl _store derivation ref opts = do
+  let getProjectInfo =
+        case eoProjectPath opts of
+          Just x
+            | not (eoRequireToken opts) ->
+                pure
+                  ProjectData
+                    { pdProjectPath = Just x,
+                      pdProjectId = Nothing,
+                      pdToken = Nothing
+                    }
+          _ -> getProjectEffectData (eoProjectPath opts) (eoRequireToken opts)
+  withAsync getProjectInfo \projectPathAsync -> do
+    isDefaultBranch <-
+      if eoRequireToken opts
+        then liftIO Git.getIsDefault
+        else pure True
+
+    drvEnv <- liftIO $ CNix.getDerivationEnv derivation
+    secretsMap <- case parseDrvSecretsMap drvEnv of
+      Left e -> exitMsg e
+      Right r -> pure r
+    serverSecrets <- loadServerSecrets secretsMap
+
+    apiBaseURL <- liftIO determineDefaultApiBaseUrl
+    ProjectData {pdProjectPath = projectPath, pdProjectId = projectId, pdToken = token} <- wait projectPathAsync
+    secretsJson <- liftIO $ traverse getSecretsFilePath projectPath
+
+    logEnv <- liftIO $ initLogEnv mempty "hci"
+    -- withSystemTempDirectory "hci":
+    --     ERRO[0000] container_linux.go:370: starting container process caused: process_linux.go:459: container init caused: rootfs_linux.go:59: mounting "/run/user/1000/hci6017/secrets" to rootfs at "/run/user/1000/hci6017/runc-state/rootfs/secrets" caused: operation not permitted
+    dataDir <- liftIO $ getAppUserDataDirectory "hercules-ci"
+    createDirectoryIfMissing True dataDir
+    let secretContextMaybe =
+          projectPath <&> \p ->
+            Secret.SecretContext
+              { ownerName = projectPathOwner p,
+                repoName = projectPathProject p,
+                isDefaultBranch = isDefaultBranch,
+                ref = ref
+              }
+    exitCode <- withTempDirectory dataDir "tmp-effect-" \workDir -> do
+      runKatipContextT logEnv () mempty $
+        runEffect
+          RunEffectParams
+            { runEffectDerivation = derivation,
+              runEffectToken = token,
+              runEffectSecretsConfigPath = secretsJson,
+              runEffectServerSecrets = serverSecrets,
+              runEffectApiBaseURL = apiBaseURL,
+              runEffectDir = workDir,
+              runEffectProjectId = projectId,
+              runEffectProjectPath = projectPathText <$> projectPath,
+              runEffectSecretContext = secretContextMaybe,
+              runEffectUseNixDaemonProxy = False, -- FIXME Enable proxy for ci/dev parity. Requires access to agent binaries. Unified executable?
+              runEffectExtraNixOptions = [],
+              runEffectFriendly = True,
+              runEffectConfiguredMountables = mempty -- FIXME: provide hosts?
+            }
+    throwIO exitCode
 
 loadServerSecrets :: Map Text AttributeEffectEvent.SecretRef -> RIO r (Sensitive (Map Text (Map Text A.Value)))
 loadServerSecrets secrets = secrets & M.traverseMaybeWithKey loadServerSecret <&> Sensitive
@@ -139,44 +185,53 @@ loadGitToken name _noDetail = do
     M.fromList
       [token <&> A.String]
 
-getEffectDrv :: Store -> Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO (HerculesClientToken, HerculesClientEnv) Derivation
-getEffectDrv store evalState projectOptionMaybe ref attr = do
-  storeDir <- liftIO $ CNix.storeDir store
-  derivation <-
-    if decodeUtf8With lenientDecode storeDir `T.isPrefixOf` attr
-      then liftIO $ do
-        -- Support derivation in arbitrary location
-        -- Used in hercules-ci-effects test runner
-        let path = attr
-        contents <- BS.readFile $ toS path
-        let stripDrv s = fromMaybe s (T.stripSuffix ".drv" s)
-        CNix.getDerivationFromString store (path & T.takeWhileEnd (/= '/') & stripDrv & encodeUtf8) contents
-      else evaluateEffectDerivation evalState store projectOptionMaybe ref attr
-  prepareDerivation store derivation
-  pure derivation
+-- Higher-order function to evaluate effect and pass its path to a callback
+withEffectDerivation :: EffectOptions -> (Store -> Ptr EvalState -> CNix.StorePath -> Text -> RIO (HerculesClientToken, HerculesClientEnv) a) -> RIO (HerculesClientToken, HerculesClientEnv) a
+withEffectDerivation opts callback = do
+  withNix \store evalState -> do
+    ref <- liftIO $ computeRef (eoRef opts)
+    storeDir <- liftIO $ CNix.storeDir store
+    drvPath <-
+      if decodeUtf8With lenientDecode storeDir `T.isPrefixOf` (eoAttribute opts)
+        then do
+          -- Support derivation in arbitrary location
+          -- Used in hercules-ci-effects test runner
+          let path = eoAttribute opts
+          liftIO $ CNix.parseStorePath store (encodeUtf8 path)
+        else evaluateEffectPath evalState (eoProjectPath opts) ref (eoAttribute opts)
+    callback store evalState drvPath ref
 
-evaluateEffectDerivation :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Store -> Maybe ProjectPath -> Text -> Text -> RIO r Derivation
-evaluateEffectDerivation evalState store projectOptionMaybe ref attr = do
-  args <- liftIO $ createHerculesCIArgs (Just ref)
+evalParser :: Optparse.Parser (IO ())
+evalParser = do
+  opts <- effectOptionsParser
+  pure $ runAuthenticatedOrDummy (eoRequireToken opts) do
+    withEffectDerivation opts $ \store _evalState drvPath _ref -> do
+      -- For eval, just print the derivation path
+      drvPathBS <- liftIO $ CNix.storePathToPath store drvPath
+      liftIO $ putStrLn $ decodeUtf8With lenientDecode drvPathBS
+
+-- Shared logic to evaluate an effect attribute and get its derivation path
+evaluateEffectPath :: (Has HerculesClientToken r, Has HerculesClientEnv r) => Ptr EvalState -> Maybe ProjectPath -> Text -> Text -> RIO r CNix.StorePath
+evaluateEffectPath evalState projectOptionMaybe ref attr = do
+  -- Resolve project path (infer from API if not provided)
+  -- When projectOptionMaybe is Just, getProjectPath returns it immediately without API call
+  -- When projectOptionMaybe is Nothing, getProjectPath calls the API to infer the project
+  projectPath <- getProjectPath projectOptionMaybe
+  args <- liftIO $ createHerculesCIArgs (Just ref) (Just projectPath)
   let attrPath = attributePathFromString attr
       nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
   uio <- askUnliftIO
-  valMaybe <- liftIO $ getVirtualValueByPath evalState (toS nixFile) args (resolveInputs uio evalState projectOptionMaybe) (map encodeUtf8 attrPath)
-  -- valMaybe <- liftIO $ attrByPath evalState rootValue
+  valMaybe <- liftIO $ getVirtualValueByPath evalState (toS nixFile) args (resolveInputs uio evalState (Just projectPath)) (map encodeUtf8 attrPath)
   attrValue <- case valMaybe of
-    Nothing -> do
-      exitMsg $ "Could not find an attribute at path " <> show attrPath <> " in " <> nixFile
+    Nothing -> exitMsg $ "Could not find an attribute at path " <> show attrPath <> " in " <> nixFile
     Just v -> liftIO (match evalState v) >>= escalate
   effectAttrs <- case attrValue of
     IsAttrs attrs -> pure attrs
-    _ -> do
-      exitMsg $ "Attribute is not an Effect at path " <> show attrPath <> " in " <> nixFile
-
+    _ -> exitMsg $ "Attribute is not an Effect at path " <> show attrPath <> " in " <> nixFile
   isEffect <- liftIO $ getAttrBool evalState effectAttrs "isEffect" >>= escalate
   when (isEffect /= Just True) do
     exitMsg $ "Attribute is not an Effect at path " <> show attrPath <> " in " <> nixFile
-  drvPath <- getDrvFile evalState (rtValue effectAttrs)
-  liftIO $ CNix.getDerivation store drvPath
+  getDrvFile evalState (rtValue effectAttrs)
 
 prepareDerivation :: (MonadIO m) => Store -> Derivation -> m ()
 prepareDerivation store derivation = do
