@@ -144,11 +144,20 @@ runCommand "test-cli"
     herculesCI = ciArgs: {
       onPush.default.outputs = {
         effects = {
-          deploy = derivation {
-            name = "deploy-effect";
-            system = builtins.currentSystem;
-            builder = "${hello}/bin/hello";
-            isEffect = true;
+          deploy = {
+            main = derivation {
+              name = "deploy-effect";
+              system = builtins.currentSystem;
+              builder = "${hello}/bin/hello";
+              isEffect = true;
+            };
+            # Effect with attribute name that needs quoting
+            "hercules-ci.com" = derivation {
+              name = "quoted-attr-effect";
+              system = builtins.currentSystem;
+              builder = "${hello}/bin/hello";
+              isEffect = true;
+            };
           };
           notify = derivation {
             name = "notify-effect";
@@ -182,9 +191,16 @@ runCommand "test-cli"
   echo "$output"
 
   # Check that all effects are listed (order may vary)
-  echo "$output" | grep -q "onPush.default.effects.deploy"
-  echo "$output" | grep -q "onPush.default.effects.notify"
-  echo "$output" | grep -q "onSchedule.nightly.effects.backup"
+  echo "$output" | grep "onPush.default.effects.deploy.main" > /dev/null
+  echo "$output" | grep "onPush.default.effects.notify" > /dev/null
+  echo "$output" | grep "onSchedule.nightly.effects.backup" > /dev/null
+  # Quoted attribute name should be properly formatted (nested under deploy)
+  echo "$output" | grep 'onPush.default.effects.deploy."hercules-ci.com"' > /dev/null
+
+  # Test hci effect eval with quoted attribute path
+  output=$(hci effect eval --no-token --project github/test-owner/test-repo 'onPush.default.effects.deploy."hercules-ci.com"')
+  echo "hci effect eval (quoted attr) output: $output"
+  [[ "$output" =~ ^/nix/store/[a-z0-9]+-quoted-attr-effect\.drv$ ]]
 
   cd ..
 

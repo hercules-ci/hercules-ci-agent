@@ -13,7 +13,7 @@ import Data.Has (Has)
 import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Hercules.API.Agent.Evaluate.EvaluateEvent.AttributeEffectEvent as AttributeEffectEvent
-import Hercules.API.Attribute (attributePathFromString)
+import Hercules.API.Attribute (attributePathFromString, attributePathToString)
 import Hercules.API.Id (Id (Id, idUUID))
 import qualified Hercules.API.Projects as Projects
 import qualified Hercules.API.Projects.CreateUserEffectTokenResponse as CreateUserEffectTokenResponse
@@ -239,7 +239,7 @@ listParser = do
             -- Traditional format: walk the root directly for effects
             effects <- liftIO $ walkEffects evalState [] (homeExprRawValue homeExpr)
             for_ effects \path ->
-              liftIO $ putStrLn $ T.intercalate "." path
+              liftIO $ putStrLn $ attributePathToString path
           Just hci -> do
             -- Modern format: enumerate jobs using schema types
             -- Effects are only allowed in the "effects" attribute
@@ -253,7 +253,7 @@ listParser = do
                     for_ effectsAttr \effectsValue -> do
                       effects <- liftIO $ walkEffects evalState prefix effectsValue
                       for_ effects \path ->
-                        liftIO $ putStrLn $ T.intercalate "." path
+                        liftIO $ putStrLn $ attributePathToString path
             hci #? #onPush >>= traverse_ (listJobs "onPush")
             hci #? #onSchedule >>= traverse_ (listJobs "onSchedule")
 
