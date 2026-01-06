@@ -109,7 +109,7 @@ Maintenance and tooling update.
 - Attach user-defined labels to agent
 - Attach Nix protocol versions to logs and agent
 
-## [0.3.0.0] - 2020-03-07
+## [0.3.0.0] - 2021-03-07
 
 ### Added
 
@@ -135,7 +135,7 @@ Maintenance and tooling update.
 
 - Add a `NixCache` format for generic binary cache support using Nix's generic "URI"-based store API.
 
-## [0.2.0.0]
+## [0.2.0.0] - 2020-05-05
 
 Start of changelog
 

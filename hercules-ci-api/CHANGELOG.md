@@ -94,13 +94,13 @@ Maintenance and tooling update.
 - Agent labels
 - By name variations of account and state endpoints
 
-## [0.6.0.1] - 2020-04-21
+## [0.6.0.1] - 2021-04-21
 
 ### Fixed
 
 - A warning
 
-## [0.6.0.0] - 2020-03-07
+## [0.6.0.0] - 2021-03-07
 
 ### Added
 
