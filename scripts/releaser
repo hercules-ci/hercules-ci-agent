@@ -105,8 +105,8 @@ releasePackage pkg extraBumps = do
       cabalUploadDocs docs
       gitCommit $ releaseName
       gitTag releaseName
-      gitPush "origin"
-      gitPushTags "origin"
+      gitPush "upstream"
+      gitPushTags "upstream"
 
 cabalSdist2 :: FilePath -> IO FilePath
 cabalSdist2 dir = do
