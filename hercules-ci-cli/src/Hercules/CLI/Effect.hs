@@ -32,7 +32,7 @@ import Hercules.CLI.Options (flatCompleter, mkCommand, subparser)
 import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, getProjectPath, projectOption, projectPathOwner, projectPathProject, projectPathText)
 import Hercules.CLI.Secret (getSecretsFilePath)
 import Hercules.CNix (Store)
-import Hercules.CNix.Expr (EvalState, Match (IsAttrs), RawValue, Value (rtValue), getAttrBool, getAttrs, getDrvFile, isDerivation, match, match')
+import Hercules.CNix.Expr (EvalState, Match (IsAttrs), RawValue, Value (rtValue), getAttr, getAttrBool, getAttrs, getDrvFile, isDerivation, match, match')
 import Hercules.CNix.Expr.Schema (PSObject (value), dictionaryToMap, (#?))
 import qualified Hercules.CNix.Std.Vector as Std.Vector
 import Hercules.CNix.Store (Derivation, buildPaths, getDerivationInputs, newStorePathWithOutputs)
@@ -242,17 +242,27 @@ listParser = do
               liftIO $ putStrLn $ T.intercalate "." path
           Just hci -> do
             -- Modern format: enumerate jobs using schema types
+            -- Effects are only allowed in the "effects" attribute
             let listJobs handlerName handler = do
                   jobs <- dictionaryToMap handler
                   for_ (M.toList jobs) \(jobNameBS, job) -> do
                     let jobName = decodeUtf8With lenientDecode jobNameBS
-                        prefix = [handlerName, jobName]
+                        prefix = [handlerName, jobName, "effects"]
                     outputs <- resolveAndInvokeOutputs job resolveInputsFn
-                    effects <- liftIO $ walkEffects evalState prefix (value outputs)
-                    for_ effects \path ->
-                      liftIO $ putStrLn $ T.intercalate "." path
+                    effectsAttr <- liftIO $ getEffectsAttr evalState (value outputs)
+                    for_ effectsAttr \effectsValue -> do
+                      effects <- liftIO $ walkEffects evalState prefix effectsValue
+                      for_ effects \path ->
+                        liftIO $ putStrLn $ T.intercalate "." path
             hci #? #onPush >>= traverse_ (listJobs "onPush")
             hci #? #onSchedule >>= traverse_ (listJobs "onSchedule")
+
+-- | Get the "effects" attribute from an attrset, if it exists.
+getEffectsAttr :: Ptr EvalState -> RawValue -> IO (Maybe RawValue)
+getEffectsAttr evalState rawValue = do
+  match' evalState rawValue >>= \case
+    IsAttrs attrsValue -> getAttr evalState attrsValue "effects"
+    _ -> pure Nothing
 
 -- | Recursively walk the attribute tree and collect effect paths.
 walkEffects :: Ptr EvalState -> [Text] -> RawValue -> IO [[Text]]

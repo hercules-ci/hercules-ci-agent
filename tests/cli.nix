@@ -188,6 +188,58 @@ runCommand "test-cli"
 
   cd ..
 
+  # Test hci effect list with effect outside effects attribute (should only list effects in effects attr)
+  mkdir -p test-repo-list-wrong-location
+  cd test-repo-list-wrong-location
+  git init
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+
+  cat >ci.nix <<EOF
+  { src ? builtins.getEnv "PWD" }:
+  {
+    herculesCI = ciArgs: {
+      onPush.default.outputs = {
+        effects.valid = derivation {
+          name = "valid-effect";
+          system = builtins.currentSystem;
+          builder = "${hello}/bin/hello";
+          isEffect = true;
+        };
+        # This effect is NOT in the effects attribute - should not be listed
+        wrongLocation = derivation {
+          name = "wrong-location-effect";
+          system = builtins.currentSystem;
+          builder = "${hello}/bin/hello";
+          isEffect = true;
+        };
+        # This throws - should not cause list to fail since we only look in effects
+        throwing = throw "This should not be evaluated by hci effect list";
+      };
+    };
+  }
+  EOF
+
+  git add ci.nix
+  git commit -m "Add herculesCI with misplaced effect"
+
+  git remote add origin ../remote.git
+  git push -u origin master:list-wrong-location-test
+
+  output=$(hci effect list --no-token --project github/test-owner/test-repo)
+  echo "hci effect list (wrong location) output:"
+  echo "$output"
+
+  # Should list the valid effect
+  echo "$output" | grep "onPush.default.effects.valid" > /dev/null
+  # Should NOT list the wrongly located effect
+  if echo "$output" | grep "wrongLocation" > /dev/null; then
+    echo "ERROR: Found wrongLocation in output - effects outside 'effects' attr should not be listed"
+    exit 1
+  fi
+
+  cd ..
+
   # Test hci effect list with traditional ci.nix (simple format, no herculesCI)
   mkdir -p test-repo-list-simple
   cd test-repo-list-simple
