@@ -130,5 +130,103 @@ runCommand "test-cli"
 
   cd ..
 
+  # Test hci effect list with herculesCI structure
+  mkdir -p test-repo-list
+  cd test-repo-list
+  git init
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+
+  # Create a herculesCI structure with multiple effects
+  cat >ci.nix <<EOF
+  { src ? builtins.getEnv "PWD" }:
+  {
+    herculesCI = ciArgs: {
+      onPush.default.outputs = {
+        effects = {
+          deploy = derivation {
+            name = "deploy-effect";
+            system = builtins.currentSystem;
+            builder = "${hello}/bin/hello";
+            isEffect = true;
+          };
+          notify = derivation {
+            name = "notify-effect";
+            system = builtins.currentSystem;
+            builder = "${hello}/bin/hello";
+            isEffect = true;
+          };
+        };
+      };
+      onSchedule.nightly.outputs = {
+        effects.backup = derivation {
+          name = "backup-effect";
+          system = builtins.currentSystem;
+          builder = "${hello}/bin/hello";
+          isEffect = true;
+        };
+      };
+    };
+  }
+  EOF
+
+  git add ci.nix
+  git commit -m "Add herculesCI effects for list test"
+
+  git remote add origin ../remote.git
+  git push -u origin master:list-test
+
+  # Test hci effect list
+  output=$(hci effect list --no-token --project github/test-owner/test-repo)
+  echo "hci effect list output:"
+  echo "$output"
+
+  # Check that all effects are listed (order may vary)
+  echo "$output" | grep -q "onPush.default.effects.deploy"
+  echo "$output" | grep -q "onPush.default.effects.notify"
+  echo "$output" | grep -q "onSchedule.nightly.effects.backup"
+
+  cd ..
+
+  # Test hci effect list with traditional ci.nix (simple format, no herculesCI)
+  mkdir -p test-repo-list-simple
+  cd test-repo-list-simple
+  git init
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+
+  # Traditional format: effects directly at top level, no onPush/onSchedule
+  cat >ci.nix <<EOF
+  {
+    simpleEffect = derivation {
+      name = "simple-list-effect";
+      system = builtins.currentSystem;
+      builder = "${hello}/bin/hello";
+      isEffect = true;
+    };
+    nested.deepEffect = derivation {
+      name = "deep-list-effect";
+      system = builtins.currentSystem;
+      builder = "${hello}/bin/hello";
+      isEffect = true;
+    };
+  }
+  EOF
+
+  git add ci.nix
+  git commit -m "Add simple ci.nix for list test"
+
+  git remote add origin ../remote.git
+  git push -u origin master:list-simple-test
+
+  output=$(hci effect list --no-token --project github/test-owner/test-repo)
+  echo "hci effect list (simple) output:"
+  echo "$output"
+
+  echo "$output" | grep -q "simpleEffect"
+  echo "$output" | grep -q "nested.deepEffect"
+
+  cd ..
+
   touch $out
 ''

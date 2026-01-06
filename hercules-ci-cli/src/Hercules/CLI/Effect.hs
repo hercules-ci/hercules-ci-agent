@@ -31,7 +31,7 @@ import Hercules.CLI.Options (flatCompleter, mkCommand, subparser)
 import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, getProjectPath, projectOption, projectPathOwner, projectPathProject, projectPathText)
 import Hercules.CLI.Secret (getSecretsFilePath)
 import Hercules.CNix (Store)
-import Hercules.CNix.Expr (EvalState, Match (IsAttrs), RawValue, Value (rtValue), getAttrBool, getDrvFile, match)
+import Hercules.CNix.Expr (EvalState, Match (IsAttrs), RawValue, Value (rtValue), getAttrBool, getAttrs, getDrvFile, isDerivation, match, match')
 import qualified Hercules.CNix.Std.Vector as Std.Vector
 import Hercules.CNix.Store (Derivation, buildPaths, getDerivationInputs, newStorePathWithOutputs)
 import qualified Hercules.CNix.Store as CNix
@@ -58,6 +58,10 @@ commandParser =
           "eval"
           (Optparse.progDesc "Evaluate an effect and print its derivation path")
           evalParser
+        <> mkCommand
+          "list"
+          (Optparse.progDesc "List all effects in the configuration")
+          listParser
     )
 
 -- Options for CI context (project, ref, token)
@@ -208,6 +212,72 @@ evalParser = do
       -- For eval, just print the derivation path
       drvPathBS <- liftIO $ CNix.storePathToPath store drvPath
       liftIO $ putStrLn $ decodeUtf8With lenientDecode drvPathBS
+
+listParser :: Optparse.Parser (IO ())
+listParser = do
+  opts <- ciContextOptionsParser
+  pure $ runAuthenticatedOrDummy opts.requireToken do
+    withNix \_store evalState -> do
+      ref <- liftIO $ computeRef opts.ref
+      -- Get the root to discover available handlers (onPush, onSchedule)
+      (rootMaybe, nixFile) <- evalHerculesCIAttr evalState opts.projectPath ref []
+      rootValue <- case rootMaybe of
+        Nothing -> exitMsg $ "Could not evaluate " <> nixFile
+        Just v -> pure v
+      -- Get job names from each handler type
+      jobPrefixes <- liftIO $ getJobPrefixes evalState rootValue
+      if null jobPrefixes
+        then do
+          -- Traditional format: walk the root directly for effects
+          effects <- liftIO $ walkEffects evalState [] rootValue
+          for_ effects \path ->
+            liftIO $ putStrLn $ T.intercalate "." path
+        else
+          -- Modern format: for each job, use evalHerculesCIAttr to get outputs
+          -- (invokes the outputs function) then walk to find effects
+          for_ jobPrefixes \prefix -> do
+            (outputsMaybe, _) <- evalHerculesCIAttr evalState opts.projectPath ref prefix
+            case outputsMaybe of
+              Nothing -> pure ()
+              Just outputsValue -> do
+                effects <- liftIO $ walkEffects evalState prefix outputsValue
+                for_ effects \path ->
+                  liftIO $ putStrLn $ T.intercalate "." path
+
+-- | Get job prefixes like ["onPush", "default"] or ["onSchedule", "nightly"]
+getJobPrefixes :: Ptr EvalState -> RawValue -> IO [[Text]]
+getJobPrefixes evalState rootValue = do
+  match' evalState rootValue >>= \case
+    IsAttrs rootAttrs -> do
+      attrs <- getAttrs evalState rootAttrs
+      fmap concat $ for (M.toList attrs) \(handlerName, handlerValue) ->
+        case handlerName of
+          name | name == "onPush" || name == "onSchedule" -> do
+            match' evalState handlerValue >>= \case
+              IsAttrs jobsAttrs -> do
+                jobs <- getAttrs evalState jobsAttrs
+                pure [[decodeUtf8With lenientDecode name, decodeUtf8With lenientDecode jobName] | (jobName, _) <- M.toList jobs]
+              _ -> pure []
+          _ -> pure []
+    _ -> pure []
+
+-- | Recursively walk the attribute tree and collect effect paths.
+walkEffects :: Ptr EvalState -> [Text] -> RawValue -> IO [[Text]]
+walkEffects evalState prefix value = do
+  match' evalState value >>= \case
+    IsAttrs attrsValue -> do
+      isDeriv <- isDerivation evalState value
+      if isDeriv
+        then do
+          isEff <- getAttrBool evalState attrsValue "isEffect"
+          case isEff of
+            Right (Just True) -> pure [prefix]
+            _ -> pure []
+        else do
+          attrs <- getAttrs evalState attrsValue
+          fmap concat $ for (M.toList attrs) \(name, childValue) ->
+            walkEffects evalState (prefix ++ [decodeUtf8With lenientDecode name]) childValue
+    _ -> pure []
 
 -- | Evaluate a herculesCI attribute path.
 -- Returns the value at the path (if found) and the nix file path for error messages.
