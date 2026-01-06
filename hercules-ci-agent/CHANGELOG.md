@@ -113,9 +113,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.9.11] - 2023-03-06
 
-### BREAKING
+### Changed
 
- -  The `nix-darwin` module uses new user id and group id numbers, to match the upstream `nix-darwin` module.
+ -  **Breaking:** The `nix-darwin` module uses new user id and group id numbers, to match the upstream `nix-darwin` module.
     The main benefit of the upstream change is that the agent user will not appear as a normal (human) user on the system.
 
     To migrate, run:
@@ -570,9 +570,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 ## [0.7.0] - 2020-05-05
 
-### Known issues
-
- - Agent process user must be in `trusted-users`. This is the case with the NixOS and nix-darwin module. Doing so is recommended for ease of use and performance but should not be a requirement.
+**Known issue:** Agent process user must be in `trusted-users`. This is the case with the NixOS and nix-darwin module. Doing so is recommended for ease of use and performance but should not be a requirement.
 
 ### Added
 
@@ -622,7 +620,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
  - Cached builds to speed up `aarch64-linux` agent deployments.
 
-### [0.6.3] - 2020-02-19
+## [0.6.3] - 2020-02-19
 
 ### Fixed
 
@@ -638,7 +636,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
  - Agent will now try to verify that the nix-daemon has narinfo-cache-negative-ttl = 0. This is required for correct operation.
 
-### [0.6.2] - 2020-01-30
+## [0.6.2] - 2020-01-30
 
 ### Fixed
 
@@ -646,7 +644,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
    required for uploading sources and compressed outputs over 100MB in size.
    Please update.
 
-### [0.6.1] - 2019-11-06
+## [0.6.1] - 2019-11-06
 
 ### Fixed
 
@@ -660,7 +658,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
  - Temporarily revert a Nix GC configuration change that might cause problems
    until agent gc root behavior is improved.
 
-### [0.6.0] - 2019-11-04
+## [0.6.0] - 2019-11-04
 
 ### Changed
 

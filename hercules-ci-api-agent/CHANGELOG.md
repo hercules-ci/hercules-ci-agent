@@ -70,7 +70,7 @@ Maintenance and tooling update.
  - Evaluation task: `ciSystems` parameter, `OnPush` selector, `extraGitCredentials`
  - Secrets: `condition` parameter
 
-### Updated
+### Changed
 
  - aeson: 1 -> 2
 
