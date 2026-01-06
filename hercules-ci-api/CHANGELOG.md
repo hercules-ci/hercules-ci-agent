@@ -34,27 +34,27 @@ deea4 doc: API / Find jobs: refer to per project endpoint
 
 ### Added
 
- - Experimental OpenAPI 3 generation
+- Experimental OpenAPI 3 generation
 
 ## 0.8.1.0 - 2023-06-28
 
 ### Added
 
- - `getJob` (by id)
- - `projectJobEvaluationDiff` for diffing a pair of evaluations
- - `Job.{repo,owner,forge}Name`
+- `getJob` (by id)
+- `projectJobEvaluationDiff` for diffing a pair of evaluations
+- `Job.{repo,owner,forge}Name`
 
 ## 0.8.0.0 - 2023-03-06
 
 ### Changed
 
- - `SourceHostingSite` was renamed to `Forge`
+- `SourceHostingSite` was renamed to `Forge`
 
 ### Added
 
- - GitLab endpoints
- - `onSchedule` information
- - Various small additions
+- GitLab endpoints
+- `onSchedule` information
+- Various small additions
 
 
 ## 0.7.2.1 - 2022-12-29
@@ -65,56 +65,56 @@ Maintenance and tooling update.
 
 ### Added
 
- - Add getJobSource to resolve extraInputs in hci
- - `PagedResponse`
- - `SimpleProject`
- - `SimpleRepo`
- - `ImmutableGitInput`
- - `JobType`
+- Add getJobSource to resolve extraInputs in hci
+- `PagedResponse`
+- `SimpleProject`
+- `SimpleRepo`
+- `ImmutableGitInput`
+- `JobType`
 
 ## [0.7.1.0] - 2021-09-06
 
 ### Added
 
- - Notification settings
- - Email info
- - State locks: opt-in locks to be used in conjunction with state files. Use of locks is not enforced.
+- Notification settings
+- Email info
+- State locks: opt-in locks to be used in conjunction with state files. Use of locks is not enforced.
 
 ### Changed
 
- - `DerivationOutput.outputPath` is now nullable when retrieving build info
+- `DerivationOutput.outputPath` is now nullable when retrieving build info
 
 ## [0.7.0.0] - 2021-06-22
 
 ### Added
 
- - Account: manageInstallationURL, installationIsSelection
- - AccountInstallationStatus
- - signOut
- - Agent labels
- - By name variations of account and state endpoints
+- Account: manageInstallationURL, installationIsSelection
+- AccountInstallationStatus
+- signOut
+- Agent labels
+- By name variations of account and state endpoints
 
 ## [0.6.0.1] - 2020-04-21
 
 ### Fixed
 
- - A warning
+- A warning
 
 ## [0.6.0.0] - 2020-03-07
 
 ### Added
 
- - Build logs
- - Evaluation log
- - Attribute types
- - Effects
- - State files
- - CLI authorization flow
- - Endpoint for resolving git urls to projects
+- Build logs
+- Evaluation log
+- Attribute types
+- Effects
+- State files
+- CLI authorization flow
+- Endpoint for resolving git urls to projects
 
 ### Changed
 
- - Adaptations to support servant streaming
+- Adaptations to support servant streaming
 
 ## [0.5.0.0] - 2020-01-30
 
