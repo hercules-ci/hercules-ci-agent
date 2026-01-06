@@ -5,14 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.8.4.0 - 2024-05-19
+## [0.8.4.0] - 2024-05-19
 
 ### Added
 
 - `hercules-ci-api-openapi3` package in the flake, containing the experimental OpenAPI 3 spec
 - `operationId` to the endpoints in that spec
 
-## 0.8.3.0 - 2024-05-03
+## [0.8.3.0] - 2024-05-03
 
 ### Added
 - `O3.ToParamSchema JobType`
@@ -30,13 +30,13 @@ deea4 doc: API / Find jobs: refer to per project endpoint
 - Deduplicate OpenAPI3 security / jwt items
 - Replace bad generated OpenAPI3 identifier
 
-## 0.8.2.0 - 2024-02-12
+## [0.8.2.0] - 2024-02-12
 
 ### Added
 
 - Experimental OpenAPI 3 generation
 
-## 0.8.1.0 - 2023-06-28
+## [0.8.1.0] - 2023-06-28
 
 ### Added
 
@@ -44,7 +44,7 @@ deea4 doc: API / Find jobs: refer to per project endpoint
 - `projectJobEvaluationDiff` for diffing a pair of evaluations
 - `Job.{repo,owner,forge}Name`
 
-## 0.8.0.0 - 2023-03-06
+## [0.8.0.0] - 2023-03-06
 
 ### Changed
 
@@ -57,7 +57,7 @@ deea4 doc: API / Find jobs: refer to per project endpoint
 - Various small additions
 
 
-## 0.7.2.1 - 2022-12-29
+## [0.7.2.1] - 2022-12-29
 
 Maintenance and tooling update.
 
@@ -161,10 +161,17 @@ Maintenance and tooling update.
 
 - requiredFeatures support
 
-## 0.1.0.0
+## [0.1.0.0]
 
 Initial release
 
+[0.8.4.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.8.3.0...hercules-ci-api-0.8.4.0
+[0.8.3.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.8.2.0...hercules-ci-api-0.8.3.0
+[0.8.2.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.8.1.0...hercules-ci-api-0.8.2.0
+[0.8.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.8.0.0...hercules-ci-api-0.8.1.0
+[0.8.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.7.2.1...hercules-ci-api-0.8.0.0
+[0.7.2.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.7.2.0...hercules-ci-api-0.7.2.1
+[0.7.2.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-api-0.7.1.0...hercules-ci-api-0.7.2.0
 [0.7.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.0.0...hercules-ci-api-0.7.1.0
 [0.7.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.0.1...hercules-ci-api-0.7.0.0
 [0.6.0.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.0.0...hercules-ci-api-0.6.0.1

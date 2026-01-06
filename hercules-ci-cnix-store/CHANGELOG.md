@@ -5,33 +5,33 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## 0.4.1.0 - 2026-01-06
+## [0.4.1.0] - 2026-01-06
 
 ### Added
 
 - Nix 2.29 - 2.33 support
 
-## 0.4.0.0 - 2025-07-18
+## [0.4.0.0] - 2025-07-18
 
 ### Changed
 
 - `init` now installs synchronous signal handlers for you. You may remove your call to `installDefaultSigINTHandler`.
 - The `nix-main` library dependency has been dropped. (if you don't also use `hercules-ci-cnix-expr`)
 
-## 0.3.7.0 - 2025-05-05
+## [0.3.7.0] - 2025-05-05
 
 ### Added
 
 - `getMaxBuildJobs`
 - Nix 2.28 support
 
-## 0.3.6.1 - 2024-11-15
+## [0.3.6.1] - 2024-11-15
 
 ### Added
 
 - Nix 2.24 support
 
-## 0.3.6.0 - 2024-05-19
+## [0.3.6.0] - 2024-05-19
 
 ### Added
 
@@ -46,13 +46,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Memory safety stability improvements
 - Cleaned up haddocks
 
-## 0.3.5.1 - 2024-05-03
+## [0.3.5.1] - 2024-05-03
 
 ### Fixed
 
 - Remove most uses of `c_str()`, of which at least one exhibited undefined behavior.
 
-## 0.3.5.0 - 2024-02-12
+## [0.3.5.0] - 2024-02-12
 
 ### Added
 
@@ -62,7 +62,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - A `both` function to combine `Verbosity`
 
-## 0.3.4.0 - 2023-06-28
+## [0.3.4.0] - 2023-06-28
 
 ### Added
 
@@ -72,7 +72,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - `getUseSQLiteWAL` low level function. (Use of Nix sqlite files is not recommended)
 
-## 0.3.3.5 - 2023-03-06
+## [0.3.3.5] - 2023-03-06
 
 ### Added
 
@@ -80,41 +80,41 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Nix 2.13 support
 
-## 0.3.3.4 - 2023-03-06
+## [0.3.3.4] - 2023-03-06
 
 A dud.
 
-## 0.3.3.3 - 2022-12-29
+## [0.3.3.3] - 2022-12-29
 
 ### Added
 
 - Nix 2.12 support
 
-## 0.3.3.2 - 2022-11-15
+## [0.3.3.2] - 2022-11-15
 
 ### Added
 
 - Nix 2.11 support
 
-## 0.3.3.1 - 2022-07-21
+## [0.3.3.1] - 2022-07-21
 
 ### Added
 
 - Nix 2.10 support
 
-## 0.3.3.0 - 2022-06-21
+## [0.3.3.0] - 2022-06-21
 
 ### Added
 
 - Nix 2.9 support
 
-## 0.3.2.0 - 2022-05-17
+## [0.3.2.0] - 2022-05-17
 
 ### Added
 
 - Nix 2.8 support
 
-## 0.3.1.0 - 2022-04-08
+## [0.3.1.0] - 2022-04-08
 
 ### Added
 
@@ -122,13 +122,13 @@ A dud.
 
 - `isValidPath`: a simple alternative to `queryPathInfo` for simple needs.
 
-## 0.3.0.1 - 2022-03-21
+## [0.3.0.1] - 2022-03-21
 
 ### Removed
 
 - Clean up inline-c generated exports
 
-## 0.3.0.0 - 2022-03-15
+## [0.3.0.0] - 2022-03-15
 
 ### Added
 
@@ -139,7 +139,7 @@ A dud.
 
 - Nix 2.3 support
 
-## 0.2.1.2 - 2022-03-07
+## [0.2.1.2] - 2022-03-07
 
 ### Added
 
@@ -149,13 +149,13 @@ A dud.
 
 - Build with newer Nix versions 2.5, 2.6
 
-## 0.2.1.1 - 2021-11-17
+## [0.2.1.1] - 2021-11-17
 
 ### Fixed
 
 - Remove unnecessary/unused/wrong compat helper in internal code
 
-## 0.2.1.0 - 2021-09-06
+## [0.2.1.0] - 2021-09-06
 
 ### Added
 
@@ -169,13 +169,13 @@ A dud.
 
 - Interrupt handling
 
-## 0.2.0.1 - 2021-06-16
+## [0.2.0.1] - 2021-06-16
 
 ### Fixed
 
 - Missing file in sdist
 
-## 0.2.0.0 - 2021-06-16
+## [0.2.0.0] - 2021-06-16
 
 ### Added
 
@@ -196,15 +196,40 @@ A dud.
 - Some functions now need a `Store` because of the `StorePath` change
 
 
-## 0.1.1.0 - 2021-04-21
+## [0.1.1.0] - 2021-04-21
 
 ### Added
 
 - Functions for retrieving the Nix daemon protocol versions
 - Functions for interacting with the interrupt handler
 
-## 0.1.0.0 - 2021-03-05
+## [0.1.0.0] - 2021-03-05
 
 ### Added
 
 - First code based mostly on Hercules CI Agent and some lines from the Cachix client.
+
+[0.1.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.1.0.0...hercules-ci-cnix-store-0.1.1.0
+[0.2.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.1.1.0...hercules-ci-cnix-store-0.2.0.0
+[0.2.0.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.2.0.0...hercules-ci-cnix-store-0.2.0.1
+[0.2.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.2.0.1...hercules-ci-cnix-store-0.2.1.0
+[0.2.1.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.2.1.0...hercules-ci-cnix-store-0.2.1.1
+[0.2.1.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.2.1.1...hercules-ci-cnix-store-0.2.1.2
+[0.3.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.2.1.2...hercules-ci-cnix-store-0.3.0.0
+[0.3.0.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.0.0...hercules-ci-cnix-store-0.3.0.1
+[0.3.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.0.1...hercules-ci-cnix-store-0.3.1.0
+[0.3.2.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.1.0...hercules-ci-cnix-store-0.3.2.0
+[0.3.3.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.2.0...hercules-ci-cnix-store-0.3.3.0
+[0.3.3.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.3.0...hercules-ci-cnix-store-0.3.3.1
+[0.3.3.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.3.1...hercules-ci-cnix-store-0.3.3.2
+[0.3.3.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.3.2...hercules-ci-cnix-store-0.3.3.3
+[0.3.3.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.3.3...hercules-ci-cnix-store-0.3.3.4
+[0.3.3.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.3.4...hercules-ci-cnix-store-0.3.3.5
+[0.3.4.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.3.5...hercules-ci-cnix-store-0.3.4.0
+[0.3.5.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.4.0...hercules-ci-cnix-store-0.3.5.0
+[0.3.5.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.5.0...hercules-ci-cnix-store-0.3.5.1
+[0.3.6.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.5.1...hercules-ci-cnix-store-0.3.6.0
+[0.3.6.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.6.0...hercules-ci-cnix-store-0.3.6.1
+[0.3.7.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.6.1...hercules-ci-cnix-store-0.3.7.0
+[0.4.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.7.0...hercules-ci-cnix-store-0.4.0.0
+[0.4.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.4.0.0...hercules-ci-cnix-store-0.4.1.0

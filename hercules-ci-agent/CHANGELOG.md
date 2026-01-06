@@ -248,7 +248,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Add a timeout to prevent hang in case of a stuck handshake
     - Enforce log limit on client side as well in case of excessive log spam and an upload bottleneck
 
-## 0.9.4 - 2022-05-17
+## [0.9.4] - 2022-05-17
 
 Bad release. See 0.9.5 for changes.
 
@@ -804,7 +804,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Support ci.nix or nix/ci.nix along with default.nix
 
-## 0.1.0.0 - 2019-03-28
+## [0.1.0.0] - 2019-03-28
 
 - Initial release
 
@@ -825,6 +825,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 [0.9.6]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.5...hercules-ci-agent-0.9.6
 [0.9.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.3...hercules-ci-agent-0.9.5
 [0.9.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.2...hercules-ci-agent-0.9.3
+[0.9.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.3...hercules-ci-agent-0.9.4
 [0.9.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.1...hercules-ci-agent-0.9.2
 [0.9.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.9.0...hercules-ci-agent-0.9.1
 [0.9.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.8.7...hercules-ci-agent-0.9.0
@@ -841,6 +842,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 [0.7.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.2...hercules-ci-agent-0.7.3
 [0.7.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.7.1...hercules-ci-agent-0.7.2
 [0.7.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.6...hercules-ci-agent-0.7.1
+[0.7.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.6...hercules-ci-agent-0.7.0
 [0.6.6]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.5...hercules-ci-agent-0.6.6
 [0.6.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.4...hercules-ci-agent-0.6.5
 [0.6.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-agent-0.6.3...hercules-ci-agent-0.6.4
