@@ -337,7 +337,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Build with newer Nix versions 2.5, 2.6
 
-## [0.8.5]
+## [0.8.5] - 2022-01-21
 
 ### Added
 
@@ -359,7 +359,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - A test that relied on `aeson` field order, which isn't stable. #352
 
-## [0.8.4]
+## [0.8.4] - 2021-11-17
 
 ### Added
 
@@ -383,7 +383,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Various fixes related to the upgrade to Nix 2.4.
 
-## [0.8.3]
+## [0.8.3] - 2021-09-06
 
 ### Added
 
@@ -393,7 +393,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Interrupt handling has been improved
 
-## [0.8.2]
+## [0.8.2] - 2021-06-22
 
 ### Added
 
@@ -403,7 +403,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - #304, `message:epollControl: invalid argument (Bad file descriptor)` in effect task
 
-## [0.8.1]
+## [0.8.1] - 2021-04-21
 
 ### Added
 
@@ -414,7 +414,7 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 - Fix an issue where long-runnin nix methods weren't interrupted
 - Fix error `mkdir /run/runc: permission denied`
 
-## [0.8.0]
+## [0.8.0] - 2021-03-07
 
 ### Added
 

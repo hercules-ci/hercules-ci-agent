@@ -171,7 +171,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Remove `-h` and `--help` from tab completion and help text.
 - User-friendly error when `ci.nix` or similar can not be found.
 
-## [0.1.0]
+## [0.1.0] - 2021-03-07
 
 ### Added
 

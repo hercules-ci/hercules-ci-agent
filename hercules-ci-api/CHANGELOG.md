@@ -161,7 +161,7 @@ Maintenance and tooling update.
 
 - requiredFeatures support
 
-## [0.1.0.0]
+## [0.1.0.0] - 2019-03-27
 
 Initial release
 
