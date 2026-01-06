@@ -37,14 +37,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
  - `Hercules.CNix.Memory` module, containing type classes and helpers for common memory management tasks.
 
+### Removed
+
+ - Certain unintentional exports have been deprecated; see haddocks
+
 ### Fixed
 
  - Memory safety stability improvements
  - Cleaned up haddocks
-
-### Removed
-
- - Certain unintentional exports have been deprecated; see haddocks
 
 ## 0.3.5.1 - 2024-05-03
 
@@ -141,13 +141,13 @@ A dud.
 
 ## 0.2.1.2 - 2022-03-07
 
-### Fixed
-
- - Build with newer Nix versions 2.5, 2.6
-
 ### Added
 
  - Improved conditional code support with `cabal-pkg-config-version-hook`
+
+### Fixed
+
+ - Build with newer Nix versions 2.5, 2.6
 
 ## 0.2.1.1 - 2021-11-17
 
@@ -161,13 +161,13 @@ A dud.
 
  - `installDefaultSigINTHandler`
 
-### Fixed
-
- - Interrupt handling
-
 ### Changed
 
  - Updated to work with a newer `nixUnstable`
+
+### Fixed
+
+ - Interrupt handling
 
 ## 0.2.0.1 - 2021-06-16
 

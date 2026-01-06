@@ -59,6 +59,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.10.1] - 2024-02-12
 
+### Added
+
+ - Effect mounts. Specify [`effectMountables`](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#effectMountables) in the agent configuration, deploy, and [mount](https://docs.hercules-ci.com/hercules-ci-agent/effects/declaration.html#__hci_effect_mounts) them into an effect. This can be used for instance to expose the host's `/etc/hosts`, or hardware devices such as GPUs. Access is [controlled](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#effectMountables-condition) by the agent configuration.
+
+ - New configuration option `remotePlatformsWithSameFeatures`, allowing a remote build to be used before more elaborate remote builder support is implemented.
+   The recommended method for running a cluster is still to install `hercules-ci-agent` on each machine, as that is more efficient and accurate.
+
+ - Agent [labels](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#labels) can now be `null`, when using the JSON configuration format.
+
 ### Changed
 
  - More work is performed concurrently during evaluation, including binary cache lookups and (more) build dispatch. This results in a speedup.
@@ -84,15 +93,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - Attribute sets containing a `_type` attribute are not scanned for derivations in `herculesCI.<...>.outputs`. This prevents accidental scanning of large or failing attribute trees, such as NixOS configurations. `nixosConfigurations` in Flakes are still built as usual, as they are not (verbatim) in the `herculesCI.<...>.outputs` attributes.
 
-### Added
-
- - Effect mounts. Specify [`effectMountables`](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#effectMountables) in the agent configuration, deploy, and [mount](https://docs.hercules-ci.com/hercules-ci-agent/effects/declaration.html#__hci_effect_mounts) them into an effect. This can be used for instance to expose the host's `/etc/hosts`, or hardware devices such as GPUs. Access is [controlled](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#effectMountables-condition) by the agent configuration.
-
- - New configuration option `remotePlatformsWithSameFeatures`, allowing a remote build to be used before more elaborate remote builder support is implemented.
-   The recommended method for running a cluster is still to install `hercules-ci-agent` on each machine, as that is more efficient and accurate.
-
- - Agent [labels](https://docs.hercules-ci.com/hercules-ci-agent/agent-config.html#labels) can now be `null`, when using the JSON configuration format.
-
 ### Fixed
 
  - Low level crash details are now reported in the log as expected.
@@ -112,6 +112,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Do not `chdir` the build worker. This functionality of the `process` package appears unreliable, but is not needed.
 
 ## [0.9.11] - 2023-03-06
+
+### Added
+
+ - Nix verbosity can now be specified in the config file under the
+   new attribute `nixVerbosity`.
+
+ - Cachix 1.3 support
+
+ - Nix 2.14 support
+
+ - Nix 2.13 support
+
 
 ### Changed
 
@@ -147,25 +159,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - `darwinConfigurations` is now filtered in accordance with `ciSystems`.
 
 
-### Added
-
- - Nix verbosity can now be specified in the config file under the
-   new attribute `nixVerbosity`.
-
- - Cachix 1.3 support
-
- - Nix 2.14 support
-
- - Nix 2.13 support
-
-
 ## [0.9.10] - 2022-12-29
-
-### Fixed
-
- - Detect stack overflows correctly in Nix evaluation
-
- - Retry errors from Nix-native (non-cachix) caches
 
 ### Added
 
@@ -174,6 +168,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
  - Unwrap some error messages for readability
+
+### Fixed
+
+ - Detect stack overflows correctly in Nix evaluation
+
+ - Retry errors from Nix-native (non-cachix) caches
 
 ## [0.9.9] - 2022-12-02
 
@@ -236,6 +236,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Nix 2.8.0 support
  - Improved log contexts
 
+### Removed
+
+ - `hercules-ci-agent-nix_2_5` variant: upgrade to plain `hercules-ci-agent` (2.8.0) or `_nix_2_7`.
+
 ### Fixed
 
  - Workaround for cachix#406 (add `login` to `netrc`)
@@ -243,10 +247,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Towards the error "Could not push logs within 10 minutes after completion"
     - Add a timeout to prevent hang in case of a stuck handshake
     - Enforce log limit on client side as well in case of excessive log spam and an upload bottleneck
-
-### Removed
-
- - `hercules-ci-agent-nix_2_5` variant: upgrade to plain `hercules-ci-agent` (2.8.0) or `_nix_2_7`.
 
 ## 0.9.4 - 2022-05-17
 
@@ -312,13 +312,13 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
  - Installed private repositories can now be read by a collaborator. If you need to enforce confidentiality across repositories, contact us and use a personal access token with appropriate permissions in the meanwhile.
 
-### Fixed
-
- - When the root of a `ci.nix` is a list, an error message is returned.
-
 ### Removed
 
  - Nix 2.3 support
+
+### Fixed
+
+ - When the root of a `ci.nix` is a list, an error message is returned.
 
 ## [0.8.7] - 2022-03-09
 
@@ -329,13 +329,13 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 ## [0.8.6] - 2022-03-07
 
-### Fixed
-
- - Build with newer Nix versions 2.5, 2.6
-
 ### Added
 
  - Improved conditional code support with `cabal-pkg-config-version-hook`
+
+### Fixed
+
+ - Build with newer Nix versions 2.5, 2.6
 
 ## [0.8.5]
 
@@ -473,25 +473,19 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
  - `concurrentTasks` now has a default, `"auto"` for ease of setup and to help
    avoid underutilization.
 
+### Changed
+
+ - Cachix caches without `signingKeys` will be pushed to, as part of the recently
+   introduced write token feature (Cachix-managed signing keys)
+
 ### Fixed
 
  - The parent directory name will match the repo name [support#40](https://github.com/hercules-ci/support/issues/40)
 
  - Previously, lines from Nix's configured netrc file were ignored. Now they are appended to Hercules CI's netrc lines.
 
-### Changed
-
- - Cachix caches without `signingKeys` will be pushed to, as part of the recently
-   introduced write token feature (Cachix-managed signing keys)
-
 
 ## [0.7.5] - 2020-11-27
-
-### Fixed
-
- - GHC 8.10.2 compatibility for NixOS unstable / NixOS 21.03
-
- - Build with cachix 0.5.1. Write token support is not included due to a break configuration semantics. It will be available in >= 0.8.
 
 ### Changed
 
@@ -501,7 +495,25 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
  - Temporarily switch to cabal tooling due to breakage. `master` continues to be stack-based.
 
+### Fixed
+
+ - GHC 8.10.2 compatibility for NixOS unstable / NixOS 21.03
+
+ - Build with cachix 0.5.1. Write token support is not included due to a break configuration semantics. It will be available in >= 0.8.
+
 ## [0.7.4] - 2020-08-25
+
+### Changed
+
+ - The NixOS module in the hercules-ci-agent repo now disables the upcoming
+   module that is packaged upstream with NixOS.
+
+   The upstream module will configure fewer things for you, to be in line with
+   normal NixOS expectations. Notably, it does not configure automatic garbage
+   collection and it does not preconfigure NixOps keys deployment.
+
+   The configuration interface in the hercules-ci-agent repo will remain unchanged for `0.7` but `0.8` will
+   match the upstream interface.
 
 ### Fixed
 
@@ -517,18 +529,6 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
  - Add a safety measure to prevent unintended increases in workload in case
    Nix sees an opportunity for concurrency that was not intended by Hercules CI.
-
-### Changed
-
- - The NixOS module in the hercules-ci-agent repo now disables the upcoming
-   module that is packaged upstream with NixOS.
-
-   The upstream module will configure fewer things for you, to be in line with
-   normal NixOS expectations. Notably, it does not configure automatic garbage
-   collection and it does not preconfigure NixOps keys deployment.
-
-   The configuration interface in the hercules-ci-agent repo will remain unchanged for `0.7` but `0.8` will
-   match the upstream interface.
 
 ## [0.7.3] - 2020-07-18
 
@@ -602,23 +602,23 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 ## [0.6.5] - 2020-03-07
 
-### Fixed
-
- - Work around a systemd behavior where it didn't restart the unit
-
 ### Added
 
  - `--test-configuration` flag to validate the configuration without actually running the agent.
 
-## [0.6.4] - 2020-03-06
-
 ### Fixed
 
- - Fix a bug blocking evaluation when a store path is removed from cache or cache configuration is changed.
+ - Work around a systemd behavior where it didn't restart the unit
+
+## [0.6.4] - 2020-03-06
 
 ### Added
 
  - Cached builds to speed up `aarch64-linux` agent deployments.
+
+### Fixed
+
+ - Fix a bug blocking evaluation when a store path is removed from cache or cache configuration is changed.
 
 ## [0.6.3] - 2020-02-19
 
@@ -753,6 +753,20 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 ## [0.3.0] - 2019-07-05
 
+### Added
+
+- Added Cachix support, for multi-agent and multi-platform support
+
+- Report derivation outputs with their size and hashes
+
+- Added Darwin support via nix-darwin
+
+- Support `requiredFeatures` attribute on derivations
+
+- Hello and hearthbeat protocol, which will allow the
+  service to be aware of how the agent is configured and
+  when it's online.
+
 ### Changed
 
 - Configuration of the agent is now done via `--config agent.toml`
@@ -773,20 +787,6 @@ This release comes with an [Upgrade Guide! ✨](https://docs.hercules-ci.com/her
 
 - Added retries to status reporting to fix potential
   inconsistencies on the service
-
-### Added
-
-- Added Cachix support, for multi-agent and multi-platform support
-
-- Report derivation outputs with their size and hashes
-
-- Added Darwin support via nix-darwin
-
-- Support `requiredFeatures` attribute on derivations
-
-- Hello and hearthbeat protocol, which will allow the
-  service to be aware of how the agent is configured and
-  when it's online.
 
 ## [0.2] - 2019-05-14
 

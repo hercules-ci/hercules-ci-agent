@@ -101,13 +101,13 @@ Solve build warnings.
 
 ## 0.3.1.1 - 2022-03-21
 
-### Fixed
-
- - Add test data that was missing from the sdist tarball
-
 ### Removed
 
  - Clean up inline-c generated exports
+
+### Fixed
+
+ - Add test data that was missing from the sdist tarball
 
 ## 0.3.1.0 - 2022-03-18
 
@@ -145,13 +145,13 @@ Solve build warnings.
 
 ## 0.2.0.1 - 2022-03-07
 
-### Fixed
-
- - Build with newer Nix versions 2.5, 2.6
-
 ### Added
 
  - Improved conditional code support with `cabal-pkg-config-version-hook`
+
+### Fixed
+
+ - Build with newer Nix versions 2.5, 2.6
 
 ## 0.2.0.0 - 2021-06-22
 

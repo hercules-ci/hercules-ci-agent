@@ -31,10 +31,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## 0.3.6 - 2023-03-07
 
-### Fixed
-
- - `hci effect run`: Attribute names with spaces, periods and/or quotes can now be specified on the command line.
-
 ### Added
 
  - `hci effect run --pretend-branch` and `--pretend-ref` can now be used to replace `--as-*`.
@@ -43,6 +39,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
    `--as-*` flags are still available, for those who don't want to switch right away, to remain compatible with outdated installations of `hci`.
 
  - `--version`
+
+### Fixed
+
+ - `hci effect run`: Attribute names with spaces, periods and/or quotes can now be specified on the command line.
 
 ## 0.3.5 - 2022-12-29
 

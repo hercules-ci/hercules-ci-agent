@@ -19,15 +19,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## 0.5.0.0 - 2023-03-06
 
-### Changed
-
- - `SourceHostingSite` was renamed to `Forge`
-
 ### Added
 
  - GitLab endpoints
  - `onSchedule` information
  - Various small additions
+
+### Changed
+
+ - `SourceHostingSite` was renamed to `Forge`
 
 
 ## 0.4.6.1 - 2022-12-29
@@ -94,13 +94,13 @@ Maintenance and tooling update.
 
 ## 0.4.0.0 - 2021-06-22
 
-### Changed
-
- - `OutputInfo.path` is optional
-
 ### Added
 
  - `ResultTypeBuildLogLine`
+
+### Changed
+
+ - `OutputInfo.path` is optional
 
 ## 0.3.1.0 - 2021-04-21
 
