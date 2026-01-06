@@ -1,6 +1,7 @@
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE OverloadedLabels #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
@@ -16,7 +17,7 @@ import Hercules.API.Attribute (attributePathFromString)
 import Hercules.API.Id (Id (Id, idUUID))
 import qualified Hercules.API.Projects as Projects
 import qualified Hercules.API.Projects.CreateUserEffectTokenResponse as CreateUserEffectTokenResponse
-import Hercules.Agent.NixFile (getVirtualValueByPath)
+import Hercules.Agent.NixFile (getHerculesCI, getVirtualValueByPath, homeExprRawValue, loadNixFile, resolveAndInvokeOutputs)
 import qualified Hercules.Agent.NixFile.GitSource as GitSource
 import qualified Hercules.Agent.NixFile.HerculesCIArgs as HerculesCIArgs
 import Hercules.Agent.Sensitive (Sensitive (Sensitive))
@@ -32,6 +33,7 @@ import Hercules.CLI.Project (ProjectPath, getProjectIdAndPath, getProjectPath, p
 import Hercules.CLI.Secret (getSecretsFilePath)
 import Hercules.CNix (Store)
 import Hercules.CNix.Expr (EvalState, Match (IsAttrs), RawValue, Value (rtValue), getAttrBool, getAttrs, getDrvFile, isDerivation, match, match')
+import Hercules.CNix.Expr.Schema (PSObject (value), dictionaryToMap, (#?))
 import qualified Hercules.CNix.Std.Vector as Std.Vector
 import Hercules.CNix.Store (Derivation, buildPaths, getDerivationInputs, newStorePathWithOutputs)
 import qualified Hercules.CNix.Store as CNix
@@ -219,54 +221,45 @@ listParser = do
   pure $ runAuthenticatedOrDummy opts.requireToken do
     withNix \_store evalState -> do
       ref <- liftIO $ computeRef opts.ref
-      -- Get the root to discover available handlers (onPush, onSchedule)
-      (rootMaybe, nixFile) <- evalHerculesCIAttr evalState opts.projectPath ref []
-      rootValue <- case rootMaybe of
-        Nothing -> exitMsg $ "Could not evaluate " <> nixFile
-        Just v -> pure v
-      -- Get job names from each handler type
-      jobPrefixes <- liftIO $ getJobPrefixes evalState rootValue
-      if null jobPrefixes
-        then do
-          -- Traditional format: walk the root directly for effects
-          effects <- liftIO $ walkEffects evalState [] rootValue
-          for_ effects \path ->
-            liftIO $ putStrLn $ T.intercalate "." path
-        else
-          -- Modern format: for each job, use evalHerculesCIAttr to get outputs
-          -- (invokes the outputs function) then walk to find effects
-          for_ jobPrefixes \prefix -> do
-            (outputsMaybe, _) <- evalHerculesCIAttr evalState opts.projectPath ref prefix
-            case outputsMaybe of
-              Nothing -> pure ()
-              Just outputsValue -> do
-                effects <- liftIO $ walkEffects evalState prefix outputsValue
-                for_ effects \path ->
-                  liftIO $ putStrLn $ T.intercalate "." path
+      projectPath <- getProjectPath opts.projectPath
+      args <- liftIO $ createHerculesCIArgs (Just ref) (Just projectPath)
+      let nixFile = GitSource.outPath $ HerculesCIArgs.primaryRepo args
+      homeExprEither <- liftIO $ loadNixFile evalState (toS nixFile) (HerculesCIArgs.primaryRepo args)
+      homeExpr <- case homeExprEither of
+        Left err -> exitMsg $ toS err
+        Right h -> pure h
 
--- | Get job prefixes like ["onPush", "default"] or ["onSchedule", "nightly"]
-getJobPrefixes :: Ptr EvalState -> RawValue -> IO [[Text]]
-getJobPrefixes evalState rootValue = do
-  match' evalState rootValue >>= \case
-    IsAttrs rootAttrs -> do
-      attrs <- getAttrs evalState rootAttrs
-      fmap concat $ for (M.toList attrs) \(handlerName, handlerValue) ->
-        case handlerName of
-          name | name == "onPush" || name == "onSchedule" -> do
-            match' evalState handlerValue >>= \case
-              IsAttrs jobsAttrs -> do
-                jobs <- getAttrs evalState jobsAttrs
-                pure [[decodeUtf8With lenientDecode name, decodeUtf8With lenientDecode jobName] | (jobName, _) <- M.toList jobs]
-              _ -> pure []
-          _ -> pure []
-    _ -> pure []
+      uio <- askUnliftIO
+      let resolveInputsFn = liftIO . resolveInputs uio evalState (Just projectPath)
+
+      flip runReaderT evalState do
+        herculesCIMaybe <- getHerculesCI homeExpr args
+        case herculesCIMaybe of
+          Nothing -> do
+            -- Traditional format: walk the root directly for effects
+            effects <- liftIO $ walkEffects evalState [] (homeExprRawValue homeExpr)
+            for_ effects \path ->
+              liftIO $ putStrLn $ T.intercalate "." path
+          Just hci -> do
+            -- Modern format: enumerate jobs using schema types
+            let listJobs handlerName handler = do
+                  jobs <- dictionaryToMap handler
+                  for_ (M.toList jobs) \(jobNameBS, job) -> do
+                    let jobName = decodeUtf8With lenientDecode jobNameBS
+                        prefix = [handlerName, jobName]
+                    outputs <- resolveAndInvokeOutputs job resolveInputsFn
+                    effects <- liftIO $ walkEffects evalState prefix (value outputs)
+                    for_ effects \path ->
+                      liftIO $ putStrLn $ T.intercalate "." path
+            hci #? #onPush >>= traverse_ (listJobs "onPush")
+            hci #? #onSchedule >>= traverse_ (listJobs "onSchedule")
 
 -- | Recursively walk the attribute tree and collect effect paths.
 walkEffects :: Ptr EvalState -> [Text] -> RawValue -> IO [[Text]]
-walkEffects evalState prefix value = do
-  match' evalState value >>= \case
+walkEffects evalState prefix rawValue = do
+  match' evalState rawValue >>= \case
     IsAttrs attrsValue -> do
-      isDeriv <- isDerivation evalState value
+      isDeriv <- isDerivation evalState rawValue
       if isDeriv
         then do
           isEff <- getAttrBool evalState attrsValue "isEffect"

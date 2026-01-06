@@ -29,6 +29,7 @@ module Hercules.Agent.NixFile
     -- * @onPush@
     getVirtualValueByPath,
     parseExtraInputs,
+    resolveAndInvokeOutputs,
   )
 where
 
