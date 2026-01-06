@@ -165,24 +165,26 @@ Solve build warnings.
 
 - First code based on Hercules CI Agent.
 
-[0.2.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.1.0.0...hercules-ci-cnix-expr-0.2.0.0
-[0.2.0.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.2.0.0...hercules-ci-cnix-expr-0.2.0.1
-[0.2.0.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.2.0.1...hercules-ci-cnix-expr-0.2.0.2
-[0.3.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.2.0.2...hercules-ci-cnix-expr-0.3.0.0
-[0.3.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.0.0...hercules-ci-cnix-expr-0.3.1.0
-[0.3.1.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.1.0...hercules-ci-cnix-expr-0.3.1.1
-[0.3.1.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.1.1...hercules-ci-cnix-expr-0.3.1.2
-[0.3.2.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.1.2...hercules-ci-cnix-expr-0.3.2.0
-[0.3.3.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.2.0...hercules-ci-cnix-expr-0.3.3.0
-[0.3.4.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.3.0...hercules-ci-cnix-expr-0.3.4.0
-[0.3.5.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.4.0...hercules-ci-cnix-expr-0.3.5.0
-[0.3.5.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.5.0...hercules-ci-cnix-expr-0.3.5.1
-[0.3.6.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.5.1...hercules-ci-cnix-expr-0.3.6.0
-[0.3.6.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.6.0...hercules-ci-cnix-expr-0.3.6.1
-[0.3.6.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.6.1...hercules-ci-cnix-expr-0.3.6.2
-[0.3.6.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.6.2...hercules-ci-cnix-expr-0.3.6.3
-[0.3.6.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.6.3...hercules-ci-cnix-expr-0.3.6.4
-[0.3.6.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.6.4...hercules-ci-cnix-expr-0.3.6.5
-[0.4.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.3.6.5...hercules-ci-cnix-expr-0.4.0.0
-[0.5.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.4.0.0...hercules-ci-cnix-expr-0.5.0.0
-[0.5.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-expr-0.5.0.0...hercules-ci-cnix-expr-0.5.1.0
+
+[0.5.1.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.5.1.0/hercules-ci-cnix-expr
+[0.5.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.5.0.0/hercules-ci-cnix-expr
+[0.4.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.4.0.0/hercules-ci-cnix-expr
+[0.3.6.5]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.6.5/hercules-ci-cnix-expr
+[0.3.6.4]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.6.4/hercules-ci-cnix-expr
+[0.3.6.3]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.6.3/hercules-ci-cnix-expr
+[0.3.6.2]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.6.2/hercules-ci-cnix-expr
+[0.3.6.1]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.6.1/hercules-ci-cnix-expr
+[0.3.6.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.6.0/hercules-ci-cnix-expr
+[0.3.5.1]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.5.1/hercules-ci-cnix-expr
+[0.3.5.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.5.0/hercules-ci-cnix-expr
+[0.3.4.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.4.0/hercules-ci-cnix-expr
+[0.3.3.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.3.0/hercules-ci-cnix-expr
+[0.3.2.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.2.0/hercules-ci-cnix-expr
+[0.3.1.2]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.1.2/hercules-ci-cnix-expr
+[0.3.1.1]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.1.1/hercules-ci-cnix-expr
+[0.3.1.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.1.0/hercules-ci-cnix-expr
+[0.3.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.3.0.0/hercules-ci-cnix-expr
+[0.2.0.2]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.2.0.2/hercules-ci-cnix-expr
+[0.2.0.1]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.2.0.1/hercules-ci-cnix-expr
+[0.2.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.2.0.0/hercules-ci-cnix-expr
+[0.1.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-expr-0.1.0.0/hercules-ci-cnix-expr

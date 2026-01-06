@@ -209,27 +209,29 @@ A dud.
 
 - First code based mostly on Hercules CI Agent and some lines from the Cachix client.
 
-[0.1.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.1.0.0...hercules-ci-cnix-store-0.1.1.0
-[0.2.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.1.1.0...hercules-ci-cnix-store-0.2.0.0
-[0.2.0.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.2.0.0...hercules-ci-cnix-store-0.2.0.1
-[0.2.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.2.0.1...hercules-ci-cnix-store-0.2.1.0
-[0.2.1.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.2.1.0...hercules-ci-cnix-store-0.2.1.1
-[0.2.1.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.2.1.1...hercules-ci-cnix-store-0.2.1.2
-[0.3.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.2.1.2...hercules-ci-cnix-store-0.3.0.0
-[0.3.0.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.0.0...hercules-ci-cnix-store-0.3.0.1
-[0.3.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.0.1...hercules-ci-cnix-store-0.3.1.0
-[0.3.2.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.1.0...hercules-ci-cnix-store-0.3.2.0
-[0.3.3.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.2.0...hercules-ci-cnix-store-0.3.3.0
-[0.3.3.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.3.0...hercules-ci-cnix-store-0.3.3.1
-[0.3.3.2]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.3.1...hercules-ci-cnix-store-0.3.3.2
-[0.3.3.3]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.3.2...hercules-ci-cnix-store-0.3.3.3
-[0.3.3.4]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.3.3...hercules-ci-cnix-store-0.3.3.4
-[0.3.3.5]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.3.4...hercules-ci-cnix-store-0.3.3.5
-[0.3.4.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.3.5...hercules-ci-cnix-store-0.3.4.0
-[0.3.5.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.4.0...hercules-ci-cnix-store-0.3.5.0
-[0.3.5.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.5.0...hercules-ci-cnix-store-0.3.5.1
-[0.3.6.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.5.1...hercules-ci-cnix-store-0.3.6.0
-[0.3.6.1]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.6.0...hercules-ci-cnix-store-0.3.6.1
-[0.3.7.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.6.1...hercules-ci-cnix-store-0.3.7.0
-[0.4.0.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.3.7.0...hercules-ci-cnix-store-0.4.0.0
-[0.4.1.0]: https://github.com/hercules-ci/hercules-ci-agent/compare/hercules-ci-cnix-store-0.4.0.0...hercules-ci-cnix-store-0.4.1.0
+
+[0.4.1.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.4.1.0/hercules-ci-cnix-store
+[0.4.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.4.0.0/hercules-ci-cnix-store
+[0.3.7.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.7.0/hercules-ci-cnix-store
+[0.3.6.1]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.6.1/hercules-ci-cnix-store
+[0.3.6.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.6.0/hercules-ci-cnix-store
+[0.3.5.1]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.5.1/hercules-ci-cnix-store
+[0.3.5.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.5.0/hercules-ci-cnix-store
+[0.3.4.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.4.0/hercules-ci-cnix-store
+[0.3.3.5]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.3.5/hercules-ci-cnix-store
+[0.3.3.4]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.3.4/hercules-ci-cnix-store
+[0.3.3.3]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.3.3/hercules-ci-cnix-store
+[0.3.3.2]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.3.2/hercules-ci-cnix-store
+[0.3.3.1]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.3.1/hercules-ci-cnix-store
+[0.3.3.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.3.0/hercules-ci-cnix-store
+[0.3.2.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.2.0/hercules-ci-cnix-store
+[0.3.1.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.1.0/hercules-ci-cnix-store
+[0.3.0.1]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.0.1/hercules-ci-cnix-store
+[0.3.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.3.0.0/hercules-ci-cnix-store
+[0.2.1.2]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.2.1.2/hercules-ci-cnix-store
+[0.2.1.1]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.2.1.1/hercules-ci-cnix-store
+[0.2.1.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.2.1.0/hercules-ci-cnix-store
+[0.2.0.1]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.2.0.1/hercules-ci-cnix-store
+[0.2.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.2.0.0/hercules-ci-cnix-store
+[0.1.1.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.1.1.0/hercules-ci-cnix-store
+[0.1.0.0]: https://github.com/hercules-ci/hercules-ci-agent/commits/hercules-ci-cnix-store-0.1.0.0/hercules-ci-cnix-store
