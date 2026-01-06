@@ -1,6 +1,6 @@
 # Revision history for cabal-pkg-config-version-hook
 
-## Unreleased
+## 0.1.1.0 -- 2025-01-06
 
 * Fix support for Cabal 3.12.1.0, which would otherwise not pass defines to inline C/C++ code (e.g. inline-c-cpp)
 
