@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## Unreleased
 
+### Added
+
+- `hci effect eval`: Evaluate an effect and print its derivation path.
+
+- `hci effect list`: List all effects in a `herculesCI` configuration.
+
 ### Fixed
 
 - `hci effect run`/`eval` now pass the `primaryRepo.owner` and `primaryRepo.name` fields correctly instead of `null`.
