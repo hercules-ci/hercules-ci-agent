@@ -34,6 +34,11 @@ Pretend we're on another git ref. This sets parameters like xref:hercules-ci-age
 
 Since `hci` 0.3.6. Older versions have `--as-ref`.
 
+[[option-pretend-tag]]
+=== `--pretend-tag TAG`
+
+Pretend we're on another git tag. This sets parameters like xref:hercules-ci-agent:ROOT:evaluation.adoc#params-herculesCI-commit[`ref` and `tag`] and `src.ref` to match `TAG` value.
+
 [[option-project]]
 === `--project PROJECT`
 
@@ -53,6 +58,11 @@ Alias for <<option-pretend-branch>>.
 === `--as-ref BRANCH`
 
 Alias for <<option-pretend-ref>>.
+
+[[option-as-tag]]
+=== `--as-tag TAG`
+
+Alias for <<option-pretend-tag>>.
 
 [[implicit-inputs]]
 == Implicit inputs

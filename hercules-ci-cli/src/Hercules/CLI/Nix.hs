@@ -90,6 +90,9 @@ resolveInputs uio evalState projectMaybe inputDeclarations = do
 refBranchToRef :: Maybe Text -> Maybe Text -> Maybe Text
 refBranchToRef ref branch = ref <|> (("refs/heads/" <>) <$> branch)
 
+refBranchTagToRef :: Maybe Text -> Maybe Text -> Maybe Text -> Maybe Text
+refBranchTagToRef ref branch tag = ref <|> (("refs/heads/" <>) <$> branch) <|> (("refs/tags/" <>) <$> tag)
+
 withNix :: (MonadUnliftIO m) => (Store -> Ptr EvalState -> m b) -> m b
 withNix f = do
   liftIO do
@@ -175,7 +178,8 @@ ciNixAttributeCompleter = mkAttributePathCompleter \(partialPath, partialCompone
     ref <- do
       ref <- liftA2 (<|>) (scanOption "--as-ref") (scanOption "--pretend-ref")
       branch <- liftA2 (<|>) (scanOption "--as-branch") (scanOption "--pretend-branch")
-      pure $ refBranchToRef ref branch
+      tag <- liftA2 (<|>) (scanOption "--as-tag") (scanOption "--pretend-tag")
+      pure $ refBranchTagToRef ref branch tag
     projectMaybe <-
       scanOption "--project" <&> \maybeStr -> do
         s <- maybeStr

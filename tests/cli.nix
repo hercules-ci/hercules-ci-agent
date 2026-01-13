@@ -296,5 +296,50 @@ runCommand "test-cli"
 
   cd ..
 
+  # Test --pretend-tag option
+  mkdir -p test-repo-pretend-tag
+  cd test-repo-pretend-tag
+  git init
+  git config user.email "test@example.com"
+  git config user.name "Test User"
+
+  # Create an effect that checks the tag value
+  cat >ci.nix <<EOF
+  { src ? builtins.getEnv "PWD" }:
+  {
+    herculesCI = ciArgs:
+      # Assert that the tag is passed correctly when using --pretend-tag
+      assert ciArgs.primaryRepo.tag == "v1.0.0";
+      {
+        onPush.default.outputs = {
+          effects.taggedEffect = derivation {
+            name = "tagged-effect";
+            system = builtins.currentSystem;
+            builder = "${hello}/bin/hello";
+            isEffect = true;
+          };
+        };
+      };
+  }
+  EOF
+
+  git add ci.nix
+  git commit -m "Add effect with tag assertion"
+
+  git remote add origin ../remote.git
+  git push -u origin master:pretend-tag-test
+
+  # Test that --pretend-tag sets the tag correctly
+  output=$(hci effect eval --no-token --project github/test-owner/test-repo --pretend-tag v1.0.0 onPush.default.effects.taggedEffect)
+  echo "hci effect eval (--pretend-tag) output: $output"
+  [[ "$output" =~ ^/nix/store/[a-z0-9]+-tagged-effect\.drv$ ]]
+
+  # Test that --as-tag alias also works
+  output=$(hci effect eval --no-token --project github/test-owner/test-repo --as-tag v1.0.0 onPush.default.effects.taggedEffect)
+  echo "hci effect eval (--as-tag) output: $output"
+  [[ "$output" =~ ^/nix/store/[a-z0-9]+-tagged-effect\.drv$ ]]
+
+  cd ..
+
   touch $out
 ''

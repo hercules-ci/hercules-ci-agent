@@ -53,7 +53,7 @@ getRefs = getRevsAndRefs <&> map snd
 getHypotheticalRefs :: IO [Text]
 getHypotheticalRefs = do
   refs <- getRefs
-  pure $ sort $ ordNub (refs <> map ("refs/heads/" <>) (allBranches refs))
+  pure $ sort $ ordNub (refs <> map ("refs/heads/" <>) (allBranches refs) <> map ("refs/tags/" <>) (allTags refs))
 
 allBranches :: [Text] -> [Text]
 allBranches = concatMap filterRef
@@ -64,6 +64,12 @@ allBranches = concatMap filterRef
 
 getAllBranches :: IO [Text]
 getAllBranches = getRefs <&> allBranches
+
+allTags :: [Text] -> [Text]
+allTags = mapMaybe (T.stripPrefix "refs/tags/")
+
+getAllTags :: IO [Text]
+getAllTags = getRefs <&> allTags
 
 getUpstreamURL :: IO Text
 getUpstreamURL = do
