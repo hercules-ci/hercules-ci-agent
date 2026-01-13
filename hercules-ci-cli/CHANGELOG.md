@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- `hci effect run --pretend-tag` and `--as-tag` for simulating effects as if on a specific git tag.
+   This sets `primaryRepo.tag` in the `herculesCI` arguments, useful for testing tag-conditional behavior such as publishing.
+
+   Also available in `hci effect eval` and `hci effect list`.
 
 ## [0.3.9] - 2026-01-06
 

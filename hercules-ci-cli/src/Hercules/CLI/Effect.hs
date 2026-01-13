@@ -24,7 +24,7 @@ import Hercules.Agent.Sensitive (Sensitive (Sensitive))
 import Hercules.CLI.Client (HerculesClientEnv, HerculesClientToken, determineDefaultApiBaseUrl, projectsClient, retryOnFail)
 import Hercules.CLI.Common (runAuthenticatedOrDummy)
 import Hercules.CLI.Exception (exitMsg)
-import Hercules.CLI.Git (getAllBranches, getHypotheticalRefs)
+import Hercules.CLI.Git (getAllBranches, getAllTags, getHypotheticalRefs)
 import qualified Hercules.CLI.Git as Git
 import Hercules.CLI.JSON (askPasswordWithKey)
 import Hercules.CLI.Nix (ciNixAttributeCompleter, computeRef, createHerculesCIArgs, resolveInputs, withNix)
@@ -336,13 +336,18 @@ asBranchOption =
   strOption (long "pretend-branch" <> metavar "BRANCH" <> help "Pretend we're on another git branch" <> completer (flatCompleter getAllBranches))
     <|> strOption (long "as-branch" <> metavar "BRANCH" <> help "Alias for --pretend-branch")
 
+asTagOption :: Optparse.Parser Text
+asTagOption =
+  strOption (long "pretend-tag" <> metavar "TAG" <> help "Pretend we're on another git tag" <> completer (flatCompleter getAllTags))
+    <|> strOption (long "as-tag" <> metavar "TAG" <> help "Alias for --pretend-tag")
+
 asRefOption :: Optparse.Parser Text
 asRefOption =
   strOption (long "pretend-ref" <> metavar "REF" <> help "Pretend we're on another git ref" <> completer (flatCompleter getHypotheticalRefs))
     <|> strOption (long "as-ref" <> metavar "REF" <> help "Alias for --pretend-ref")
 
 asRefOptions :: Optparse.Parser (Maybe Text)
-asRefOptions = optional (asRefOption <|> (("refs/heads/" <>) <$> asBranchOption))
+asRefOptions = optional (asRefOption <|> (("refs/heads/" <>) <$> asBranchOption) <|> (("refs/tags/" <>) <$> asTagOption))
 
 data ProjectData = ProjectData
   { pdProjectPath :: Maybe ProjectPath,

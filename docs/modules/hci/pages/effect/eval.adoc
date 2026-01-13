@@ -32,6 +32,11 @@ Pretend we're on another git branch. This sets parameters like xref:hercules-ci-
 
 Pretend we're on another git ref. This sets parameters like xref:hercules-ci-agent:ROOT:evaluation.adoc#params-herculesCI-commit[`ref` and `branch`] and `src.ref` to match `REF` value.
 
+[[option-pretend-tag]]
+=== `--pretend-tag TAG`
+
+Pretend we're on another git tag. This sets parameters like xref:hercules-ci-agent:ROOT:evaluation.adoc#params-herculesCI-commit[`ref` and `tag`] and `src.ref` to match `TAG` value.
+
 [[option-project]]
 === `--project PROJECT`
 
