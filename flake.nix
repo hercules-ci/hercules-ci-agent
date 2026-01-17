@@ -509,7 +509,6 @@
                         pkgs.jq
                         pkgs.nix-prefetch-git
                         pkgs.nixpkgs-fmt
-                        pkgs.pre-commit
                         # pkgs.valgrind (broken on x86_64-darwin)
                       ] ++ lib.optionals shellWithHaskell [
                         haskellPackages.haskell-language-server
@@ -519,7 +518,7 @@
                     shellHook = ''
                       ${o.shellHook or ""}
                       if [[ -z "''${IN_LORRI_SHELL:-}" ]]; then
-                      ${config.pre-commit.installationScript}
+                      ${config.pre-commit.shellHook}
                       fi
                     '';
                   });
