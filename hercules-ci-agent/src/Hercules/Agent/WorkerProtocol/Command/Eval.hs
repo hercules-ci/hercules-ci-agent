@@ -22,6 +22,7 @@ data Eval = Eval
     selector :: ViaJSON EvaluateTask.Selector,
     isFlakeJob :: Bool,
     ciSystems :: Maybe (Map Text ()),
+    pushToBinaryCaches :: Maybe (Map Text ()),
     allowInsecureBuiltinFetchers :: Bool,
     allowedPaths :: [ByteString]
   }
