@@ -45,6 +45,11 @@ module Hercules.CNix.Store
     validPathInfoDeriver',
     validPathInfoReferences,
     validPathInfoReferences',
+    validPathInfoCA,
+
+    -- * Realisations
+    getDerivationOutputIds,
+    queryRealisation,
     computeFSClosure,
     ClosureParams (..),
     defaultClosureParams,
@@ -195,6 +200,7 @@ C.include "<nix/store/path.hh>"
 C.include "<nix/store/worker-protocol.hh>"
 C.include "<nix/store/path-with-outputs.hh>"
 C.include "<nix/util/signals.hh>"
+C.include "<nix/store/realisation.hh>"
 
 #if NIX_IS_AT_LEAST(2, 29, 0)
 C.include "<nix/store/store-open.hh>"
@@ -1169,6 +1175,82 @@ validPathInfoReferences' vpi = do
       }|]
   l <- Std.Vector.toList sps
   for l moveToForeignPtrWrapper
+
+-- | Content address field of a ValidPathInfo struct.
+-- Returns the rendered content address string if present, e.g. "fixed:r:sha256:abc..."
+validPathInfoCA :: ForeignPtr (Ref ValidPathInfo) -> IO (Maybe ByteString)
+validPathInfoCA vpi =
+  Hercules.CNix.Memory.traverseNonNull unsafePackMallocCString
+    =<< [C.block| const char * {
+      auto & caOpt = (*$fptr-ptr:(refValidPathInfo* vpi))->ca;
+      if (caOpt) {
+        std::string s = renderContentAddress(*caOpt);
+        return stringdup(s);
+      } else {
+        return nullptr;
+      }
+    }|]
+
+-- | Compute the derivation output identifiers for a derivation.
+-- Returns a list of (drvOutputId, outputName) pairs, where drvOutputId
+-- has the format "sha256:<hash>!<outputName>".
+-- This uses hashDerivationModulo internally to compute the derivation hash.
+getDerivationOutputIds :: Store -> StorePath -> IO [(ByteString, ByteString)]
+getDerivationOutputIds store@(Store storePtr) drvPath = do
+  drv <- getDerivation store drvPath
+  M.toList
+    <$> withDelete
+      [C.throwBlock| StringPairs * {
+        ReceiveInterrupts _;
+        Store &store = **$(refStore* storePtr);
+        nix::Derivation &drv = *$fptr-ptr:(Derivation* drv);
+        auto drvHashes = hashDerivationModulo(store, drv, false);
+        auto pairs = new StringPairs();
+        for (auto & [outputName, _] : drv.outputs) {
+          auto drvOutputId = DrvOutput{drvHashes.hashes.at(outputName), outputName};
+          pairs->emplace(drvOutputId.to_string(), outputName);
+        }
+        return pairs;
+      }|]
+      toByteStringMap
+
+-- | Query a realisation from the store by its DrvOutput identifier.
+-- The drvOutputId should be in the format "sha256:<hash>!<outputName>".
+-- Returns (outPath, signatures, dependentRealisations) if found.
+queryRealisation :: Store -> ByteString -> IO (Maybe (ByteString, [ByteString], Map ByteString ByteString))
+queryRealisation (Store store) drvOutputId =
+  alloca $ \outPathPtr ->
+    alloca $ \sigsPtr ->
+      alloca $ \depRealsPtr -> do
+        found <-
+          (0 /=)
+            <$> [C.throwBlock| bool {
+              ReceiveInterrupts _;
+              Store &store = **$(refStore* store);
+              std::string id($bs-ptr:drvOutputId, $bs-len:drvOutputId);
+              auto drvOutput = DrvOutput::parse(id);
+              auto real = store.queryRealisation(drvOutput);
+              if (!real) return false;
+              *$(char** outPathPtr) = stringdup(std::string(real->outPath.to_string()));
+              auto sigs = new Strings();
+              for (auto & sig : real->signatures) {
+                sigs->push_back(sig);
+              }
+              *$(Strings** sigsPtr) = sigs;
+              auto pairs = new StringPairs();
+              for (auto & [depId, depOutPath] : real->dependentRealisations) {
+                pairs->emplace(depId.to_string(), std::string(depOutPath.to_string()));
+              }
+              *$(StringPairs** depRealsPtr) = pairs;
+              return true;
+            }|]
+        if not found
+          then pure Nothing
+          else do
+            outPath <- unsafePackMallocCString =<< peek outPathPtr
+            sigs <- withDelete (peek sigsPtr) toByteStrings
+            depReals <- withDelete (peek depRealsPtr) toByteStringMap
+            pure $ Just (outPath, sigs, depReals)
 
 ----- computeFSClosure -----
 data ClosureParams = ClosureParams
