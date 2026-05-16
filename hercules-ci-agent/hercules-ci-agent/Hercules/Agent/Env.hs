@@ -69,6 +69,7 @@ activePushCaches = do
     M.keys
       ( void (Config.BinaryCaches.cachixCaches bc)
           <> void (Config.BinaryCaches.nixCaches bc)
+          <> void (Config.BinaryCaches.atticCaches bc)
       )
 
 type AgentSocket = Socket ServicePayload AgentPayload
