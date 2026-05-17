@@ -82,7 +82,7 @@ push store localName cache paths = do
                 [("XDG_CONFIG_HOME", cfgDir), ("XDG_CACHE_HOME", cfgDir)]
                   ++ filter (\(k, _) -> not (isXdg k)) oldEnv
           let args =
-                ["push", "--no-closure", toS (AtticCache.cacheName cache)]
+                ["push", toS (AtticCache.cacheName cache)]
                   ++ map toS pathStrings
           let p = (proc "attic" args) {env = Just newEnv, close_fds = True}
           readCreateProcessWithExitCode p ""
