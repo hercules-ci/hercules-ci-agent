@@ -50,6 +50,17 @@ withContentAddressedSecretState desc digest makeDir wither = do
         liftIO $ System.Directory.renameDirectory tmpDir caDir
   wither caDir
 
+pruneContentAddressedSecretStates :: App ()
+pruneContentAddressedSecretStates = do
+  parent <- getDir
+  liftIO (System.Directory.doesDirectoryExist parent) >>= \case
+    False -> pure ()
+    True -> do
+      entries <- liftIO $ System.Directory.listDirectory parent
+      for_ (filter ("ca-" `isPrefixOf`) entries) $ \entry -> do
+        let path = parent </> entry
+        liftIO $ System.Directory.removePathForcibly path
+
 -- | Reads a token file, strips whitespace
 readTokenFile :: (MonadIO m) => FilePath -> m Text
 readTokenFile fp = liftIO $ sanitize <$> readFile fp
