@@ -35,7 +35,7 @@ withCaches m = do
         (nixCaches & toList <&> NixCache.publicKeys & join)
           <> (atticCaches & toList <&> AtticCache.publicKeys & join)
   netrcFile <- Netrc.getNetrcFile
-  Netrc.appendLines netrcLns
+  Netrc.appendLines (netrcLns <> Attic.toNetrcLines atticCaches)
   Nix.withExtraOptions
     [ ("netrc-file", toS netrcFile),
       ("substituters", T.intercalate " " (substs <> csubsts)),

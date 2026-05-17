@@ -1,10 +1,12 @@
 module Hercules.Agent.Attic
   ( push,
     substituterURL,
+    toNetrcLines,
   )
 where
 
 import Data.Map (singleton)
+import Data.Map qualified as M
 import Data.Text.IO qualified as T
 import Hercules.Agent.Env (App)
 import Hercules.Agent.Log
@@ -12,6 +14,7 @@ import Hercules.CNix qualified as CNix
 import Hercules.CNix.Store (StorePath)
 import Hercules.Formats.AtticCache (AtticCache)
 import Hercules.Formats.AtticCache qualified as AtticCache
+import Network.URI (URIAuth (uriPort, uriRegName), parseURI, uriAuthority)
 import Protolude
 import System.Directory (createDirectoryIfMissing)
 import System.Environment qualified
@@ -26,6 +29,20 @@ import Toml qualified
 substituterURL :: AtticCache -> Text
 substituterURL c =
   AtticCache.serverEndpoint c <> "/" <> AtticCache.cacheName c
+
+-- TODO: Should reject attic caches with the same endpoint, given that
+-- netrc is hostname-based, but attic caches are path-based.
+-- The token leak should not cause any problems here,
+-- but user might encounter authorization failure. Does netrc even works with the
+-- duplicate machine entry?
+toNetrcLines :: Map Text AtticCache -> [Text]
+toNetrcLines = mapMaybe toLine . M.elems
+  where
+    toLine cache = do
+      uri <- parseURI (toS (AtticCache.serverEndpoint cache))
+      auth <- uriAuthority uri
+      let host = toS (uriRegName auth <> uriPort auth) :: Text
+      pure $ "machine " <> host <> " password " <> AtticCache.token cache
 
 -- Attic only supports loading the token and cache location from config file,
 -- thus we need to create a synthetic one first.
