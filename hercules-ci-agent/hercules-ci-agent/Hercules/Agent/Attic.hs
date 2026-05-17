@@ -4,7 +4,7 @@ module Hercules.Agent.Attic
   )
 where
 
-import Data.Text qualified as T
+import Data.Map (singleton)
 import Data.Text.IO qualified as T
 import Hercules.Agent.Env (App)
 import Hercules.Agent.Log
@@ -19,6 +19,8 @@ import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import System.Posix.Files (setFileMode)
 import System.Process
+import Toml (TomlCodec, (.=))
+import Toml qualified
 
 substituterURL :: AtticCache -> Text
 substituterURL c =
@@ -58,16 +60,39 @@ push store localName cache paths = do
     ExitSuccess -> pure ()
     ExitFailure c -> throwIO $ FatalError $ "Attic push failed with exit code " <> show c
 
+data AtticServer = AtticServer
+  { endpoint :: Text,
+    token :: Text
+  }
+
+data AtticClientConfig = AtticClientConfig
+  { defaultServer :: Text,
+    servers :: Map Text AtticServer
+  }
+
+atticServerCodec :: TomlCodec AtticServer
+atticServerCodec =
+  AtticServer
+    <$> Toml.text "endpoint"
+    .= endpoint
+    <*> Toml.text "token" .= token
+
+atticClientConfigCodec :: TomlCodec AtticClientConfig
+atticClientConfigCodec =
+  AtticClientConfig
+    <$> Toml.text "default-server"
+    .= defaultServer
+    <*> Toml.tableMap Toml._KeyText (Toml.table atticServerCodec) "servers" .= servers
+
 renderConfig :: AtticCache -> Text
 renderConfig c =
-  T.unlines
-    [ "default-server = \"hercules\"",
-      "",
-      "[servers.hercules]",
-      "endpoint = \"" <> tomlEscape (AtticCache.serverEndpoint c) <> "\"",
-      "token = \"" <> tomlEscape (AtticCache.token c) <> "\""
-    ]
-
-tomlEscape :: Text -> Text
-tomlEscape s =
-  T.replace "\"" "\\\"" (T.replace "\\" "\\\\" s)
+  Toml.encode atticClientConfigCodec $
+    AtticClientConfig
+      { defaultServer = "hercules",
+        servers =
+          singleton "hercules" $
+            AtticServer
+              { endpoint = AtticCache.serverEndpoint c,
+                token = AtticCache.token c
+              }
+      }
