@@ -267,6 +267,7 @@ executable hercules-ci-agent
       -- that support static linking, as they require.
     , cachix <1.4 || >=1.5
     , cachix-api
+    , crypton
     , hercules-ci-cnix-store
     , conduit
     , conduit-extra

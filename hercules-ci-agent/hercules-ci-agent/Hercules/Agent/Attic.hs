@@ -1,3 +1,5 @@
+{-# LANGUAGE BlockArguments #-}
+
 module Hercules.Agent.Attic
   ( push,
     substituterURL,
@@ -5,22 +7,22 @@ module Hercules.Agent.Attic
   )
 where
 
+import Crypto.Hash
 import Data.Map (singleton)
 import Data.Map qualified as M
 import Data.Text.IO qualified as T
 import Hercules.Agent.Env (App)
 import Hercules.Agent.Log
+import Hercules.Agent.Token (withContentAddressedSecretState)
 import Hercules.CNix qualified as CNix
 import Hercules.CNix.Store (StorePath)
 import Hercules.Formats.AtticCache (AtticCache)
 import Hercules.Formats.AtticCache qualified as AtticCache
 import Network.URI (URIAuth (uriPort, uriRegName), parseURI, uriAuthority)
-import Protolude
+import Protolude hiding (hash)
 import System.Directory (createDirectoryIfMissing)
 import System.Environment qualified
 import System.FilePath ((</>))
-import System.IO.Temp (withSystemTempDirectory)
-import System.Posix.Files (setFileMode)
 import System.Process hiding (readCreateProcessWithExitCode)
 import System.Process.ByteString (readCreateProcessWithExitCode)
 import Toml (TomlCodec, (.=))
@@ -44,6 +46,9 @@ toNetrcLines = mapMaybe toLine . M.elems
       let host = toS (uriRegName auth <> uriPort auth) :: Text
       pure $ "machine " <> host <> " password " <> AtticCache.token cache
 
+sha256 :: ByteString -> Digest SHA256
+sha256 = hash
+
 -- Attic only supports loading the token and cache location from config file,
 -- thus we need to create a synthetic one first.
 -- TODO: Maybe attic can be improved for that?
@@ -58,22 +63,30 @@ push store localName cache paths = do
         )
         paths
   logLocM DebugS (logStr ("Pushing to attic cache " <> localName))
-  (exitCode, _out, err) <- liftIO $ withSystemTempDirectory "hercules-attic" $ \cfgDir -> do
-    let atticDir = cfgDir </> "attic"
-    let cfgFile = atticDir </> "config.toml"
-    createDirectoryIfMissing True atticDir
-    T.writeFile cfgFile (renderConfig cache)
-    setFileMode cfgFile 0o600
-    oldEnv <- System.Environment.getEnvironment
-    let isXdg k = k == "XDG_CONFIG_HOME" || k == "XDG_CACHE_HOME"
-    let newEnv =
-          [("XDG_CONFIG_HOME", cfgDir), ("XDG_CACHE_HOME", cfgDir)]
-            ++ filter (\(k, _) -> not (isXdg k)) oldEnv
-    let args =
-          ["push", "--no-closure", toS (AtticCache.cacheName cache)]
-            ++ map toS pathStrings
-    let p = (proc "attic" args) {env = Just newEnv, close_fds = True}
-    readCreateProcessWithExitCode p ""
+  let configText = renderConfig cache
+      configHash = sha256 $ encodeUtf8 configText
+  (exitCode, _out, err) <-
+    withContentAddressedSecretState
+      "attic-config"
+      configHash
+      ( \tmpCfgDir -> liftIO $ do
+          let atticDir = tmpCfgDir </> "attic"
+          let cfgFile = atticDir </> "config.toml"
+          createDirectoryIfMissing True atticDir
+          T.writeFile cfgFile configText
+      )
+      ( \cfgDir -> liftIO $ do
+          oldEnv <- System.Environment.getEnvironment
+          let isXdg k = k == "XDG_CONFIG_HOME" || k == "XDG_CACHE_HOME"
+          let newEnv =
+                [("XDG_CONFIG_HOME", cfgDir), ("XDG_CACHE_HOME", cfgDir)]
+                  ++ filter (\(k, _) -> not (isXdg k)) oldEnv
+          let args =
+                ["push", "--no-closure", toS (AtticCache.cacheName cache)]
+                  ++ map toS pathStrings
+          let p = (proc "attic" args) {env = Just newEnv, close_fds = True}
+          readCreateProcessWithExitCode p ""
+      )
   case exitCode of
     ExitSuccess -> pure ()
     ExitFailure c -> throwIO $ FatalError $ "Attic push failed with exit code " <> show c <> ", stderr: " <> (decodeUtf8With lenientDecode err)
