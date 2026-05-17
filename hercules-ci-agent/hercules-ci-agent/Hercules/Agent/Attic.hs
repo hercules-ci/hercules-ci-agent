@@ -18,7 +18,8 @@ import System.Environment qualified
 import System.FilePath ((</>))
 import System.IO.Temp (withSystemTempDirectory)
 import System.Posix.Files (setFileMode)
-import System.Process
+import System.Process hiding (readCreateProcessWithExitCode)
+import System.Process.ByteString (readCreateProcessWithExitCode)
 import Toml (TomlCodec, (.=))
 import Toml qualified
 
@@ -40,7 +41,7 @@ push store localName cache paths = do
         )
         paths
   logLocM DebugS (logStr ("Pushing to attic cache " <> localName))
-  exitCode <- liftIO $ withSystemTempDirectory "hercules-attic" $ \cfgDir -> do
+  (exitCode, _out, err) <- liftIO $ withSystemTempDirectory "hercules-attic" $ \cfgDir -> do
     let atticDir = cfgDir </> "attic"
     let cfgFile = atticDir </> "config.toml"
     createDirectoryIfMissing True atticDir
@@ -55,10 +56,10 @@ push store localName cache paths = do
           ["push", "--no-closure", toS (AtticCache.cacheName cache)]
             ++ map toS pathStrings
     let p = (proc "attic" args) {env = Just newEnv, close_fds = True}
-    withCreateProcess p (\_ _ _ ph -> waitForProcess ph)
+    readCreateProcessWithExitCode p ""
   case exitCode of
     ExitSuccess -> pure ()
-    ExitFailure c -> throwIO $ FatalError $ "Attic push failed with exit code " <> show c
+    ExitFailure c -> throwIO $ FatalError $ "Attic push failed with exit code " <> show c <> ", stderr: " <> (decodeUtf8With lenientDecode err)
 
 data AtticServer = AtticServer
   { endpoint :: Text,
