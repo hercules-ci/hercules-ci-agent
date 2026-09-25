@@ -34,7 +34,7 @@ C.using "namespace nix"
 setInterruptThrown :: IO ()
 setInterruptThrown =
   [C.throwBlock| void {
-    nix::setInterruptThrown();
+    nix::setInterrupted(true);
   }|]
 
 triggerInterrupt :: IO ()

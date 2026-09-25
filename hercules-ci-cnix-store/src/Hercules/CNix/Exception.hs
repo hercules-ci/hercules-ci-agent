@@ -63,7 +63,7 @@ handleExceptionPtr programName eptr =
           std::rethrow_exception(eptr);
         } catch (...) {
           // Avoid throwing another interrupt error in the print routines that actually catch this.
-          setInterruptThrown();
+          setInterrupted(true);
           throw;
         }
       } catch (BaseError & e) {

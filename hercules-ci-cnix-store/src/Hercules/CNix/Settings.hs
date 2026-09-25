@@ -41,6 +41,9 @@ C.include "<set>"
 C.include "<string>"
 
 C.include "<nix/store/globals.hh>"
+#if NIX_IS_AT_LEAST(2, 34, 0)
+C.include "<nix/store/filetransfer.hh>"
+#endif
 
 C.include "hercules-ci-cnix/string.hxx"
 
@@ -104,7 +107,11 @@ getMaxBuildJobs :: IO Word
 getMaxBuildJobs = do
   n <-
     [C.block| unsigned int {
+#if NIX_IS_AT_LEAST(2, 34, 0)
+      return nix::settings.getWorkerSettings().maxBuildJobs.get();
+#else
       return nix::settings.maxBuildJobs.get();
+#endif
     }|]
   if (fromIntegral n :: Integer) > (fromIntegral (maxBound :: Word))
     then panic ("Nix max-jobs is too large. Can't continue. Value: " <> show n :: Text)
@@ -115,8 +122,13 @@ getSubstituters =
   byteStringList
     [C.block| std::vector<std::string>*{
       auto r = new std::vector<std::string>();
+#if NIX_IS_AT_LEAST(2, 34, 0)
+      for (auto i : nix::settings.getWorkerSettings().substituters.get())
+        r->push_back(i.to_string());
+#else
       for (auto i : nix::settings.substituters.get())
         r->push_back(i);
+#endif
       return r;
     }|]
 
@@ -133,14 +145,22 @@ getTrustedPublicKeys =
 getNarinfoCacheNegativeTtl :: IO Word64
 getNarinfoCacheNegativeTtl =
   [C.exp| uint64_t{
+#if NIX_IS_AT_LEAST(2, 34, 0)
+    nix::settings.getNarInfoDiskCacheSettings().ttlNegative.get()
+#else
     nix::settings.ttlNegativeNarInfoCache.get()
+#endif
   }|]
 
 getNetrcFile :: IO ByteString
 getNetrcFile =
   unsafePackMallocCString
     =<< [C.exp| const char *{
+#if NIX_IS_AT_LEAST(2, 34, 0)
+      stringdup(nix::fileTransferSettings.netrcFile.get().string())
+#else
       stringdup(nix::settings.netrcFile.get())
+#endif
     }|]
 
 -- Gets the value of https://nixos.org/manual/nix/stable/command-ref/conf-file.html?highlight=use-sqlite-wal#conf-use-sqlite-wal
