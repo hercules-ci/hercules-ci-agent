@@ -14,7 +14,6 @@
 
   outputs = inputs@{ self, nixpkgs, flake-parts, ... }:
     let
-      inherit (nixpkgs.legacyPackages.x86_64-linux) emptyFile;
       debug = false;
       ifDebug = f:
         if debug then f else x: x;
