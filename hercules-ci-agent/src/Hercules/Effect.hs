@@ -185,6 +185,12 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
   etcDir <- mkDir "etc"
   secretsDir <- mkDir "secrets"
   containerDir <- mkDir "container-state"
+  nixStateDir <- mkDir "nix-state"
+  createDirectory (dir </> "nix-state/daemon-socket")
+  -- Mount point for the socket; the read-only parent prevents its creation
+  -- by the container runtime.
+  liftIO $ writeFile (dir </> "nix-state/daemon-socket/socket") ""
+  nixProfilesDir <- mkDir "nix-state/profiles"
   let extraSecrets =
         runEffectToken p
           & maybe
@@ -280,6 +286,8 @@ runEffect p@RunEffectParams {runEffectDerivation = derivation, runEffectSecretsC
           { extraBindMounts =
               [ BindMount {pathInContainer = "/build", pathInHost = buildDir, readOnly = False},
                 BindMount {pathInContainer = "/secrets", pathInHost = secretsDir, readOnly = True},
+                BindMount {pathInContainer = "/nix/var/nix", pathInHost = nixStateDir, readOnly = True},
+                BindMount {pathInContainer = "/nix/var/nix/profiles", pathInHost = nixProfilesDir, readOnly = False},
                 BindMount {pathInContainer = "/nix/var/nix/daemon-socket/socket", pathInHost = toS forwardedSocketPath, readOnly = True}
               ]
                 ++ [ BindMount {pathInContainer = "/etc", pathInHost = etcDir, readOnly = False}

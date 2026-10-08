@@ -51,7 +51,7 @@ in
           {
             # testSuitePkgs: the effects import Nixpkgs without the overlay
             # that patches `nix`.
-            nativeBuildInputs = [ pkgs.curl pkgs.testSuitePkgs.nix ];
+            nativeBuildInputs = [ pkgs.curl pkgs.jq pkgs.testSuitePkgs.nix ];
           } "").drvAttrs;
         # It's an offline test, so no caches are available
         nix.settings.substituters = lib.mkForce [ ];
