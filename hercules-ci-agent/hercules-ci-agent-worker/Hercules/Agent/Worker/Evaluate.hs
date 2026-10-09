@@ -232,6 +232,9 @@ runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eva
                         maybeThrowBuildException result drvStorePath
                         clearSubstituterCaches
                         clearPathInfoCache store
+                        -- The wrapped store caches negative path info lookups
+                        -- independently; clear it so the built output is seen.
+                        clearPathInfoCache (wrappedStore st)
                         ensurePath (wrappedStore st) outputPath `catch` \(_e1 :: SomeException) -> do
                           st.sendEvents $ pure $ Event.Build drvPath (decode outputName) (Just attempt0) doBlock
 
@@ -246,6 +249,7 @@ runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eva
                           maybeThrowBuildException result' drvStorePath
                           clearSubstituterCaches
                           clearPathInfoCache store
+                          clearPathInfoCache (wrappedStore st)
                           ensurePath (wrappedStore st) outputPath `catch` \e2 ->
                             liftIO $
                               throwBuildError
