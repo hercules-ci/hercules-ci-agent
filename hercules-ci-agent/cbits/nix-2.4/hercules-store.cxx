@@ -15,6 +15,10 @@
 
 using namespace nix;
 
+#if NIX_IS_AT_LEAST(2, 35, 0)
+void WrappingStore::anchor() {}
+#endif
+
 #if NIX_IS_AT_LEAST(2, 29, 0)
 WrappingStore::WrappingStore(ref<Store> storeToWrap)
     : Store(storeToWrap->config), wrappedStore(storeToWrap) {}
@@ -50,7 +54,13 @@ void WrappingStore::queryPathInfoUncached(const StorePath & path,
   auto callbackPtr = std::make_shared<decltype(callback)>(std::move(callback));
 
   wrappedStore->queryPathInfo(path, {[=](std::future<ref<const ValidPathInfo>> vpi){
-    (*callbackPtr)(vpi.get().get_ptr());
+    try {
+      (*callbackPtr)(vpi.get().get_ptr());
+    } catch (...) {
+      // Must not let exceptions (e.g. InvalidPath) escape this noexcept
+      // context; pass them to the caller through the callback instead.
+      callbackPtr->rethrow();
+    }
   }});
 }
 
@@ -146,10 +156,17 @@ ref<FSAccessor> WrappingStore::getFSAccessor(bool requireValidPath) {
   return wrappedStore->getFSAccessor(requireValidPath);
 }
 
+#if NIX_IS_AT_LEAST(2, 34, 0)
+void WrappingStore::addSignatures(const StorePath& storePath,
+                                  const std::set<Signature>& sigs) {
+  wrappedStore->addSignatures(storePath, sigs);
+};
+#else
 void WrappingStore::addSignatures(const StorePath& storePath,
                                   const StringSet& sigs) {
   wrappedStore->addSignatures(storePath, sigs);
 };
+#endif
 
 void WrappingStore::computeFSClosure(const StorePathSet& paths,
                                      StorePathSet& out,
@@ -267,6 +284,10 @@ void HerculesStore::queryMissing(const std::vector<DerivedPath> & targets,
 #endif
 
 void HerculesStore::buildPaths(const std::vector<DerivedPath> & derivedPaths, BuildMode buildMode, std::shared_ptr<Store> evalStore) {
+  if (builderCallback == nullptr) {
+    throw nix::Error("HerculesStore: builder callback is not set; this is a bug in hercules-ci-agent");
+  }
+
   std::exception_ptr exceptionToThrow(nullptr);
 
   // responsibility for delete is transferred to builderCallback

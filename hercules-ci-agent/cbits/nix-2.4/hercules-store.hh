@@ -15,6 +15,11 @@ using FSAccessor = nix::SourceAccessor;
 using namespace nix;
 
 class WrappingStore : public Store {
+#if NIX_IS_AT_LEAST(2, 35, 0)
+  /* VTable anchor, required by nix::Store; see its declaration there. */
+  void anchor() override;
+#endif
+
  public:
   ref<Store> wrappedStore;
 
@@ -105,7 +110,11 @@ public:
   virtual std::shared_ptr<SourceAccessor> getFSAccessor(const StorePath & path, bool requireValidPath = true) override;
 #endif
 
+#if NIX_IS_AT_LEAST(2, 34, 0)
+  virtual void addSignatures(const StorePath & storePath, const std::set<Signature> & sigs) override;
+#else
   virtual void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
+#endif
 
   virtual void computeFSClosure(const StorePathSet & paths,
       StorePathSet & out, bool flipDirection = false,
@@ -135,7 +144,8 @@ public:
 class HerculesStore final : public WrappingStore {
 public:
   StorePathSet ensuredPaths;
-  void (* builderCallback)(std::vector<nix::StorePathWithOutputs>*, std::exception_ptr *exceptionToThrow);
+  // Set during evaluation; see setBuilderCallback.
+  void (* builderCallback)(std::vector<nix::StorePathWithOutputs>*, std::exception_ptr *exceptionToThrow) = nullptr;
 
   HerculesStore(ref<Store> storeToWrap);
 

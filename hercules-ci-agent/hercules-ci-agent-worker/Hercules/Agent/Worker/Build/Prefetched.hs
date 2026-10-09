@@ -312,8 +312,13 @@ buildDerivation (Store store) derivationPath derivation extraInputs =
 
         success = successPtr != nullptr;
         if (failurePtr) {
-          printError(failurePtr->errorMsg);
-          errorMessage = stringdup(failurePtr->errorMsg);
+#if NIX_IS_AT_LEAST(2, 34, 0)
+          const std::string & failureErrorMsg = failurePtr->msg();
+#else
+          const std::string & failureErrorMsg = failurePtr->errorMsg;
+#endif
+          printError(failureErrorMsg);
+          errorMessage = stringdup(failureErrorMsg);
         } else {
           errorMessage = stringdup("");
         }

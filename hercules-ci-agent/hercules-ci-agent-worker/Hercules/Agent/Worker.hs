@@ -33,7 +33,7 @@ import Hercules.Agent.Worker.Env (HerculesState (HerculesState, drvsCompleted, w
 import Hercules.Agent.Worker.Env qualified
 import Hercules.Agent.Worker.Error (ExceptionText (exceptionTextMessage), exceptionTextMessage, renderException)
 import Hercules.Agent.Worker.Evaluate (runEval)
-import Hercules.Agent.Worker.HerculesStore (setBuilderCallback, withHerculesStore)
+import Hercules.Agent.Worker.HerculesStore (withHerculesStore)
 import Hercules.Agent.Worker.Logging (withKatip)
 import Hercules.Agent.WorkerProtocol.Command
   ( Command,
@@ -147,7 +147,6 @@ taskWorker commandsHandle sendEvents_ cfg = do
   drvOutputSubstituteAsyncs_ <- newTVarIO mempty
   drvsInProgress_ <- newIORef mempty
   withStore $ \wrappedStore_ -> withHerculesStore wrappedStore_ $ \herculesStore_ -> withKatip' do
-    liftIO $ setBuilderCallback herculesStore_ mempty
     let st =
           HerculesState
             { drvsCompleted = drvsCompleted_,

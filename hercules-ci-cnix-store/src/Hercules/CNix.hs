@@ -39,10 +39,6 @@ C.include "<nix/util/config-global.hh>"
 C.include "<nix/store/derivations.hh>"
 C.include "<nix/store/globals.hh>"
 
-C.include "<gc/gc.h>"
-C.include "<gc/gc_cpp.h>"
-C.include "<gc/gc_allocator.h>"
-
 C.include "hercules-ci-cnix/string.hxx"
 C.include "hercules-ci-cnix/store.hxx"
 

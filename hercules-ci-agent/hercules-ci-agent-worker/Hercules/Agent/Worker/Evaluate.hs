@@ -177,7 +177,7 @@ runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eva
 
   isNonBlocking <- liftIO (newIORef False)
 
-  liftIO . setBuilderCallback hStore $
+  builderCallback <- pure $
     traverseSPWOs $ \storePathWithOutputs -> unlift $ do
       drvStorePath <- liftIO $ getStorePath storePathWithOutputs
       drvPath <- liftIO $ CNix.storePathToPath store drvStorePath
@@ -232,6 +232,9 @@ runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eva
                         maybeThrowBuildException result drvStorePath
                         clearSubstituterCaches
                         clearPathInfoCache store
+                        -- The wrapped store caches negative path info lookups
+                        -- independently; clear it so the built output is seen.
+                        clearPathInfoCache (wrappedStore st)
                         ensurePath (wrappedStore st) outputPath `catch` \(_e1 :: SomeException) -> do
                           st.sendEvents $ pure $ Event.Build drvPath (decode outputName) (Just attempt0) doBlock
 
@@ -246,6 +249,7 @@ runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eva
                           maybeThrowBuildException result' drvStorePath
                           clearSubstituterCaches
                           clearPathInfoCache store
+                          clearPathInfoCache (wrappedStore st)
                           ensurePath (wrappedStore st) outputPath `catch` \e2 ->
                             liftIO $
                               throwBuildError
@@ -264,6 +268,7 @@ runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eva
                         else void $ wait buildAsync
 
   withEvalStateConduit store $ \evalState -> do
+    liftIO $ setBuilderCallback hStore evalState builderCallback
     let evalEnv :: EvalEnv
         evalEnv =
           EvalEnv

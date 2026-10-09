@@ -13,6 +13,7 @@ let
       imports = [ (import ../nix/flake-compat.nix).defaultNix.nixosModules.multi-agent-service ];
       boot.loader.grub.enable = false;
       fileSystems."/".device = "x";
+      fileSystems."/".fsType = "ext4";
       services.hercules-ci-agents."".settings = { concurrentTasks = 42; inherit labels; };
     }).config.system.build.toplevel;
 
@@ -21,6 +22,7 @@ let
       imports = [ (import ../nix/flake-compat.nix).defaultNix.nixosModules.agent-service ];
       boot.loader.grub.enable = false;
       fileSystems."/".device = "x";
+      fileSystems."/".fsType = "ext4";
       services.hercules-ci-agent.enable = true;
       services.hercules-ci-agent.settings = { concurrentTasks = 42; inherit labels; };
     }).config.system.build.toplevel;
@@ -30,6 +32,7 @@ let
       imports = [ (import ../nix/flake-compat.nix).defaultNix.nixosModules.multi-agent-service ];
       boot.loader.grub.enable = false;
       fileSystems."/".device = "x";
+      fileSystems."/".fsType = "ext4";
       # Test max length (user names are limited)
       services.hercules-ci-agents."a-bcdefghijklmnopqrstuvwxyz".settings = { concurrentTasks = 1; };
       # Test multiple agents don't interfere statically
