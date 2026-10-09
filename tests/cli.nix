@@ -1,8 +1,8 @@
-{ hci, jq, nodePackages, runCommand, hello, git }:
+{ hci, jq, json-diff, runCommand, hello, git }:
 
 runCommand "test-cli"
 {
-  nativeBuildInputs = [ hci jq nodePackages.json-diff git ];
+  nativeBuildInputs = [ hci jq json-diff git ];
 } ''
   set -x
   hci --version | grep -E 'hci [0-9.]+'
