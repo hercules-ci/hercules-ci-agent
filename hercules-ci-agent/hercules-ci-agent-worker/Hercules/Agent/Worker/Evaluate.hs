@@ -177,7 +177,7 @@ runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eva
 
   isNonBlocking <- liftIO (newIORef False)
 
-  liftIO . setBuilderCallback hStore $
+  builderCallback <- pure $
     traverseSPWOs $ \storePathWithOutputs -> unlift $ do
       drvStorePath <- liftIO $ getStorePath storePathWithOutputs
       drvPath <- liftIO $ CNix.storePathToPath store drvStorePath
@@ -268,6 +268,7 @@ runEval st@HerculesState {herculesStore = hStore, drvsCompleted = drvsCompl} eva
                         else void $ wait buildAsync
 
   withEvalStateConduit store $ \evalState -> do
+    liftIO $ setBuilderCallback hStore evalState builderCallback
     let evalEnv :: EvalEnv
         evalEnv =
           EvalEnv

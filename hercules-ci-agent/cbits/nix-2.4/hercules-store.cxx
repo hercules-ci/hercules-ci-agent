@@ -280,6 +280,10 @@ void HerculesStore::queryMissing(const std::vector<DerivedPath> & targets,
 #endif
 
 void HerculesStore::buildPaths(const std::vector<DerivedPath> & derivedPaths, BuildMode buildMode, std::shared_ptr<Store> evalStore) {
+  if (builderCallback == nullptr) {
+    throw nix::Error("HerculesStore: builder callback is not set; this is a bug in hercules-ci-agent");
+  }
+
   std::exception_ptr exceptionToThrow(nullptr);
 
   // responsibility for delete is transferred to builderCallback

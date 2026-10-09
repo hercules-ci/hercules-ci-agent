@@ -139,7 +139,8 @@ public:
 class HerculesStore final : public WrappingStore {
 public:
   StorePathSet ensuredPaths;
-  void (* builderCallback)(std::vector<nix::StorePathWithOutputs>*, std::exception_ptr *exceptionToThrow);
+  // Set during evaluation; see setBuilderCallback.
+  void (* builderCallback)(std::vector<nix::StorePathWithOutputs>*, std::exception_ptr *exceptionToThrow) = nullptr;
 
   HerculesStore(ref<Store> storeToWrap);
 

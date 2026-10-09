@@ -10,7 +10,7 @@ module Hercules.Agent.Worker.HerculesStore.Context
 where
 
 import Data.Map qualified as M
-import Hercules.CNix.Expr.Context (Ref)
+import Hercules.CNix.Expr.Context (Ref, evalContext)
 import Hercules.CNix.Std.Vector (stdVectorCtx)
 import Hercules.CNix.Store.Context qualified as Store
 import Language.C.Inline.Context qualified as C
@@ -29,6 +29,7 @@ context =
     <> C.bsCtx
     <> stdVectorCtx
     <> Store.context
+    <> evalContext
     <> herculesStoreContext
 
 (=:) :: k -> a -> Map k a
