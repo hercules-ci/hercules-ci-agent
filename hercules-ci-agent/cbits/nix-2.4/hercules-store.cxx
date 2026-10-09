@@ -50,7 +50,13 @@ void WrappingStore::queryPathInfoUncached(const StorePath & path,
   auto callbackPtr = std::make_shared<decltype(callback)>(std::move(callback));
 
   wrappedStore->queryPathInfo(path, {[=](std::future<ref<const ValidPathInfo>> vpi){
-    (*callbackPtr)(vpi.get().get_ptr());
+    try {
+      (*callbackPtr)(vpi.get().get_ptr());
+    } catch (...) {
+      // Must not let exceptions (e.g. InvalidPath) escape this noexcept
+      // context; pass them to the caller through the callback instead.
+      callbackPtr->rethrow();
+    }
   }});
 }
 
