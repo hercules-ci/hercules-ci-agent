@@ -676,16 +676,36 @@ getFlakeFromGit evalState url ref rev =
   }|]
         >>= mkRawValue
 
+-- | Fetch a flake from a tarball URL.
 getFlakeFromArchiveUrl :: Ptr EvalState -> Text -> IO RawValue
-getFlakeFromArchiveUrl evalState url = do
-  srcArgs <-
-    toRawValue evalState $
-      ("url" :: ByteString) =: url
-  fn <- valueFromExpressionString evalState "builtins.fetchTarball" "/"
-  pValue <- apply fn srcArgs
-  p <- assertType evalState pValue
-  p' <- getStringIgnoreContext p
-  getFlakeFromFlakeRef evalState p'
+getFlakeFromArchiveUrl evalState url =
+  let urlb = encodeUtf8 url
+   in [C.throwBlock| Value *{
+    EvalState &evalState = *$(EvalState *evalState);
+    Value *r = new (NoGC) Value();
+    std::string url($bs-ptr:urlb, $bs-len:urlb);
+
+    fetchers::Attrs attrs;
+    attrs.emplace("type", "tarball");
+    attrs.emplace("url", url);
+
+    auto flakeRef = nix::FlakeRef::fromAttrs(
+      fetchSettings,
+      attrs);
+    nix::flake::callFlake(evalState,
+      nix::flake::lockFlake(
+        flakeSettings,
+        evalState,
+        flakeRef,
+        nix::flake::LockFlags {
+          .updateLockFile = false,
+          .useRegistries = false,
+          .allowUnlocked = false,
+        }),
+      *r);
+    return r;
+  }|]
+        >>= mkRawValue
 
 traverseWithKey_ :: (Applicative f) => (k -> a -> f ()) -> Map k a -> f ()
 traverseWithKey_ f = M.foldrWithKey (\k a more -> f k a *> more) (pure ())
