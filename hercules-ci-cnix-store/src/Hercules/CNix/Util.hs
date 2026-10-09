@@ -23,6 +23,9 @@ import System.Mem.Weak (deRefWeak)
 import System.Posix (Handler (Catch), installHandler, sigHUP, sigINT, sigTERM, sigUSR1)
 import Prelude ()
 
+{- ORMOLU_DISABLE -}
+-- It doesn't like CPP
+
 C.context context
 
 C.include "<nix/util/signals.hh>"
@@ -31,11 +34,16 @@ C.include "signals.hxx"
 
 C.using "namespace nix"
 
+{-# DEPRECATED setInterruptThrown "Nix 2.33 removed `setInterruptThrown()`, and the Haskell function is a no-op when built against 2.33 or later versions. An OS thread can no longer opt out of Nix interrupt delivery. When Nix's process-global interrupt flag is set (e.g. with `triggerInterrupt`), `checkInterrupt()` throws at every call, except during C++ stack unwinding. No equivalent exists. Check whether you meant to use `triggerInterrupt` instead. If you are absolutely sure you need `setInterruptThrown` semantics for your bound thread, contribute to Nix." #-}
 setInterruptThrown :: IO ()
 setInterruptThrown =
+#if NIX_IS_AT_LEAST(2, 33, 0)
+  pass
+#else
   [C.throwBlock| void {
     nix::setInterruptThrown();
   }|]
+#endif
 
 triggerInterrupt :: IO ()
 triggerInterrupt =

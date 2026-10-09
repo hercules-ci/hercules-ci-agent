@@ -15,6 +15,9 @@ import qualified Language.C.Inline.Cpp.Exception as C
 import Protolude
 import qualified System.Environment
 
+{- ORMOLU_DISABLE -}
+-- It doesn't like CPP
+
 C.context context
 
 C.include "<nix/store/globals.hh>"
@@ -59,6 +62,9 @@ handleExceptionPtr programName eptr =
     std::string error = ANSI_RED "error:" ANSI_NORMAL " ";
     try {
       try {
+#if NIX_IS_AT_LEAST(2, 33, 0)
+        std::rethrow_exception(eptr);
+#else
         try {
           std::rethrow_exception(eptr);
         } catch (...) {
@@ -66,6 +72,7 @@ handleExceptionPtr programName eptr =
           setInterruptThrown();
           throw;
         }
+#endif
       } catch (BaseError & e) {
           logError(e.info());
           return e.info().status;
