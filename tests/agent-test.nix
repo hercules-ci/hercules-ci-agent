@@ -49,7 +49,9 @@ in
         # Keep build dependencies around, because we'll be offline
         environment.etc."reference-stdenv".text = builtins.toJSON (pkgs.runCommand "foo"
           {
-            nativeBuildInputs = [ pkgs.curl ];
+            # testSuitePkgs: the effects import Nixpkgs without the overlay
+            # that patches `nix`.
+            nativeBuildInputs = [ pkgs.curl pkgs.testSuitePkgs.nix ];
           } "").drvAttrs;
         # It's an offline test, so no caches are available
         nix.settings.substituters = lib.mkForce [ ];
