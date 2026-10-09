@@ -15,6 +15,10 @@
 
 using namespace nix;
 
+#if NIX_IS_AT_LEAST(2, 35, 0)
+void WrappingStore::anchor() {}
+#endif
+
 #if NIX_IS_AT_LEAST(2, 29, 0)
 WrappingStore::WrappingStore(ref<Store> storeToWrap)
     : Store(storeToWrap->config), wrappedStore(storeToWrap) {}

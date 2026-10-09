@@ -15,6 +15,11 @@ using FSAccessor = nix::SourceAccessor;
 using namespace nix;
 
 class WrappingStore : public Store {
+#if NIX_IS_AT_LEAST(2, 35, 0)
+  /* VTable anchor, required by nix::Store; see its declaration there. */
+  void anchor() override;
+#endif
+
  public:
   ref<Store> wrappedStore;
 

@@ -3,6 +3,9 @@
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
+#ifdef __GHCIDE__
+# define NIX_IS_AT_LEAST(mm,m,p) 1
+#endif
 
 module Hercules.Agent.Worker.Build.Logger
   ( initLogger,
@@ -45,15 +48,22 @@ C.using "namespace nix"
 
 C.using "namespace hercules_ci_cnix"
 
+{- ORMOLU_DISABLE -}
 initLogger :: IO ()
 initLogger =
   [C.throwBlock| void {
+#if NIX_IS_AT_LEAST(2, 35, 0)
+    nix::logger = new HerculesLogger();
+    herculesLogger = dynamic_cast<HerculesLogger *>(nix::logger);
+#else
     nix::logger = std::make_unique<HerculesLogger>();
     herculesLogger = dynamic_cast<HerculesLogger *>(nix::logger.get());
+#endif
     if (herculesLogger == nullptr) {
       throw std::runtime_error("Failed to cast logger to HerculesLogger");
     }
   }|]
+{- ORMOLU_ENABLE -}
 
 popMany :: IO (Vector LogEntry)
 popMany =
