@@ -146,10 +146,17 @@ ref<FSAccessor> WrappingStore::getFSAccessor(bool requireValidPath) {
   return wrappedStore->getFSAccessor(requireValidPath);
 }
 
+#if NIX_IS_AT_LEAST(2, 34, 0)
+void WrappingStore::addSignatures(const StorePath& storePath,
+                                  const std::set<Signature>& sigs) {
+  wrappedStore->addSignatures(storePath, sigs);
+};
+#else
 void WrappingStore::addSignatures(const StorePath& storePath,
                                   const StringSet& sigs) {
   wrappedStore->addSignatures(storePath, sigs);
 };
+#endif
 
 void WrappingStore::computeFSClosure(const StorePathSet& paths,
                                      StorePathSet& out,

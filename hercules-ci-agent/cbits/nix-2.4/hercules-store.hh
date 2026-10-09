@@ -105,7 +105,11 @@ public:
   virtual std::shared_ptr<SourceAccessor> getFSAccessor(const StorePath & path, bool requireValidPath = true) override;
 #endif
 
+#if NIX_IS_AT_LEAST(2, 34, 0)
+  virtual void addSignatures(const StorePath & storePath, const std::set<Signature> & sigs) override;
+#else
   virtual void addSignatures(const StorePath & storePath, const StringSet & sigs) override;
+#endif
 
   virtual void computeFSClosure(const StorePathSet & paths,
       StorePathSet & out, bool flipDirection = false,
