@@ -294,12 +294,18 @@ getStoreProtocolVersion (Store store) =
       return store.getProtocol();
     }|]
 
+{- ORMOLU_DISABLE -}
 getClientProtocolVersion :: IO Int
 getClientProtocolVersion =
   fromIntegral
     <$> [C.throwBlock| int {
+#if NIX_IS_AT_LEAST(2, 34, 0)
+      return WorkerProto::latest.number.toWire();
+#else
       return PROTOCOL_VERSION;
+#endif
     }|]
+{- ORMOLU_ENABLE -}
 
 -- | Store-agnostic store path representation: hash and name. Does not have a storedir or subpath inside the store path.
 newtype StorePath = StorePath (ForeignPtr NixStorePath)
