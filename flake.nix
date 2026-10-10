@@ -224,10 +224,36 @@
         };
         perSystem = { config, pkgs, system, ... }:
           let
+            # Avoid a hang when libnixstore is preloaded on Darwin; see the patches.
+            # Releases before the backports (2.31.6, 2.34.9, 2.35.3) are affected.
+            fixRosettaDetection = nixPackage:
+              let
+                # Disregard the +N suffix that appendPatches adds, so that an
+                # unrelated patch does not take the version out of range.
+                v = lib.head (lib.splitString "+" nixPackage.version);
+                inRange = lo: hi: lib.versionAtLeast v lo && lib.versionAtLeast hi v;
+                patch =
+                  if inRange "2.31.0" "2.31.5" then ./nix/patches/detect-rosetta-via-runtime-file-2.31.patch
+                  else if inRange "2.34.0" "2.34.8" then ./nix/patches/detect-rosetta-via-runtime-file-2.34.patch
+                  else if inRange "2.35.0" "2.35.2" then ./nix/patches/detect-rosetta-via-runtime-file-2.35.patch
+                  else null;
+                # The package may carry the fix already, e.g. as Nixpkgs'
+                # detect-rosetta-via-runtime-file.patch. Patches appended to the
+                # source layer show up on the component sources.
+                existingPatches =
+                  (nixPackage.patches or [ ])
+                  ++ (nixPackage.libs.nix-store.src.patches or [ ]);
+                alreadyPatched =
+                  lib.any (p: lib.hasInfix "detect-rosetta-via-runtime-file" (baseNameOf (toString p))) existingPatches;
+              in
+              if pkgs.stdenv.hostPlatform.isDarwin && patch != null && !alreadyPatched
+              then nixPackage.appendPatches [ patch ]
+              else nixPackage;
+
             dev-and-test-overlay = self: pkgs:
               {
                 testSuitePkgs = pkgs; # TODO: reuse pkgs via self so we don't build a variant
-                nix =
+                nix = fixRosettaDetection (
                   if inputs?nix
                   then
                     inputs.nix.packages.${pkgs.stdenv.hostPlatform.system}.default or (
@@ -236,7 +262,8 @@
                         pkgs.nix
                     )
                   else
-                    pkgs.nix;
+                    pkgs.nix
+                );
               };
 
             h = pkgs.haskell.lib.compose;
