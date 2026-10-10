@@ -243,6 +243,7 @@
                     ++ [
                       # https://github.com/NixOS/nix/pull/16586
                       ./nix/patches/fix-boehm-finalisation-cycle-warning-2.34.patch
+                      ./nix/patches/funnel-boehm-warnings-into-debug-2.34.patch
                     ]
                   )
                   ++ lib.optionals (inRange "2.35.0" "2.35.2") (onDarwin [

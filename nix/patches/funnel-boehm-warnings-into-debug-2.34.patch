@@ -1,0 +1,41 @@
+Part of the backport of https://github.com/NixOS/nix/pull/15990 to Nix 2.34:
+https://github.com/NixOS/nix/pull/16586 (NixOS/nix commit 0793e54d10).
+
+    Funnel Boehm warnings into debug()
+    
+    BDWGC has a tendency of being too loud with warnings, so silence it by
+    making the warnings go into debug() logging.
+    
+    Nixpkgs has some annoying hacks to deal with this [1], which would be nice
+    to do away with.
+    
+    [1]: https://github.com/NixOS/nixpkgs/blob/b66a6fb0aae47b295a5662b19aecd9eb08bab65e/pkgs/top-level/nixpkgs-basic-release-checks.nix#L51-L52
+    
+    (cherry picked from commit 6cee472eade6e38e7f4debe35a0cfbc2e96aa35b)
+    
+diff --git a/src/libexpr/eval-gc.cc b/src/libexpr/eval-gc.cc
+index 0d25f38f6..05e741fa9 100644
+--- a/src/libexpr/eval-gc.cc
++++ b/src/libexpr/eval-gc.cc
+@@ -76,6 +76,21 @@ static inline void initGCReal()
+ 
+     GC_set_oom_fn(oomHandler);
+ 
++    /* Funnel boehm warnings into debug logs. */
++    GC_set_warn_proc([](char * msg, GC_word word) noexcept {
++        std::array<char, 4096> buffer{};
++        auto res = snprintf(buffer.data(), buffer.size(), msg, word);
++        /* Ignore garbage. */
++        if (res < 0)
++            return;
++
++        try {
++            debug("%s", chomp(std::string_view(buffer.data(), std::min<size_t>(res, buffer.size() - 1))));
++        } catch (...) {
++            /* Swallow all errors. */
++        }
++    });
++
+     /* Set the initial heap size to something fairly big (25% of
+        physical RAM, up to a maximum of 384 MiB) so that in most cases
+        we don't need to garbage collect at all.  (Collection has a
