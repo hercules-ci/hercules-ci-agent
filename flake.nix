@@ -238,9 +238,13 @@
                     (onDarwin [
                       ./nix/patches/detect-rosetta-via-runtime-file-2.31.patch
                     ])
-                  ++ lib.optionals (inRange "2.34.0" "2.34.8") (onDarwin [
-                    ./nix/patches/detect-rosetta-via-runtime-file-2.34.patch
-                  ])
+                  ++ lib.optionals (inRange "2.34.0" "2.34.8") (
+                    onDarwin [ ./nix/patches/detect-rosetta-via-runtime-file-2.34.patch ]
+                    ++ [
+                      # https://github.com/NixOS/nix/pull/16586
+                      ./nix/patches/fix-boehm-finalisation-cycle-warning-2.34.patch
+                    ]
+                  )
                   ++ lib.optionals (inRange "2.35.0" "2.35.2") (onDarwin [
                     ./nix/patches/detect-rosetta-via-runtime-file-2.35.patch
                   ]);
