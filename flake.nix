@@ -224,36 +224,51 @@
         };
         perSystem = { config, pkgs, system, ... }:
           let
-            # Avoid a hang when libnixstore is preloaded on Darwin; see the patches.
-            # Releases before the backports (2.31.6, 2.34.9, 2.35.3) are affected.
-            fixRosettaDetection = nixPackage:
+            # Backports of Nix fixes that are missing from the releases in the
+            # given version ranges; see the patch files for details.
+            patchNixPackage = nixPackage:
               let
                 # Disregard the +N suffix that appendPatches adds, so that an
                 # unrelated patch does not take the version out of range.
                 v = lib.head (lib.splitString "+" nixPackage.version);
                 inRange = lo: hi: lib.versionAtLeast v lo && lib.versionAtLeast hi v;
-                patch =
-                  if inRange "2.31.0" "2.31.5" then ./nix/patches/detect-rosetta-via-runtime-file-2.31.patch
-                  else if inRange "2.34.0" "2.34.8" then ./nix/patches/detect-rosetta-via-runtime-file-2.34.patch
-                  else if inRange "2.35.0" "2.35.2" then ./nix/patches/detect-rosetta-via-runtime-file-2.35.patch
-                  else null;
-                # The package may carry the fix already, e.g. as Nixpkgs'
-                # detect-rosetta-via-runtime-file.patch. Patches appended to the
-                # source layer show up on the component sources.
-                existingPatches =
-                  (nixPackage.patches or [ ])
-                  ++ (nixPackage.libs.nix-store.src.patches or [ ]);
-                alreadyPatched =
-                  lib.any (p: lib.hasInfix "detect-rosetta-via-runtime-file" (baseNameOf (toString p))) existingPatches;
+                onDarwin = lib.optionals pkgs.stdenv.hostPlatform.isDarwin;
+                wanted =
+                  lib.optionals (inRange "2.31.0" "2.31.5")
+                    (onDarwin [
+                      ./nix/patches/detect-rosetta-via-runtime-file-2.31.patch
+                    ])
+                  ++ lib.optionals (inRange "2.34.0" "2.34.8") (onDarwin [
+                    ./nix/patches/detect-rosetta-via-runtime-file-2.34.patch
+                  ])
+                  ++ lib.optionals (inRange "2.35.0" "2.35.2") (onDarwin [
+                    ./nix/patches/detect-rosetta-via-runtime-file-2.35.patch
+                  ]);
+                # The package may carry a fix already, e.g. Nixpkgs applies
+                # detect-rosetta-via-runtime-file.patch to its Nix 2.31 on
+                # Darwin. Patches appended to the source layer show up on the
+                # component sources. Match by name, disregarding our -<version>
+                # file name suffix.
+                existingPatchNames =
+                  map (p: baseNameOf (toString p)) (
+                    (nixPackage.patches or [ ])
+                    ++ (nixPackage.libs.nix-store.src.patches or [ ])
+                  );
+                stem = p:
+                  let
+                    b = baseNameOf (toString p);
+                    m = builtins.match ''(.*)-[0-9][0-9.]*\.patch'' b;
+                  in
+                  if m == null then b else lib.head m;
+                isApplied = p: lib.any (lib.hasInfix (stem p)) existingPatchNames;
+                newPatches = lib.filter (p: !isApplied p) wanted;
               in
-              if pkgs.stdenv.hostPlatform.isDarwin && patch != null && !alreadyPatched
-              then nixPackage.appendPatches [ patch ]
-              else nixPackage;
+              if newPatches == [ ] then nixPackage else nixPackage.appendPatches newPatches;
 
             dev-and-test-overlay = self: pkgs:
               {
                 testSuitePkgs = pkgs; # TODO: reuse pkgs via self so we don't build a variant
-                nix = fixRosettaDetection (
+                nix = patchNixPackage (
                   if inputs?nix
                   then
                     inputs.nix.packages.${pkgs.stdenv.hostPlatform.system}.default or (
