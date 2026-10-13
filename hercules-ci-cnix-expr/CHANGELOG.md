@@ -5,34 +5,52 @@ All notable changes to this package will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased]
+## [0.5.2.0] - 2026-10-13
 
+### Added
+
+- Nix 2.34, 2.35 support
 
 ## [0.5.1.0] - 2026-01-06
+
+### Added
 
 - Nix support up to 2.33
 
 ## [0.5.0.0] - 2025-07-18
 
+### Changed
+
 - `init` now installs synchronous signal handlers for you. You may remove your call to `installDefaultSigINTHandler`.
 
 ## [0.4.0.0] - 2025-05-05
 
-- **REMOVE** `evalArgs`. This removes a dependency on the otherwise unused nix-cmd library. Use `valueFromExpressionString` and a library like `optparse-applicative` instead to create a nicer user experience.
+### Added
+
 - Nix 2.28 support
 
+### Removed
+
+- `evalArgs`. This removes a dependency on the otherwise unused nix-cmd library. Use `valueFromExpressionString` and a library like `optparse-applicative` instead to create a nicer user experience.
+
 ## [0.3.6.5] - 2024-11-15
+
+### Added
 
 - Nix 2.24 support
   This includes the newly separate `nix-flake` library as a dependency of `hercules-ci-cnix-expr`.
 
 ## [0.3.6.4] - 2024-06-12
 
-Got rid of unnecessary data files, improving packaging.
+### Removed
+
+- Unnecessary data files, improving packaging.
 
 ## [0.3.6.3] - 2024-05-19
 
-Solve build warnings.
+### Fixed
+
+- Build warnings.
 
 ## [0.3.6.2] - 2024-05-03
 
