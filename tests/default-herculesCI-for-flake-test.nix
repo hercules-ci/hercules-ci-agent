@@ -49,7 +49,7 @@ in rec {
   toFlake = x: x // { outputs = x; };
   flake2 = toFlake {
     packages.x86_64-linux.hello = fakePkg "hello86";
-    packages.aarch64-darwin.hello = fakePkg "iHello";
+    packages.x86_64-darwin.hello = fakePkg "iHello"; # not in ciSystems
     nixosConfigurations.rusty = lib.nixosSystem { modules = [ ]; system = "x86_64-linux"; };
     nixosConfigurations.trusty = lib.nixosSystem { modules = [{ nixpkgs.hostPlatform = "x86_64-linux"; }]; };
     nixosConfigurations.dusty = lib.nixosSystem { modules = [{ nixpkgs.hostPlatform = "i686-linux"; }]; };
@@ -62,9 +62,9 @@ in rec {
     darwinConfigurations.my-apple-2.options.nixpkgs.hostPlatform = lib.mkOption { } // { isDefined = true; };
     darwinConfigurations.my-apple-2.options.nixpkgs.buildPlatform = lib.mkOption { };
     darwinConfigurations.my-apple-2.config.nixpkgs.hostPlatform.system = throw "host platform doesn't matter";
-    darwinConfigurations.my-apple-2.config.nixpkgs.buildPlatform.system = "aarch64-darwin";
+    darwinConfigurations.my-apple-2.config.nixpkgs.buildPlatform.system = "x86_64-darwin";
     herculesCI = args: {
-      ciSystems = [ "x86_64-linux" "x86_64-darwin" ];
+      ciSystems = [ "x86_64-linux" "aarch64-darwin" ];
     };
   };
   outputs2 = addDefaults flake2 { herculesCI = { ciSystems = { "aarch64-darwin" = null; }; }; };
@@ -73,7 +73,7 @@ in rec {
     assert outputs1 == flakeOutputs1;
     assert lib.attrNames (outputs2.onPush.default.outputs.packages) == [ "x86_64-linux" ];
     assert lib.attrNames (outputs2.onPush.default.outputs.nixosConfigurations) == [ "rusty" "trusty" ];
-    assert lib.attrNames (outputs2.onPush.default.outputs.darwinConfigurations) == [ "my-intel" ];
+    assert lib.attrNames (outputs2.onPush.default.outputs.darwinConfigurations) == [ "my-apple" ];
     done;
 
 }

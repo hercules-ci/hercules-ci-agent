@@ -100,6 +100,11 @@
             inputs.hercules-ci-effects.flakeModule
             inputs.pre-commit-hooks-nix.flakeModule
           ];
+          herculesCI.ciSystems = [
+            "aarch64-darwin"
+            "aarch64-linux"
+            "x86_64-linux"
+          ];
         };
         systems = [
           "aarch64-darwin"
