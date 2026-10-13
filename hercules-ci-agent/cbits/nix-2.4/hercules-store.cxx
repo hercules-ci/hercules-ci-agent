@@ -199,7 +199,7 @@ void WrappingStore::connect() {
 Path WrappingStore::toRealPath(const Path& storePath) {
   return wrappedStore->toRealPath(storePath);
 }
-#endif;
+#endif
 
 unsigned int WrappingStore::getProtocol() {
   return wrappedStore->getProtocol();
