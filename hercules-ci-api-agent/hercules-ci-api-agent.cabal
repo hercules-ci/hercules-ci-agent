@@ -66,6 +66,7 @@ library
     Hercules.API.Logs.LogMessage
     Hercules.API.Task
     Hercules.API.TaskStatus
+    Hercules.Formats.AtticCache
     Hercules.Formats.CachixCache
     Hercules.Formats.Common
     Hercules.Formats.Mountable

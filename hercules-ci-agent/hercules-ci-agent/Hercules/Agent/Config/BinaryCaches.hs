@@ -15,6 +15,7 @@ import Hercules.Agent.Bag
 import Hercules.Agent.Config
 import Hercules.Agent.Log
 import Hercules.Error
+import Hercules.Formats.AtticCache
 import Hercules.Formats.CachixCache
 import Hercules.Formats.NixCache
 import Protolude hiding (catchJust)
@@ -23,6 +24,7 @@ import System.IO.Error (isDoesNotExistError)
 data BinaryCaches = BinaryCaches
   { cachixCaches :: Map Text CachixCache,
     nixCaches :: Map Text NixCache,
+    atticCaches :: Map Text AtticCache,
     unknownKinds :: Map Text UnknownKind
   }
 
@@ -36,6 +38,7 @@ instance FromJSON BinaryCaches where
       ( BinaryCaches
           <$> part (\_name -> whenKind "CachixCache" $ \v -> Just $ parseJSON v)
           <*> part (\_name -> whenKind "NixCache" $ \v -> Just $ parseJSON v)
+          <*> part (\_name -> whenKind "AtticCache" $ \v -> Just $ parseJSON v)
           <*> part (\_name v -> Just $ parseJSON v)
       )
 
@@ -65,7 +68,7 @@ parseFile cfg = do
 
 validate :: FilePath -> BinaryCaches -> KatipContextT IO ()
 validate fname bcs = do
-  when (null (cachixCaches bcs) && null (nixCaches bcs)) $
+  when (null (cachixCaches bcs) && null (nixCaches bcs) && null (atticCaches bcs)) $
     logLocM
       WarningS
       "You did not configure any caches. This is ok for trying out Hercules CI,\
