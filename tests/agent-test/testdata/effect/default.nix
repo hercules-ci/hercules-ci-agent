@@ -14,7 +14,7 @@
       in {
         effects.launchIt = pkgs.runCommand "one" {
           t = builtins.currentTime;
-          nativeBuildInputs = [ pkgs.curl ];
+          nativeBuildInputs = [ pkgs.curl pkgs.jq pkgs.nix ];
           __hci_effect_mounts = builtins.toJSON {
             "/etc/forwarded-path" = "forwarded-path";
             "/var/lib/shared-data" = "shared-data";
@@ -37,6 +37,18 @@
           [[ $(id -u) == 0 ]]
           [[ $(id -g) == 0 ]]
           echo hi >/hi
+
+          # Nix must recognize the store as a daemon store even if NIX_REMOTE is
+          # unset, as some tools will "helpfully" clear environment variables.
+          [[ ! -w /nix/var/nix ]]
+          storeUrl="$(env -u NIX_REMOTE nix --extra-experimental-features nix-command store info --json | jq -r .url)"
+          [[ "$storeUrl" == daemon ]]
+
+          # Profiles are usable transiently, the default one and an explicit one
+          HOME=/build nix-env --set ${pkgs.curl}
+          [[ "$(readlink -f /nix/var/nix/profiles/default)" == "${pkgs.curl}" ]]
+          HOME=/build nix-env -p /nix/var/nix/profiles/per-user/root/hci-test --set ${pkgs.curl}
+          [[ "$(readlink -f /nix/var/nix/profiles/per-user/root/hci-test)" == "${pkgs.curl}" ]]
           set +x
 
           grep '"hercules-ci":' $HERCULES_CI_SECRETS_JSON

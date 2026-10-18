@@ -14,6 +14,7 @@
       in {
         effects.launchIt = pkgs.runCommand "one" {
           t = builtins.currentTime;
+          nativeBuildInputs = [ pkgs.jq pkgs.nix ];
           __hci_effect_mounts = builtins.toJSON {
             "/etc/hosts" = "hosts";
             "/dev/the-blocks" = "my-blocks";
@@ -33,6 +34,18 @@
           # Add username to /etc/passwd
           echo "hci-effect:x:42:142:hci-effect:$PWD:/bin/nologin" >> /etc/passwd
           echo "hci-effect:x:142:" >> /etc/group
+
+          set -x
+          # As in effect/default.nix, but with non-root uid and read-only root.
+          # Nix must recognize the store as a daemon store even if NIX_REMOTE is
+          # unset, as some tools will "helpfully" clear environment variables.
+          [[ ! -w /nix/var/nix ]]
+          storeUrl="$(env -u NIX_REMOTE nix --extra-experimental-features nix-command store info --json | jq -r .url)"
+          [[ "$storeUrl" == daemon ]]
+
+          HOME=/build nix-env -p /nix/var/nix/profiles/hci-test --set ${pkgs.curl}
+          [[ "$(readlink -f /nix/var/nix/profiles/hci-test)" == "${pkgs.curl}" ]]
+          set +x
 
           # Check that it contains the data that was written by the setup in the
           # NixOS VM test testScript.
