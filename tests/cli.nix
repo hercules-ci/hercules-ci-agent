@@ -46,6 +46,10 @@ runCommand "test-cli"
   # Test hci effect eval
   export HOME=$PWD/home
   mkdir -p $HOME
+  # Write the .drv files from evaluation to a store in the build directory.
+  # On Darwin the default store is the host daemon, which rejects build users
+  # since the fix for GHSA-92x5-h528-wrmw.
+  export NIX_REMOTE="local?root=$PWD/nix-root"
 
   # Create a bare git repo to use as remote
   git init --bare remote.git
