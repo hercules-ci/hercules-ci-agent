@@ -5,10 +5,9 @@ module Main
   )
 where
 
-import Control.Lens (over, (?~))
+import Control.Lens (iover, itraversed, over, (?~))
 import Data.Aeson (encode)
 import Data.Function ((&))
-import Data.HashMap.Strict.InsOrd (InsOrdHashMap, mapWithKey)
 import Data.Maybe (fromMaybe)
 import Data.OpenApi (HasPaths (paths), OpenApi, Operation, PathItem, operationId)
 import Data.OpenApi qualified as O
@@ -38,11 +37,8 @@ main = do
       error $ "Unknown arguments" <> show args
 
 transferOperationIds :: OpenApi -> OpenApi
-transferOperationIds = over (paths) fPathItems
+transferOperationIds = iover (paths . itraversed) fPathItem
   where
-    fPathItems :: InsOrdHashMap FilePath PathItem -> InsOrdHashMap FilePath PathItem
-    fPathItems = mapWithKey fPathItem
-
     fPathItem :: FilePath -> PathItem -> PathItem
     fPathItem p pit =
       pit
