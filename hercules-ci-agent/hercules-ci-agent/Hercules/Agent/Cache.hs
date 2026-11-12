@@ -5,6 +5,7 @@ module Hercules.Agent.Cache where
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Foreign.ForeignPtr (ForeignPtr, withForeignPtr)
+import Hercules.Agent.Attic qualified as Attic
 import Hercules.Agent.Cachix qualified as Cachix
 import Hercules.Agent.Config.BinaryCaches qualified as Config
 import Hercules.Agent.Env (App)
@@ -17,6 +18,7 @@ import Hercules.CNix.Std.Set qualified as Std.Set
 import Hercules.CNix.Store (StorePath)
 import Hercules.CNix.Store qualified as Store
 import Hercules.Error (defaultRetry)
+import Hercules.Formats.AtticCache qualified as AtticCache
 import Hercules.Formats.NixCache qualified as NixCache
 import Katip
 import Protolude
@@ -27,10 +29,13 @@ withCaches m = do
   csubsts <- Cachix.getSubstituters
   cpubkeys <- Cachix.getTrustedPublicKeys
   nixCaches <- asks (Config.nixCaches . Env.binaryCaches)
-  let substs = nixCaches & toList <&> NixCache.storeURI
-      pubkeys = nixCaches & toList <&> NixCache.publicKeys & join
+  atticCaches <- asks (Config.atticCaches . Env.binaryCaches)
+  let substs = (nixCaches & toList <&> NixCache.storeURI) <> (atticCaches & toList <&> Attic.substituterURL)
+      pubkeys =
+        (nixCaches & toList <&> NixCache.publicKeys & join)
+          <> (atticCaches & toList <&> AtticCache.publicKeys & join)
   netrcFile <- Netrc.getNetrcFile
-  Netrc.appendLines netrcLns
+  Netrc.appendLines (netrcLns <> Attic.toNetrcLines atticCaches)
   Nix.withExtraOptions
     [ ("netrc-file", toS netrcFile),
       ("substituters", T.intercalate " " (substs <> csubsts)),
@@ -41,7 +46,10 @@ withCaches m = do
 getConfiguredSubstituters :: App [Text]
 getConfiguredSubstituters = do
   nixCaches <- asks (Config.nixCaches . Env.binaryCaches)
-  let substs = nixCaches & toList <&> NixCache.storeURI
+  atticCaches <- asks (Config.atticCaches . Env.binaryCaches)
+  let substs =
+        (nixCaches & toList <&> NixCache.storeURI)
+          <> (atticCaches & toList <&> Attic.substituterURL)
   csubsts <- Cachix.getSubstituters
   pure (substs <> csubsts)
 
@@ -63,9 +71,12 @@ push store cacheName paths concurrency = katipAddNamespace "Push" $ katipAddCont
       maybeCachix =
         Config.cachixCaches caches & M.lookup cacheName & fmap \_cache ->
           Cachix.push store cacheName paths concurrency
+      maybeAttic =
+        Config.atticCaches caches & M.lookup cacheName & fmap \cache ->
+          Attic.push store cacheName cache paths
       failNothing =
         throwIO $ FatalError $ "Agent does not have a binary cache named " <> show cacheName <> " in its configuration."
-  fromMaybe failNothing (maybeNix <|> maybeCachix)
+  fromMaybe failNothing (maybeNix <|> maybeCachix <|> maybeAttic)
 
 nixPush :: NixCache.NixCache -> [StorePath] -> Int -> App ()
 nixPush cacheConf paths _concurrency = do

@@ -1,6 +1,7 @@
 module Hercules.Agent.Token where
 
 import Control.Lens ((^?))
+import Crypto.Hash
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Lens (key, _String)
 import Data.ByteString.Base64.Lazy qualified as B64L
@@ -18,6 +19,8 @@ import Protolude
 import Servant.Auth.Client (Token (Token))
 import System.Directory qualified
 import System.FilePath ((</>))
+import System.IO.Temp (withTempDirectory)
+import UnliftIO (withRunInIO)
 
 getDir :: App FilePath
 getDir = asks ((</> "secretState") . baseDirectory . config)
@@ -27,6 +30,36 @@ writeAgentSessionKey tok = do
   dir <- getDir
   liftIO $ System.Directory.createDirectoryIfMissing True dir
   liftIO $ writeFile (dir </> "session.key") (toS tok)
+
+withContentAddressedSecretState ::
+  [Char] ->
+  Digest SHA256 ->
+  (FilePath -> App ()) ->
+  (FilePath -> App a) ->
+  App a
+withContentAddressedSecretState desc digest makeDir wither = do
+  parent <- getDir
+  liftIO $ System.Directory.createDirectoryIfMissing True parent
+  let name = show digest :: [Char]
+      caDir = parent </> ("ca-" <> desc <> "-" <> name)
+  liftIO (System.Directory.doesDirectoryExist caDir) >>= \case
+    True -> pure ()
+    False -> withRunInIO $ \run ->
+      withTempDirectory parent "ca-tmp" $ \tmpDir -> run $ do
+        makeDir tmpDir
+        liftIO $ System.Directory.renameDirectory tmpDir caDir
+  wither caDir
+
+pruneContentAddressedSecretStates :: App ()
+pruneContentAddressedSecretStates = do
+  parent <- getDir
+  liftIO (System.Directory.doesDirectoryExist parent) >>= \case
+    False -> pure ()
+    True -> do
+      entries <- liftIO $ System.Directory.listDirectory parent
+      for_ (filter ("ca-" `isPrefixOf`) entries) $ \entry -> do
+        let path = parent </> entry
+        liftIO $ System.Directory.removePathForcibly path
 
 -- | Reads a token file, strips whitespace
 readTokenFile :: (MonadIO m) => FilePath -> m Text
