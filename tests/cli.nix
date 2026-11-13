@@ -1,8 +1,15 @@
-{ hci, jq, json-diff, runCommand, hello, git }:
+{ hci, jq, json-diff, runCommand, hello, git, curl, python3, writeShellScript }:
 
+let
+  # Records what hci passes to curl, instead of making a request.
+  fakeCurl = writeShellScript "curl" ''
+    printf '%s\n' "$@" >argv
+    cat "''${3#@}" >header
+  '';
+in
 runCommand "test-cli"
 {
-  nativeBuildInputs = [ hci jq json-diff git ];
+  nativeBuildInputs = [ hci jq json-diff git curl python3 ];
 } ''
   set -x
   hci --version | grep -E 'hci [0-9.]+'
@@ -343,6 +350,72 @@ runCommand "test-cli"
   echo "hci effect eval (--as-tag) output: $output"
   [[ "$output" =~ ^/nix/store/[a-z0-9]+-tagged-effect\.drv$ ]]
 
+  cd ..
+
+  # Test hci curl
+  mkdir curl-test
+  cd curl-test
+  export HERCULES_CI_API_TOKEN=secret-token
+
+  # The server prints its port, and the request that it does not answer. If it
+  # exits, read fails at the end of the pipe, and so does the test.
+  exec {server_out}< <(python3 ${./hci-curl-server.py})
+  server=$!
+  read -r port <&"$server_out"
+  local_api=http://127.0.0.1:$port
+
+  # The request curl makes carries the token, and curl's output is the caller's.
+  output=$(HERCULES_CI_API_BASE_URL=$local_api hci curl '/api/v1/thing?x=1' -- -sS)
+  [[ "$output" == '{"path":"/api/v1/thing?x=1","authorization":"Bearer secret-token"}' ]]
+
+  # The token reaches curl through a file descriptor, not its arguments.
+  mkdir fake-bin
+  ln -s ${fakeCurl} fake-bin/curl
+  PATH=$PWD/fake-bin:$PATH HERCULES_CI_API_BASE_URL=https://hci.example.com \
+    hci curl https://hci.example.com/api/v1/thing -- -sS -X POST
+  [[ "$(sed 3d argv)" == "--globoff
+  --header
+  --url
+  https://hci.example.com/api/v1/thing
+  -sS
+  -X
+  POST" ]]
+  # set -e ignores a command negated with !, so these checks use if.
+  if grep -F secret-token argv; then
+    echo "ERROR: the token is in curl's arguments"
+    exit 1
+  fi
+  [[ "$(cat header)" == "Authorization: Bearer secret-token" ]]
+
+  # Another host does not get the token, and curl does not run.
+  rm argv
+  if PATH=$PWD/fake-bin:$PATH HERCULES_CI_API_BASE_URL=https://hci.example.com \
+    hci curl https://example.com/api/v1/thing 2>err; then
+    echo "ERROR: hci curl accepted another host"
+    exit 1
+  fi
+  [[ "$(cat err)" == "hci: error: URL https://example.com/api/v1/thing is not on https://hci.example.com, so it does not get the token" ]]
+  [[ ! -e argv ]]
+
+  # hci execs curl, so SIGINT ends curl itself, with status 130. hci's runtime
+  # handles SIGINT, which exec resets to the default, so this holds even in a
+  # background job, where bash ignores SIGINT.
+  # The signal is sent once the server has the request, so that it reaches curl, not hci.
+  HERCULES_CI_API_BASE_URL=$local_api hci curl /silent -- -sS &
+  client=$!
+  read -r request <&"$server_out"
+  [[ "$request" == '{"path":"/silent","authorization":"Bearer secret-token"}' ]]
+  # On Linux, check that the signal goes to curl itself, not to an hci that would leave curl running.
+  if [[ -e /proc/$client/comm ]]; then
+    [[ "$(cat /proc/$client/comm)" == curl ]]
+  fi
+  kill -INT $client
+  status=0
+  wait $client || status=$?
+  [[ $status == 130 ]]
+  kill $server
+
+  unset HERCULES_CI_API_TOKEN
   cd ..
 
   touch $out

@@ -22,6 +22,7 @@ library
       Hercules.CLI.Client
       Hercules.CLI.Common
       Hercules.CLI.Credentials
+      Hercules.CLI.Curl
       Hercules.CLI.Effect
       Hercules.CLI.Exception
       Hercules.CLI.Git
@@ -112,6 +113,7 @@ test-suite hercules-ci-cli-unit-tests
   other-modules:
       Spec
       Hercules.CLI.CredentialsSpec
+      Hercules.CLI.CurlSpec
       Hercules.CLI.JSONSpec
   hs-source-dirs:
       test
@@ -124,6 +126,7 @@ test-suite hercules-ci-cli-unit-tests
     , containers
     , hercules-ci-cli
     , hspec
+    , text
     , protolude
     , QuickCheck
     , unordered-containers

@@ -7,6 +7,7 @@ where
 
 import Data.Version (showVersion)
 import Hercules.CLI.Client (prettyPrintHttpErrors)
+import qualified Hercules.CLI.Curl as Curl
 import qualified Hercules.CLI.Effect as Effect
 import qualified Hercules.CLI.Exception as Exception
 import qualified Hercules.CLI.Lock as Lock
@@ -113,4 +114,8 @@ commands =
             "lock"
             (Optparse.progDesc "Opt-in locking for use with state")
             Lock.commandParser
+          <> mkCommand
+            "curl"
+            (Optparse.progDesc "Run authenticated curl on the Hercules CI API")
+            Curl.commandParser
       )
