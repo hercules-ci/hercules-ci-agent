@@ -68,7 +68,10 @@ opts :: Optparse.ParserInfo (IO ())
 opts =
   Optparse.info
     (commands <**> helper)
-    (Optparse.fullDesc <> Optparse.header "Command line interface to Hercules CI")
+    ( Optparse.fullDesc
+        <> Optparse.header "Command line interface to Hercules CI"
+        <> Optparse.footer "Complete documentation available at: https://docs.hercules-ci.com/hercules-ci-agent/hci/"
+    )
 
 exitVersion :: IO ()
 exitVersion = do
