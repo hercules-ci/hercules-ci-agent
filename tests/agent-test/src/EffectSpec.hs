@@ -169,14 +169,14 @@ spec = describe "Effect" do
               isDefaultBranch = True
             }
         )
-    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hello on stderr\r" -> True; _noMatch -> False
-    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hello on stdout\r" -> True; _noMatch -> False
-    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hi from src\r" -> True; _noMatch -> False
-    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hello from forwarded path\r" -> True; _noMatch -> False
-    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hello from shared-data\r" -> True; _noMatch -> False
-    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "Hello, world! - The fake API testing endpoint\r" -> True; _noMatch -> False
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hello on stderr" -> True; _noMatch -> False
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hello on stdout" -> True; _noMatch -> False
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hi from src" -> True; _noMatch -> False
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hello from forwarded path" -> True; _noMatch -> False
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "hello from shared-data" -> True; _noMatch -> False
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "Hello, world! - The fake API testing endpoint" -> True; _noMatch -> False
     -- FIXME
-    -- void $ shouldBeJust $ entries & find \case LogEntry.Result { msg = m } | m == "log line without newline\r" -> True; _noMatch -> False
+    -- void $ shouldBeJust $ entries & find \case LogEntry.Result { msg = m } | m == "log line without newline" -> True; _noMatch -> False
     pass
 
   it "alternate effect works" $ \srv -> do
@@ -231,5 +231,5 @@ spec = describe "Effect" do
               isDefaultBranch = True
             }
         )
-    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "all good.\r" -> True; _noMatch -> False
+    void $ shouldBeJust $ entries & find \case LogEntry.Msg {msg = m} | m == "all good." -> True; _noMatch -> False
     pass
