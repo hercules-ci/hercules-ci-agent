@@ -7,6 +7,7 @@ where
 
 import Data.Version (showVersion)
 import Hercules.CLI.Client (prettyPrintHttpErrors)
+import qualified Hercules.CLI.Curl as Curl
 import qualified Hercules.CLI.Effect as Effect
 import qualified Hercules.CLI.Exception as Exception
 import qualified Hercules.CLI.Lock as Lock
@@ -68,7 +69,10 @@ opts :: Optparse.ParserInfo (IO ())
 opts =
   Optparse.info
     (commands <**> helper)
-    (Optparse.fullDesc <> Optparse.header "Command line interface to Hercules CI")
+    ( Optparse.fullDesc
+        <> Optparse.header "Command line interface to Hercules CI"
+        <> Optparse.footer "Complete documentation available at: https://docs.hercules-ci.com/hercules-ci-agent/hci/"
+    )
 
 exitVersion :: IO ()
 exitVersion = do
@@ -110,4 +114,8 @@ commands =
             "lock"
             (Optparse.progDesc "Opt-in locking for use with state")
             Lock.commandParser
+          <> mkCommand
+            "curl"
+            (Optparse.progDesc "Run authenticated curl on the Hercules CI API")
+            Curl.commandParser
       )

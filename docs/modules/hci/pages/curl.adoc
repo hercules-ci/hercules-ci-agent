@@ -1,0 +1,43 @@
+= `hci curl`
+
+`hci curl URL [-- CURL_ARG...]`
+
+Run authenticated `curl` on the Hercules CI API, to access any endpoint.
+
+`hci` adds an `Authorization` header and replaces itself with `curl`, so the output and the exit status are those of `curl`.
+
+API reference documentation and a try-out UI are available at https://hercules-ci.com/api/v1/.
+
+Example:
+
+[source,shell]
+----
+hci curl /api/v1/jobs/f48fedaf-2168-48da-b366-0effe979d0bb -- --fail --silent | jq .
+----
+
+== Parameters
+
+[[param-url]]
+=== `URL`
+
+A path that starts with `/`, which is appended to xref:environment.adoc#HERCULES_CI_API_BASE_URL[`HERCULES_CI_API_BASE_URL`], or an absolute URL with the same scheme, host and port as that base URL.
+An omitted port is the scheme's default, 443 for `https` and 80 for `http`.
+
+Any other URL is refused, so that the token is not sent elsewhere.
+
+These are API URLs. The URLs of pages in the web interface do not work here.
+
+[[param-curl-args]]
+=== `CURL_ARG...`
+
+Arguments that are passed to `curl` as they are.
+The `--` is needed before the first argument that starts with `-`, and may be left out when none does.
+
+`curl` sends the `Authorization` header with every URL of its operation, so these arguments should not name another URL, with or without the `--`.
+When `curl` 7.83.0 or later follows a redirect to another scheme, host or port, it does not send the `Authorization` header there, unless `--location-trusted` is passed.
+
+== Implicit inputs
+
+`curl` is looked up on `PATH`.
+
+include::hci:partial$implicit-api.adoc[]

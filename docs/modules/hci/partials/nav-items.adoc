@@ -1,5 +1,9 @@
 * xref:installation.adoc[Installation]
 * xref:environment.adoc[Environment]
+* xref:curl.adoc[`hci curl`] +
+ifeval::[{descriptions} == true]
+Run authenticated `curl` on the Hercules CI API.
+endif::[]
 * xref:effect/eval.adoc[`hci effect eval`] +
 ifeval::[{descriptions} == true]
 Evaluate an effect and print its derivation path.
