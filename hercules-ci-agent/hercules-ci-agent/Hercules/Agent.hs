@@ -60,7 +60,7 @@ import Hercules.Agent.Options qualified as Options
 import Hercules.Agent.STM
 import Hercules.Agent.ServiceInfo qualified
 import Hercules.Agent.Socket qualified as Socket
-import Hercules.Agent.Token (withAgentToken)
+import Hercules.Agent.Token (pruneContentAddressedSecretStates, withAgentToken)
 import Hercules.CNix.Store qualified as CNix.Store
 import Hercules.Error
   ( cap,
@@ -112,7 +112,7 @@ run env _cfg = do
   Env.runApp env $
     katipAddContext (sl "agent-version" (A.String herculesAgentVersion)) $
       (configureLimits >>) $
-        (configChecks >>) $
+        (configChecks >> pruneContentAddressedSecretStates >>) $
           withAgentToken $
             withLifeCycle \hello -> withTaskState \tasks ->
               withAgentSocket hello tasks \socket ->
