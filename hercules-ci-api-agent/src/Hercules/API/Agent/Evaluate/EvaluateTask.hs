@@ -21,6 +21,7 @@ data EvaluateTask = EvaluateTask
     logToken :: Text,
     selector :: Selector,
     ciSystems :: Maybe (Map Text ()),
+    pushToBinaryCaches :: Maybe (Map Text ()),
     extraGitCredentials :: Maybe [Credential],
     -- | Whether to use Nix's fetching mechanism for everything.
     --

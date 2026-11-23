@@ -12,7 +12,8 @@ import Protolude
 -- | Documented in @docs/modules/ROOT/pages/evaluation.adoc@.
 data HerculesCIMeta = HerculesCIMeta
   { apiBaseUrl :: Text,
-    ciSystems :: CISystems
+    ciSystems :: CISystems,
+    pushToBinaryCaches :: BinaryCaches
   }
   deriving (Generic, ToJSON)
 
@@ -33,6 +34,11 @@ newtype CISystems = CISystems (Maybe (Map Text ()))
   deriving (Generic)
   deriving anyclass (ToJSON)
   deriving (ToRawValue) via (ViaJSON CISystems)
+
+newtype BinaryCaches = BinaryCaches (Maybe (Map Text ()))
+  deriving (Generic)
+  deriving anyclass (ToJSON)
+  deriving (ToRawValue) via (ViaJSON BinaryCaches)
 
 fromGitSource :: GitSource -> HerculesCIMeta -> HerculesCIArgs
 fromGitSource primary hci =
